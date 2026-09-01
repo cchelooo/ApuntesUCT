@@ -33,6 +33,6 @@ Microservicios + API Gateway.
 - Dio
 
 ## Documentación
-
-- [Sistematización](docs/project/sistematizacion.md)
+- [Reglamento](docs/project/Reglamento_ApuntesUCT.pdf)
+- [Sistematización](docs/project/SRS_ApuntesUCT.pdf)
 - [Requisitos](docs/requirements/requisitos_tecnologias.md)

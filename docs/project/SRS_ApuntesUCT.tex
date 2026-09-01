@@ -1,0 +1,626 @@
+
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla]{babel}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{microtype}
+\usepackage{amssymb}
+
+\hypersetup{
+    colorlinks=false,
+    pdfborder={0 0 0}
+}
+
+\setcounter{tocdepth}{2}
+\setlist[itemize]{label=\(\blacksquare\), leftmargin=1.4em}
+\setlist[enumerate]{leftmargin=1.6em}
+\renewcommand{\arraystretch}{1.15}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}m{#1}}
+\newcommand{\correo}[1]{\nolinkurl{#1}}
+
+\newcommand{\diagrama}[4]{%
+\begin{figure}[H]
+    \centering
+    \IfFileExists{#1}{%
+        \includegraphics[width=0.92\textwidth]{#1}%
+    }{%
+        \fbox{%
+            \begin{minipage}[c][0.24\textheight][c]{0.86\textwidth}
+                \centering
+                \textbf{#2}\\[0.6em]
+                Subir a Overleaf el archivo:\\[0.3em]
+                \texttt{\detokenize{#1}}
+            \end{minipage}
+        }%
+    }
+    \caption{#3}
+    \label{#4}
+\end{figure}
+}
+
+\title{Software Requirements Specification (SRS)\\
+ApuntesUCT\\
+\large Ecosistema Colaborativo de Material Académico Validado}
+\author{Equipo de Análisis de Requisitos}
+\date{Agosto de 2026}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Introducción}
+
+\subsection{Propósito}
+
+Este documento especifica los requisitos del sistema \textbf{ApuntesUCT}, una plataforma académica orientada a centralizar, clasificar, validar y distribuir material de estudio producido o compartido por estudiantes de la Universidad Católica de Temuco.
+
+El objetivo general del proyecto es desarrollar e implementar un ecosistema tecnológico centralizado, accesible mediante una aplicación web y una aplicación móvil, orientado a la gestión, validación colaborativa y distribución hiper-contextualizada de material académico, con el fin de optimizar el tiempo de estudio y mejorar la confiabilidad de la información utilizada por los estudiantes.
+
+El documento está dirigido a estudiantes del equipo de desarrollo, docentes evaluadores, stakeholders académicos, desarrolladores backend, desarrolladores web, desarrolladores mobile y responsables de control de calidad. Su finalidad es establecer una base común para delimitar alcance, requisitos, reglas de negocio, responsabilidades técnicas y criterios de aceptación del MVP.
+
+\subsection{Alcance}
+
+ApuntesUCT permitirá compartir, descubrir, evaluar, reportar, verificar y descargar material de estudio asociado a una estructura académica contextualizada. El sistema no se limita a almacenar archivos: incorpora moderación previa a la publicación, reputación de usuarios, reportes de calidad, favoritos, versionado básico y posicionamiento de resultados.
+
+El MVP contempla:
+
+\begin{itemize}
+    \item Autenticación de usuarios mediante correos institucionales.
+    \item Catálogo académico de universidad, carrera, asignatura y profesor.
+    \item Subida y clasificación de material académico.
+    \item Flujo de moderación inicial en estado \texttt{PENDING\_REVIEW}.
+    \item Búsqueda contextual y filtros.
+    \item Visualización, previsualización y descarga de documentos.
+    \item Evaluaciones de 1 a 5 estrellas.
+    \item Favoritos.
+    \item Reportes de material incorrecto, duplicado, inapropiado o desactualizado.
+    \item Verificación de material revisado.
+    \item Reputación calculada desde backend.
+    \item Posicionamiento de resultados usando señales de calidad.
+    \item Versionado básico de materiales.
+\end{itemize}
+
+El proyecto será desarrollado de manera incremental durante aproximadamente cuatro sprints. Las funcionalidades complementarias, como un editor avanzado Markdown/LaTeX, no forman parte del núcleo obligatorio del MVP y solo se incorporarán si las funcionalidades principales se encuentran estables.
+
+\subsection{Contexto del problema}
+
+En la situación actual, los estudiantes de la Universidad Católica de Temuco dependen de canales informales para encontrar material de estudio: grupos de mensajería, correos, carpetas compartidas y repositorios no estructurados. Estos medios permiten circulación rápida, pero no garantizan orden, trazabilidad, vigencia ni calidad.
+
+La falta de una herramienta centralizada genera tres problemas principales. Primero, el material queda disperso y es difícil recuperarlo cuando se necesita preparar una evaluación específica. Segundo, no existe un mecanismo confiable para distinguir apuntes vigentes de documentos obsoletos o con errores conceptuales. Tercero, el esfuerzo de estudiantes que producen material de calidad se pierde entre generaciones, porque no existe un sistema de reputación o reconocimiento que preserve y destaque esos aportes.
+
+ApuntesUCT busca resolver esta situación mediante una plataforma especializada en el contexto académico UCT. La pregunta que intenta responder no es solamente ``dónde encuentro un documento sobre una materia'', sino ``cómo accedo al mejor material verificado para una asignatura, profesor, año y tipo de evaluación específicos''.
+
+\subsection{Definiciones, acrónimos y abreviaciones}
+
+\begin{description}[leftmargin=3.4cm, style=nextline]
+    \item[MVP] Producto Mínimo Viable del sistema.
+    \item[SRS] Software Requirements Specification o especificación de requisitos de software.
+    \item[UCT] Universidad Católica de Temuco.
+    \item[INT2] Equipo responsable de Web, backend e infraestructura.
+    \item[INT4] Equipo responsable de la aplicación móvil Flutter.
+    \item[API Gateway] Punto de entrada único que expone la API pública para Web y Mobile.
+    \item[Microservicio] Servicio backend con responsabilidad de negocio propia y datos bajo su propiedad lógica.
+    \item[Material] Recurso académico lógico subido por un usuario, con metadatos y una o más versiones.
+    \item[MaterialVersion] Versión física o histórica de un material.
+    \item[Moderación] Proceso de revisión previo o posterior a la publicación de un material.
+    \item[Verificación] Marca que indica que un material cumplió el proceso de revisión definido por la plataforma.
+    \item[Reputación] Puntuación calculada por backend a partir de aportes, evaluaciones y señales de calidad.
+    \item[MinIO] Servicio de almacenamiento de archivos compatible con S3.
+    \item[OpenAPI/Swagger] Especificación y documentación de la API pública.
+\end{description}
+
+\subsection{Referencias}
+
+\begin{itemize}
+    \item IEEE 29148 como referencia conceptual para la estructura de especificación de requisitos.
+    \item Documento de sistematización del proyecto ApuntesUCT.
+    \item Especificación técnica de referencia del proyecto ApuntesUCT.
+    \item Especificación de requisitos y tecnologías seleccionadas para ApuntesUCT.
+\end{itemize}
+
+\section{Descripción general}
+
+\subsection{Perspectiva del sistema}
+
+ApuntesUCT será una plataforma compuesta por dos clientes principales: una aplicación web responsiva y una aplicación móvil nativa. Ambos clientes consumirán la misma API pública expuesta por un API Gateway desarrollado en NestJS. La lógica de negocio residirá en el backend, distribuida en microservicios con responsabilidades separadas.
+
+La arquitectura general considera:
+
+\begin{itemize}
+    \item \textbf{Cliente Web:} interfaz responsiva desarrollada con React 19, Vite, TypeScript, Tailwind CSS, TanStack Query y React Router.
+    \item \textbf{Cliente Mobile:} aplicación móvil desarrollada con Flutter 3.x y Dart 3.x, usando Riverpod, Dio, go\_router, Freezed y json\_serializable.
+    \item \textbf{API Gateway:} entrada única para clientes Web y Mobile, responsable de enrutamiento, validación inicial, autenticación transversal y documentación pública.
+    \item \textbf{Microservicios backend:} Auth, Catalog, Material, Quality y Search.
+    \item \textbf{Persistencia:} PostgreSQL 17 con Prisma ORM 6.x, usando esquemas separados por servicio.
+    \item \textbf{Archivos:} almacenamiento de documentos en MinIO, evitando guardar archivos completos en PostgreSQL.
+\end{itemize}
+
+Diagrama de arquitectura de software. La Figura \ref{fig:arquitectura-software} muestra la arquitectura lógica y de despliegue del MVP, considerando clientes, API Gateway, microservicios, red interna, PostgreSQL y MinIO.
+
+\diagrama{diagramas/diagrama_arquitectura.png}{Diagrama de arquitectura de software de ApuntesUCT}{ApuntesUCT - Diagrama de Arquitectura de Software.}{fig:arquitectura-software}
+
+Diagrama de componentes UML. La Figura \ref{fig:componentes-uml} muestra la separación de componentes principales del sistema, sus dependencias y las responsabilidades de cada bloque de software.
+
+\diagrama{diagramas/diagrama_componentes.png}{Diagrama de componentes UML de ApuntesUCT}{ApuntesUCT - Diagrama de Componentes UML.}{fig:componentes-uml}
+
+Diagrama de modelo entidad-relación. La Figura \ref{fig:mer} representa el modelo de datos del sistema, incluyendo las entidades principales del catálogo académico, usuarios, materiales, versiones, evaluaciones, favoritos, reportes y moderación.
+
+\diagrama{diagramas/diagrama_mer.png}{Diagrama de modelo entidad-relación de ApuntesUCT}{ApuntesUCT - Diagrama de Modelo Entidad-Relación (MER).}{fig:mer}
+
+\subsection{Funciones del sistema (resumen)}
+
+\begin{itemize}
+    \item Registrar usuarios y autenticar sesiones.
+    \item Gestionar usuarios, roles y permisos.
+    \item Mantener un catálogo académico de universidad, carrera, asignatura y profesor.
+    \item Permitir la subida de material académico multiformato.
+    \item Clasificar cada material mediante universidad, carrera, asignatura, profesor, año y tipo de material.
+    \item Mantener todo material nuevo en cuarentena hasta su revisión.
+    \item Buscar y filtrar material con criterios académicos.
+    \item Previsualizar documentos compatibles, especialmente PDF.
+    \item Descargar material publicado y autorizado.
+    \item Calificar documentos mediante estrellas.
+    \item Reportar contenido desactualizado, incorrecto, duplicado o inapropiado.
+    \item Guardar y consultar favoritos.
+    \item Administrar moderación, verificación y retiro de contenido.
+    \item Calcular reputación de usuarios desde backend.
+    \item Ordenar resultados usando señales de relevancia, valoración, verificación, actualidad, reputación y reportes.
+\end{itemize}
+
+\subsection{Clases de usuarios}
+
+\begin{description}[leftmargin=3.8cm, style=nextline]
+    \item[Estudiante registrado] Usuario autenticado que busca, visualiza, descarga, evalúa, reporta y guarda material como favorito.
+    \item[Estudiante aportante] Estudiante registrado que sube material académico y consulta el estado de sus aportes.
+    \item[Moderador] Usuario autorizado para revisar material pendiente, confirmar reportes y aplicar decisiones de calidad.
+    \item[Administrador] Usuario con permisos de gestión sobre catálogo, usuarios, moderación, verificación y retiro de material.
+    \item[Equipo INT2] Equipo responsable de implementar Web, API Gateway, microservicios, persistencia, seguridad, API y despliegue.
+    \item[Equipo INT4] Equipo responsable de implementar la aplicación móvil y consumir la API pública definida por INT2.
+\end{description}
+
+\subsection{Restricciones}
+
+\begin{itemize}
+    \item El backend del MVP debe implementarse con Node.js 22 LTS, TypeScript 5.x y NestJS 11.
+    \item No se utilizará FastAPI/Python como backend del MVP.
+    \item La aplicación web no será HTML Vanilla; se desarrollará con React.
+    \item La aplicación móvil será desarrollada con Flutter.
+    \item Web y Mobile deben consumir la misma API pública.
+    \item Los clientes no deben acceder directamente a PostgreSQL, Prisma, MinIO ni microservicios internos.
+    \item El API Gateway no debe alojar reglas de negocio centrales.
+    \item Para el MVP se usará REST/HTTPS/JSON. No se incorporará RabbitMQ ni Kafka inicialmente.
+    \item La búsqueda inicial se implementará sobre PostgreSQL. No se incorporará Elasticsearch/OpenSearch en el MVP.
+    \item Los documentos locales tendrán inicialmente un límite de 15 MB.
+    \item La arquitectura debe ser realizable dentro de cuatro sprints.
+\end{itemize}
+
+\subsection{Supuestos y dependencias}
+
+\begin{itemize}
+    \item Los estudiantes disponen de conexión a internet para utilizar la plataforma.
+    \item La universidad, carreras, asignaturas y profesores podrán representarse mediante un catálogo académico estructurado.
+    \item El equipo INT2 entregará un contrato OpenAPI/Swagger suficiente para la integración mobile.
+    \item Los servicios backend podrán ejecutarse localmente mediante Docker Compose.
+    \item PostgreSQL y MinIO estarán disponibles en el entorno local y en el entorno de demostración.
+    \item Los archivos pesados o videos podrán manejarse mediante enlaces externos seguros cuando excedan el alcance de almacenamiento local.
+    \item La moderación inicial será realizada por usuarios autorizados antes de publicar material.
+\end{itemize}
+
+\section{Stakeholders, actores y casos de uso}
+
+\subsection{Stakeholders (lista)}
+
+\begin{longtable}{p{0.30\textwidth} p{0.62\textwidth}}
+\toprule
+\textbf{Stakeholder} & \textbf{Interés / Necesidad}\\
+\midrule
+Estudiantes UCT & Encontrar material de estudio útil, vigente y específico para sus asignaturas, profesores y evaluaciones.\\
+Estudiantes aportantes & Compartir apuntes de calidad, conservar sus aportes y recibir reconocimiento mediante reputación.\\
+Moderadores & Revisar material, resolver reportes y mantener estándares mínimos de calidad.\\
+Administradores & Gestionar catálogo, usuarios, permisos, verificación y control general del sistema.\\
+Docentes y unidades académicas & Reducir circulación de material erróneo u obsoleto y promover mejores prácticas de estudio.\\
+Equipo INT2 & Implementar backend, web, infraestructura, seguridad, reglas de negocio y contrato API.\\
+Equipo INT4 & Implementar aplicación móvil, experiencia de usuario mobile e integración con API pública.\\
+Docentes evaluadores del proyecto & Evaluar alcance, coherencia técnica, trazabilidad de requisitos y cumplimiento del MVP.\\
+\bottomrule
+\end{longtable}
+
+\subsection{Actores del sistema}
+
+\begin{itemize}
+    \item \textbf{A1 Estudiante registrado} (humano).
+    \item \textbf{A2 Estudiante aportante} (humano, especialización de estudiante registrado).
+    \item \textbf{A3 Moderador} (humano).
+    \item \textbf{A4 Administrador} (humano).
+    \item \textbf{A5 Cliente Web} (sistema cliente).
+    \item \textbf{A6 Cliente Mobile} (sistema cliente).
+    \item \textbf{A7 MinIO} (sistema de almacenamiento de archivos).
+\end{itemize}
+
+\subsection{Modelo de Casos de Uso}
+
+El modelo de casos de uso UML de ApuntesUCT se divide en tres vistas funcionales para mantener legibilidad: autenticación, búsqueda/catálogo y material/calidad. En conjunto, estas vistas delimitan las acciones esenciales del MVP: autenticación, búsqueda, subida, moderación, evaluación, reportes, favoritos, descarga y administración.
+
+La Figura \ref{fig:casos-auth} muestra los casos de uso relacionados con registro, inicio y cierre de sesión, recuperación de acceso, edición de perfil y suspensión de cuenta.
+
+\diagrama{diagramas/diagrama_casos_auth.png}{Diagrama de casos de uso UML - Auth}{ApuntesUCT - Diagrama de Casos de Uso UML - Auth.}{fig:casos-auth}
+
+La Figura \ref{fig:casos-search} muestra los casos de uso relacionados con búsqueda de material, filtros, ordenamiento, paginación, recomendaciones y administración del catálogo.
+
+\diagrama{diagramas/diagrama_casos_search.png}{Diagrama de casos de uso UML - Search/Catalog}{ApuntesUCT - Diagrama de Casos de Uso UML - Search/Catalog.}{fig:casos-search}
+
+La Figura \ref{fig:casos-material-quality} muestra los casos de uso relacionados con materiales académicos, descargas, previsualización, versiones, evaluaciones, favoritos, reportes, reputación, insignias y moderación de contenido.
+
+\diagrama{diagramas/diagrama_casos_material_quality.png}{Diagrama de casos de uso UML - Material/Quality}{ApuntesUCT - Diagrama de Casos de Uso UML - Material/Quality.}{fig:casos-material-quality}
+
+\section{Requisitos específicos}
+
+\subsection{Requisitos funcionales (RF)}
+
+\noindent\textbf{RF-01: Gestión de identidad y autenticación.} El sistema debe permitir registro, inicio de sesión, cierre de sesión y recuperación de acceso cuando corresponda. El registro inicial estará restringido a correos institucionales \texttt{@uct.cl} o \texttt{@alu.uct.cl}. (UC-01)
+
+\noindent\textbf{RF-02: Clasificación y subida multiformato.} El sistema debe permitir subir material académico y asociarlo a universidad, carrera, asignatura, profesor cuando corresponda, año y tipo de material. Los documentos locales tendrán inicialmente un límite de 15 MB. Los videos o archivos pesados podrán utilizar enlaces externos. (UC-02)
+
+\noindent\textbf{RF-03: Flujo de moderación.} Todo material nuevo debe ingresar en estado \texttt{PENDING\_REVIEW} y ser revisado antes de quedar publicado. (UC-03)
+
+\noindent\textbf{RF-04: Búsqueda contextual y filtros.} El sistema debe permitir buscar material mediante texto y filtros por carrera, asignatura, profesor, año, tipo de material, valoración y otros criterios disponibles. (UC-04)
+
+\noindent\textbf{RF-05: Previsualización multimedia.} El sistema debe permitir visualizar documentos compatibles, especialmente PDF, sin obligar al usuario a descargar el archivo previamente. Los enlaces multimedia compatibles podrán mostrarse mediante contenido embebido seguro. (UC-05)
+
+\noindent\textbf{RF-06: Sistema colaborativo de evaluación y reputación.} El sistema debe permitir calificar material de 1 a 5 estrellas y utilizar evaluaciones junto con otras acciones relevantes para calcular reputación desde backend. (UC-06)
+
+\noindent\textbf{RF-07: Módulo de reportes.} El sistema debe permitir reportar material desactualizado, incorrecto, duplicado, inapropiado o defectuoso. Los reportes deben quedar registrados y pasar por revisión. (UC-06)
+
+\noindent\textbf{RF-08: Favoritos.} El sistema debe permitir a un usuario guardar y consultar materiales favoritos. (UC-06)
+
+\noindent\textbf{RF-09: Versionado básico.} El sistema debe conservar versiones anteriores de un material cuando exista una nueva versión. (UC-02)
+
+\noindent\textbf{RF-10: Verificación.} El sistema debe permitir que un material sea marcado como verificado cuando cumple el proceso de revisión definido por la plataforma. (UC-03)
+
+\noindent\textbf{RF-11: Posicionamiento.} El sistema debe ordenar los resultados utilizando señales como relevancia, valoración, verificación, actualidad, reputación, reportes y uso. (UC-04)
+
+\noindent\textbf{RF-12: Administración.} El sistema debe permitir a usuarios autorizados revisar materiales, resolver reportes, aprobar o rechazar contenido, retirar material y administrar elementos del catálogo según sus permisos. (UC-03)
+
+\subsection{Requisitos no funcionales (RNF)}
+
+\noindent\textbf{RNF-01: Arquitectura y acoplamiento.} El sistema debe utilizar una arquitectura de microservicios con un API Gateway. Web y Mobile deben consumir la misma API pública y la lógica de negocio no debe residir en los clientes.
+
+\noindent\textbf{RNF-02: Rendimiento.} Las consultas habituales, especialmente búsqueda y carga de resultados, deberían responder aproximadamente en 2 segundos o menos bajo condiciones normales de red e infraestructura. Este valor constituye un objetivo práctico del MVP.
+
+\noindent\textbf{RNF-03: Compatibilidad y experiencia de usuario.} La web debe ser responsiva y la aplicación móvil debe ejecutarse en plataformas soportadas por Flutter, adaptándose a los tamaños de pantalla definidos para el MVP.
+
+\noindent\textbf{RNF-04: Seguridad de datos.} El sistema debe validar entradas, sanitizar datos y enlaces externos, validar formato y tamaño de archivos, aplicar autenticación y autorización en backend, proteger credenciales y evitar exposición directa de PostgreSQL o MinIO.
+
+\noindent\textbf{RNF-05: Despliegue y portabilidad.} Los componentes backend deben poder ejecutarse mediante Docker y Docker Compose. El proyecto deberá contar con un entorno de hosting para la demostración final.
+
+\noindent\textbf{RNF-06: Documentación de API.} La API pública debe documentarse mediante OpenAPI/Swagger, incluyendo endpoints, métodos, parámetros, headers, autenticación, requests, responses, códigos HTTP, errores, filtros y paginación cuando corresponda.
+
+\noindent\textbf{RNF-07: Mantenibilidad.} Cada microservicio debe mantener separación entre Presentation, Application, Domain e Infrastructure. Las reglas de negocio importantes deben estar separadas de controladores, ORM y detalles de infraestructura.
+
+\noindent\textbf{RNF-08: Independencia de datos.} Cada microservicio debe ser responsable de sus propios datos. Para el MVP se permite una única instancia de PostgreSQL con esquemas separados por servicio, pero no se permite consultar directamente tablas internas de otro servicio.
+
+\noindent\textbf{RNF-09: Integración entre plataformas.} Web y Mobile deben consumir la misma API pública. Los cambios necesarios para Mobile deben resolverse mediante coordinación con INT2 y evolución documentada del contrato API.
+
+\noindent\textbf{RNF-10: Pruebas.} El backend deberá contar con tests para autenticación, creación de material, moderación, búsqueda, evaluaciones, reportes y favoritos. Web y Mobile deberán cubrir componentes críticos de sus respectivas interfaces.
+
+\subsection{Reglas de negocio (RB)}
+
+\noindent\textbf{RB-01:} Todo usuario debe iniciar sesión para subir material.
+
+\noindent\textbf{RB-02:} Los usuarios registrados pueden descargar material publicado.
+
+\noindent\textbf{RB-03:} Los usuarios pueden evaluar y reportar material publicado.
+
+\noindent\textbf{RB-04:} Los administradores y moderadores autorizados pueden revisar y moderar contenido.
+
+\noindent\textbf{RB-05:} Todo material debe registrar, cuando corresponda, universidad, carrera, asignatura, profesor, año y tipo de material.
+
+\noindent\textbf{RB-06:} Todo material nuevo comienza en estado \texttt{PENDING\_REVIEW}.
+
+\noindent\textbf{RB-07:} Un material rechazado no aparece en las búsquedas normales.
+
+\noindent\textbf{RB-08:} Un material retirado no aparece en las búsquedas normales.
+
+\noindent\textbf{RB-09:} Un reporte no elimina automáticamente un material.
+
+\noindent\textbf{RB-10:} Los reportes deben registrarse y revisarse antes de aplicar una sanción o retiro.
+
+\noindent\textbf{RB-11:} Un material con reportes confirmados puede disminuir su visibilidad o volver a revisión.
+
+\noindent\textbf{RB-12:} La reputación se calcula en backend y puede considerar aportes aprobados, evaluaciones recibidas, reportes confirmados y comportamiento relevante.
+
+\noindent\textbf{RB-13:} La reputación puede influir en el posicionamiento, pero no determina por sí sola que un material sea válido.
+
+\noindent\textbf{RB-14:} La etiqueta de material verificado indica cumplimiento del proceso de revisión, no garantía absoluta de corrección académica.
+
+\noindent\textbf{RB-15:} Una nueva versión de material no debe destruir necesariamente la versión anterior.
+
+\subsection{Interfaces externas}
+
+\noindent\textbf{API pública REST/HTTPS/JSON:} Web y Mobile consumirán la misma API expuesta por el API Gateway. El cliente no debe conocer qué microservicio implementa cada endpoint.
+
+\noindent\textbf{OpenAPI/Swagger:} La API pública debe contar con documentación de contrato para coordinación entre INT2 e INT4.
+
+\noindent\textbf{MinIO:} El Material Service utilizará MinIO para almacenar archivos. Los clientes no accederán directamente a rutas internas del almacenamiento.
+
+\noindent\textbf{PostgreSQL:} Los microservicios persistirán datos estructurados en PostgreSQL mediante Prisma ORM, manteniendo esquemas separados por servicio.
+
+\noindent\textbf{Enlaces multimedia externos:} Videos o archivos pesados podrán almacenarse como enlaces externos seguros cuando no corresponda guardarlos directamente en MinIO.
+
+\section{Casos de uso detallados}
+
+\subsection{UC-01 Registrar e iniciar sesión}
+
+\noindent\textbf{Actor principal:} Estudiante registrado.
+
+\noindent\textbf{Precondiciones:} El usuario posee correo institucional válido \texttt{@uct.cl} o \texttt{@alu.uct.cl}.
+
+\noindent\textbf{Postcondiciones:} El usuario queda registrado o autenticado, y puede acceder a las funcionalidades permitidas por su rol.
+
+\noindent\textbf{Flujo principal}
+
+\begin{enumerate}
+    \item El usuario ingresa a la aplicación Web o Mobile.
+    \item El usuario selecciona registro o inicio de sesión.
+    \item El sistema solicita credenciales y valida el formato del correo institucional.
+    \item El API Gateway recibe la solicitud y la deriva al Auth Service.
+    \item El Auth Service valida credenciales, rol y estado de la cuenta.
+    \item El sistema entrega una sesión o token válido para consumir la API pública.
+\end{enumerate}
+
+\noindent\textbf{Flujos alternativos}
+
+\noindent\textbf{A1: Correo no institucional.} Si el correo no pertenece a los dominios permitidos, el sistema rechaza el registro.
+
+\noindent\textbf{A2: Credenciales incorrectas.} Si las credenciales no son válidas, el sistema informa el error sin iniciar sesión.
+
+\subsection{UC-02 Subir y clasificar material académico}
+
+\noindent\textbf{Actor principal:} Estudiante aportante.
+
+\noindent\textbf{Precondiciones:} El usuario está autenticado y el catálogo académico contiene los datos necesarios para clasificar el material.
+
+\noindent\textbf{Postcondiciones:} El material queda registrado con sus metadatos, archivo o enlace asociado, y estado \texttt{PENDING\_REVIEW}.
+
+\noindent\textbf{Flujo principal}
+
+\begin{enumerate}
+    \item El usuario selecciona la opción de subir material.
+    \item El sistema solicita título, descripción, universidad, carrera, asignatura, profesor cuando corresponda, año y tipo de material.
+    \item El usuario adjunta un documento o ingresa un enlace externo permitido.
+    \item El sistema valida tamaño, formato y campos obligatorios.
+    \item El API Gateway envía la solicitud al Material Service.
+    \item El Material Service almacena el archivo en MinIO o registra el enlace externo.
+    \item El Material Service guarda metadatos y versión inicial en PostgreSQL.
+    \item El sistema asigna estado \texttt{PENDING\_REVIEW} y confirma la recepción.
+\end{enumerate}
+
+\noindent\textbf{Flujos alternativos}
+
+\noindent\textbf{A1: Archivo supera el límite.} Si el archivo local supera 15 MB, el sistema rechaza la subida y puede sugerir usar enlace externo.
+
+\noindent\textbf{A2: Clasificación incompleta.} Si falta información obligatoria, el sistema no permite enviar el material a revisión.
+
+\noindent\textbf{A3: Nueva versión.} Si el usuario sube una actualización de un material existente, el sistema crea una nueva \texttt{MaterialVersion} sin destruir necesariamente la anterior.
+
+\subsection{UC-03 Moderar y verificar material}
+
+\noindent\textbf{Actor principal:} Moderador o Administrador.
+
+\noindent\textbf{Precondiciones:} Existe material en estado \texttt{PENDING\_REVIEW} o reportes pendientes de revisión.
+
+\noindent\textbf{Postcondiciones:} El material queda aprobado, rechazado, publicado, verificado, retirado o devuelto a revisión según corresponda.
+
+\noindent\textbf{Flujo principal}
+
+\begin{enumerate}
+    \item El moderador accede al panel administrativo.
+    \item El sistema muestra materiales pendientes y reportes abiertos.
+    \item El moderador revisa metadatos, archivo, pertinencia académica y eventuales reportes.
+    \item El moderador decide aprobar, rechazar, verificar, retirar o mantener el material.
+    \item El Quality Service registra la decisión y actualiza el estado correspondiente.
+    \item El sistema actualiza la visibilidad del material en búsquedas normales.
+\end{enumerate}
+
+\noindent\textbf{Flujos alternativos}
+
+\noindent\textbf{A1: Material no pertinente.} Si el contenido no corresponde a la clasificación declarada, el moderador lo rechaza o solicita corrección.
+
+\noindent\textbf{A2: Reporte confirmado.} Si un reporte se confirma, el sistema puede disminuir la visibilidad, retirar el material o devolverlo a revisión.
+
+\subsection{UC-04 Buscar y filtrar material}
+
+\noindent\textbf{Actor principal:} Estudiante registrado.
+
+\noindent\textbf{Precondiciones:} El usuario está autenticado y existen materiales publicados.
+
+\noindent\textbf{Postcondiciones:} El usuario obtiene resultados ordenados por relevancia y señales de calidad.
+
+\noindent\textbf{Flujo principal}
+
+\begin{enumerate}
+    \item El usuario ingresa texto de búsqueda o selecciona filtros.
+    \item El sistema permite filtrar por carrera, asignatura, profesor, año, tipo de material y valoración.
+    \item El API Gateway deriva la consulta al Search Service.
+    \item El Search Service consulta los datos disponibles en PostgreSQL.
+    \item El sistema ordena resultados considerando relevancia, valoración, verificación, actualidad, reputación y reportes.
+    \item El usuario visualiza la lista de materiales y selecciona un resultado.
+\end{enumerate}
+
+\noindent\textbf{Flujos alternativos}
+
+\noindent\textbf{A1: Sin resultados.} Si no existen coincidencias, el sistema informa que no se encontraron materiales para los filtros aplicados.
+
+\noindent\textbf{A2: Material reportado.} Si un material posee reportes relevantes, el sistema puede disminuir su posición o mostrar advertencias definidas por la plataforma.
+
+\subsection{UC-05 Previsualizar, descargar y guardar favorito}
+
+\noindent\textbf{Actor principal:} Estudiante registrado.
+
+\noindent\textbf{Precondiciones:} El usuario está autenticado y el material está publicado.
+
+\noindent\textbf{Postcondiciones:} El usuario visualiza, descarga o guarda el material como favorito.
+
+\noindent\textbf{Flujo principal}
+
+\begin{enumerate}
+    \item El usuario abre el detalle de un material.
+    \item El sistema muestra metadatos, valoración, estado de verificación y versiones disponibles cuando corresponda.
+    \item El usuario selecciona previsualizar, descargar o guardar favorito.
+    \item El API Gateway solicita autorización al backend.
+    \item El Material Service valida acceso y entrega el recurso autorizado.
+    \item Si el usuario marca favorito, el Quality Service registra la relación usuario-material.
+\end{enumerate}
+
+\noindent\textbf{Flujos alternativos}
+
+\noindent\textbf{A1: Material no disponible.} Si el material fue retirado o rechazado, el sistema no permite su descarga mediante búsquedas normales.
+
+\noindent\textbf{A2: Favorito duplicado.} Si el material ya está en favoritos, el sistema evita duplicar la relación.
+
+\subsection{UC-06 Evaluar o reportar material}
+
+\noindent\textbf{Actor principal:} Estudiante registrado.
+
+\noindent\textbf{Precondiciones:} El usuario está autenticado y el material está publicado.
+
+\noindent\textbf{Postcondiciones:} La evaluación o reporte queda registrado y puede afectar reputación, visibilidad o moderación posterior.
+
+\noindent\textbf{Flujo principal}
+
+\begin{enumerate}
+    \item El usuario abre el detalle de un material.
+    \item El usuario selecciona calificar o reportar.
+    \item Si califica, el sistema registra una evaluación de 1 a 5 estrellas.
+    \item Si reporta, el sistema solicita tipo de reporte y descripción cuando corresponda.
+    \item El Quality Service registra la acción.
+    \item El backend recalcula señales de calidad, reputación o posicionamiento cuando corresponda.
+\end{enumerate}
+
+\noindent\textbf{Flujos alternativos}
+
+\noindent\textbf{A1: Evaluación existente.} Si el usuario ya tiene una evaluación activa para el material, el sistema actualiza la evaluación existente en lugar de crear otra.
+
+\noindent\textbf{A2: Reporte inválido.} Si el reporte no contiene información mínima, el sistema solicita completar los datos.
+
+\section{Criterios de aceptación (extracto)}
+
+\begin{itemize}
+    \item Un usuario solo puede registrarse inicialmente con correo institucional \texttt{@uct.cl} o \texttt{@alu.uct.cl}. (RF-01)
+    \item Un material nuevo debe quedar en estado \texttt{PENDING\_REVIEW} y no aparecer como publicado hasta ser aprobado. (RF-03, RB-06)
+    \item Todo material debe quedar clasificado por universidad, carrera, asignatura, profesor cuando corresponda, año y tipo de material. (RF-02, RB-05)
+    \item Las consultas habituales de búsqueda deben responder aproximadamente en 2 segundos o menos bajo condiciones normales del entorno de prueba. (RNF-02)
+    \item Web y Mobile deben producir resultados equivalentes al ejecutar una misma operación de negocio, ya que ambos consumen la misma API pública. (RNF-01, RNF-09)
+    \item Un reporte confirmado no debe eliminar automáticamente el material sin revisión; debe pasar por el flujo definido por moderación. (RF-07, RB-09, RB-10)
+    \item Una evaluación debe usar escala de 1 a 5 estrellas y debe existir como máximo una evaluación activa por usuario y material. (RF-06)
+    \item Un usuario no debe poder duplicar el mismo material en favoritos. (RF-08)
+    \item Los archivos deben almacenarse en MinIO o como enlaces externos seguros; PostgreSQL debe conservar metadatos y no el archivo completo. (RNF-04)
+    \item La API pública debe estar documentada con OpenAPI/Swagger antes de la integración completa con Mobile. (RNF-06)
+\end{itemize}
+
+\section{Trazabilidad (extracto)}
+
+\begin{longtable}{p{0.18\textwidth} p{0.31\textwidth} p{0.20\textwidth} p{0.20\textwidth}}
+\toprule
+\textbf{Caso de uso} & \textbf{Requisito funcional} & \textbf{Regla} & \textbf{RNF}\\
+\midrule
+UC-01 & RF-01 & RB-01 & RNF-01, RNF-04, RNF-09\\
+UC-02 & RF-02, RF-09 & RB-05, RB-06, RB-15 & RNF-04, RNF-05, RNF-08\\
+UC-03 & RF-03, RF-10, RF-12 & RB-04, RB-06, RB-07, RB-08, RB-10, RB-14 & RNF-07\\
+UC-04 & RF-04, RF-11 & RB-07, RB-08, RB-11, RB-13 & RNF-02, RNF-08\\
+UC-05 & RF-05, RF-08 & RB-02, RB-08 & RNF-04, RNF-09\\
+UC-06 & RF-06, RF-07 & RB-03, RB-09, RB-10, RB-12, RB-13 & RNF-07, RNF-10\\
+\bottomrule
+\end{longtable}
+
+\section{Anexos}
+
+\subsection*{Anexo A: Ficha del proyecto}
+
+\begin{longtable}{p{0.34\textwidth} p{0.58\textwidth}}
+\toprule
+\textbf{Campo} & \textbf{Detalle}\\
+\midrule
+Nombre del proyecto & ApuntesUCT - Ecosistema Colaborativo de Material Académico Validado\\
+Institución objetivo & Universidad Católica de Temuco\\
+Tipo de sistema & Plataforma web y móvil con backend de microservicios\\
+Objetivo principal & Centralizar, validar y distribuir material académico contextualizado para estudiantes UCT\\
+Duración estimada & Cuatro sprints para el MVP\\
+\bottomrule
+\end{longtable}
+
+\subsection*{Anexo B: Integrantes del proyecto}
+
+El proyecto está compuesto por 10 integrantes, separados en los equipos INT2 e INT4.
+
+\subsubsection*{Equipo INT2}
+
+{\small
+\renewcommand{\arraystretch}{1.2}
+\begin{longtable}{@{}L{0.06\textwidth}L{0.46\textwidth}L{0.40\textwidth}@{}}
+\toprule
+\textbf{N} & \textbf{Nombre completo} & \textbf{Correo electrónico}\\
+\midrule
+1 & Gabriel Esteban Gutierrez Yañez & \correo{ggutierrez2024@alu.uct.cl}\\
+2 & Ailyn Alejandra Melillán Bustos & \correo{amelillan2025@alu.uct.cl}\\
+3 & Martina Alejandra Iturrieta Liempi & \correo{miturrieta2025@alu.uct.cl}\\
+4 & Raúl Alejandro Rodríguez Flores & \correo{rrodriguez2025@alu.uct.cl}\\
+5 & David Ignacio Villegas Araneda & \correo{dvillegas2025@alu.uct.cl}\\
+6 & Antonio Ignacio Lara Fuentealba & \correo{alara2024@alu.uct.cl}\\
+\bottomrule
+\end{longtable}
+}
+
+\subsubsection*{Equipo INT4}
+
+{\small
+\renewcommand{\arraystretch}{1.2}
+\begin{longtable}{@{}L{0.06\textwidth}L{0.46\textwidth}L{0.40\textwidth}@{}}
+\toprule
+\textbf{N} & \textbf{Nombre completo} & \textbf{Correo electrónico}\\
+\midrule
+1 & Marcelo Fabian Santana Astorga & \correo{marcelo.santana2023@alu.uct.cl}\\
+2 & Eduardo Javier Escares Ortiz & \correo{eescares2023@alu.uct.cl}\\
+3 & Yaninna Rossio Álvarez Álvarez & \correo{yalvarez2023@alu.uct.cl}\\
+4 & Nelson Javier Quiñinao Isla & \correo{nquininao2023@alu.uct.cl}\\
+\bottomrule
+\end{longtable}
+}
+
+\subsection*{Anexo C: Plan de actividades por sprint}
+
+\begin{description}[leftmargin=1.2cm, style=nextline]
+    \item[Fase 1: Infraestructura y Arquitectura Base.] Configuración de Docker Compose, PostgreSQL y MinIO. Construcción inicial del API Gateway, arquitectura de microservicios con NestJS, integración de Prisma ORM y bases de Auth Service y Catalog Service. Generación del contrato OpenAPI inicial.
+    \item[Fase 2: Gestión de Archivos y Descubrimiento.] Desarrollo del Material Service, subida multiformato, descarga de documentos, versionado básico, catálogo académico completo y búsqueda inicial.
+    \item[Fase 3: Moderación y Ecosistema Colaborativo.] Desarrollo del Quality Service, evaluaciones, favoritos, reportes, moderación, verificación, reputación y primeras reglas de posicionamiento.
+    \item[Fase 4: Refinamiento, Calidad y Despliegue.] Integración completa Web/Mobile/backend, refinamiento de filtros, pruebas automatizadas, seguridad, rendimiento, documentación y despliegue de demostración del MVP.
+\end{description}
+
+\subsection*{Anexo D: Resultados esperados}
+
+El proyecto ApuntesUCT debe entregar un MVP operativo compuesto por backend centralizado, cliente web responsivo y aplicación móvil nativa. Se espera contar con una base de datos estructurada, almacenamiento seguro de documentos, búsqueda contextual, previsualización, descarga, moderación, validación comunitaria, reputación y ranking de resultados.
+
+El efecto esperado en la comunidad estudiantil es reducir el tiempo de recuperación de información útil, fomentar aprendizaje colaborativo y disminuir el uso de material obsoleto o no validado. Con la plataforma, los estudiantes podrán buscar apuntes según su contexto académico real y confiar en señales visibles de calidad, vigencia y reputación.
+
+\subsection*{Anexo E: Diagramas requeridos del proyecto}
+
+\begin{itemize}
+    \item Diagrama de casos de uso UML - Auth: \texttt{diagramas/diagrama\_casos\_auth.png}.
+    \item Diagrama de casos de uso UML - Search/Catalog: \texttt{diagramas/diagrama\_casos\_search.png}.
+    \item Diagrama de casos de uso UML - Material/Quality: \texttt{diagramas/diagrama\_casos\_material\_quality.png}.
+    \item Diagrama de componentes UML: \texttt{diagramas/diagrama\_componentes.png}.
+    \item Diagrama de modelo entidad-relación (MER): \texttt{diagramas/diagrama\_mer.png}.
+    \item Diagrama de arquitectura de software: \texttt{diagramas/diagrama\_arquitectura.png}.
+\end{itemize}
+
+\end{document}
