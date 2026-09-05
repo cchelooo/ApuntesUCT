@@ -20,6 +20,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Python tooling
+__pycache__/
+*.py[cod]
+
 # Environment and local config
 .env
 .env.*
