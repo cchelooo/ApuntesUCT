@@ -30,7 +30,7 @@
 \begin{figure}[H]
     \centering
     \IfFileExists{#1}{%
-        \includegraphics[width=0.92\textwidth]{#1}%
+        \includegraphics[width=0.92\textwidth,height=0.70\textheight,keepaspectratio]{#1}%
     }{%
         \fbox{%
             \begin{minipage}[c][0.24\textheight][c]{0.86\textwidth}
@@ -116,6 +116,8 @@ ApuntesUCT busca resolver esta situación mediante una plataforma especializada 
     \item[Verificación] Marca que indica que un material cumplió el proceso de revisión definido por la plataforma.
     \item[Reputación] Puntuación calculada por backend a partir de aportes, evaluaciones y señales de calidad.
     \item[MinIO] Servicio de almacenamiento de archivos compatible con S3.
+    \item[MER] Modelo entidad-relación utilizado para representar entidades, atributos y relaciones de datos.
+    \item[ORM] Object-Relational Mapping; herramienta que permite mapear entidades del dominio a tablas de base de datos. En este proyecto se utilizará Prisma ORM.
     \item[OpenAPI/Swagger] Especificación y documentación de la API pública.
 \end{description}
 
@@ -141,11 +143,11 @@ La arquitectura general considera:
     \item \textbf{Cliente Mobile:} aplicación móvil desarrollada con Flutter 3.x y Dart 3.x, usando Riverpod, Dio, go\_router, Freezed y json\_serializable.
     \item \textbf{API Gateway:} entrada única para clientes Web y Mobile, responsable de enrutamiento, validación inicial, autenticación transversal y documentación pública.
     \item \textbf{Microservicios backend:} Auth, Catalog, Material, Quality y Search.
-    \item \textbf{Persistencia:} PostgreSQL 17 con Prisma ORM 6.x, usando esquemas separados por servicio.
+    \item \textbf{Persistencia:} PostgreSQL 17 con Prisma ORM 6.x, manteniendo una base de datos o persistencia lógica privada por microservicio.
     \item \textbf{Archivos:} almacenamiento de documentos en MinIO, evitando guardar archivos completos en PostgreSQL.
 \end{itemize}
 
-Diagrama de arquitectura de software. La Figura \ref{fig:arquitectura-software} muestra la arquitectura lógica y de despliegue del MVP, considerando clientes, API Gateway, microservicios, red interna, PostgreSQL y MinIO.
+Diagrama de arquitectura de software. La Figura \ref{fig:arquitectura-software} muestra la arquitectura lógica y de despliegue del MVP, considerando clientes, API Gateway, microservicios, red interna, persistencia privada por microservicio y MinIO.
 
 \diagrama{diagramas/diagrama_arquitectura.png}{Diagrama de arquitectura de software de ApuntesUCT}{ApuntesUCT - Diagrama de Arquitectura de Software.}{fig:arquitectura-software}
 
@@ -153,9 +155,27 @@ Diagrama de componentes UML. La Figura \ref{fig:componentes-uml} muestra la sepa
 
 \diagrama{diagramas/diagrama_componentes.png}{Diagrama de componentes UML de ApuntesUCT}{ApuntesUCT - Diagrama de Componentes UML.}{fig:componentes-uml}
 
-Diagrama de modelo entidad-relación. La Figura \ref{fig:mer} representa el modelo de datos del sistema, incluyendo las entidades principales del catálogo académico, usuarios, materiales, versiones, evaluaciones, favoritos, reportes y moderación.
+Los modelos entidad-relación se presentan separados por microservicio porque cada dominio administra su propia persistencia. Estos MER se diseñan para implementación con Prisma ORM; dentro de cada microservicio se pueden usar claves primarias y foráneas propias, mientras que los identificadores que apuntan a datos de otros microservicios se tratan como referencias lógicas validadas mediante APIs internas, no como consultas directas entre bases de datos.
 
-\diagrama{diagramas/diagrama_mer.png}{Diagrama de modelo entidad-relación de ApuntesUCT}{ApuntesUCT - Diagrama de Modelo Entidad-Relación (MER).}{fig:mer}
+La Figura \ref{fig:mer-auth} muestra el MER del Auth Service, encargado de usuarios y sesiones.
+
+\diagrama{diagramas/diagrama_mer_auth.png}{Diagrama MER del Auth Service}{ApuntesUCT - MER Auth Service.}{fig:mer-auth}
+
+La Figura \ref{fig:mer-catalog} muestra el MER del Catalog Service, encargado de universidad, carreras, asignaturas, profesores y ofertas académicas.
+
+\diagrama{diagramas/diagrama_mer_catalog.png}{Diagrama MER del Catalog Service}{ApuntesUCT - MER Catalog Service.}{fig:mer-catalog}
+
+La Figura \ref{fig:mer-material} muestra el MER del Material Service, encargado de metadatos de materiales, tipos de material y versiones de archivos.
+
+\diagrama{diagramas/diagrama_mer_material.png}{Diagrama MER del Material Service}{ApuntesUCT - MER Material Service.}{fig:mer-material}
+
+La Figura \ref{fig:mer-quality} muestra el MER del Quality Service, encargado de favoritos, evaluaciones, reportes, revisiones de moderación, reputación y calidad asociada al material.
+
+\diagrama{diagramas/diagrama_mer_quality.png}{Diagrama MER del Quality Service}{ApuntesUCT - MER Quality Service.}{fig:mer-quality}
+
+La Figura \ref{fig:mer-search} muestra el MER del Search Service, encargado del índice inicial de búsqueda, ranking y datos denormalizados necesarios para consultar material sin depender de joins directos con otros microservicios.
+
+\diagrama{diagramas/diagrama_mer_search.png}{Diagrama MER del Search Service}{ApuntesUCT - MER Search Service.}{fig:mer-search}
 
 \subsection{Funciones del sistema (resumen)}
 
@@ -249,19 +269,7 @@ Docentes evaluadores del proyecto & Evaluar alcance, coherencia técnica, trazab
 
 \subsection{Modelo de Casos de Uso}
 
-El modelo de casos de uso UML de ApuntesUCT se divide en tres vistas funcionales para mantener legibilidad: autenticación, búsqueda/catálogo y material/calidad. En conjunto, estas vistas delimitan las acciones esenciales del MVP: autenticación, búsqueda, subida, moderación, evaluación, reportes, favoritos, descarga y administración.
-
-La Figura \ref{fig:casos-auth} muestra los casos de uso relacionados con registro, inicio y cierre de sesión, recuperación de acceso, edición de perfil y suspensión de cuenta.
-
-\diagrama{diagramas/diagrama_casos_auth.png}{Diagrama de casos de uso UML - Auth}{ApuntesUCT - Diagrama de Casos de Uso UML - Auth.}{fig:casos-auth}
-
-La Figura \ref{fig:casos-search} muestra los casos de uso relacionados con búsqueda de material, filtros, ordenamiento, paginación, recomendaciones y administración del catálogo.
-
-\diagrama{diagramas/diagrama_casos_search.png}{Diagrama de casos de uso UML - Search/Catalog}{ApuntesUCT - Diagrama de Casos de Uso UML - Search/Catalog.}{fig:casos-search}
-
-La Figura \ref{fig:casos-material-quality} muestra los casos de uso relacionados con materiales académicos, descargas, previsualización, versiones, evaluaciones, favoritos, reportes, reputación, insignias y moderación de contenido.
-
-\diagrama{diagramas/diagrama_casos_material_quality.png}{Diagrama de casos de uso UML - Material/Quality}{ApuntesUCT - Diagrama de Casos de Uso UML - Material/Quality.}{fig:casos-material-quality}
+El modelo de casos de uso de ApuntesUCT se mantiene descrito de forma textual en esta versión del SRS. Los diagramas UML de casos de uso no se incorporan en este documento porque serán corregidos en una iteración posterior; por ahora, la especificación formal se mantiene en los actores y casos de uso detallados.
 
 \section{Requisitos específicos}
 
@@ -307,7 +315,7 @@ La Figura \ref{fig:casos-material-quality} muestra los casos de uso relacionados
 
 \noindent\textbf{RNF-07: Mantenibilidad.} Cada microservicio debe mantener separación entre Presentation, Application, Domain e Infrastructure. Las reglas de negocio importantes deben estar separadas de controladores, ORM y detalles de infraestructura.
 
-\noindent\textbf{RNF-08: Independencia de datos.} Cada microservicio debe ser responsable de sus propios datos. Para el MVP se permite una única instancia de PostgreSQL con esquemas separados por servicio, pero no se permite consultar directamente tablas internas de otro servicio.
+\noindent\textbf{RNF-08: Independencia de datos.} Cada microservicio debe ser responsable de sus propios datos. Para el MVP, cada servicio mantendrá su propia persistencia lógica mediante Prisma ORM y no se permitirá consultar directamente tablas internas de otro microservicio. Cuando un servicio necesite datos de otro dominio, deberá usar identificadores de referencia y comunicación mediante APIs internas.
 
 \noindent\textbf{RNF-09: Integración entre plataformas.} Web y Mobile deben consumir la misma API pública. Los cambios necesarios para Mobile deben resolverse mediante coordinación con INT2 y evolución documentada del contrato API.
 
@@ -353,7 +361,7 @@ La Figura \ref{fig:casos-material-quality} muestra los casos de uso relacionados
 
 \noindent\textbf{MinIO:} El Material Service utilizará MinIO para almacenar archivos. Los clientes no accederán directamente a rutas internas del almacenamiento.
 
-\noindent\textbf{PostgreSQL:} Los microservicios persistirán datos estructurados en PostgreSQL mediante Prisma ORM, manteniendo esquemas separados por servicio.
+\noindent\textbf{PostgreSQL:} Los microservicios persistirán datos estructurados en PostgreSQL mediante Prisma ORM, manteniendo persistencia privada por servicio. Las relaciones internas de cada dominio se modelan con claves propias, mientras que las dependencias hacia otros microservicios se representan como referencias lógicas.
 
 \noindent\textbf{Enlaces multimedia externos:} Videos o archivos pesados podrán almacenarse como enlaces externos seguros cuando no corresponda guardarlos directamente en MinIO.
 
@@ -452,7 +460,7 @@ La Figura \ref{fig:casos-material-quality} muestra los casos de uso relacionados
     \item El usuario ingresa texto de búsqueda o selecciona filtros.
     \item El sistema permite filtrar por carrera, asignatura, profesor, año, tipo de material y valoración.
     \item El API Gateway deriva la consulta al Search Service.
-    \item El Search Service consulta los datos disponibles en PostgreSQL.
+    \item El Search Service consulta su propia base o índice de búsqueda en PostgreSQL.
     \item El sistema ordena resultados considerando relevancia, valoración, verificación, actualidad, reputación y reportes.
     \item El usuario visualiza la lista de materiales y selecciona un resultado.
 \end{enumerate}
@@ -612,15 +620,16 @@ El proyecto ApuntesUCT debe entregar un MVP operativo compuesto por backend cent
 
 El efecto esperado en la comunidad estudiantil es reducir el tiempo de recuperación de información útil, fomentar aprendizaje colaborativo y disminuir el uso de material obsoleto o no validado. Con la plataforma, los estudiantes podrán buscar apuntes según su contexto académico real y confiar en señales visibles de calidad, vigencia y reputación.
 
-\subsection*{Anexo E: Diagramas requeridos del proyecto}
+\subsection*{Anexo E: Diagramas incorporados en esta versión}
 
 \begin{itemize}
-    \item Diagrama de casos de uso UML - Auth: \texttt{diagramas/diagrama\_casos\_auth.png}.
-    \item Diagrama de casos de uso UML - Search/Catalog: \texttt{diagramas/diagrama\_casos\_search.png}.
-    \item Diagrama de casos de uso UML - Material/Quality: \texttt{diagramas/diagrama\_casos\_material\_quality.png}.
     \item Diagrama de componentes UML: \texttt{diagramas/diagrama\_componentes.png}.
-    \item Diagrama de modelo entidad-relación (MER): \texttt{diagramas/diagrama\_mer.png}.
     \item Diagrama de arquitectura de software: \texttt{diagramas/diagrama\_arquitectura.png}.
+    \item Diagrama MER Auth Service: \texttt{diagramas/diagrama\_mer\_auth.png}.
+    \item Diagrama MER Catalog Service: \texttt{diagramas/diagrama\_mer\_catalog.png}.
+    \item Diagrama MER Material Service: \texttt{diagramas/diagrama\_mer\_material.png}.
+    \item Diagrama MER Quality Service: \texttt{diagramas/diagrama\_mer\_quality.png}.
+    \item Diagrama MER Search Service: \texttt{diagramas/diagrama\_mer\_search.png}.
 \end{itemize}
 
 \end{document}
