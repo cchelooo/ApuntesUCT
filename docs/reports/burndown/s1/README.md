@@ -18,14 +18,14 @@ Las tareas con `Equipo = Compartido` quedan fuera del burndown de equipos e inte
 
 | Equipo | Items | Horas asignadas | Horas usadas | Horas restantes | Horas excedidas | Grafico |
 |---|---:|---:|---:|---:|---:|---|
-| INT2 | 63 | 120 | 4.2 | 116 | 0.2 | [ver (2026-09-02 a 2026-09-30)](charts/team-int2.svg) |
+| INT2 | 63 | 118 | 4.2 | 116 | 0.2 | [ver (2026-09-02 a 2026-09-30)](charts/team-int2.svg) |
 | INT4 | 38 | 79 | 11.2 | 67.8 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/team-int4.svg) |
 
 ## Integrantes
 
 | Equipo | Integrante | Items | Horas asignadas | Horas usadas | Horas restantes | Horas excedidas | Grafico |
 |---|---|---:|---:|---:|---:|---:|---|
-| INT2 | Ailyn Melillan | 10 | 20 | 0 | 20 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-ailynmelillan.svg) |
+| INT2 | Ailyn Melillan | 10 | 18 | 0 | 20 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-ailynmelillan.svg) |
 | INT2 | Antonio Lara | 12 | 20 | 0 | 20 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-alara2024uct.svg) |
 | INT2 | David Villegas | 11 | 20 | 0 | 20 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-david7985.svg) |
 | INT2 | Gabriel Gutierrez | 12 | 20 | 0 | 20 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-gabrielgutierrez1.svg) |
