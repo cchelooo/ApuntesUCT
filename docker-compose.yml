@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  db-auth:
+    image: postgres:17-alpine
+    container_name: db_auth
+    restart: always
+    environment:
+      POSTGRES_USER: uct_admin
+      POSTGRES_PASSWORD: uct_password_123
+      POSTGRES_DB: auth_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata_auth:/var/lib/postgresql/data
+    networks:
+      - apuntes_net
+
+  db-catalog:
+    image: postgres:17-alpine
+    container_name: db_catalog
+    restart: always
+    environment:
+      POSTGRES_USER: uct_admin
+      POSTGRES_PASSWORD: uct_password_123
+      POSTGRES_DB: catalog_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata_catalog:/var/lib/postgresql/data
+    networks:
+      - apuntes_net
+
+  db-quality:
+    image: postgres:17-alpine
+    container_name: db_quality
+    restart: always
+    environment:
+      POSTGRES_USER: uct_admin
+      POSTGRES_PASSWORD: uct_password_123
+      POSTGRES_DB: quality_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - pgdata_quality:/var/lib/postgresql/data
+    networks:
+      - apuntes_net
+
+  db-search:
+    image: postgres:17-alpine
+    container_name: db_search
+    restart: always
+    environment:
+      POSTGRES_USER: uct_admin
+      POSTGRES_PASSWORD: uct_password_123
+      POSTGRES_DB: search_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - pgdata_search:/var/lib/postgresql/data
+    networks:
+      - apuntes_net
+
+  db-material:
+    image: postgres:17-alpine
+    container_name: db_material
+    restart: always
+    environment:
+      POSTGRES_USER: uct_admin
+      POSTGRES_PASSWORD: uct_password_123
+      POSTGRES_DB: material_db
+    ports:
+      - "5436:5432"
+    volumes:
+      - pgdata_material:/var/lib/postgresql/data
+    networks:
+      - apuntes_net
+
+  minio:
+    image: minio/minio:latest
+    container_name: apuntes_minio
+    restart: always
+    environment:
+      MINIO_ROOT_USER: uct_admin
+      MINIO_ROOT_PASSWORD: uct_password_123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - apuntes_net
+
+volumes:
+  pgdata_auth:
+  pgdata_catalog:
+  pgdata_quality:
+  pgdata_search:
+  pgdata_material:
+  minio_data:
+
+networks:
+  apuntes_net:
+    driver: bridge
