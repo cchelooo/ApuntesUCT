@@ -12,15 +12,41 @@ final GoRouter appRouter = GoRouter(
       name: 'home',
       builder: (context, state) => const HomeScreen(),
     ),
+    GoRoute(
+      path: '/login',
+      name: 'login',
+      builder: (context, state) => const PendingScreen(title: 'Iniciar sesión'),
+    ),
+    GoRoute(
+      path: '/register',
+      name: 'register',
+      builder: (context, state) => const PendingScreen(title: 'Registro'),
+    ),
+    GoRoute(
+      path: '/profile',
+      name: 'profile',
+      builder: (context, state) => const PendingScreen(title: 'Perfil'),
+    ),
+    GoRoute(
+      path: '/catalog',
+      name: 'catalog',
+      builder: (context, state) => const PendingScreen(title: 'Catálogo'),
+    ),
+    GoRoute(
+      path: '/search',
+      name: 'search',
+      builder: (context, state) => const PendingScreen(title: 'Búsqueda'),
+    ),
+    GoRoute(
+      path: '/library',
+      name: 'library',
+      builder: (context, state) => const PendingScreen(title: 'Biblioteca'),
+    ),
   ],
 );
 
 void main() {
-  runApp(
-    const ProviderScope(
-      child: MyApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -36,6 +62,20 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       routerConfig: appRouter,
+    );
+  }
+}
+
+class PendingScreen extends StatelessWidget {
+  const PendingScreen({required this.title, super.key});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: Center(child: Text('$title pendiente')),
     );
   }
 }
@@ -87,8 +127,9 @@ class HomeScreen extends ConsumerWidget {
                   ref.read(authProvider.notifier).toggle();
                 },
                 icon: Icon(isAuthenticated ? Icons.logout : Icons.login),
-                label:
-                    Text(isAuthenticated ? 'Cerrar sesión' : 'Iniciar sesión'),
+                label: Text(
+                  isAuthenticated ? 'Cerrar sesión' : 'Iniciar sesión',
+                ),
               ),
             ],
           ),
