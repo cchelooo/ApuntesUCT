@@ -1,7 +1,7 @@
 # Burndown S1
 
 Primer snapshot guardado: 2026-09-05.
-Ultimo snapshot: 2026-09-06.
+Ultimo snapshot: 2026-09-07.
 Trabajo efectivo informado desde: 2026-09-04.
 
 ## Ventanas del sprint
@@ -18,18 +18,18 @@ Las tareas con `Equipo = Compartido` quedan fuera del burndown de equipos e inte
 
 | Equipo | Items | Horas asignadas | Horas usadas | Horas restantes | Horas excedidas | Grafico |
 |---|---:|---:|---:|---:|---:|---|
-| INT2 | 63 | 120 | 6.2 | 114 | 0.2 | [ver (2026-09-02 a 2026-09-30)](charts/team-int2.svg) |
+| INT2 | 63 | 120 | 9.4 | 111 | 0.4 | [ver (2026-09-02 a 2026-09-30)](charts/team-int2.svg) |
 | INT4 | 38 | 79 | 11.2 | 67.8 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/team-int4.svg) |
 
 ## Integrantes
 
 | Equipo | Integrante | Items | Horas asignadas | Horas usadas | Horas restantes | Horas excedidas | Grafico |
 |---|---|---:|---:|---:|---:|---:|---|
-| INT2 | Ailyn Melillan | 10 | 20 | 0 | 20 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-ailynmelillan.svg) |
+| INT2 | Ailyn Melillan | 10 | 20 | 3 | 17 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-ailynmelillan.svg) |
 | INT2 | Antonio Lara | 12 | 20 | 0 | 20 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-alara2024uct.svg) |
 | INT2 | David Villegas | 11 | 20 | 0 | 20 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-david7985.svg) |
 | INT2 | Gabriel Gutierrez | 12 | 20 | 2 | 18 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-gabrielgutierrez1.svg) |
-| INT2 | Martina Iturrieta | 9 | 20 | 4.2 | 16 | 0.2 | [ver (2026-09-02 a 2026-09-30)](charts/member-kennyaale.svg) |
+| INT2 | Martina Iturrieta | 9 | 20 | 4.4 | 16 | 0.4 | [ver (2026-09-02 a 2026-09-30)](charts/member-kennyaale.svg) |
 | INT2 | Raul Rodriguez | 9 | 20 | 0 | 20 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-rrodriguez2025.svg) |
 | INT4 | Eduardo Escares | 9 | 20 | 4 | 16 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-eduardoscrs.svg) |
 | INT4 | Marcelo Santana | 10 | 20 | 4.2 | 15.8 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-cchelooo.svg) |
