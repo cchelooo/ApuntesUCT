@@ -47,9 +47,9 @@ npm run start:dev   # desarrollo (watch)
 npm run start       # compilar y ejecutar
 ```
 
-Servicio en `http://localhost:3000` (prefijo `api/v1`).
+Servicio en `http://localhost:3001` (prefijo `api/v1`).
 
-Documentación OpenAPI/Swagger en `http://localhost:3000/api/docs`.
+Documentación OpenAPI/Swagger en `http://localhost:3001/api/docs`.
 
 ## Tests
 
