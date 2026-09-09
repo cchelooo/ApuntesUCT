@@ -58,6 +58,8 @@ class AuthScaffold extends StatelessWidget {
   static const double _paddingHorizontal = 26;
   static const double _paddingTop = 42;
   static const double _paddingBottom = 26;
+  static const double _paddingHorizontalLandscape = 28;
+  static const double _paddingVerticalLandscape = 18;
   static const double _anchoMaximo = 440;
 
   @override
@@ -87,69 +89,141 @@ class AuthScaffold extends StatelessWidget {
           SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final double height = math.max(
-                  0.0,
-                  constraints.maxHeight - _paddingTop - _paddingBottom,
-                );
-                final double width = math.min(
-                  math.max(
-                    0.0,
-                    constraints.maxWidth - (_paddingHorizontal * 2),
-                  ),
-                  _anchoMaximo,
-                );
+                final esHorizontal =
+                    constraints.maxWidth > constraints.maxHeight &&
+                    constraints.maxWidth >= 600;
 
-                return SingleChildScrollView(
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: const EdgeInsets.fromLTRB(
-                    _paddingHorizontal,
-                    _paddingTop,
-                    _paddingHorizontal,
-                    _paddingBottom,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: height),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: width,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _Header(
-                                title: title,
-                                subtitle: subtitle,
-                                isRegistration: isRegistration,
-                              ),
-                              SizedBox(height: isRegistration ? 18 : 26),
-                              ...children,
-                            ],
-                          ),
-                        ),
-                        if (bottomAction != null) ...[
-                          SizedBox(
-                            height: math.max(
-                              24.0,
-                              height - (isRegistration ? 400.0 : 450.0),
-                            ),
-                          ),
-                          SizedBox(width: width, child: bottomAction!),
-                        ],
-                        if (footer != null) ...[
-                          SizedBox(height: isRegistration ? 14 : 20),
-                          SizedBox(width: width, child: footer!),
-                        ],
-                      ],
-                    ),
-                  ),
-                );
+                return esHorizontal
+                    ? _buildLandscapeLayout(constraints)
+                    : _buildPortraitLayout(constraints);
               },
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPortraitLayout(BoxConstraints constraints) {
+    final double height = math.max(
+      0.0,
+      constraints.maxHeight - _paddingTop - _paddingBottom,
+    );
+    final double width = math.min(
+      math.max(0.0, constraints.maxWidth - (_paddingHorizontal * 2)),
+      _anchoMaximo,
+    );
+
+    return SingleChildScrollView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: const EdgeInsets.fromLTRB(
+        _paddingHorizontal,
+        _paddingTop,
+        _paddingHorizontal,
+        _paddingBottom,
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: height),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: width,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _Header(
+                    title: title,
+                    subtitle: subtitle,
+                    isRegistration: isRegistration,
+                  ),
+                  SizedBox(height: isRegistration ? 18 : 26),
+                  ...children,
+                ],
+              ),
+            ),
+            if (bottomAction != null) ...[
+              SizedBox(
+                height: math.max(
+                  24.0,
+                  height - (isRegistration ? 400.0 : 450.0),
+                ),
+              ),
+              SizedBox(width: width, child: bottomAction!),
+            ],
+            if (footer != null) ...[
+              SizedBox(height: isRegistration ? 14 : 20),
+              SizedBox(width: width, child: footer!),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLandscapeLayout(BoxConstraints constraints) {
+    final double width = math.max(
+      0.0,
+      constraints.maxWidth - (_paddingHorizontalLandscape * 2),
+    );
+    final double height = math.max(
+      0.0,
+      constraints.maxHeight - (_paddingVerticalLandscape * 2),
+    );
+    final double gap = math.min(36.0, width * 0.06);
+    final double formWidth = math.min(
+      _anchoMaximo,
+      math.max(280.0, width * 0.56),
+    );
+    final double headerWidth = math.max(0.0, width - formWidth - gap);
+
+    return SingleChildScrollView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: const EdgeInsets.symmetric(
+        horizontal: _paddingHorizontalLandscape,
+        vertical: _paddingVerticalLandscape,
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: height),
+        child: Center(
+          child: SizedBox(
+            width: width,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: headerWidth,
+                  child: _Header(
+                    title: title,
+                    subtitle: subtitle,
+                    isRegistration: isRegistration,
+                    compact: true,
+                  ),
+                ),
+                SizedBox(width: gap),
+                SizedBox(
+                  width: formWidth,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ...children,
+                      if (bottomAction != null) ...[
+                        SizedBox(height: isRegistration ? 14 : 18),
+                        bottomAction!,
+                      ],
+                      if (footer != null) ...[
+                        const SizedBox(height: 14),
+                        footer!,
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -161,24 +235,30 @@ class _Header extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.isRegistration,
+    this.compact = false,
   });
 
   final String title;
   final String subtitle;
   final bool isRegistration;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final esOscuro = theme.brightness == Brightness.dark;
-    final titleText = esOscuro && title == 'Iniciar sesión'
+    final titleText = esOscuro && title == 'Iniciar sesión' && !compact
         ? 'Iniciar\nsesión'
         : title;
-    final titleSize = esOscuro
+    final titleSize = compact
+        ? (isRegistration ? 27.0 : 30.0)
+        : esOscuro
         ? (isRegistration ? 30.0 : 34.0)
         : (isRegistration ? 29.0 : 32.0);
-    final titleGap = esOscuro
+    final titleGap = compact
+        ? (isRegistration ? 22.0 : 24.0)
+        : esOscuro
         ? (isRegistration ? 38.0 : 58.0)
         : (isRegistration ? 45.0 : 76.0);
 
@@ -234,6 +314,7 @@ class _Header extends StatelessWidget {
         Text(
           subtitle,
           style: theme.textTheme.bodyMedium?.copyWith(
+            fontSize: compact ? 13 : null,
             color: colorScheme.onSurfaceVariant,
           ),
         ),
@@ -263,6 +344,15 @@ class _AuthBackdropPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (size.width > size.height) {
+      if (brightness == Brightness.dark) {
+        _pintarOscuroHorizontal(canvas, size);
+      } else {
+        _pintarClaroHorizontal(canvas, size);
+      }
+      return;
+    }
+
     final k = size.width / _anchoMaqueta;
     if (brightness == Brightness.dark) {
       _pintarOscuro(canvas, k);
@@ -287,6 +377,22 @@ class _AuthBackdropPainter extends CustomPainter {
     );
   }
 
+  void _pintarOscuroHorizontal(Canvas canvas, Size size) {
+    canvas.drawCircle(
+      Offset(size.width - 60, 40),
+      130,
+      Paint()..color = UctPalette.navyElevado,
+    );
+    canvas.drawCircle(
+      Offset(size.width - 71, 61),
+      37,
+      Paint()
+        ..color = UctPalette.amarillo.withValues(alpha: 0.45)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+  }
+
   void _pintarClaro(Canvas canvas, double k) {
     final banda = Path()
       ..moveTo(0, 0)
@@ -305,6 +411,29 @@ class _AuthBackdropPainter extends CustomPainter {
     canvas.drawCircle(
       Offset(66 * k, 196 * k),
       9 * k,
+      Paint()..color = UctPalette.amarillo,
+    );
+  }
+
+  void _pintarClaroHorizontal(Canvas canvas, Size size) {
+    final k = size.width / _anchoMaqueta;
+    final banda = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width, 186)
+      ..cubicTo(326 * k, 226, 240 * k, 232, 158 * k, 208)
+      ..cubicTo(86 * k, 190, 44 * k, 196, 0, 214)
+      ..close();
+
+    canvas.drawPath(banda, Paint()..color = UctPalette.celesteClaro);
+    canvas.drawCircle(
+      Offset(size.width - 54, 60),
+      52,
+      Paint()..color = UctPalette.celesteTinte,
+    );
+    canvas.drawCircle(
+      Offset(66 * k, 196),
+      9,
       Paint()..color = UctPalette.amarillo,
     );
   }

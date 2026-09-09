@@ -8,6 +8,9 @@ void main() {
   testWidgets('muestra el flujo de autenticación de la maqueta', (
     WidgetTester tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
     await tester.pumpWidget(const ProviderScope(child: MyApp()));
     await tester.pumpAndSettle();
 
@@ -26,5 +29,10 @@ void main() {
     expect(find.text('Crear cuenta'), findsNWidgets(2));
     expect(find.text('REPETIR CONTRASEÑA'), findsOneWidget);
     expect(find.byType(TextFormField), findsNWidgets(4));
+
+    await tester.binding.setSurfaceSize(const Size(844, 390));
+    await tester.pumpAndSettle();
+    expect(find.text('Crear cuenta'), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
   });
 }
