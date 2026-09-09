@@ -1,5 +1,5 @@
-import { PendingPage } from '../components/PendingPage'
+import { PendingPage } from '../components/PendingPage';
 
 export function CatalogPage() {
-  return <PendingPage title="Catálogo" />
+  return <PendingPage title="Catálogo" />;
 }

@@ -1,5 +1,5 @@
-import { PendingPage } from '../components/PendingPage'
+import { PendingPage } from '../components/PendingPage';
 
 export function ProfilePage() {
-  return <PendingPage title="Perfil" />
+  return <PendingPage title="Perfil" />;
 }

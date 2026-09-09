@@ -1,5 +1,5 @@
 interface PendingPageProps {
-  title: string
+  title: string;
 }
 
 export function PendingPage({ title }: PendingPageProps) {
@@ -8,5 +8,5 @@ export function PendingPage({ title }: PendingPageProps) {
       <h1>{title}</h1>
       <p>{title} pendiente.</p>
     </section>
-  )
+  );
 }
