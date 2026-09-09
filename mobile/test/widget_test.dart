@@ -5,23 +5,26 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:apuntesuct_mobile/main.dart';
 
 void main() {
-  testWidgets('Auth state Riverpod provider test', (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(
-        child: MyApp(),
-      ),
-    );
+  testWidgets('muestra el flujo de autenticación de la maqueta', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const ProviderScope(child: MyApp()));
+    await tester.pumpAndSettle();
 
-    // Initial state: not authenticated
-    expect(find.text('No autenticado'), findsOneWidget);
-    expect(find.text('Autenticado'), findsNothing);
+    expect(find.text('Iniciar sesión'), findsOneWidget);
+    expect(find.text('Correo institucional'), findsOneWidget);
+    expect(find.byType(TextFormField), findsNWidgets(2));
 
-    // Tap the toggle button to log in
-    await tester.tap(find.byType(FilledButton));
-    await tester.pump();
+    await tester.tap(find.byTooltip('Cambiar a modo oscuro'));
+    await tester.pumpAndSettle();
+    expect(find.text('Iniciar\nsesión'), findsOneWidget);
 
-    // Updated state: authenticated
-    expect(find.text('Autenticado'), findsOneWidget);
-    expect(find.text('No autenticado'), findsNothing);
+    await tester.ensureVisible(find.byType(TextButton));
+    await tester.tap(find.byType(TextButton));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Crear cuenta'), findsNWidgets(2));
+    expect(find.text('REPETIR CONTRASEÑA'), findsOneWidget);
+    expect(find.byType(TextFormField), findsNWidgets(4));
   });
 }
