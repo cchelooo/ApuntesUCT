@@ -1,11 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
-import { App } from 'supertest/types';
+import request, { Response } from 'supertest';
 import { AppModule } from './../src/app.module';
 
-describe('AppController (e2e)', () => {
-  let app: INestApplication<App>;
+describe('API Gateway (e2e)', () => {
+  let app: INestApplication;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -13,17 +12,21 @@ describe('AppController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api/v1');
     await app.init();
   });
 
-  it('/ (GET)', () => {
+  it('/api/v1/health (GET)', () => {
     return request(app.getHttpServer())
-      .get('/')
+      .get('/api/v1/health')
       .expect(200)
-      .expect('Hello World!');
+      .expect((res: Response) => {
+        expect(res.body.status).toEqual('ok');
+        expect(res.body.service).toEqual('API Gateway');
+      });
   });
 
-  afterEach(async () => {
+  afterAll(async () => {
     await app.close();
   });
 });
