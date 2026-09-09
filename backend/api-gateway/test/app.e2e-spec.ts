@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import request, { Response } from 'supertest';
+import * as supertest from 'supertest';
+import { Response } from 'supertest';
 import { AppModule } from './../src/app.module';
 
 describe('API Gateway (e2e)', () => {
@@ -17,7 +18,8 @@ describe('API Gateway (e2e)', () => {
   });
 
   it('/api/v1/health (GET)', () => {
-    return request(app.getHttpServer())
+    const agent = (supertest as unknown as (app: unknown) => supertest.SuperTest<supertest.Test>)(app.getHttpServer());
+    return agent
       .get('/api/v1/health')
       .expect(200)
       .expect((res: Response) => {
