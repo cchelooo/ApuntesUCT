@@ -1,0 +1,39 @@
+{
+  "name": "backend-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "./api-gateway",
+    "./auth-service",
+    "./catalog-service"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "lint:fix": "npm run lint:fix --workspaces --if-present",
+    "lint:gateway": "npm run lint --workspace=api-gateway",
+    "lint:auth": "npm run lint --workspace=auth-service",
+    "lint:catalog": "npm run lint --workspace=catalog-service",
+    "format": "prettier --write \"./**/*.ts\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.70.0",
+    "@typescript-eslint/parser": "^8.70.0",
+    "eslint": "^10.10.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.6",
+    "typescript-eslint": "^8.70.0"
+  },
+  "allowScripts": {
+    "@prisma/client@6.12.0": true,
+    "@prisma/client@6.19.3": true,
+    "prisma@6.12.0": true,
+    "prisma@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "@prisma/engines@6.12.0": true
+  }
+}

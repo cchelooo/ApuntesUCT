@@ -1,0 +1,8 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./api-gateway" },
+    { "path": "./auth-service" },
+    { "path": "./catalog-service" }
+  ]
+}
