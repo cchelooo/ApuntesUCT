@@ -1,3 +1,4 @@
+import '../../../core/errors/api_exception.dart';
 import '../../../models/user_model.dart';
 import 'auth_api.dart';
 import 'mock_auth_repository.dart' show AuthRepository;
@@ -37,6 +38,15 @@ class RemoteAuthRepository implements AuthRepository {
     final response = await _api.register(
       RegisterRequestModel(name: name, email: email, password: password),
     );
+
+    // Si el backend no abrió sesión, el registro fue exitoso pero el usuario
+    // aún no está autenticado; la UI debe pedir login.
+    if (!response.hasSession) {
+      throw const RequiresVerificationException(
+        'Cuenta creada. Inicia sesión para continuar.',
+      );
+    }
+
     return response.user;
   }
 

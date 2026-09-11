@@ -71,7 +71,11 @@ class MockAuthRepository implements AuthRepository {
       );
     }
 
-    return UserModel.mock(name: name, email: email);
+    return UserModel.mock(
+      name: name,
+      email: email,
+      role: 'PENDING_VERIFICATION',
+    );
   }
 
   @override

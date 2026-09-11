@@ -5,9 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:apuntesuct_mobile/core/config/app_config.dart';
 import 'package:apuntesuct_mobile/core/theme/app_theme.dart';
 import 'package:apuntesuct_mobile/features/auth/data/auth_providers.dart';
+import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart'
+    show authStateProvider;
 import 'package:apuntesuct_mobile/features/auth/presentation/login_screen.dart';
 import 'package:apuntesuct_mobile/features/auth/presentation/register_screen.dart';
-import 'package:apuntesuct_mobile/providers/auth_provider.dart';
 import 'package:apuntesuct_mobile/providers/theme_mode_provider.dart';
 
 final GoRouter appRouter = GoRouter(
@@ -92,12 +93,14 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isAuthenticated = ref.watch(authProvider);
+    final authState = ref.watch(authStateProvider);
+    final isAuthenticated = authState.hasValue && authState.value != null;
+    final user = authState.value;
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('ApuntesUCT - Riverpod Demo'),
+        title: const Text('ApuntesUCT'),
       ),
       body: Center(
         child: Padding(
@@ -128,10 +131,22 @@ class HomeScreen extends ConsumerWidget {
                     ? Colors.green.shade50
                     : Colors.red.shade50,
               ),
+              if (isAuthenticated && user != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  '${user.name}\n${user.email}',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: () {
-                  ref.read(authProvider.notifier).toggle();
+                  if (isAuthenticated) {
+                    ref.read(authStateProvider.notifier).logout();
+                  } else {
+                    context.go('/login');
+                  }
                 },
                 icon: Icon(isAuthenticated ? Icons.logout : Icons.login),
                 label: Text(

@@ -17,3 +17,10 @@ String errorMessage(Object error) {
 
   return 'Ocurrió un error inesperado.';
 }
+
+/// Indica si el error es un registro exitoso sin sesión iniciada.
+///
+/// La UI usa esto para no mostrar un banner rojo cuando el backend creó la
+/// cuenta pero exige que el usuario inicie sesión manualmente.
+bool isRegistrationSuccess(Object error) =>
+    error is RequiresVerificationException;

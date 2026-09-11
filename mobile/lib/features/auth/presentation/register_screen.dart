@@ -6,6 +6,7 @@ import '../../../core/errors/error_messages.dart';
 import '../../../core/validation/validators.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../../models/user_model.dart';
+import '../../../core/errors/api_exception.dart';
 import '../data/mock_auth_repository.dart' show authStateProvider;
 
 /// Pantalla de registro institucional.
@@ -64,8 +65,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         : (esAlturaCorta ? 4.0 : 10.0);
 
     ref.listen<AsyncValue<UserModel?>>(authStateProvider, (previous, next) {
-      if (!next.isLoading && next.value != null) {
-        context.go('/');
+      if (next.isLoading || next.asData?.value != null) return;
+
+      final error = next.error;
+      if (error == null) return;
+
+      // Registro exitoso sin sesión iniciada: volvemos a Login con el mensaje.
+      if (error is RequiresVerificationException) {
+        context.go('/login');
       }
     });
 
@@ -117,7 +124,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       ),
       children: [
         FormErrorBanner(
-          message: authState.hasError ? errorMessage(authState.error!) : null,
+          message: authState.hasError && !isRegistrationSuccess(authState.error!)
+              ? errorMessage(authState.error!)
+              : null,
         ),
         Form(
           key: _formKey,

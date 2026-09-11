@@ -55,6 +55,10 @@ class AuthApi {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
       );
+    } else {
+      // Si el backend no entregó sesión, el token previo (si lo había) no
+      // tiene relación con la cuenta recién creada.
+      _client.tokenStore.clear();
     }
     return response;
   }
