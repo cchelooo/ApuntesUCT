@@ -57,11 +57,7 @@ class ApiClient {
 
     if (AppConfig.enableHttpLogs) {
       _dio.interceptors.add(
-        LogInterceptor(
-          requestBody: true,
-          responseBody: true,
-          logPrint: (object) => debugPrint(object.toString()),
-        ),
+        _SensitiveLogInterceptor(),
       );
     }
   }
@@ -203,5 +199,33 @@ class ApiClient {
         error,
       ),
     };
+  }
+}
+
+/// Interceptor de logs que nunca escribe cuerpos de petición ni tokens.
+///
+/// Muestra método, ruta y código de respuesta; para diagnóstico de errores usa
+/// los mensajes ya sanitizados de [ApiException], no el JSON crudo.
+class _SensitiveLogInterceptor extends Interceptor {
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    debugPrint('HTTP --> ${options.method} ${options.path}');
+    handler.next(options);
+  }
+
+  @override
+  void onResponse(Response response, ResponseInterceptorHandler handler) {
+    debugPrint(
+      'HTTP <-- ${response.statusCode} ${response.requestOptions.method} ${response.requestOptions.path}',
+    );
+    handler.next(response);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    debugPrint(
+      'HTTP ERR ${err.response?.statusCode ?? '---'} ${err.requestOptions.method} ${err.requestOptions.path}: ${err.message}',
+    );
+    handler.next(err);
   }
 }

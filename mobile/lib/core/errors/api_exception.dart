@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import 'api_error_model.dart';
 
 /// Jerarquía de errores que la capa de datos expone hacia presentación.
@@ -25,6 +27,81 @@ sealed class ApiException implements Exception {
 
   @override
   String toString() => '$runtimeType: $message';
+
+  /// Traduce un [DioException] a la excepción de dominio más adecuada.
+  ///
+  /// Es el punto de compatibilidad para consumidores que no usan [ApiClient]
+  /// directamente (interceptores, pruebas, handlers genéricos).
+  factory ApiException.fromDioException(DioException e) {
+    final status = e.response?.statusCode ?? 0;
+    final body = e.response?.data;
+    ApiErrorModel? error = body is Map
+        ? ApiErrorModel.fromJson(Map<String, dynamic>.from(body))
+        : null;
+    // Si el cuerpo no trae statusCode, usamos el HTTP real para no perderlo.
+    if (error != null && error.statusCode == 0 && status != 0) {
+      error = ApiErrorModel(
+        statusCode: status,
+        messages: error.messages,
+        error: error.error,
+        path: error.path,
+      );
+    }
+    final message = error?.displayMessage;
+
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.transformTimeout:
+        return const ApiTimeoutException(
+          'Tiempo de espera agotado. Intenta nuevamente.',
+        );
+      case DioExceptionType.connectionError:
+      case DioExceptionType.badCertificate:
+        return const NetworkException(
+          'No se pudo establecer conexión con el servidor.',
+        );
+      case DioExceptionType.cancel:
+        return const RequestCancelledException('La solicitud fue cancelada.');
+      case DioExceptionType.badResponse:
+        return switch (status) {
+          400 || 422 => ValidationException(
+            message ?? 'Los datos enviados no son válidos.',
+            error,
+          ),
+          401 => UnauthorizedException(
+            message ?? 'Credenciales inválidas.',
+            error,
+          ),
+          403 => ForbiddenException(
+            message ?? 'No tienes permisos para realizar esta acción.',
+            error,
+          ),
+          404 => NotFoundException(
+            message ?? 'El recurso solicitado no existe.',
+            error,
+          ),
+          409 => ConflictException(message ?? 'El recurso ya existe.', error),
+          >= 500 => ServerException(
+            message ?? 'El servidor no pudo procesar la solicitud.',
+            error,
+          ),
+          _ => UnexpectedApiException(
+            message ?? 'Respuesta inesperada del servidor (HTTP $status).',
+            error,
+          ),
+        };
+      case DioExceptionType.unknown:
+        return e.error is Exception
+            ? const NetworkException(
+              'No se pudo establecer conexión con el servidor.',
+            )
+            : UnexpectedApiException(
+              e.message ?? 'Ocurrió un error inesperado.',
+            );
+    }
+  }
 }
 
 /// No se pudo establecer conexión con el API Gateway (sin red, host caído,
@@ -96,6 +173,14 @@ class ServerException extends ApiException {
 class RequestCancelledException extends ApiException {
   const RequestCancelledException([
     super.message = 'La solicitud fue cancelada.',
+  ]);
+}
+
+/// El registro fue exitoso pero el backend no abrió sesión (por ejemplo,
+/// porque requiere verificación de correo institucional).
+class RequiresVerificationException extends ApiException {
+  const RequiresVerificationException([
+    super.message = 'Cuenta creada. Debes iniciar sesión para continuar.',
   ]);
 }
 
