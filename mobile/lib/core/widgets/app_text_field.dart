@@ -8,9 +8,10 @@ import '../theme/uct_palette.dart';
 /// de Material. También cambia a mayúsculas y aumenta el espaciado en Navy para
 /// conservar la jerarquía visual de esa variante.
 class AppFieldLabel extends StatelessWidget {
-  const AppFieldLabel({required this.label, super.key});
+  const AppFieldLabel({required this.label, this.compact = false, super.key});
 
   final String label;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -23,9 +24,10 @@ class AppFieldLabel extends StatelessWidget {
         color: esOscuro
             ? UctPalette.textoTenueOscuro
             : theme.colorScheme.onSurfaceVariant,
-        fontSize: esOscuro ? 11 : 12.5,
+        fontSize: esOscuro ? (compact ? 10.5 : 11) : (compact ? 11.5 : 12.5),
         fontWeight: FontWeight.w600,
         letterSpacing: esOscuro ? 1.1 : 0,
+        height: compact ? 1.15 : null,
       ),
     );
   }
@@ -77,7 +79,7 @@ class AppTextField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AppFieldLabel(label: label),
+        AppFieldLabel(label: label, compact: compact),
         const SizedBox(height: 6),
         TextFormField(
           controller: controller,
@@ -103,7 +105,7 @@ class AppTextField extends StatelessWidget {
             isDense: true,
             contentPadding: EdgeInsets.symmetric(
               horizontal: 14,
-              vertical: compact ? 8 : (esOscuro ? 13 : 15),
+              vertical: compact ? 6 : (esOscuro ? 13 : 15),
             ),
           ),
         ),

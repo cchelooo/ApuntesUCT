@@ -37,6 +37,7 @@ void main() {
           isNull,
           reason: 'Login falló en $size con tema $themeMode',
         );
+        _expectNoInitialScroll(tester, size, 'Login', themeMode);
 
         await tester.pumpWidget(
           _testApp(themeMode: themeMode, child: const RegisterScreen()),
@@ -47,9 +48,31 @@ void main() {
           isNull,
           reason: 'Registro falló en $size con tema $themeMode',
         );
+        _expectNoInitialScroll(tester, size, 'Registro', themeMode);
       }
     }
   });
+}
+
+void _expectNoInitialScroll(
+  WidgetTester tester,
+  Size size,
+  String screen,
+  ThemeMode themeMode,
+) {
+  final scrollable = tester.state<ScrollableState>(
+    find
+        .descendant(
+          of: find.byType(SingleChildScrollView),
+          matching: find.byType(Scrollable),
+        )
+        .first,
+  );
+  expect(
+    scrollable.position.maxScrollExtent,
+    0,
+    reason: '$screen necesita scroll inicialmente en $size con tema $themeMode',
+  );
 }
 
 Widget _testApp({required ThemeMode themeMode, required Widget child}) {

@@ -57,6 +57,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authStateProvider);
     final colorScheme = Theme.of(context).colorScheme;
     final esOscuro = Theme.of(context).brightness == Brightness.dark;
+    final esAlturaCorta = MediaQuery.sizeOf(context).height < 700;
 
     // La navegación va en listen y no en build: build puede ejecutarse muchas
     // veces por la misma sesión y terminaría empujando rutas repetidas.
@@ -77,6 +78,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       bottomAction: AppPrimaryButton(
         label: 'Ingresar',
         isLoading: isLoading,
+        compact: esAlturaCorta,
         onPressed: _submit,
       ),
       // Wrap y no Row: con tipografía grande o pantallas angostas el texto
@@ -123,12 +125,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 InstitutionalEmailField(
                   controller: _emailController,
                   enabled: !isLoading,
+                  compact: esAlturaCorta,
                 ),
                 const SizedBox(height: 16),
                 AppPasswordField(
                   controller: _passwordController,
                   label: 'Contraseña',
                   enabled: !isLoading,
+                  compact: esAlturaCorta,
                   textInputAction: TextInputAction.done,
                   autofillHints: const [AutofillHints.password],
                   validator: Validators.loginPassword,

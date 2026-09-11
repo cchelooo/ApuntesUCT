@@ -57,6 +57,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final authState = ref.watch(authStateProvider);
     final colorScheme = Theme.of(context).colorScheme;
     final esOscuro = Theme.of(context).brightness == Brightness.dark;
+    final esAlturaCorta = MediaQuery.sizeOf(context).height < 700;
+    final esAlturaMuyCorta = MediaQuery.sizeOf(context).height < 600;
+    final separacionCampo = esAlturaMuyCorta
+        ? 0.0
+        : (esAlturaCorta ? 4.0 : 10.0);
 
     ref.listen<AsyncValue<UserModel?>>(authStateProvider, (previous, next) {
       if (!next.isLoading && next.value != null) {
@@ -76,6 +81,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       bottomAction: AppPrimaryButton(
         label: 'Crear cuenta',
         isLoading: isLoading,
+        compact: esAlturaCorta,
         onPressed: _submit,
       ),
       // Wrap y no Row: con tipografía grande o pantallas angostas el texto
@@ -130,13 +136,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   autofillHints: const [AutofillHints.name],
                   validator: Validators.name,
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: separacionCampo),
                 InstitutionalEmailField(
                   controller: _emailController,
                   enabled: !isLoading,
                   compact: true,
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: separacionCampo),
                 AppPasswordField(
                   controller: _passwordController,
                   label: 'Contraseña',
@@ -146,7 +152,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   autofillHints: const [AutofillHints.newPassword],
                   validator: Validators.newPassword,
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: separacionCampo),
                 AppPasswordField(
                   controller: _confirmationController,
                   label: 'Repetir contraseña',

@@ -66,6 +66,9 @@ class AuthScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final screenSize = MediaQuery.sizeOf(context);
+    final esHorizontal =
+        screenSize.width > screenSize.height && screenSize.width >= 520;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -76,7 +79,8 @@ class AuthScaffold extends StatelessWidget {
         // Sólo se muestra la flecha si hay algo a lo que volver; en Login, que
         // es la raíz del flujo, el espacio queda libre a propósito.
         automaticallyImplyLeading: Navigator.of(context).canPop(),
-        actions: actions,
+        toolbarHeight: esHorizontal ? 0 : null,
+        actions: esHorizontal ? null : actions,
         scrolledUnderElevation: 0,
       ),
       body: Stack(
@@ -91,7 +95,7 @@ class AuthScaffold extends StatelessWidget {
               builder: (context, constraints) {
                 final esHorizontal =
                     constraints.maxWidth > constraints.maxHeight &&
-                    constraints.maxWidth >= 600;
+                    constraints.maxWidth >= 520;
 
                 return esHorizontal
                     ? _buildLandscapeLayout(constraints)
@@ -99,15 +103,32 @@ class AuthScaffold extends StatelessWidget {
               },
             ),
           ),
+          if (esHorizontal && actions != null)
+            Positioned(
+              top: 4,
+              right: 8,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: actions!,
+              ),
+            ),
         ],
       ),
     );
   }
 
   Widget _buildPortraitLayout(BoxConstraints constraints) {
+    final esAlturaCorta = constraints.maxHeight < 700;
+    final esAlturaMuyCorta = constraints.maxHeight < 600;
+    final paddingTop = esAlturaMuyCorta
+        ? 4.0
+        : (esAlturaCorta ? 8.0 : _paddingTop);
+    final paddingBottom = esAlturaMuyCorta
+        ? 4.0
+        : (esAlturaCorta ? 8.0 : _paddingBottom);
     final double height = math.max(
       0.0,
-      constraints.maxHeight - _paddingTop - _paddingBottom,
+      constraints.maxHeight - paddingTop - paddingBottom,
     );
     final double width = math.min(
       math.max(0.0, constraints.maxWidth - (_paddingHorizontal * 2)),
@@ -116,11 +137,11 @@ class AuthScaffold extends StatelessWidget {
 
     return SingleChildScrollView(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      padding: const EdgeInsets.fromLTRB(
+      padding: EdgeInsets.fromLTRB(
         _paddingHorizontal,
-        _paddingTop,
+        paddingTop,
         _paddingHorizontal,
-        _paddingBottom,
+        paddingBottom,
       ),
       child: ConstrainedBox(
         constraints: BoxConstraints(minHeight: height),
@@ -137,23 +158,39 @@ class AuthScaffold extends StatelessWidget {
                     title: title,
                     subtitle: subtitle,
                     isRegistration: isRegistration,
+                    compact: esAlturaCorta,
+                    dense: esAlturaMuyCorta,
                   ),
-                  SizedBox(height: isRegistration ? 18 : 26),
+                  SizedBox(
+                    height: esAlturaMuyCorta
+                        ? (isRegistration ? 4 : 8)
+                        : (esAlturaCorta
+                              ? (isRegistration ? 8 : 12)
+                              : (isRegistration ? 18 : 26)),
+                  ),
                   ...children,
                 ],
               ),
             ),
             if (bottomAction != null) ...[
               SizedBox(
-                height: math.max(
-                  24.0,
-                  height - (isRegistration ? 400.0 : 450.0),
-                ),
+                height: esAlturaMuyCorta
+                    ? 0
+                    : (esAlturaCorta
+                          ? 4
+                          : math.max(
+                              24.0,
+                              height - (isRegistration ? 635.0 : 585.0),
+                            )),
               ),
               SizedBox(width: width, child: bottomAction!),
             ],
             if (footer != null) ...[
-              SizedBox(height: isRegistration ? 14 : 20),
+              SizedBox(
+                height: esAlturaMuyCorta
+                    ? 4
+                    : (esAlturaCorta ? 8 : (isRegistration ? 14 : 20)),
+              ),
               SizedBox(width: width, child: footer!),
             ],
           ],
@@ -163,26 +200,30 @@ class AuthScaffold extends StatelessWidget {
   }
 
   Widget _buildLandscapeLayout(BoxConstraints constraints) {
+    final verticalPadding = constraints.maxHeight < 400
+        ? 0.0
+        : _paddingVerticalLandscape;
     final double width = math.max(
       0.0,
       constraints.maxWidth - (_paddingHorizontalLandscape * 2),
     );
     final double height = math.max(
       0.0,
-      constraints.maxHeight - (_paddingVerticalLandscape * 2),
+      constraints.maxHeight - (verticalPadding * 2),
     );
     final double gap = math.min(36.0, width * 0.06);
+    final double formRatio = width < 600 ? 0.52 : 0.56;
     final double formWidth = math.min(
       _anchoMaximo,
-      math.max(280.0, width * 0.56),
+      math.max(260.0, width * formRatio),
     );
     final double headerWidth = math.max(0.0, width - formWidth - gap);
 
     return SingleChildScrollView(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      padding: const EdgeInsets.symmetric(
+      padding: EdgeInsets.symmetric(
         horizontal: _paddingHorizontalLandscape,
-        vertical: _paddingVerticalLandscape,
+        vertical: verticalPadding,
       ),
       child: ConstrainedBox(
         constraints: BoxConstraints(minHeight: height),
@@ -210,11 +251,15 @@ class AuthScaffold extends StatelessWidget {
                     children: [
                       ...children,
                       if (bottomAction != null) ...[
-                        SizedBox(height: isRegistration ? 14 : 18),
+                        SizedBox(
+                          height: constraints.maxHeight < 400
+                              ? (isRegistration ? 0 : 12)
+                              : (isRegistration ? 14 : 18),
+                        ),
                         bottomAction!,
                       ],
                       if (footer != null) ...[
-                        const SizedBox(height: 14),
+                        SizedBox(height: constraints.maxHeight < 400 ? 0 : 14),
                         footer!,
                       ],
                     ],
@@ -236,28 +281,32 @@ class _Header extends StatelessWidget {
     required this.subtitle,
     required this.isRegistration,
     this.compact = false,
+    this.dense = false,
   });
 
   final String title;
   final String subtitle;
   final bool isRegistration;
   final bool compact;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final esOscuro = theme.brightness == Brightness.dark;
-    final titleText = esOscuro && title == 'Iniciar sesión' && !compact
-        ? 'Iniciar\nsesión'
-        : title;
-    final titleSize = compact
+    final titleText = title;
+    final titleSize = dense
+        ? (isRegistration ? 24.0 : 28.0)
+        : compact
         ? (isRegistration ? 27.0 : 30.0)
         : esOscuro
         ? (isRegistration ? 30.0 : 34.0)
         : (isRegistration ? 29.0 : 32.0);
-    final titleGap = compact
-        ? (isRegistration ? 22.0 : 24.0)
+    final titleGap = dense
+        ? (isRegistration ? 6.0 : 10.0)
+        : compact
+        ? (isRegistration ? 12.0 : 20.0)
         : esOscuro
         ? (isRegistration ? 38.0 : 58.0)
         : (isRegistration ? 45.0 : 76.0);
@@ -268,8 +317,8 @@ class _Header extends StatelessWidget {
         Row(
           children: [
             Container(
-              width: 34,
-              height: 34,
+              width: dense ? 30 : 34,
+              height: dense ? 30 : 34,
               decoration: BoxDecoration(
                 // En oscuro la marca va en amarillo, que es el color primario de
                 // la identidad; en claro, en azul, para no gritar sobre blanco.
@@ -278,7 +327,7 @@ class _Header extends StatelessWidget {
               ),
               child: Icon(
                 Icons.menu_book_rounded,
-                size: 19,
+                size: dense ? 17 : 19,
                 color: esOscuro ? UctPalette.navy : Colors.white,
               ),
             ),
@@ -305,16 +354,19 @@ class _Header extends StatelessWidget {
         Container(
           width: 46,
           height: 4,
-          margin: EdgeInsets.only(top: esOscuro ? 13 : 0),
+          margin: EdgeInsets.only(
+            top: esOscuro ? (dense ? 5 : (compact ? 7 : 13)) : 0,
+          ),
           color: UctPalette.amarillo,
         ),
-        if (!esOscuro && isRegistration) const SizedBox(height: 8),
-        if (!esOscuro && !isRegistration) const SizedBox(height: 10),
-        if (esOscuro) const SizedBox(height: 13),
+        if (!esOscuro && isRegistration) SizedBox(height: dense ? 4 : 8),
+        if (!esOscuro && !isRegistration) SizedBox(height: dense ? 6 : 10),
+        if (esOscuro) SizedBox(height: dense ? 5 : (compact ? 7 : 13)),
         Text(
           subtitle,
           style: theme.textTheme.bodyMedium?.copyWith(
-            fontSize: compact ? 13 : null,
+            fontSize: dense ? 11.5 : (compact ? 12.5 : null),
+            height: dense ? 1.2 : (compact ? 1.35 : null),
             color: colorScheme.onSurfaceVariant,
           ),
         ),

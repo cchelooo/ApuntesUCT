@@ -20,7 +20,7 @@ void main() {
 
     await tester.tap(find.byTooltip('Cambiar a modo oscuro'));
     await tester.pumpAndSettle();
-    expect(find.text('Iniciar\nsesión'), findsOneWidget);
+    expect(find.text('Iniciar sesión'), findsOneWidget);
 
     await tester.ensureVisible(find.byType(TextButton));
     await tester.tap(find.byType(TextButton));

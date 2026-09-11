@@ -47,7 +47,7 @@ class _AppPasswordFieldState extends State<AppPasswordField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AppFieldLabel(label: widget.label),
+        AppFieldLabel(label: widget.label, compact: widget.compact),
         const SizedBox(height: 6),
         TextFormField(
           controller: widget.controller,
@@ -67,7 +67,7 @@ class _AppPasswordFieldState extends State<AppPasswordField> {
             isDense: true,
             contentPadding: EdgeInsets.symmetric(
               horizontal: 14,
-              vertical: widget.compact ? 8 : (esOscuro ? 13 : 15),
+              vertical: widget.compact ? 6 : (esOscuro ? 13 : 15),
             ),
             suffixIcon: IconButton(
               onPressed: () => setState(() => _obscured = !_obscured),
@@ -81,11 +81,21 @@ class _AppPasswordFieldState extends State<AppPasswordField> {
               ),
               tooltip: _obscured ? 'Mostrar contraseña' : 'Ocultar contraseña',
               padding: EdgeInsets.zero,
+              style: widget.compact
+                  ? IconButton.styleFrom(
+                      minimumSize: const Size(40, 40),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: EdgeInsets.zero,
+                    )
+                  : null,
               constraints: BoxConstraints(
                 minWidth: widget.compact ? 40 : 48,
                 minHeight: widget.compact ? 40 : 48,
               ),
             ),
+            suffixIconConstraints: widget.compact
+                ? const BoxConstraints(minWidth: 40, minHeight: 40)
+                : null,
           ),
         ),
       ],

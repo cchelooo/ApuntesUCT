@@ -13,6 +13,7 @@ class AppPrimaryButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.isLoading = false,
+    this.compact = false,
     this.icon,
     super.key,
   });
@@ -20,6 +21,7 @@ class AppPrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final bool isLoading;
+  final bool compact;
   final IconData? icon;
 
   @override
@@ -29,6 +31,9 @@ class AppPrimaryButton extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       child: FilledButton(
+        style: compact
+            ? FilledButton.styleFrom(minimumSize: const Size.fromHeight(48))
+            : null,
         onPressed: isLoading ? null : onPressed,
         child: isLoading
             ? SizedBox(

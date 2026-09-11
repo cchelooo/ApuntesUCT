@@ -89,7 +89,7 @@ class _InstitutionalEmailFieldState extends State<InstitutionalEmailField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AppFieldLabel(label: widget.label),
+        AppFieldLabel(label: widget.label, compact: widget.compact),
         const SizedBox(height: 6),
         TextFormField(
           controller: widget.controller,
@@ -121,7 +121,7 @@ class _InstitutionalEmailFieldState extends State<InstitutionalEmailField> {
             isDense: true,
             contentPadding: EdgeInsets.symmetric(
               horizontal: 14,
-              vertical: widget.compact ? 8 : (esOscuro ? 13 : 15),
+              vertical: widget.compact ? 6 : (esOscuro ? 13 : 15),
             ),
             suffix: Text(
               '@$_domain',
