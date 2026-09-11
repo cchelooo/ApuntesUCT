@@ -1,26 +1,23 @@
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
+import '../config/api_config.dart';
 
 class ApiClient {
-  static const String defaultBaseUrl = 'http://10.0.2.2:3000/api/v1';
-
   final Dio dio;
 
   ApiClient({String? baseUrl, Dio? customDio})
-    : dio =
-          customDio ??
-          Dio(
-            BaseOptions(
-              baseUrl: baseUrl ?? defaultBaseUrl,
-              connectTimeout: const Duration(seconds: 10),
-              receiveTimeout: const Duration(seconds: 10),
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-              },
-            ),
-          ) {
-    // Limitar logs solo a debug y proteger credenciales/tokens sensibles
+      : dio = customDio ??
+            Dio(
+              BaseOptions(
+                baseUrl: baseUrl ?? ApiConfig.gatewayBaseUrl,
+                connectTimeout: const Duration(seconds: 10),
+                receiveTimeout: const Duration(seconds: 10),
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                },
+              ),
+            ) {
     if (kDebugMode) {
       dio.interceptors.add(
         LogInterceptor(
