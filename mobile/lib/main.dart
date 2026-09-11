@@ -2,10 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:apuntesuct_mobile/providers/auth_provider.dart';
+import 'package:apuntesuct_mobile/core/config/app_config.dart';
+import 'package:apuntesuct_mobile/core/theme/app_theme.dart';
+import 'package:apuntesuct_mobile/features/auth/data/auth_providers.dart';
+import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart'
+    show authStateProvider;
+import 'package:apuntesuct_mobile/features/auth/presentation/login_screen.dart';
+import 'package:apuntesuct_mobile/features/auth/presentation/register_screen.dart';
+import 'package:apuntesuct_mobile/providers/theme_mode_provider.dart';
 
 final GoRouter appRouter = GoRouter(
-  initialLocation: '/',
+  initialLocation: '/login',
   routes: [
     GoRoute(
       path: '/',
@@ -15,12 +22,12 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/login',
       name: 'login',
-      builder: (context, state) => const PendingScreen(title: 'Iniciar sesión'),
+      builder: (context, state) => const LoginScreen(),
     ),
     GoRoute(
       path: '/register',
       name: 'register',
-      builder: (context, state) => const PendingScreen(title: 'Registro'),
+      builder: (context, state) => const RegisterScreen(),
     ),
     GoRoute(
       path: '/profile',
@@ -46,21 +53,22 @@ final GoRouter appRouter = GoRouter(
 );
 
 void main() {
-  runApp(const ProviderScope(child: MyApp()));
+  final overrides = [if (AppConfig.useRemoteApi) useRemoteAuthOverride];
+
+  runApp(ProviderScope(overrides: overrides, child: const MyApp()));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
       title: 'ApuntesUCT',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.claro,
+      darkTheme: AppTheme.oscuro,
+      themeMode: ref.watch(themeModeProvider),
       routerConfig: appRouter,
     );
   }
@@ -85,12 +93,14 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isAuthenticated = ref.watch(authProvider);
+    final authState = ref.watch(authStateProvider);
+    final isAuthenticated = authState.hasValue && authState.value != null;
+    final user = authState.value;
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('ApuntesUCT - Riverpod Demo'),
+        title: const Text('ApuntesUCT'),
       ),
       body: Center(
         child: Padding(
@@ -121,10 +131,22 @@ class HomeScreen extends ConsumerWidget {
                     ? Colors.green.shade50
                     : Colors.red.shade50,
               ),
+              if (isAuthenticated && user != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  '${user.name}\n${user.email}',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ],
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: () {
-                  ref.read(authProvider.notifier).toggle();
+                  if (isAuthenticated) {
+                    ref.read(authStateProvider.notifier).logout();
+                  } else {
+                    context.go('/login');
+                  }
                 },
                 icon: Icon(isAuthenticated ? Icons.logout : Icons.login),
                 label: Text(

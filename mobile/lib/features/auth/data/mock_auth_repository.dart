@@ -1,10 +1,20 @@
 import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../models/user_model.dart';
 
 /// Contrato abstracto para autenticación (preparado para integración real futura).
 abstract class AuthRepository {
   Future<UserModel> login({required String email, required String password});
+
+  /// Crea una cuenta institucional y devuelve el usuario resultante.
+  Future<UserModel> register({
+    required String name,
+    required String email,
+    required String password,
+  });
+
   Future<UserModel> getCurrentUser();
   Future<void> logout();
 }
@@ -39,6 +49,32 @@ class MockAuthRepository implements AuthRepository {
       name: email.contains('@')
           ? email.split('@').first.replaceAll('.', ' ').toUpperCase()
           : 'Usuario Mock',
+    );
+  }
+
+  @override
+  Future<UserModel> register({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    await Future.delayed(simulatedDelay);
+
+    if (name.isEmpty || email.isEmpty || password.isEmpty) {
+      throw Exception('Datos de registro incompletos.');
+    }
+
+    // Correo reservado para probar en la UI el caso "el correo ya existe".
+    if (email.trim().toLowerCase() == 'registrado@uct.cl') {
+      throw Exception(
+        'El correo ya está registrado (simulación de error 409).',
+      );
+    }
+
+    return UserModel.mock(
+      name: name,
+      email: email,
+      role: 'PENDING_VERIFICATION',
     );
   }
 
@@ -80,6 +116,19 @@ class AuthStateNotifier extends AsyncNotifier<UserModel?> {
     });
   }
 
+  /// Registra una cuenta nueva y deja al usuario con sesión iniciada
+  Future<void> register(String name, String email, String password) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final repository = ref.read(authRepositoryProvider);
+      return await repository.register(
+        name: name,
+        email: email,
+        password: password,
+      );
+    });
+  }
+
   /// Cierra la sesión
   Future<void> logout() async {
     state = const AsyncValue.loading();
@@ -92,5 +141,6 @@ class AuthStateNotifier extends AsyncNotifier<UserModel?> {
 }
 
 /// Provider global reactivo del estado de autenticación con Notifier moderno
-final authStateProvider =
-    AsyncNotifierProvider<AuthStateNotifier, UserModel?>(AuthStateNotifier.new);
+final authStateProvider = AsyncNotifierProvider<AuthStateNotifier, UserModel?>(
+  AuthStateNotifier.new,
+);
