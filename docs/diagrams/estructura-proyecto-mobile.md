@@ -16,14 +16,14 @@ mobile/
 │   ├── app/                          # Configuración global de la app (pendiente)
 │   ├── core/                         # Infraestructura compartida entre toda la app
 │   │   ├── config/
-│   │   │   └── app_config.dart       # Constantes: URLs, timeouts, flags de debug/logs
+│   │   │   └── api_config.dart       # URL del API Gateway (#39): API_GATEWAY_URL o 10.0.2.2 en emulador
 │   │   ├── errors/
-│   │   │   ├── api_error_model.dart  # Modelo del JSON de error del backend
-│   │   │   ├── api_exception.dart    # Jerarquía de excepciones de dominio (Network, Timeout, 401, etc.)
-│   │   │   └── error_messages.dart   # Mensajes de error reutilizables
+│   │   │   ├── api_exception.dart    # Excepción centralizada con fromDioException (#40)
+│   │   │   └── error_messages.dart   # Mensajes de error reutilizables para la UI
 │   │   ├── network/
-│   │   │   ├── api_client.dart       # Cliente HTTP con Dio, interceptores, tokens y mapeo de errores
-│   │   │   └── token_store.dart      # Almacenamiento en memoria del access/refresh token
+│   │   │   ├── api_client.dart       # Cliente Dio con ErrorInterceptor y logs (#38, #40)
+│   │   │   ├── api_response.dart     # Helper AsyncValue para respuestas API (#40)
+│   │   │   └── error_interceptor.dart # Interceptor unificado de errores (#40)
 │   │   ├── theme/
 │   │   │   ├── app_theme.dart        # Tema claro/oscuro de la app
 │   │   │   └── uct_palette.dart      # Colores institucionales UCT
@@ -41,11 +41,8 @@ mobile/
 │   ├── features/                     # Módulos por funcionalidad (auth, catalog, library, etc.)
 │   │   ├── auth/
 │   │   │   ├── data/                 # Capa de datos de autenticación
-│   │   │   │   ├── models/           # DTOs de request/response del API
-│   │   │   │   ├── auth_api.dart     # Llamadas HTTP a /auth
-│   │   │   │   ├── auth_providers.dart
-│   │   │   │   ├── mock_auth_repository.dart  # Repositorio mock para pruebas sin backend
-│   │   │   │   └── remote_auth_repository.dart # Repositorio contra API real
+│   │   │   │   ├── models/           # Modelos de respuesta Auth (#65)
+│   │   │   │   └── mock_auth_repository.dart  # Contrato AuthRepository + mock con login/registro
 │   │   │   ├── domain/               # Lógica de negocio pura (pendiente)
 │   │   │   └── presentation/         # Pantallas de autenticación
 │   │   │       ├── login_screen.dart
@@ -66,6 +63,7 @@ mobile/
 │   └── main.dart                     # Punto de entrada, router GoRouter y HomeScreen
 ├── test/                             # Tests del proyecto
 │   ├── core/errors/api_exception_test.dart
+│   ├── register_navigation_test.dart # Registro exitoso navega al Home
 │   ├── responsive_auth_test.dart
 │   └── widget_test.dart
 ├── pubspec.yaml                      # Dependencias (Riverpod, GoRouter, Dio, etc.)
@@ -81,9 +79,9 @@ mobile/
 | `ios/` | Proyecto iOS nativo generado por Flutter. Contiene configuración de Xcode, assets y launch screen. |
 | `lib/app/` | Configuración global de la app (por ejemplo, inicialización de providers o servicios). Actualmente reservado. |
 | `lib/core/` | Código transversal que no pertenece a una feature específica: tema, errores, red, validaciones y widgets base. |
-| `lib/core/config/` | Constantes de configuración: URL base del API Gateway, timeouts y flags de logs. |
-| `lib/core/errors/` | Modelos y excepciones de dominio para aislar la UI de los detalles HTTP. |
-| `lib/core/network/` | Cliente HTTP (`ApiClient`) basado en Dio, interceptores y almacenamiento de tokens (`TokenStore`). |
+| `lib/core/config/` | Configuración del API Gateway (#39): `API_GATEWAY_URL` o selección automática (`10.0.2.2` en emulador Android, `localhost` en el resto). |
+| `lib/core/errors/` | Excepción centralizada `ApiException` con `fromDioException` (#40) más helpers de mensajes para la UI. |
+| `lib/core/network/` | Cliente Dio (`ApiClient`), interceptor unificado de errores y helper `ApiResponseHandler` (#38, #40). |
 | `lib/core/theme/` | Paleta de colores UCT y temas claro/oscuro de Material 3. |
 | `lib/core/validation/` | Validadores reutilizables para formularios (email institucional, contraseñas, etc.). |
 | `lib/core/widgets/` | Widgets genéricos usados en varias pantallas: botones, campos de texto, scaffold de auth, etc. |

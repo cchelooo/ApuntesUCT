@@ -8,7 +8,7 @@ import '../../../models/user_model.dart';
 abstract class AuthRepository {
   Future<UserModel> login({required String email, required String password});
 
-  /// Crea una cuenta institucional y devuelve el usuario resultante.
+  /// Crea una cuenta institucional y devuelve el usuario con sesión iniciada.
   Future<UserModel> register({
     required String name,
     required String email,
@@ -71,11 +71,8 @@ class MockAuthRepository implements AuthRepository {
       );
     }
 
-    return UserModel.mock(
-      name: name,
-      email: email,
-      role: 'PENDING_VERIFICATION',
-    );
+    // El mock abre sesión de inmediato con la cuenta recién creada.
+    return UserModel.mock(name: name, email: email);
   }
 
   @override

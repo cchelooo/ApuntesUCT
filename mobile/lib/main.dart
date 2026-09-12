@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:apuntesuct_mobile/core/config/app_config.dart';
 import 'package:apuntesuct_mobile/core/theme/app_theme.dart';
-import 'package:apuntesuct_mobile/features/auth/data/auth_providers.dart';
 import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart'
     show authStateProvider;
 import 'package:apuntesuct_mobile/features/auth/presentation/login_screen.dart';
@@ -53,9 +51,7 @@ final GoRouter appRouter = GoRouter(
 );
 
 void main() {
-  final overrides = [if (AppConfig.useRemoteApi) useRemoteAuthOverride];
-
-  runApp(ProviderScope(overrides: overrides, child: const MyApp()));
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends ConsumerWidget {
