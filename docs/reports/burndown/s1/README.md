@@ -1,7 +1,7 @@
 # Burndown S1
 
 Primer snapshot guardado: 2026-09-05.
-Ultimo snapshot: 2026-09-10.
+Ultimo snapshot: 2026-09-11.
 Trabajo efectivo informado desde: 2026-09-04.
 
 ## Ventanas del sprint
@@ -19,7 +19,7 @@ Las tareas con `Equipo = Compartido` quedan fuera del burndown de equipos e inte
 | Equipo | Items | Horas asignadas | Horas usadas | Horas restantes | Horas excedidas | Grafico |
 |---|---:|---:|---:|---:|---:|---|
 | INT2 | 63 | 120 | 33.8 | 95.5 | 5.3 | [ver (2026-09-02 a 2026-09-30)](charts/team-int2.svg) |
-| INT4 | 38 | 79 | 19.5 | 59.5 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/team-int4.svg) |
+| INT4 | 38 | 79 | 23 | 56 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/team-int4.svg) |
 
 ## Integrantes
 
@@ -32,9 +32,9 @@ Las tareas con `Equipo = Compartido` quedan fuera del burndown de equipos e inte
 | INT2 | Martina Iturrieta | 9 | 20 | 10.3 | 15 | 5.3 | [ver (2026-09-02 a 2026-09-30)](charts/member-kennyaale.svg) |
 | INT2 | Raul Rodriguez | 9 | 20 | 5 | 15 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-rrodriguez2025.svg) |
 | INT4 | Eduardo Escares | 9 | 20 | 8 | 12 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-eduardoscrs.svg) |
-| INT4 | Marcelo Santana | 10 | 20 | 5 | 15 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-cchelooo.svg) |
+| INT4 | Marcelo Santana | 10 | 20 | 6 | 14 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-cchelooo.svg) |
 | INT4 | Nelson Quiñinao Isla | 10 | 19 | 4 | 15 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-anker04.svg) |
-| INT4 | Yaninna Alvarez | 9 | 20 | 2.5 | 17.5 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-yaninna137.svg) |
+| INT4 | Yaninna Alvarez | 9 | 20 | 5 | 15 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-yaninna137.svg) |
 
 ## Uso diario
 
