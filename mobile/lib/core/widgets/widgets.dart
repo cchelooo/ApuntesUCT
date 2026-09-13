@@ -1,6 +1,8 @@
 /// Barrel de los widgets compartidos entre pantallas.
 library;
 
+export 'app_button.dart';
+export 'app_card.dart';
 export 'app_password_field.dart';
 export 'app_primary_button.dart';
 export 'app_text_field.dart';
