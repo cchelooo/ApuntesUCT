@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import type { Server } from 'node:http';
 import request from 'supertest';
 import { AppModule } from './../src/app.module';
+import { PrismaService } from './../src/infrastructure/prisma/prisma.service';
 
 describe('Auth Service (e2e)', () => {
   let app: INestApplication;
@@ -10,7 +11,10 @@ describe('Auth Service (e2e)', () => {
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(PrismaService)
+      .useValue({})
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api/v1');
@@ -18,6 +22,10 @@ describe('Auth Service (e2e)', () => {
       new ValidationPipe({ whitelist: true, transform: true }),
     );
     await app.init();
+  });
+
+  afterEach(async () => {
+    await app.close();
   });
 
   it('/api/v1/health (GET)', () => {
