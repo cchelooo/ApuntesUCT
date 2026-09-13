@@ -1,5 +1,5 @@
-import { PendingPage } from '../components/PendingPage'
+import { PendingPage } from '../components/PendingPage';
 
 export function SearchPage() {
-  return <PendingPage title="Búsqueda" />
+  return <PendingPage title="Búsqueda" />;
 }

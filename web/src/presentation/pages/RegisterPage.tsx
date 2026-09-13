@@ -1,5 +1,5 @@
-import { PendingPage } from '../components/PendingPage'
+import { PendingPage } from '../components/PendingPage';
 
 export function RegisterPage() {
-  return <PendingPage title="Registro" />
+  return <PendingPage title="Registro" />;
 }

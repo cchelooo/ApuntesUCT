@@ -8,7 +8,7 @@ Tecnologías: Node.js, TypeScript, NestJS, Prisma, PostgreSQL, MinIO.
 
 | Servicio | Puerto HTTP | URL local | Estado |
 |---|---|---|---|
-| api-gateway | 3000 | `http://localhost:3000` | Pendiente (placeholder) |
+| api-gateway | 3000 | `http://localhost:3000` | Scaffold (en desarrollo) |
 | auth-service | 3001 | `http://localhost:3001` | Implementado |
 | catalog-service | 3002 | `http://localhost:3002` | Cascarón (PR #139) |
 | material-service | 3003 | `http://localhost:3003` | Pendiente (placeholder) |
@@ -17,6 +17,7 @@ Tecnologías: Node.js, TypeScript, NestJS, Prisma, PostgreSQL, MinIO.
 
 Notas:
 - Los servicios aplican el prefijo global `api/v1`. El único endpoint implementado hoy es `GET /api/v1/health` de auth-service.
+- El api-gateway usa por defecto el puerto `3000` (`process.env.PORT || 3000`).
 - Swagger del auth-service: `http://localhost:3001/api/docs`.
 - El cascarón del catalog-service (rama `feature/21-cascaron-catalog-service`, PR #139) usa provisionalmente el puerto 3001; al integrarse debe pasarse a **3002** para no colisionar con auth-service.
 

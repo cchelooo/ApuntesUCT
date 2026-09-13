@@ -1,5 +1,5 @@
-import { PendingPage } from '../components/PendingPage'
+import { PendingPage } from '../components/PendingPage';
 
 export function LoginPage() {
-  return <PendingPage title="Iniciar sesión" />
+  return <PendingPage title="Iniciar sesión" />;
 }

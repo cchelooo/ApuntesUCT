@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router-dom';
 
 export function HomePage() {
   return (
@@ -10,5 +10,5 @@ export function HomePage() {
       </p>
       <Link to="/catalog">Explorar catálogo</Link>
     </section>
-  )
+  );
 }

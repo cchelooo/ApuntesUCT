@@ -1,5 +1,5 @@
-import { createBrowserRouter } from 'react-router-dom'
-import { MainLayout } from '../presentation/layouts/MainLayout'
+import { createBrowserRouter } from 'react-router-dom';
+import { MainLayout } from '../presentation/layouts/MainLayout';
 import {
   HomePage,
   LoginPage,
@@ -9,7 +9,7 @@ import {
   SearchPage,
   LibraryPage,
   NotFoundPage,
-} from '../presentation/pages'
+} from '../presentation/pages';
 
 export const router = createBrowserRouter([
   {
@@ -27,4 +27,4 @@ export const router = createBrowserRouter([
       { path: '*', element: <NotFoundPage /> },
     ],
   },
-])
+]);

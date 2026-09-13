@@ -25,12 +25,7 @@ class ProfessorModel {
 
   /// Serializa el modelo a un mapa JSON.
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'email': email,
-      'active': active,
-    };
+    return {'id': id, 'name': name, 'email': email, 'active': active};
   }
 
   /// Factory para generar una instancia MOCK de ejemplo.
@@ -40,12 +35,7 @@ class ProfessorModel {
     String email = 'nmellado@uct.cl',
     bool active = true,
   }) {
-    return ProfessorModel(
-      id: id,
-      name: name,
-      email: email,
-      active: active,
-    );
+    return ProfessorModel(id: id, name: name, email: email, active: active);
   }
 
   /// Lista de profesores MOCK para poblar catálogos y filtros de búsqueda.

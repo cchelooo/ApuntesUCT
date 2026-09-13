@@ -1,10 +1,12 @@
-import { Link, Outlet } from 'react-router-dom'
+import { Link, Outlet } from 'react-router-dom';
 
 export function MainLayout() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <Link to="/" className="brand">ApuntesUCT</Link>
+        <Link to="/" className="brand">
+          ApuntesUCT
+        </Link>
         <nav>
           <Link to="/catalog">Catálogo</Link>
           <Link to="/search">Búsqueda</Link>
@@ -21,5 +23,5 @@ export function MainLayout() {
         <small>© 2026 ApuntesUCT</small>
       </footer>
     </div>
-  )
+  );
 }

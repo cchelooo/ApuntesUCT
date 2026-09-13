@@ -88,3 +88,6 @@ DerivedData/
 *.swp
 *.swo
 *~
+
+# Build info files
+*.tsbuildinfo
