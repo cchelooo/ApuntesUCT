@@ -5,21 +5,27 @@ import 'uct_palette.dart';
 /// Los dos temas de la aplicación, construidos sobre la paleta institucional.
 ///
 /// - **Claro** — dirección "Celeste claro": blanco y celeste, mucho aire,
-///   campos rellenos con esquinas redondeadas y subrayado azul, botón píldora.
-/// - **Oscuro** — dirección "Navy nocturno": el navy del sitio como superficie,
-///   campos elevados con borde, y el amarillo institucional en el botón, que
-///   pasa a ser lo único brillante de la pantalla.
+///   campos rellenos con esquinas redondeadas y acción principal azul.
+/// - **Oscuro** — dirección "Carbón UCT": superficies neutras casi negras,
+///   celeste para interacción y amarillo institucional para la acción principal.
 ///
 /// No son dos diseños distintos sino el mismo, expresado en dos brillos. Todo
 /// lo que cambia entre uno y otro vive acá: ninguna pantalla decide colores por
 /// su cuenta, y por eso agregar una pantalla nueva no obliga a repetir esta
 /// tabla.
 abstract final class AppTheme {
-  /// Radio de los campos de texto en modo claro.
-  static const double _radioCampoClaro = 12;
+  /// La geometría no cambia con el brillo: el tema sólo reemplaza colores.
+  static const double _radioControl = 12;
 
-  /// Radio de los campos de texto en modo oscuro.
-  static const double _radioCampoOscuro = 10;
+  static final OutlinedBorder _formaBoton = RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(_radioControl),
+  );
+
+  static InputBorder _bordeCampo(Color color, double grosor) =>
+      OutlineInputBorder(
+        borderRadius: BorderRadius.circular(_radioControl),
+        borderSide: BorderSide(color: color, width: grosor),
+      );
 
   /// Alto mínimo de los controles. Por debajo de 44 el dedo falla.
   static const double alturaControl = 54;
@@ -58,20 +64,26 @@ abstract final class AppTheme {
         seedColor: UctPalette.amarillo,
         brightness: Brightness.dark,
       ).copyWith(
-        // En oscuro el amarillo pasa a primario: es el color de marca y el único
-        // que sobrevive al navy sin perder fuerza.
+        // En oscuro el amarillo pasa a primario para que la acción principal
+        // conserve la marca sobre las superficies neutras.
         primary: UctPalette.amarillo,
-        onPrimary: UctPalette.navy,
+        onPrimary: UctPalette.fondoOscuro,
         secondary: UctPalette.celeste,
-        onSecondary: UctPalette.navy,
-        surface: UctPalette.navy,
-        onSurface: Colors.white,
+        onSecondary: UctPalette.fondoOscuro,
+        tertiary: UctPalette.azul,
+        onTertiary: Colors.white,
+        surface: UctPalette.fondoOscuro,
+        onSurface: UctPalette.textoPrincipalOscuro,
         onSurfaceVariant: UctPalette.textoSuaveOscuro,
-        surfaceContainerHighest: UctPalette.navyElevado,
-        outline: UctPalette.navyBorde,
-        outlineVariant: UctPalette.navyBorde,
+        surfaceContainerLowest: UctPalette.fondoOscuro,
+        surfaceContainerLow: UctPalette.superficieOscura,
+        surfaceContainer: UctPalette.superficieOscura,
+        surfaceContainerHigh: UctPalette.superficieElevadaOscura,
+        surfaceContainerHighest: UctPalette.superficieElevadaOscura,
+        outline: UctPalette.bordeOscuro,
+        outlineVariant: UctPalette.bordeOscuro,
         error: UctPalette.errorOscuro,
-        onError: UctPalette.navy,
+        onError: UctPalette.fondoOscuro,
         errorContainer: UctPalette.errorFondoOscuro,
         onErrorContainer: UctPalette.errorTextoOscuro,
       );
@@ -79,16 +91,10 @@ abstract final class AppTheme {
   /// Tema del modo claro.
   static ThemeData get claro => _construir(
     esquema: _esquemaClaro,
-    radioCampo: _radioCampoClaro,
-    // Píldora: la forma que distingue al modo claro.
-    formaBoton: const StadiumBorder(),
-    // Relleno + subrayado grueso, sin caja completa.
-    bordeCampo: (color, grosor) => UnderlineInputBorder(
-      borderRadius: BorderRadius.circular(_radioCampoClaro),
-      borderSide: BorderSide(color: color, width: grosor),
-    ),
+    formaBoton: _formaBoton,
+    bordeCampo: _bordeCampo,
     colorSubrayadoCampo: UctPalette.azul,
-    colorBordeCampoInactivo: UctPalette.azul,
+    colorBordeCampoInactivo: UctPalette.bordeClaro,
     // El amarillo institucional es ilegible sobre blanco (1,7:1), así que
     // en claro los enlaces van en azul. El amarillo se reserva para el
     // acento decorativo, donde no tiene que leerse.
@@ -98,24 +104,16 @@ abstract final class AppTheme {
   /// Tema del modo oscuro.
   static ThemeData get oscuro => _construir(
     esquema: _esquemaOscuro,
-    radioCampo: _radioCampoOscuro,
-    formaBoton: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(_radioCampoOscuro),
-    ),
-    // Caja completa: sobre el navy, un solo subrayado no delimita el campo.
-    bordeCampo: (color, grosor) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(_radioCampoOscuro),
-      borderSide: BorderSide(color: color, width: grosor),
-    ),
+    formaBoton: _formaBoton,
+    bordeCampo: _bordeCampo,
     colorSubrayadoCampo: UctPalette.celeste,
-    colorBordeCampoInactivo: UctPalette.navyBorde,
+    colorBordeCampoInactivo: UctPalette.bordeOscuro,
     colorEnlace: UctPalette.celeste,
   );
 
   /// Arma el tema completo a partir de lo que distingue a cada modo.
   static ThemeData _construir({
     required ColorScheme esquema,
-    required double radioCampo,
     required OutlinedBorder formaBoton,
     required InputBorder Function(Color color, double grosor) bordeCampo,
     required Color colorSubrayadoCampo,
@@ -183,14 +181,70 @@ abstract final class AppTheme {
         style: IconButton.styleFrom(foregroundColor: esquema.onSurfaceVariant),
       ),
 
+      dividerTheme: DividerThemeData(
+        color: esquema.outlineVariant,
+        thickness: 1,
+        space: 1,
+      ),
+
+      cardTheme: CardThemeData(
+        color: esquema.surfaceContainerLow,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: esquema.outlineVariant),
+        ),
+      ),
+
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: esquema.surfaceContainerHighest,
+        contentTextStyle: TextStyle(color: esquema.onSurface),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: esquema.surfaceContainerLow,
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: esquema.primary.withValues(alpha: 0.18),
+        labelTextStyle: WidgetStatePropertyAll(
+          TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+      ),
+
       textTheme: const TextTheme(
+        displaySmall: TextStyle(
+          fontSize: 36,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.8,
+          height: 1.1,
+        ),
         headlineMedium: TextStyle(
           fontSize: 32,
           fontWeight: FontWeight.w700,
           letterSpacing: -0.5,
           height: 1.12,
         ),
+        headlineSmall: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w700,
+          height: 1.2,
+        ),
+        titleLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+        titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        titleSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        bodyLarge: TextStyle(fontSize: 16, height: 1.5),
         bodyMedium: TextStyle(fontSize: 14, height: 1.5),
+        bodySmall: TextStyle(fontSize: 12, height: 1.4),
+        labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        labelSmall: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.5,
+        ),
       ).apply(bodyColor: esquema.onSurface, displayColor: esquema.onSurface),
     );
   }

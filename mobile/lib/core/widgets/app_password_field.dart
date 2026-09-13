@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../theme/uct_palette.dart';
 import 'app_text_field.dart';
 
 /// Campo de contraseña con alternador de visibilidad.
@@ -42,7 +41,6 @@ class _AppPasswordFieldState extends State<AppPasswordField> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final esOscuro = theme.brightness == Brightness.dark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -59,7 +57,7 @@ class _AppPasswordFieldState extends State<AppPasswordField> {
           onFieldSubmitted: widget.onFieldSubmitted,
           style: TextStyle(
             fontSize: widget.compact ? 14 : 15.5,
-            fontWeight: esOscuro ? FontWeight.w500 : FontWeight.w600,
+            fontWeight: FontWeight.w600,
           ),
           autovalidateMode: AutovalidateMode.onUserInteraction,
           decoration: InputDecoration(
@@ -67,7 +65,7 @@ class _AppPasswordFieldState extends State<AppPasswordField> {
             isDense: true,
             contentPadding: EdgeInsets.symmetric(
               horizontal: 14,
-              vertical: widget.compact ? 6 : (esOscuro ? 13 : 15),
+              vertical: widget.compact ? 6 : 15,
             ),
             suffixIcon: IconButton(
               onPressed: () => setState(() => _obscured = !_obscured),
@@ -75,9 +73,7 @@ class _AppPasswordFieldState extends State<AppPasswordField> {
                 _obscured
                     ? Icons.visibility_outlined
                     : Icons.visibility_off_outlined,
-                color: esOscuro
-                    ? UctPalette.textoCampoOscuro
-                    : UctPalette.textoCampoClaro,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
               tooltip: _obscured ? 'Mostrar contraseña' : 'Ocultar contraseña',
               padding: EdgeInsets.zero,

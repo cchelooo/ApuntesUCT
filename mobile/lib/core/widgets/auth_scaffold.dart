@@ -12,7 +12,7 @@ import '../theme/uct_palette.dart';
 /// no haya que replicarlo a mano.
 ///
 /// No decide colores: los toma del tema, así que el mismo código rinde la
-/// dirección "Celeste claro" en modo claro y "Navy nocturno" en modo oscuro.
+/// dirección "Celeste claro" en modo claro y "Carbón UCT" en modo oscuro.
 /// Lo único que consulta el brillo es el fondo decorativo, porque cada modo
 /// tiene una figura distinta.
 ///
@@ -67,6 +67,7 @@ class AuthScaffold extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final screenSize = MediaQuery.sizeOf(context);
+    final progresoOscuro = theme.brightness == Brightness.dark ? 1.0 : 0.0;
     final esHorizontal =
         screenSize.width > screenSize.height && screenSize.width >= 520;
 
@@ -86,8 +87,13 @@ class AuthScaffold extends StatelessWidget {
       body: Stack(
         children: [
           Positioned.fill(
-            child: CustomPaint(
-              painter: _AuthBackdropPainter(brightness: theme.brightness),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: progresoOscuro, end: progresoOscuro),
+              duration: const Duration(milliseconds: 420),
+              curve: Curves.easeInOutCubic,
+              builder: (context, progress, child) => CustomPaint(
+                painter: _AuthBackdropPainter(themeProgress: progress),
+              ),
             ),
           ),
           SafeArea(
@@ -107,10 +113,7 @@ class AuthScaffold extends StatelessWidget {
             Positioned(
               top: 4,
               right: 8,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: actions!,
-              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: actions!),
             ),
         ],
       ),
@@ -300,15 +303,11 @@ class _Header extends StatelessWidget {
         ? (isRegistration ? 24.0 : 28.0)
         : compact
         ? (isRegistration ? 27.0 : 30.0)
-        : esOscuro
-        ? (isRegistration ? 30.0 : 34.0)
         : (isRegistration ? 29.0 : 32.0);
     final titleGap = dense
         ? (isRegistration ? 6.0 : 10.0)
         : compact
         ? (isRegistration ? 12.0 : 20.0)
-        : esOscuro
-        ? (isRegistration ? 38.0 : 58.0)
         : (isRegistration ? 45.0 : 76.0);
 
     return Column(
@@ -323,12 +322,12 @@ class _Header extends StatelessWidget {
                 // En oscuro la marca va en amarillo, que es el color primario de
                 // la identidad; en claro, en azul, para no gritar sobre blanco.
                 color: esOscuro ? UctPalette.amarillo : UctPalette.azul,
-                borderRadius: BorderRadius.circular(esOscuro ? 8 : 11),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 Icons.menu_book_rounded,
                 size: dense ? 17 : 19,
-                color: esOscuro ? UctPalette.navy : Colors.white,
+                color: colorScheme.onPrimary,
               ),
             ),
             const SizedBox(width: 10),
@@ -354,14 +353,10 @@ class _Header extends StatelessWidget {
         Container(
           width: 46,
           height: 4,
-          margin: EdgeInsets.only(
-            top: esOscuro ? (dense ? 5 : (compact ? 7 : 13)) : 0,
-          ),
+          margin: EdgeInsets.only(top: dense ? 5 : (compact ? 7 : 10)),
           color: UctPalette.amarillo,
         ),
-        if (!esOscuro && isRegistration) SizedBox(height: dense ? 4 : 8),
-        if (!esOscuro && !isRegistration) SizedBox(height: dense ? 6 : 10),
-        if (esOscuro) SizedBox(height: dense ? 5 : (compact ? 7 : 13)),
+        SizedBox(height: dense ? 5 : (compact ? 7 : 10)),
         Text(
           subtitle,
           style: theme.textTheme.bodyMedium?.copyWith(
@@ -377,75 +372,40 @@ class _Header extends StatelessWidget {
 
 /// Fondo decorativo de las pantallas de acceso.
 ///
-/// Cada modo tiene su figura, y son las de las maquetas aprobadas:
-/// - **oscuro**: dos círculos arriba a la derecha, uno lleno y otro apenas
-///   dibujado en amarillo, que insinúan profundidad sobre el navy;
-/// - **claro**: una banda celeste con el borde inferior curvo, un círculo de
-///   apoyo y un punto amarillo suelto.
+/// Ambos modos comparten exactamente la misma banda curva. El pequeño acento se
+/// desplaza por ella desde el sol amarillo de la izquierda hasta la luna blanca
+/// de la derecha. El formulario y el resto de la composición permanecen fijos.
 ///
 /// Las coordenadas están tomadas de la maqueta, que mide 390 px de ancho, y se
 /// escalan al ancho real: así la figura conserva su proporción en cualquier
 /// teléfono en vez de quedar descentrada.
 class _AuthBackdropPainter extends CustomPainter {
-  const _AuthBackdropPainter({required this.brightness});
+  const _AuthBackdropPainter({required this.themeProgress});
 
-  final Brightness brightness;
+  /// `0` representa el modo claro y `1` el oscuro.
+  final double themeProgress;
 
   /// Ancho de referencia de la maqueta.
   static const double _anchoMaqueta = 390;
 
+  /// Separa visualmente la curva del título sin alterar el layout del formulario.
+  static const double _elevacionCurva = 16;
+
   @override
   void paint(Canvas canvas, Size size) {
     if (size.width > size.height) {
-      if (brightness == Brightness.dark) {
-        _pintarOscuroHorizontal(canvas, size);
-      } else {
-        _pintarClaroHorizontal(canvas, size);
-      }
+      _pintarHorizontal(canvas, size);
       return;
     }
 
     final k = size.width / _anchoMaqueta;
-    if (brightness == Brightness.dark) {
-      _pintarOscuro(canvas, k);
-    } else {
-      _pintarClaro(canvas, k);
-    }
+    _pintarVertical(canvas, k);
   }
 
-  void _pintarOscuro(Canvas canvas, double k) {
-    canvas.drawCircle(
-      Offset(330 * k, 40 * k),
-      130 * k,
-      Paint()..color = UctPalette.navyElevado,
-    );
-    canvas.drawCircle(
-      Offset(319 * k, 61 * k),
-      37 * k,
-      Paint()
-        ..color = UctPalette.amarillo.withValues(alpha: 0.45)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2 * k,
-    );
-  }
+  void _pintarVertical(Canvas canvas, double k) {
+    canvas.save();
+    canvas.translate(0, -_elevacionCurva * k);
 
-  void _pintarOscuroHorizontal(Canvas canvas, Size size) {
-    canvas.drawCircle(
-      Offset(size.width - 60, 40),
-      130,
-      Paint()..color = UctPalette.navyElevado,
-    );
-    canvas.drawCircle(
-      Offset(size.width - 71, 61),
-      37,
-      Paint()
-        ..color = UctPalette.amarillo.withValues(alpha: 0.45)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    );
-  }
-
-  void _pintarClaro(Canvas canvas, double k) {
     final banda = Path()
       ..moveTo(0, 0)
       ..lineTo(390 * k, 0)
@@ -454,20 +414,29 @@ class _AuthBackdropPainter extends CustomPainter {
       ..cubicTo(86 * k, 190 * k, 44 * k, 196 * k, 0, 214 * k)
       ..close();
 
-    canvas.drawPath(banda, Paint()..color = UctPalette.celesteClaro);
-    canvas.drawCircle(
-      Offset(336 * k, 60 * k),
-      52 * k,
-      Paint()..color = UctPalette.celesteTinte,
+    canvas.drawPath(
+      banda,
+      Paint()
+        ..color = Color.lerp(
+          UctPalette.celesteClaro,
+          UctPalette.superficieOscura,
+          themeProgress,
+        )!,
     );
-    canvas.drawCircle(
-      Offset(66 * k, 196 * k),
-      9 * k,
-      Paint()..color = UctPalette.amarillo,
+    _pintarAcento(
+      canvas,
+      claro: Offset(66 * k, 196 * k),
+      oscuro: Offset(324 * k, 214 * k),
+      escala: k,
     );
+
+    canvas.restore();
   }
 
-  void _pintarClaroHorizontal(Canvas canvas, Size size) {
+  void _pintarHorizontal(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.translate(0, -_elevacionCurva);
+
     final k = size.width / _anchoMaqueta;
     final banda = Path()
       ..moveTo(0, 0)
@@ -477,20 +446,71 @@ class _AuthBackdropPainter extends CustomPainter {
       ..cubicTo(86 * k, 190, 44 * k, 196, 0, 214)
       ..close();
 
-    canvas.drawPath(banda, Paint()..color = UctPalette.celesteClaro);
-    canvas.drawCircle(
-      Offset(size.width - 54, 60),
-      52,
-      Paint()..color = UctPalette.celesteTinte,
+    canvas.drawPath(
+      banda,
+      Paint()
+        ..color = Color.lerp(
+          UctPalette.celesteClaro,
+          UctPalette.superficieOscura,
+          themeProgress,
+        )!,
     );
-    canvas.drawCircle(
-      Offset(66 * k, 196),
-      9,
-      Paint()..color = UctPalette.amarillo,
+    _pintarAcento(
+      canvas,
+      claro: Offset(66 * k, 196),
+      oscuro: Offset(size.width - 66, 210),
+      escala: 1,
     );
+
+    canvas.restore();
+  }
+
+  void _pintarAcento(
+    Canvas canvas, {
+    required Offset claro,
+    required Offset oscuro,
+    required double escala,
+  }) {
+    final puntoMedio = Offset.lerp(claro, oscuro, 0.5)!;
+    final control = puntoMedio + Offset(0, 35 * escala);
+    final centro = _puntoCuadratico(claro, control, oscuro, themeProgress);
+    final radio = 10 * escala;
+    final desplazamientoCorte = Offset.lerp(
+      Offset(20 * escala, -20 * escala),
+      Offset(5 * escala, -3 * escala),
+      themeProgress,
+    )!;
+
+    final disco = Path()
+      ..addOval(Rect.fromCircle(center: centro, radius: radio));
+    final corte = Path()
+      ..addOval(
+        Rect.fromCircle(
+          center: centro + desplazamientoCorte,
+          radius: 8.2 * escala,
+        ),
+      );
+    final solLuna = Path.combine(PathOperation.difference, disco, corte);
+
+    canvas.drawPath(
+      solLuna,
+      Paint()
+        ..color = Color.lerp(
+          UctPalette.amarillo,
+          UctPalette.textoPrincipalOscuro,
+          themeProgress,
+        )!,
+    );
+  }
+
+  Offset _puntoCuadratico(Offset inicio, Offset control, Offset fin, double t) {
+    final inverso = 1 - t;
+    return (inicio * (inverso * inverso)) +
+        (control * (2 * inverso * t)) +
+        (fin * (t * t));
   }
 
   @override
   bool shouldRepaint(_AuthBackdropPainter oldDelegate) =>
-      oldDelegate.brightness != brightness;
+      oldDelegate.themeProgress != themeProgress;
 }

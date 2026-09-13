@@ -18,7 +18,17 @@ void main() {
     expect(find.text('Correo institucional'), findsOneWidget);
     expect(find.byType(TextFormField), findsNWidgets(2));
 
+    final titleRect = tester.getRect(find.text('Iniciar sesión'));
+    final buttonRect = tester.getRect(find.byType(FilledButton));
+
     await tester.tap(find.byTooltip('Cambiar a modo oscuro'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 210));
+
+    // Sólo se anima el acento del fondo; el formulario no debe desplazarse.
+    expect(tester.getRect(find.text('Iniciar sesión')), titleRect);
+    expect(tester.getRect(find.byType(FilledButton)), buttonRect);
+
     await tester.pumpAndSettle();
     expect(find.text('Iniciar sesión'), findsOneWidget);
 
@@ -27,7 +37,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Crear cuenta'), findsNWidgets(2));
-    expect(find.text('REPETIR CONTRASEÑA'), findsOneWidget);
+    expect(find.text('Repetir contraseña'), findsOneWidget);
     expect(find.byType(TextFormField), findsNWidgets(4));
 
     await tester.binding.setSurfaceSize(const Size(844, 390));

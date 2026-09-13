@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 
 /// Paleta institucional de la Universidad Católica de Temuco.
 ///
-/// Los valores no son una interpretación: se tomaron de los sitios oficiales.
-/// El amarillo y el azul salen del muestreo de píxeles del logo y de las
-/// variables CSS de `www.uct.cl`; el azul oscuro es el dominante en
-/// `estudiantes.uct.cl`.
+/// El amarillo, el azul y el celeste se tomaron del logo y de las variables CSS
+/// de los sitios oficiales. Los grises son tokens propios de ApuntesUCT: crean
+/// un modo oscuro neutro sin convertir el navy institucional en fondo dominante.
 ///
 /// Detalle que conviene tener presente: en la identidad de la UCT **el amarillo
 /// es el color primario, no un acento** (`--primary` del sitio). Por eso en modo
@@ -35,14 +34,22 @@ abstract final class UctPalette {
   /// Celeste claro con un punto más de saturación.
   static const Color celesteTinte = Color(0xFFD2E9F7);
 
-  /// Navy. Fondo dominante de uct.cl y superficie del modo oscuro.
+  /// Azul profundo de apoyo para titulares y contrastes de marca.
   static const Color navy = Color(0xFF0F1D34);
 
-  /// Navy elevado: relleno de campos y decoración en modo oscuro.
-  static const Color navyElevado = Color(0xFF16294A);
+  // --- Superficies oscuras -------------------------------------------------
 
-  /// Borde de los campos en modo oscuro.
-  static const Color navyBorde = Color(0xFF2A4570);
+  /// Carbón casi negro. Fondo principal del modo oscuro.
+  static const Color fondoOscuro = Color(0xFF0E1114);
+
+  /// Grafito para tarjetas, barras y superficies contenidas.
+  static const Color superficieOscura = Color(0xFF15191D);
+
+  /// Grafito elevado para campos, diálogos y decoración.
+  static const Color superficieElevadaOscura = Color(0xFF1D2329);
+
+  /// Borde neutro para separar controles sin teñir toda la pantalla de azul.
+  static const Color bordeOscuro = Color(0xFF343B43);
 
   /// Humo azulado. Relleno de los campos en modo claro.
   static const Color humo = Color(0xFFF3F7FA);
@@ -54,14 +61,17 @@ abstract final class UctPalette {
   static const Color textoSuaveClaro = Color(0xFF5B7089);
 
   /// Texto secundario en modo oscuro.
-  static const Color textoSuaveOscuro = Color(0xFF9DB3CC);
+  static const Color textoSuaveOscuro = Color(0xFFB4BEC8);
+
+  /// Blanco suave para texto principal e iconografía en modo oscuro.
+  static const Color textoPrincipalOscuro = Color(0xFFF4F7FA);
 
   /// Etiquetas y texto terciario en modo oscuro.
-  static const Color textoTenueOscuro = Color(0xFF7E97B5);
+  static const Color textoTenueOscuro = Color(0xFF89949F);
 
   /// Texto secundario que acompaña al dominio y al icono de contraseña.
   static const Color textoCampoClaro = Color(0xFF8CA3B8);
-  static const Color textoCampoOscuro = Color(0xFF6B86A6);
+  static const Color textoCampoOscuro = Color(0xFF89949F);
 
   // --- Errores -------------------------------------------------------------
 
@@ -77,7 +87,7 @@ abstract final class UctPalette {
   /// Texto del banner de error en modo claro.
   static const Color errorTextoClaro = Color(0xFF9B1C1C);
 
-  /// Rojo de error en modo oscuro, aclarado para que contraste con el navy.
+  /// Rojo de error en modo oscuro, aclarado para que contraste con el carbón.
   static const Color errorOscuro = Color(0xFFFF9A9A);
 
   /// Fondo del banner de error en modo oscuro.

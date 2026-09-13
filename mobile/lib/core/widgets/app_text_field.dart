@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../theme/uct_palette.dart';
-
 /// Etiqueta externa de los campos de autenticación.
 ///
 /// La maqueta usa etiquetas sobre el control, no el label flotante por defecto
-/// de Material. También cambia a mayúsculas y aumenta el espaciado en Navy para
-/// conservar la jerarquía visual de esa variante.
+/// de Material. Su tamaño y capitalización son iguales en ambos temas para que
+/// alternar el brillo no cambie la composición del formulario.
 class AppFieldLabel extends StatelessWidget {
   const AppFieldLabel({required this.label, this.compact = false, super.key});
 
@@ -16,17 +14,14 @@ class AppFieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final esOscuro = theme.brightness == Brightness.dark;
 
     return Text(
-      esOscuro ? label.toUpperCase() : label,
+      label,
       style: TextStyle(
-        color: esOscuro
-            ? UctPalette.textoTenueOscuro
-            : theme.colorScheme.onSurfaceVariant,
-        fontSize: esOscuro ? (compact ? 10.5 : 11) : (compact ? 11.5 : 12.5),
+        color: theme.colorScheme.onSurfaceVariant,
+        fontSize: compact ? 11.5 : 12.5,
         fontWeight: FontWeight.w600,
-        letterSpacing: esOscuro ? 1.1 : 0,
+        letterSpacing: 0,
         height: compact ? 1.15 : null,
       ),
     );
@@ -73,9 +68,6 @@ class AppTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final esOscuro = theme.brightness == Brightness.dark;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -93,7 +85,7 @@ class AppTextField extends StatelessWidget {
           onFieldSubmitted: onFieldSubmitted,
           style: TextStyle(
             fontSize: compact ? 14 : 15.5,
-            fontWeight: esOscuro ? FontWeight.w500 : FontWeight.w600,
+            fontWeight: FontWeight.w600,
           ),
           // El error aparece al primer intento de envío y luego se corrige en
           // vivo, en lugar de regañar al usuario mientras todavía está
@@ -105,7 +97,7 @@ class AppTextField extends StatelessWidget {
             isDense: true,
             contentPadding: EdgeInsets.symmetric(
               horizontal: 14,
-              vertical: compact ? 6 : (esOscuro ? 13 : 15),
+              vertical: compact ? 6 : 15,
             ),
           ),
         ),
