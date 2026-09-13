@@ -25,12 +25,7 @@ class SubjectModel {
 
   /// Serializa el modelo a un mapa JSON.
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'code': code,
-      'name': name,
-      'description': description,
-    };
+    return {'id': id, 'code': code, 'name': name, 'description': description};
   }
 
   /// Factory para generar una instancia MOCK de ejemplo.
@@ -38,8 +33,7 @@ class SubjectModel {
     String id = 'subj-integra-iv-uuid',
     String code = 'INF-4101',
     String name = 'Integración de Sistemas IV',
-    String? description =
-        'Taller integrador de arquitectura de microservicios y desarrollo móvil.',
+    String? description = 'Taller integrador de arquitectura de microservicios y desarrollo móvil.',
   }) {
     return SubjectModel(
       id: id,
@@ -56,14 +50,14 @@ class SubjectModel {
         id: 'subj-integra-iv-uuid',
         code: 'INF-4101',
         name: 'Integración de Sistemas IV',
-        description:
-            'Taller integrador de arquitectura de microservicios y desarrollo móvil.',
+        description: 'Taller integrador de arquitectura de microservicios y desarrollo móvil.',
       ),
       SubjectModel.mock(
         id: 'subj-eda-uuid',
         code: 'INF-2101',
         name: 'Estructuras de Datos y Algoritmos',
-        description: 'Árboles, grafos, análisis asintótico y algoritmos clásicos.',
+        description:
+            'Árboles, grafos, análisis asintótico y algoritmos clásicos.',
       ),
       SubjectModel.mock(
         id: 'subj-bd-uuid',
@@ -75,7 +69,8 @@ class SubjectModel {
         id: 'subj-arq-uuid',
         code: 'INF-3103',
         name: 'Arquitectura de Software',
-        description: 'Patrones de diseño, microservicios, DDD y sistemas distribuidos.',
+        description:
+            'Patrones de diseño, microservicios, DDD y sistemas distribuidos.',
       ),
     ];
   }

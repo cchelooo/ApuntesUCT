@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../theme/uct_palette.dart';
 import '../validation/validators.dart';
 import 'app_text_field.dart';
 
@@ -84,7 +83,6 @@ class _InstitutionalEmailFieldState extends State<InstitutionalEmailField> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final esOscuro = theme.brightness == Brightness.dark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -103,7 +101,7 @@ class _InstitutionalEmailFieldState extends State<InstitutionalEmailField> {
           inputFormatters: [_LocalPartInputFormatter()],
           style: TextStyle(
             fontSize: widget.compact ? 14 : 15.5,
-            fontWeight: esOscuro ? FontWeight.w500 : FontWeight.w600,
+            fontWeight: FontWeight.w600,
           ),
           validator: (value) {
             final error = Validators.emailLocalPart(value);
@@ -121,14 +119,12 @@ class _InstitutionalEmailFieldState extends State<InstitutionalEmailField> {
             isDense: true,
             contentPadding: EdgeInsets.symmetric(
               horizontal: 14,
-              vertical: widget.compact ? 6 : (esOscuro ? 13 : 15),
+              vertical: widget.compact ? 6 : 15,
             ),
             suffix: Text(
               '@$_domain',
               style: TextStyle(
-                color: esOscuro
-                    ? UctPalette.textoCampoOscuro
-                    : UctPalette.textoCampoClaro,
+                color: theme.colorScheme.onSurfaceVariant,
                 fontSize: widget.compact ? 14 : 15.5,
                 fontWeight: FontWeight.w600,
               ),

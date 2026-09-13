@@ -57,6 +57,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authStateProvider);
     final colorScheme = Theme.of(context).colorScheme;
     final esOscuro = Theme.of(context).brightness == Brightness.dark;
+    final colorEnlace = esOscuro ? colorScheme.secondary : colorScheme.primary;
     final esAlturaCorta = MediaQuery.sizeOf(context).height < 700;
 
     // La navegación va en listen y no en build: build puede ejecutarse muchas
@@ -93,19 +94,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               padding: const EdgeInsets.only(left: 5),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              foregroundColor: esOscuro
-                  ? colorScheme.secondary
-                  : colorScheme.primary,
+              foregroundColor: colorEnlace,
             ),
             onPressed: isLoading ? null : () => context.go('/register'),
             child: Text(
               'Regístrate',
               style: TextStyle(
                 fontWeight: FontWeight.w700,
-                decoration: esOscuro
-                    ? TextDecoration.none
-                    : TextDecoration.underline,
-                decorationColor: colorScheme.secondary,
+                decoration: TextDecoration.underline,
+                decorationColor: colorEnlace,
                 decorationThickness: 2,
               ),
             ),

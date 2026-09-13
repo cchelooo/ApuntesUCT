@@ -32,5 +32,6 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
 }
 
 /// Provider global del modo de tema.
-final themeModeProvider =
-    NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);
+final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(
+  ThemeModeNotifier.new,
+);

@@ -22,11 +22,7 @@ class UniversityModel {
 
   /// Serializa el modelo a un mapa JSON.
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'code': code,
-    };
+    return {'id': id, 'name': name, 'code': code};
   }
 
   /// Factory para generar una instancia MOCK para prototipado rápido.
@@ -35,11 +31,7 @@ class UniversityModel {
     String name = 'Universidad Católica de Temuco',
     String code = 'UCT',
   }) {
-    return UniversityModel(
-      id: id,
-      name: name,
-      code: code,
-    );
+    return UniversityModel(id: id, name: name, code: code);
   }
 
   /// Lista de universidades MOCK para pruebas de UI y dropdowns/selectores.
@@ -64,11 +56,7 @@ class UniversityModel {
   }
 
   /// Permite crear una copia del modelo con ciertos campos modificados.
-  UniversityModel copyWith({
-    String? id,
-    String? name,
-    String? code,
-  }) {
+  UniversityModel copyWith({String? id, String? name, String? code}) {
     return UniversityModel(
       id: id ?? this.id,
       name: name ?? this.name,
