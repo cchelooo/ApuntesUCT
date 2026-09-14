@@ -14,14 +14,8 @@ export class PrismaService
   private readonly logger = new Logger(PrismaService.name);
 
   async onModuleInit(): Promise<void> {
-    try {
-      await this.$connect();
-      this.logger.log('Conexión a PostgreSQL establecida');
-    } catch (error) {
-      this.logger.warn(
-        `No se pudo conectar a PostgreSQL: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
+    await this.$connect();
+    this.logger.log('Conexión a PostgreSQL establecida');
   }
 
   async onModuleDestroy(): Promise<void> {
