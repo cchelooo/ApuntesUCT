@@ -1,5 +1,5 @@
 import type { Subject } from '../../../domain/catalog/subject';
- 
+
 const TAB_COLORS = ['#7A1F2B', '#2F5C55', '#9C6B12', '#5B3A5C'];
 function colorForCareer(career: string): string {
   let hash = 0;
@@ -8,14 +8,14 @@ function colorForCareer(career: string): string {
   }
   return TAB_COLORS[Math.abs(hash) % TAB_COLORS.length];
 }
- 
+
 interface CatalogCardProps {
   subject: Subject;
 }
- 
+
 export function CatalogCard({ subject }: CatalogCardProps) {
   const tabColor = colorForCareer(subject.careerName);
- 
+
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-sm border border-catalog-line bg-catalog-paper shadow-[2px_2px_0_0_rgba(27,36,48,0.12)] transition-transform duration-200 ease-out hover:-translate-y-0.5 hover:-rotate-1">
       <div
@@ -24,12 +24,12 @@ export function CatalogCard({ subject }: CatalogCardProps) {
       >
         {subject.code}
       </div>
- 
+
       <div className="flex flex-1 flex-col gap-3 px-4 py-4">
         <h3 className="line-clamp-2 font-display text-lg leading-snug text-catalog-ink">
           {subject.name}
         </h3>
- 
+
         <div className="flex items-center gap-2 text-sm text-catalog-ink/70">
           <span
             className="h-2 w-2 shrink-0 rounded-full"
@@ -38,10 +38,12 @@ export function CatalogCard({ subject }: CatalogCardProps) {
           />
           <span className="line-clamp-1">{subject.careerName}</span>
         </div>
- 
-        <div className="text-sm text-catalog-ink/60">Semestre {subject.semester}</div>
+
+        <div className="text-sm text-catalog-ink/60">
+          Semestre {subject.semester}
+        </div>
       </div>
- 
+
       <div className="flex items-center justify-between border-t border-catalog-line/70 px-4 py-3 text-sm text-catalog-ink/80">
         <span className="line-clamp-1">{subject.professorName}</span>
         <span className="flex shrink-0 items-center gap-1 font-medium">
