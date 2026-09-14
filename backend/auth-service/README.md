@@ -59,6 +59,58 @@ se ejecuta dentro de la red de Compose, el host es `db-auth`.
 proveedores de NestJS. Al iniciar, el servicio conecta con PostgreSQL; si la
 conexión falla, el inicio falla. Al recibir SIGTERM o SIGINT, cierra la conexión.
 
+## Modelo de usuarios (#51)
+
+El modelo `User` de `prisma/schema.prisma` corresponde a `Auth_User` del MER
+y se almacena en la tabla `users`. Los campos `id`, `email`, `passwordHash`,
+`role` y `createdAt` representan los cinco atributos del MER. Se conservan
+`name`, `active`, `updatedAt` y la relación con `RefreshToken` como extensiones
+para la gestión de cuentas. `Role` restringe el atributo textual del MER a los
+tres valores definidos por el dominio.
+
+La migración inicial `20260907000000_init` crea las tablas con identificadores
+de texto. El esquema de la tarea #51 define `users.id` y
+`refresh_tokens.user_id` como UUID nativo de PostgreSQL. Generar y probar la
+migración de esa conversión corresponde a la tarea #52; hasta aplicarla, la
+base creada con la migración inicial no refleja todavía este cambio de tipo.
+
+| Campo Prisma | Tipo | Restricciones y propósito |
+| --- | --- | --- |
+| `id` | `String` / PostgreSQL `uuid` | Clave primaria; Prisma genera un UUID al crear el usuario. |
+| `name` | `String` | Nombre obligatorio. |
+| `email` | `String` | Correo obligatorio y único. |
+| `passwordHash` | `String` | Hash obligatorio de la contraseña; columna `password_hash`. |
+| `role` | `Role` | `STUDENT`, `PROFESSOR` o `ADMIN`; por defecto `STUDENT`. |
+| `active` | `Boolean` | Estado de la cuenta; por defecto `true`. |
+| `createdAt` | `DateTime` | Fecha de creación; por defecto la fecha actual; columna `created_at`. |
+| `updatedAt` | `DateTime` | Prisma actualiza la fecha al modificar el registro; columna `updated_at`. |
+| `refreshTokens` | `RefreshToken[]` | Relación de uno a muchos con los tokens de renovación de sesión. |
+
+Cada `RefreshToken` pertenece a un usuario mediante `userId`. Al eliminar
+físicamente un usuario, sus tokens se eliminan en cascada. Cambiar `active` a
+`false` conserva el usuario y sus tokens; el flujo de autenticación debe comprobar
+ese estado para impedir el acceso de cuentas desactivadas.
+
+Las referencias a usuarios desde Material y Quality son referencias lógicas
+(`Soft FK` en el MER). No se crean relaciones Prisma ni claves foráneas entre
+las bases de datos de esos microservicios.
+
+La entidad de dominio `src/domain/auth/user.entity.ts` representa los mismos
+campos escalares y utiliza los roles de `src/domain/auth/role.enum.ts`.
+
+### Reglas para implementar el registro
+
+El esquema define la persistencia. El caso de uso de registro debe normalizar el
+correo (quitar espacios exteriores y convertir a minúsculas) antes de guardarlo
+o buscarlo, validar los dominios institucionales `@uct.cl` y `@alu.uct.cl`
+según RF-01, y generar el hash de la contraseña antes de persistirla. El índice
+único de `email` no normaliza mayúsculas por sí mismo. El registro público debe
+asignar `STUDENT`; los roles privilegiados requieren un flujo autorizado.
+Las respuestas de la API deben omitir `passwordHash`.
+
+Estas validaciones y los endpoints de autenticación todavía no están
+implementados; no las realiza el modelo de Prisma.
+
 ## Ejecutar
 
 ```bash
