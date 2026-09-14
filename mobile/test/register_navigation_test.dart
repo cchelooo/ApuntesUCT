@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart';
 import 'package:apuntesuct_mobile/main.dart';
+import 'package:apuntesuct_mobile/screens/home_screen.dart';
 
 void main() {
   testWidgets('registro exitoso con sesión navega al Home', (
@@ -42,9 +43,10 @@ void main() {
     await tester.tap(find.text('Crear cuenta').last);
     await tester.pumpAndSettle();
 
-    // Con sesión abierta, la app navega al Home y muestra el estado.
-    expect(find.text('Estado de autenticación:'), findsOneWidget);
-    expect(find.text('Autenticado'), findsOneWidget);
+    // Con sesión abierta, la app navega al Home real.
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.text('Inicio'), findsNWidgets(2)); // Encabezado y tab de navegación
+    expect(find.text('Tus cursos'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
