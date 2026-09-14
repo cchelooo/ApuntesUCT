@@ -55,9 +55,9 @@ export const Input = ({
         id={inputId}
         disabled={disabled}
         className={`${baseInputClass} ${stateClass} ${disabledClass} ${className}`.trim()}
-        aria-invalid={Boolean(error)}
         aria-describedby={combinedDescribedBy}
         {...props}
+        aria-invalid={error ? true : props['aria-invalid']}
       />
       {(error || helperText) && (
         <p
