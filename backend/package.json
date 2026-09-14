@@ -8,8 +8,9 @@
     "./catalog-service"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
+    "prisma:generate": "npm run prisma:generate --workspaces --if-present",
+    "build": "npm run prisma:generate && npm run build --workspaces --if-present",
+    "test": "npm run prisma:generate && npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "lint:fix": "npm run lint:fix --workspaces --if-present",
     "lint:gateway": "npm run lint --workspace=api-gateway",
