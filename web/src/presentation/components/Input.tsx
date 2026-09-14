@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import type { InputHTMLAttributes, ReactNode } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -5,6 +6,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: string;
   helperText?: ReactNode;
   fullWidth?: boolean;
+  containerClassName?: string;
 }
 
 export const Input = ({
@@ -13,12 +15,16 @@ export const Input = ({
   helperText,
   fullWidth = true,
   className = '',
+  containerClassName = '',
   disabled = false,
   id,
+  'aria-describedby': ariaDescribedBy,
   ...props
 }: InputProps) => {
-  const inputId =
-    id || (label ? label.replace(/\s+/g, '-').toLowerCase() : undefined);
+  const defaultId = useId();
+  const inputId = id || defaultId;
+  const descriptionId =
+    error || helperText ? `${inputId}-description` : undefined;
 
   const containerWidthClass = fullWidth ? 'w-full' : 'w-auto';
 
@@ -33,9 +39,12 @@ export const Input = ({
     ? 'bg-gray-100 opacity-75 cursor-not-allowed'
     : 'bg-white';
 
+  const combinedDescribedBy =
+    [ariaDescribedBy, descriptionId].filter(Boolean).join(' ') || undefined;
+
   return (
     <div
-      className={`flex flex-col gap-1.5 ${containerWidthClass} ${className}`}
+      className={`flex flex-col gap-1.5 ${containerWidthClass} ${containerClassName}`.trim()}
     >
       {label && (
         <label htmlFor={inputId} className="text-sm font-medium text-gray-700">
@@ -45,11 +54,16 @@ export const Input = ({
       <input
         id={inputId}
         disabled={disabled}
-        className={`${baseInputClass} ${stateClass} ${disabledClass}`}
+        className={`${baseInputClass} ${stateClass} ${disabledClass} ${className}`.trim()}
+        aria-invalid={Boolean(error)}
+        aria-describedby={combinedDescribedBy}
         {...props}
       />
       {(error || helperText) && (
-        <p className={`text-xs ${error ? 'text-red-500' : 'text-gray-500'}`}>
+        <p
+          id={descriptionId}
+          className={`text-xs ${error ? 'text-red-500' : 'text-gray-500'}`}
+        >
           {error || helperText}
         </p>
       )}
