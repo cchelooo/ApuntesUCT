@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import '../../../../core/widgets/widgets.dart';
 import '../widgets/material_card.dart';
 
 class CatalogScreen extends StatefulWidget {
@@ -12,7 +12,6 @@ class CatalogScreen extends StatefulWidget {
 class _CatalogScreenState extends State<CatalogScreen> {
   final TextEditingController _searchController = TextEditingController();
 
-  // Lista mock de materiales para la maqueta inicial
   final List<Map<String, String>> _allMaterials = [
     {
       'title': 'Cálculo Diferencial e Integral',
@@ -44,7 +43,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final query = _searchController.text.toLowerCase();
+    final query = _searchController.text.toLowerCase().trim();
     final filteredMaterials = _allMaterials.where((item) {
       final title = item['title']!.toLowerCase();
       final author = item['author']!.toLowerCase();
@@ -82,18 +81,23 @@ class _CatalogScreenState extends State<CatalogScreen> {
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              itemCount: filteredMaterials.length,
-              itemBuilder: (context, index) {
-                final item = filteredMaterials[index];
-                return MaterialCard(
-                  title: item['title']!,
-                  author: item['author']!,
-                  subject: item['subject']!,
-                  onTap: () {},
-                );
-              },
-            ),
+            child: filteredMaterials.isEmpty
+                ? const EmptyState(
+                    title: 'No se encontraron materiales',
+                    subtitle: 'Prueba buscando con otro término o revisa la ortografía.',
+                  )
+                : ListView.builder(
+                    itemCount: filteredMaterials.length,
+                    itemBuilder: (context, index) {
+                      final item = filteredMaterials[index];
+                      return MaterialCard(
+                        title: item['title']!,
+                        author: item['author']!,
+                        subject: item['subject']!,
+                        onTap: () {},
+                      );
+                    },
+                  ),
           ),
         ],
       ),
