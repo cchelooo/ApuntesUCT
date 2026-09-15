@@ -8,18 +8,19 @@ Tecnologías: Node.js, TypeScript, NestJS, Prisma, PostgreSQL, MinIO.
 
 | Servicio | Puerto HTTP | URL local | Estado |
 |---|---|---|---|
-| api-gateway | 3000 | `http://localhost:3000` | Scaffold (en desarrollo) |
+| api-gateway | 3000 | `http://localhost:3000` | Implementado |
 | auth-service | 3001 | `http://localhost:3001` | Implementado |
-| catalog-service | 3002 | `http://localhost:3002` | Cascarón (PR #139) |
+| catalog-service | 3002 (*) | `http://localhost:3002` | Implementado (PR #139 integrado en main) |
 | material-service | 3003 | `http://localhost:3003` | Pendiente (placeholder) |
 | quality-service | 3004 | `http://localhost:3004` | Pendiente (placeholder) |
 | search-service | 3005 | `http://localhost:3005` | Pendiente (placeholder) |
 
+(*) El catálogo, tal como está en main, no levanta en 3002 por sí solo: `src/main.ts` usa el puerto `3000` por defecto (`process.env.PORT ?? 3000`) y su `.env.example` define `PORT=3001`. Ambos valores colisionan con api-gateway (3000) y auth-service (3001), por lo que hay que ejecutarlo con `PORT=3002` para correrlo en paralelo con los demás servicios.
+
 Notas:
-- Los servicios aplican el prefijo global `api/v1`. El único endpoint implementado hoy es `GET /api/v1/health` de auth-service.
-- El api-gateway usa por defecto el puerto `3000` (`process.env.PORT || 3000`).
-- Swagger del auth-service: `http://localhost:3001/api/docs`.
-- El cascarón del catalog-service (rama `feature/21-cascaron-catalog-service`, PR #139) usa provisionalmente el puerto 3001; al integrarse debe pasarse a **3002** para no colisionar con auth-service.
+- Los servicios implementados aplican el prefijo global `api/v1` y cada uno expone su healthcheck `GET /api/v1/health` (api-gateway, auth-service y catalog-service).
+- El api-gateway usa por defecto el puerto `3000` (`process.env.PORT || 3000`) y enruta las peticiones `api/v1` hacia los servicios.
+- Documentación Swagger por servicio: `http://localhost:<puerto>/api/docs` (api-gateway, auth-service y catalog-service).
 
 ## Puertos de bases de datos (docker-compose.yml)
 
@@ -49,7 +50,17 @@ Detener las dependencias:
 docker compose down
 ```
 
-Auth service (único implementado):
+Servicios implementados (los tres están en main):
+
+API Gateway:
+
+```bash
+cd backend/api-gateway
+npm install
+npm run start:dev
+```
+
+Auth Service:
 
 ```bash
 cd backend/auth-service
@@ -58,4 +69,20 @@ npm run prisma:generate
 npm run start:dev
 ```
 
-La API queda en `http://localhost:3001` y la documentación Swagger en `http://localhost:3001/api/docs`.
+Catalog Service (usa el puerto 3002 para no colisionar con gateway y auth):
+
+```bash
+cd backend/catalog-service
+npm install
+PORT=3002 npm run start:dev
+```
+
+En Windows PowerShell se debe definir la variable de entorno con `$env:PORT=3002` antes del comando:
+
+```powershell
+cd backend/catalog-service
+$env:PORT=3002
+npm run start:dev
+```
+
+La API queda en `http://localhost:<puerto>` y la documentación Swagger en `http://localhost:<puerto>/api/docs` para cada servicio.
