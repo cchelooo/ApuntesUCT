@@ -34,7 +34,7 @@ export function CatalogPage() {
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Buscar por nombre o código"
             aria-label="Buscar asignaturas por nombre o código"
-            className="w-full bg-transparent text-sm text-catalog-ink placeholder:text-catalog-ink/40 focus:outline-none border-none focus:ring-0 px-0 py-0"
+            className="w-full !bg-transparent text-sm !text-catalog-ink placeholder:!text-catalog-ink/40 focus:!outline-none !border-none focus:!ring-0 !p-0 !m-0 !shadow-none"
             containerClassName="flex-1"
           />
         </div>
