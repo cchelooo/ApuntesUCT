@@ -1,4 +1,5 @@
 import { useCatalogSubjects } from '../../application/catalog/useCatalogSubjects';
+import { CatalogFilterSidebar } from '../components/catalog/CatalogFilterSidebar';
 import { CatalogGrid } from '../components/catalog/CatalogGrid';
 
 export function CatalogPage() {
@@ -6,19 +7,15 @@ export function CatalogPage() {
 
   return (
     <section className="bg-catalog-bg px-6 py-10 font-body text-catalog-ink sm:px-10">
-      <header className="mx-auto mb-8 max-w-6xl">
-        <h1 className="font-display text-3xl text-catalog-ink sm:text-4xl">
-          Catálogo
-        </h1>
+      <header className="mx-auto mb-8 max-w-7xl">
+        <h1 className="font-display text-3xl text-catalog-ink sm:text-4xl">Catálogo</h1>
         <p className="mt-2 max-w-md text-sm text-catalog-ink/70">
-          Explora las asignaturas disponibles y encuentra los apuntes que ha
-          compartido la comunidad.
+          Explora las asignaturas disponibles y encuentra los apuntes que ha compartido la
+          comunidad.
         </p>
 
         <label className="mt-6 flex max-w-sm items-center gap-2 rounded-sm border border-catalog-line bg-catalog-paper px-3 py-2">
-          <span className="sr-only">
-            Buscar asignaturas por nombre o código
-          </span>
+          <span className="sr-only">Buscar asignaturas por nombre o código</span>
           <svg
             viewBox="0 0 20 20"
             className="h-4 w-4 shrink-0 text-catalog-ink/50"
@@ -44,8 +41,11 @@ export function CatalogPage() {
         </p>
       </header>
 
-      <div className="mx-auto max-w-6xl">
-        <CatalogGrid subjects={subjects} query={query} />
+      <div className="mx-auto flex max-w-7xl flex-col gap-8 lg:flex-row">
+        <CatalogFilterSidebar />
+        <div className="flex-1">
+          <CatalogGrid subjects={subjects} query={query} />
+        </div>
       </div>
     </section>
   );
