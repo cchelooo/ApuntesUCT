@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'app_button.dart';
+
 /// Botón principal de un formulario, con estado de carga integrado.
 ///
 /// Mientras [isLoading] es `true` el botón queda deshabilitado y muestra un
@@ -26,41 +28,13 @@ class AppPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton(
-        style: compact
-            ? FilledButton.styleFrom(minimumSize: const Size.fromHeight(48))
-            : null,
-        onPressed: isLoading ? null : onPressed,
-        child: isLoading
-            ? SizedBox(
-                height: 22,
-                width: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: colorScheme.onPrimary,
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (icon != null) ...[
-                    Icon(icon, size: 20),
-                    const SizedBox(width: 8),
-                  ],
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-      ),
+    return AppButton.primary(
+      label: label,
+      onPressed: onPressed,
+      isLoading: isLoading,
+      compact: compact,
+      fullWidth: true,
+      icon: icon,
     );
   }
 }

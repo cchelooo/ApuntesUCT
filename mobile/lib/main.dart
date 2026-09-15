@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:apuntesuct_mobile/core/theme/app_theme.dart';
+import 'package:apuntesuct_mobile/core/widgets/widgets.dart';
 import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart'
     show authStateProvider;
 import 'package:apuntesuct_mobile/features/auth/presentation/login_screen.dart';
@@ -101,55 +102,60 @@ class HomeScreen extends ConsumerWidget {
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Estado de autenticación:',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 12),
-              Chip(
-                avatar: Icon(
-                  isAuthenticated ? Icons.check_circle : Icons.cancel,
-                  color: isAuthenticated ? Colors.green : Colors.red,
-                ),
-                label: Text(
-                  isAuthenticated ? 'Autenticado' : 'No autenticado',
-                  style: TextStyle(
-                    color: isAuthenticated
-                        ? Colors.green.shade900
-                        : Colors.red.shade900,
-                    fontWeight: FontWeight.bold,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: AppCard(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Estado de autenticación:',
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
-                ),
-                backgroundColor: isAuthenticated
-                    ? Colors.green.shade50
-                    : Colors.red.shade50,
+                  const SizedBox(height: 12),
+                  Chip(
+                    avatar: Icon(
+                      isAuthenticated ? Icons.check_circle : Icons.cancel,
+                      color: isAuthenticated ? Colors.green : Colors.red,
+                    ),
+                    label: Text(
+                      isAuthenticated ? 'Autenticado' : 'No autenticado',
+                      style: TextStyle(
+                        color: isAuthenticated
+                            ? Colors.green.shade900
+                            : Colors.red.shade900,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    backgroundColor: isAuthenticated
+                        ? Colors.green.shade50
+                        : Colors.red.shade50,
+                  ),
+                  if (isAuthenticated && user != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      '${user.name}\n${user.email}',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  AppButton.primary(
+                    label: isAuthenticated ? 'Cerrar sesión' : 'Iniciar sesión',
+                    fullWidth: true,
+                    icon: isAuthenticated ? Icons.logout : Icons.login,
+                    onPressed: () {
+                      if (isAuthenticated) {
+                        ref.read(authStateProvider.notifier).logout();
+                      } else {
+                        context.go('/login');
+                      }
+                    },
+                  ),
+                ],
               ),
-              if (isAuthenticated && user != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  '${user.name}\n${user.email}',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ],
-              const SizedBox(height: 24),
-              FilledButton.icon(
-                onPressed: () {
-                  if (isAuthenticated) {
-                    ref.read(authStateProvider.notifier).logout();
-                  } else {
-                    context.go('/login');
-                  }
-                },
-                icon: Icon(isAuthenticated ? Icons.logout : Icons.login),
-                label: Text(
-                  isAuthenticated ? 'Cerrar sesión' : 'Iniciar sesión',
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
