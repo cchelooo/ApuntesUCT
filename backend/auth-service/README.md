@@ -28,7 +28,7 @@ src/
 ## Setup
 
 ```bash
-npm ci
+npm ci --include-workspace-root # incluye herramientas compartidas del backend
 cp .env.example .env   # configurar DATABASE_URL según el entorno
 npm run prisma:generate
 ```
@@ -45,7 +45,7 @@ Desde `backend/auth-service`, valida el esquema y aplica las migraciones:
 
 ```bash
 npx prisma validate
-npm run prisma:migrate   # aplica la migración inicial en desarrollo
+npm run prisma:migrate   # aplica migraciones y genera nuevas si cambia el modelo
 npm run prisma:deploy    # aplica migraciones existentes en despliegues
 npx prisma migrate status
 npm run prisma:studio    # explorar datos
@@ -70,9 +70,8 @@ tres valores definidos por el dominio.
 
 La migración inicial `20260907000000_init` crea las tablas con identificadores
 de texto. El esquema de la tarea #51 define `users.id` y
-`refresh_tokens.user_id` como UUID nativo de PostgreSQL. Generar y probar la
-migración de esa conversión corresponde a la tarea #52; hasta aplicarla, la
-base creada con la migración inicial no refleja todavía este cambio de tipo.
+`refresh_tokens.user_id` como UUID nativo de PostgreSQL. La migración
+`20260914000000_convertir_ids_usuarios_a_uuid` de la tarea #52 aplica esa conversión.
 
 | Campo Prisma | Tipo | Restricciones y propósito |
 | --- | --- | --- |
@@ -127,9 +126,40 @@ Documentación OpenAPI/Swagger en `http://localhost:3001/api/docs`.
 ```bash
 npm run test      # unitarios
 npm run test:e2e  # e2e
+npm run test:integration # persistencia real; requiere PostgreSQL migrado y .env
 npm run lint
 ```
 
 El test HTTP de health sustituye Prisma para ejecutarse sin PostgreSQL. Para
 comprobar la conexión real, inicia `db-auth`, aplica las migraciones y ejecuta
 `npm run start:dev`: debe aparecer `Conexión a PostgreSQL establecida`.
+
+### Migración local de usuarios (#52)
+
+La migración convierte `users.id` y `refresh_tokens.user_id` mediante
+`ALTER COLUMN ... TYPE UUID USING ...::uuid`. Se ajustó el SQL generado por
+`prisma migrate diff` para conservar los identificadores existentes en lugar
+de eliminar y recrear las columnas. La clave foránea se retira durante la
+conversión y se restaura con eliminación y actualización en cascada.
+Todo se ejecuta en una transacción: un identificador inválido o una colisión
+al convertir UUID impide aplicar parcialmente los cambios.
+
+Con `db-auth` iniciado, ejecuta desde `backend/auth-service`:
+
+```bash
+npm exec -- prisma validate
+npm run prisma:deploy
+npm run prisma:generate
+npm exec -- prisma migrate status
+npm exec -- prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code
+npm run test:integration
+```
+
+El estado debe indicar que todas las migraciones están aplicadas y el diff debe
+terminar con código `0` (sin diferencias). `prisma:deploy` aplica las migraciones
+versionadas sin generar otras; también sirve para preparar una base local vacía.
+
+Las pruebas de integración comprueban creación, consulta y actualización de
+usuarios, UUID nativo, valores por defecto, correo único, rechazo de tokens
+huérfanos y eliminación en cascada. Cada prueba revierte su transacción para
+no dejar datos de prueba. No implementan ni verifican los endpoints de registro.
