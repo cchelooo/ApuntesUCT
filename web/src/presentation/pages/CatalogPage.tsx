@@ -1,6 +1,7 @@
 import { useCatalogSubjects } from '../../application/catalog/useCatalogSubjects';
 import { CatalogFilterSidebar } from '../components/catalog/CatalogFilterSidebar';
 import { CatalogGrid } from '../components/catalog/CatalogGrid';
+import { Input } from '../components/Input';
 
 export function CatalogPage() {
   const { subjects, query, setQuery, total } = useCatalogSubjects();
@@ -16,10 +17,7 @@ export function CatalogPage() {
           compartido la comunidad.
         </p>
 
-        <label className="mt-6 flex max-w-sm items-center gap-2 rounded-sm border border-catalog-line bg-catalog-paper px-3 py-2">
-          <span className="sr-only">
-            Buscar asignaturas por nombre o código
-          </span>
+        <div className="mt-6 flex max-w-sm items-center gap-2 rounded-sm border border-catalog-line bg-catalog-paper px-3 py-2 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
           <svg
             viewBox="0 0 20 20"
             className="h-4 w-4 shrink-0 text-catalog-ink/50"
@@ -31,14 +29,16 @@ export function CatalogPage() {
             <circle cx="8.5" cy="8.5" r="5.5" />
             <path d="m16 16-3.2-3.2" />
           </svg>
-          <input
+          <Input
             type="text"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Buscar por nombre o código"
-            className="w-full bg-transparent text-sm text-catalog-ink placeholder:text-catalog-ink/40 focus:outline-none"
+            aria-label="Buscar asignaturas por nombre o código"
+            className="w-full !bg-transparent text-sm !text-catalog-ink placeholder:!text-catalog-ink/40 focus:!outline-none !border-none focus:!ring-0 !p-0 !m-0 !shadow-none"
+            containerClassName="flex-1"
           />
-        </label>
+        </div>
 
         <p className="mt-2 text-xs text-catalog-ink/50">
           {subjects.length} de {total} asignaturas
