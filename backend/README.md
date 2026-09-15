@@ -90,6 +90,7 @@ Alternativa en Windows PowerShell (con preparación de `.env` y Prisma):
 
 ```powershell
 cd backend/catalog-service
+npm install
 if (-Not (Test-Path .env)) { Copy-Item .env.example .env }
 npm run prisma:generate
 $env:PORT=3002
