@@ -171,6 +171,108 @@ void main() {
       );
     });
   });
+
+  group('Estructura de pantallas', () {
+    testWidgets('AppSectionHeader expone una acción temática y táctil', (
+      tester,
+    ) async {
+      var pressed = false;
+
+      await tester.pumpWidget(
+        _testApp(
+          child: AppSectionHeader(
+            title: 'Tus cursos',
+            actionLabel: 'Ver todos',
+            onAction: () => pressed = true,
+          ),
+        ),
+      );
+
+      expect(find.text('Tus cursos'), findsOneWidget);
+      expect(find.byType(TextButton), findsOneWidget);
+      expect(
+        tester.getSize(find.byType(TextButton)).height,
+        greaterThanOrEqualTo(48),
+      );
+
+      await tester.tap(find.text('Ver todos'));
+
+      expect(pressed, isTrue);
+    });
+
+    testWidgets('AppSectionHeader deshabilita acciones sin callback', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _testApp(
+          child: const AppSectionHeader(
+            title: 'Material recomendado',
+            actionLabel: 'Más',
+          ),
+        ),
+      );
+
+      expect(
+        tester.widget<TextButton>(find.byType(TextButton)).onPressed,
+        isNull,
+      );
+    });
+
+    testWidgets('AppHorizontalList construye una colección horizontal', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _testApp(
+          child: AppHorizontalList(
+            height: 120,
+            itemCount: 3,
+            semanticLabel: 'Tus cursos',
+            itemBuilder: (context, index) =>
+                SizedBox(width: 120, child: Text('Curso $index')),
+          ),
+        ),
+      );
+
+      final list = tester.widget<ListView>(find.byType(ListView));
+      expect(list.scrollDirection, Axis.horizontal);
+      expect(tester.getSize(find.byType(AppHorizontalList)).height, 120);
+      expect(find.text('Curso 0'), findsOneWidget);
+      expect(
+        tester.getSemantics(find.byType(AppHorizontalList)),
+        matchesSemantics(label: 'Tus cursos'),
+      );
+    });
+
+    testWidgets('AppNavigationBar comunica destinos y hereda el tema', (
+      tester,
+    ) async {
+      AppNavigationDestination? selected;
+
+      await tester.pumpWidget(
+        _testApp(
+          themeMode: ThemeMode.dark,
+          child: AppNavigationBar(
+            selectedDestination: AppNavigationDestination.home,
+            onDestinationSelected: (destination) => selected = destination,
+          ),
+        ),
+      );
+
+      final navigationBar = tester.widget<NavigationBar>(
+        find.byType(NavigationBar),
+      );
+      expect(navigationBar.selectedIndex, 0);
+      expect(navigationBar.backgroundColor, isNull);
+      expect(find.text('Inicio'), findsOneWidget);
+      expect(find.text('Buscar'), findsOneWidget);
+      expect(find.text('Guardados'), findsOneWidget);
+      expect(find.text('Perfil'), findsOneWidget);
+
+      await tester.tap(find.text('Buscar'));
+
+      expect(selected, AppNavigationDestination.search);
+    });
+  });
 }
 
 Widget _testApp({

@@ -3,8 +3,11 @@ library;
 
 export 'app_button.dart';
 export 'app_card.dart';
+export 'app_horizontal_list.dart';
+export 'app_navigation_bar.dart';
 export 'app_password_field.dart';
 export 'app_primary_button.dart';
+export 'app_section_header.dart';
 export 'app_text_field.dart';
 export 'auth_scaffold.dart';
 export 'form_error_banner.dart';
