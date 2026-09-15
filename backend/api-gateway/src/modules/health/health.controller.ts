@@ -7,13 +7,13 @@ import {
 } from '@nestjs/swagger';
 
 export class HealthResponse {
-  @ApiProperty({ example: 'ok' })
+  @ApiProperty({ example: 'ok', enum: ['ok'] })
   status: 'ok';
 
   @ApiProperty({ example: 'API Gateway' })
   service: string;
 
-  @ApiProperty({ example: '2026-09-13T12:00:00.000Z' })
+  @ApiProperty({ example: '2026-09-13T12:00:00.000Z', format: 'date-time' })
   timestamp: string;
 }
 
