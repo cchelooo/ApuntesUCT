@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from './../src/app.module';
+import { setupApiDocs } from './../src/api-docs';
 
 describe('API Gateway (e2e)', () => {
   let app: INestApplication;
@@ -13,6 +14,7 @@ describe('API Gateway (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api/v1');
+    setupApiDocs(app);
     await app.init();
   });
 
@@ -23,6 +25,35 @@ describe('API Gateway (e2e)', () => {
       .expect((res) => {
         expect(res.body.status).toEqual('ok');
         expect(res.body.service).toEqual('API Gateway');
+      });
+  });
+
+  it('/api/docs (GET) expone el índice de documentación', () => {
+    return request(app.getHttpServer())
+      .get('/api/docs')
+      .expect(200)
+      .expect('Content-Type', /text\/html/)
+      .expect((res) => {
+        expect(res.text).toContain('API Gateway — Documentación');
+        expect(res.text).toContain('http://localhost:3001/api/docs');
+        expect(res.text).toContain('http://localhost:3002/api/docs');
+      });
+  });
+
+  it('/api/docs/gateway (GET) expone el Swagger del gateway', () => {
+    return request(app.getHttpServer())
+      .get('/api/docs/gateway')
+      .expect(200)
+      .expect('Content-Type', /text\/html/);
+  });
+
+  it('/api/docs/gateway-json (GET) expone la especificación OpenAPI', () => {
+    return request(app.getHttpServer())
+      .get('/api/docs/gateway-json')
+      .expect(200)
+      .expect('Content-Type', /application\/json/)
+      .expect((res) => {
+        expect(res.body.info.title).toEqual('API Gateway');
       });
   });
 
