@@ -47,6 +47,8 @@ abstract final class AppTheme {
         surface: Colors.white,
         onSurface: UctPalette.navy,
         onSurfaceVariant: UctPalette.textoSuaveClaro,
+        surfaceContainerLow: UctPalette.humo,
+        surfaceContainer: UctPalette.humo,
         surfaceContainerHighest: UctPalette.humo,
         outline: UctPalette.bordeClaro,
         outlineVariant: UctPalette.celesteClaro,

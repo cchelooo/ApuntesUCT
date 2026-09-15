@@ -1,20 +1,30 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/uct_palette.dart';
 import '../../state/home_state.dart';
 
-/// Paleta de fondos para las tarjetas de curso (se rota cíclicamente).
-const _kCardColors = [
-  Color(0xFF1F6FB2), // Azul
-  Color(0xFFEAA83A), // Amarillo/mostaza
-  Color(0xFF2F8F73), // Verde
+/// Paleta de fondos para las tarjetas de curso en modo claro.
+const _kLightCardColors = [
+  UctPalette.azul,
+  UctPalette.dorado,
+  UctPalette.verde,
 ];
 
-/// Colores de texto correspondientes a cada fondo de [_kCardColors].
-/// El amarillo necesita texto oscuro para cumplir con contraste WCAG AA.
-const _kTextColors = [
-  Colors.white,
-  Color(0xFF16324F), // Texto oscuro sobre fondo amarillo
-  Colors.white,
+/// Colores de texto correspondientes en modo claro (WCAG AA).
+const _kLightTextColors = [Colors.white, UctPalette.navy, Colors.white];
+
+/// Paleta de fondos para las tarjetas de curso en modo oscuro.
+const _kDarkCardColors = [
+  UctPalette.azulTarjetaOscura,
+  UctPalette.doradoOscuro,
+  UctPalette.verdeOscuro,
+];
+
+/// Colores de texto correspondientes en modo oscuro.
+const _kDarkTextColors = [
+  UctPalette.textoPrincipalOscuro,
+  UctPalette.textoPrincipalOscuro,
+  UctPalette.textoPrincipalOscuro,
 ];
 
 /// Tarjeta de curso que forma la lista horizontal de "Tus cursos".
@@ -22,11 +32,7 @@ const _kTextColors = [
 /// Muestra el nombre del curso y la cantidad de apuntes disponibles.
 /// El color de fondo rota cíclicamente según el [index] de la tarjeta.
 class CourseCard extends StatelessWidget {
-  const CourseCard({
-    super.key,
-    required this.entry,
-    required this.index,
-  });
+  const CourseCard({super.key, required this.entry, required this.index});
 
   final CourseEntry entry;
 
@@ -35,8 +41,12 @@ class CourseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = _kCardColors[index % _kCardColors.length];
-    final textColor = _kTextColors[index % _kTextColors.length];
+    final esOscuro = Theme.of(context).brightness == Brightness.dark;
+    final cardColors = esOscuro ? _kDarkCardColors : _kLightCardColors;
+    final textColors = esOscuro ? _kDarkTextColors : _kLightTextColors;
+
+    final bgColor = cardColors[index % cardColors.length];
+    final textColor = textColors[index % textColors.length];
 
     return Container(
       width: 155,
@@ -51,7 +61,11 @@ class CourseCard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Ícono de libro decorativo
-          Icon(Icons.menu_book_rounded, color: textColor.withValues(alpha: 0.7), size: 26),
+          Icon(
+            Icons.menu_book_rounded,
+            color: textColor.withValues(alpha: 0.7),
+            size: 26,
+          ),
           const SizedBox(height: 6),
           Expanded(
             child: Column(

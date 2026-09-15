@@ -1,25 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../core/widgets/theme_toggle_button.dart';
+import '../features/auth/data/mock_auth_repository.dart' show authStateProvider;
 import '../state/home_state.dart';
 import 'widgets/course_card.dart';
 import 'widgets/material_card.dart';
-
-// ---------------------------------------------------------------------------
-// Constantes de color de la pantalla Home
-// ---------------------------------------------------------------------------
-
-const _kNavyDark = Color(0xFF16324F);
-const _kBlueLink = Color(0xFF1E6FB8);
-const _kBgPage = Color(0xFFEEF2F6);
-const _kNavBg = Color(0xFF16324F);
-const _kNavActive = Color(0xFFEAA83A);
-const _kNavInactive = Color(0xFFB0BEC5);
-
-// ---------------------------------------------------------------------------
-// HomeScreen
-// ---------------------------------------------------------------------------
 
 /// Pantalla principal de ApuntesUCT (issue #56).
 ///
@@ -28,136 +15,160 @@ const _kNavInactive = Color(0xFFB0BEC5);
 /// - "Material recomendado" — [MaterialCard] sin rating/downloads
 /// - "Mejores calificados del día" — [MaterialCard] con rating y downloads
 ///
-/// El tab activo del [BottomNavigationBar] vive en [navTabProvider] (Riverpod),
-/// no en estado local del widget.
+/// Consume [Theme.of(context).colorScheme] para responder al tema claro y oscuro
+/// de acuerdo a `docs/mobile/tema-visual.md`.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
+
+  void _onTabSelected(BuildContext context, WidgetRef ref, int index) {
+    ref.read(navTabProvider.notifier).selectTab(index);
+    switch (index) {
+      case 0:
+        break;
+      case 1:
+        context.push('/search').then((_) {
+          ref.read(navTabProvider.notifier).selectTab(0);
+        });
+        break;
+      case 2:
+        context.push('/library').then((_) {
+          ref.read(navTabProvider.notifier).selectTab(0);
+        });
+        break;
+      case 3:
+        context.push('/profile').then((_) {
+          ref.read(navTabProvider.notifier).selectTab(0);
+        });
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final homeState = ref.watch(homeProvider);
     final activeTab = ref.watch(navTabProvider);
+    final colorScheme = Theme.of(context).colorScheme;
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark.copyWith(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
+    return Scaffold(
+      backgroundColor: colorScheme.surface,
+      // ----------------------------------------------------------------
+      // AppBar
+      // ----------------------------------------------------------------
+      appBar: AppBar(
+        backgroundColor: colorScheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            // Isotipo con inicial de marca
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: colorScheme.primary,
+              ),
+              child: Center(
+                child: Text(
+                  'A',
+                  style: TextStyle(
+                    color: colorScheme.onPrimary,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'ApuntesUCT',
+              style: TextStyle(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                letterSpacing: -0.3,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          const ThemeToggleButton(),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded),
+            tooltip: 'Cerrar sesión',
+            onPressed: () async {
+              await ref.read(authStateProvider.notifier).logout();
+              if (context.mounted) {
+                context.go('/login');
+              }
+            },
+          ),
+        ],
       ),
-      child: Scaffold(
-        backgroundColor: _kBgPage,
-        // ----------------------------------------------------------------
-        // AppBar
-        // ----------------------------------------------------------------
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          systemOverlayStyle: SystemUiOverlayStyle.dark,
-          titleSpacing: 16,
-          title: Row(
-            children: [
-              // Logo circular con iniciales de marca
-              Container(
-                width: 36,
-                height: 36,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF1F6FB2), Color(0xFFEAA83A)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: const Center(
-                  child: Text(
-                    'A',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                'ApuntesUCT',
-                style: TextStyle(
-                  color: _kNavyDark,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 18,
-                  letterSpacing: -0.3,
-                ),
-              ),
-            ],
-          ),
+      // ----------------------------------------------------------------
+      // Body
+      // ----------------------------------------------------------------
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ---- Encabezado de página ----
+            const _PageHeader(),
+            const SizedBox(height: 8),
+            // ---- Tus cursos ----
+            _SectionHeader(
+              title: 'Tus cursos',
+              actionLabel: 'Ver todos',
+              onAction: () => context.push('/catalog'),
+            ),
+            const SizedBox(height: 12),
+            _HorizontalList(
+              height: 148,
+              children: [
+                for (var i = 0; i < homeState.courses.length; i++)
+                  CourseCard(entry: homeState.courses[i], index: i),
+              ],
+            ),
+            const SizedBox(height: 24),
+            // ---- Material recomendado ----
+            _SectionHeader(
+              title: 'Material recomendado',
+              actionLabel: 'Más',
+              onAction: () => context.push('/catalog'),
+            ),
+            const SizedBox(height: 12),
+            _HorizontalList(
+              height: 162,
+              children: [
+                for (final item in homeState.recommended)
+                  MaterialCard(data: item),
+              ],
+            ),
+            const SizedBox(height: 24),
+            // ---- Mejores calificados del día ----
+            _SectionHeader(
+              title: 'Mejores calificados del día',
+              actionLabel: 'Ranking',
+              onAction: () => context.push('/search'),
+            ),
+            const SizedBox(height: 12),
+            _HorizontalList(
+              height: 192,
+              children: [
+                for (final item in homeState.topRated) MaterialCard(data: item),
+              ],
+            ),
+            const SizedBox(height: 32),
+          ],
         ),
-        // ----------------------------------------------------------------
-        // Body
-        // ----------------------------------------------------------------
-        body: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ---- Encabezado de página ----
-              _PageHeader(),
-              const SizedBox(height: 8),
-              // ---- Tus cursos ----
-              _SectionHeader(
-                title: 'Tus cursos',
-                actionLabel: 'Ver todos',
-                onAction: () {},
-              ),
-              const SizedBox(height: 12),
-              _HorizontalList(
-                height: 148,
-                children: [
-                  for (var i = 0; i < homeState.courses.length; i++)
-                    CourseCard(entry: homeState.courses[i], index: i),
-                ],
-              ),
-              const SizedBox(height: 24),
-              // ---- Material recomendado ----
-              _SectionHeader(
-                title: 'Material recomendado',
-                actionLabel: 'Más',
-                onAction: () {},
-              ),
-              const SizedBox(height: 12),
-              _HorizontalList(
-                height: 162,
-                children: [
-                  for (final item in homeState.recommended)
-                    MaterialCard(data: item),
-                ],
-              ),
-              const SizedBox(height: 24),
-              // ---- Mejores calificados del día ----
-              _SectionHeader(
-                title: 'Mejores calificados del día',
-                actionLabel: 'Ranking',
-                onAction: () {},
-              ),
-              const SizedBox(height: 12),
-              _HorizontalList(
-                height: 192,
-                children: [
-                  for (final item in homeState.topRated)
-                    MaterialCard(data: item),
-                ],
-              ),
-              const SizedBox(height: 32),
-            ],
-          ),
-        ),
-        // ----------------------------------------------------------------
-        // Bottom Navigation Bar
-        // ----------------------------------------------------------------
-        bottomNavigationBar: _HomeBottomNav(
-          activeIndex: activeTab,
-          onTabSelected: (index) =>
-              ref.read(navTabProvider.notifier).selectTab(index),
-        ),
+      ),
+      // ----------------------------------------------------------------
+      // Bottom Navigation Bar
+      // ----------------------------------------------------------------
+      bottomNavigationBar: _HomeBottomNav(
+        activeIndex: activeTab,
+        onTabSelected: (index) => _onTabSelected(context, ref, index),
       ),
     );
   }
@@ -168,19 +179,23 @@ class HomeScreen extends ConsumerWidget {
 // ---------------------------------------------------------------------------
 
 class _PageHeader extends StatelessWidget {
+  const _PageHeader();
+
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       width: double.infinity,
-      color: _kBgPage,
+      color: colorScheme.surface,
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Inicio',
             style: TextStyle(
-              color: _kNavyDark,
+              color: colorScheme.onSurface,
               fontSize: 28,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.5,
@@ -190,7 +205,7 @@ class _PageHeader extends StatelessWidget {
           Text(
             'Material académico útil, filtrado por tus cursos y actividad reciente.',
             style: TextStyle(
-              color: const Color(0xFF5B7089),
+              color: colorScheme.onSurfaceVariant,
               fontSize: 14,
               height: 1.5,
             ),
@@ -218,6 +233,10 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final esOscuro = Theme.of(context).brightness == Brightness.dark;
+    final colorEnlace = esOscuro ? colorScheme.secondary : colorScheme.primary;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
@@ -226,8 +245,8 @@ class _SectionHeader extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
-                color: Colors.black87,
+              style: TextStyle(
+                color: colorScheme.onSurface,
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
               ),
@@ -239,8 +258,8 @@ class _SectionHeader extends StatelessWidget {
             onTap: onAction,
             child: Text(
               actionLabel,
-              style: const TextStyle(
-                color: _kBlueLink,
+              style: TextStyle(
+                color: colorEnlace,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
@@ -257,10 +276,7 @@ class _SectionHeader extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _HorizontalList extends StatelessWidget {
-  const _HorizontalList({
-    required this.height,
-    required this.children,
-  });
+  const _HorizontalList({required this.height, required this.children});
 
   final double height;
   final List<Widget> children;
@@ -300,16 +316,14 @@ class _HomeBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
-      decoration: const BoxDecoration(
-        color: _kNavBg,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 12,
-            offset: Offset(0, -3),
-          ),
-        ],
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        border: Border(
+          top: BorderSide(color: colorScheme.outlineVariant, width: 1),
+        ),
       ),
       child: SafeArea(
         child: SizedBox(
@@ -351,7 +365,8 @@ class _NavTabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isActive ? _kNavActive : _kNavInactive;
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = isActive ? colorScheme.primary : colorScheme.onSurfaceVariant;
 
     return GestureDetector(
       onTap: onTap,

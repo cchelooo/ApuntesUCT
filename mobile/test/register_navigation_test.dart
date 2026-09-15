@@ -45,7 +45,10 @@ void main() {
 
     // Con sesión abierta, la app navega al Home real.
     expect(find.byType(HomeScreen), findsOneWidget);
-    expect(find.text('Inicio'), findsNWidgets(2)); // Encabezado y tab de navegación
+    expect(
+      find.text('Inicio'),
+      findsNWidgets(2),
+    ); // Encabezado y tab de navegación
     expect(find.text('Tus cursos'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
