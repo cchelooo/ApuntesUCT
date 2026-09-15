@@ -7,10 +7,11 @@ import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart'
     show authStateProvider;
 import 'package:apuntesuct_mobile/features/auth/presentation/login_screen.dart';
 import 'package:apuntesuct_mobile/features/auth/presentation/register_screen.dart';
+import 'package:apuntesuct_mobile/features/profile/presentation/profile_screen.dart';
 import 'package:apuntesuct_mobile/providers/theme_mode_provider.dart';
 
 final GoRouter appRouter = GoRouter(
-  initialLocation: '/login',
+  initialLocation: '/profile',
   routes: [
     GoRoute(
       path: '/',
@@ -30,7 +31,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/profile',
       name: 'profile',
-      builder: (context, state) => const PendingScreen(title: 'Perfil'),
+      builder: (context, state) => const ProfileScreen(),
     ),
     GoRoute(
       path: '/catalog',

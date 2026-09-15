@@ -7,7 +7,9 @@ plugins {
 android {
     namespace = "cl.uct.apuntesuct_mobile"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // NDK 28.x no está instalado; se usa el 30.x disponible localmente.
+    // Actualizar a 28.2.13676358 cuando esté disponible mediante Android Studio SDK Manager.
+    ndkVersion = "30.0.16248370"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
