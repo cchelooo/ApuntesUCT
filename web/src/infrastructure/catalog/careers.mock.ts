@@ -21,7 +21,13 @@ export const careersMock: Career[] = [
     code: 'PEDB',
     active: true,
   },
-  { id: 'c4', universityId: 'u1', name: 'Enfermería', code: 'ENF', active: true },
+  {
+    id: 'c4',
+    universityId: 'u1',
+    name: 'Enfermería',
+    code: 'ENF',
+    active: true,
+  },
   {
     id: 'c5',
     universityId: 'u2',
