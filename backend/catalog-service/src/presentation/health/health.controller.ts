@@ -9,13 +9,13 @@ import { HealthService } from '../../application/health/health.service';
 
 export class HealthResponse {
   @ApiProperty({ example: 'ok' })
-  status: 'ok';
+  status!: 'ok';
 
   @ApiProperty({ example: 'catalog-service' })
-  service: string;
+  service!: string;
 
   @ApiProperty({ example: '2026-09-07T12:00:00.000Z' })
-  timestamp: string;
+  timestamp!: string;
 }
 
 @ApiTags('health')
