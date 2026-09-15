@@ -10,6 +10,7 @@ export default {
           paperMuted: '#F3EEDF',
           bg: '#F7F4EC',
           line: '#C9BFA5',
+          maroon: '#7A1F2B',
         },
       },
       fontFamily: {
