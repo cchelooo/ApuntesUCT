@@ -40,14 +40,20 @@ class AppTextField extends StatelessWidget {
     required this.label,
     this.hint,
     this.icon,
+    this.suffixIcon,
     this.keyboardType,
     this.textInputAction = TextInputAction.next,
     this.autofillHints,
     this.validator,
+    this.onChanged,
     this.enabled = true,
     this.autofocus = false,
+    this.readOnly = false,
     this.compact = false,
     this.textCapitalization = TextCapitalization.none,
+    this.minLines,
+    this.maxLines = 1,
+    this.maxLength,
     this.onFieldSubmitted,
     super.key,
   });
@@ -56,14 +62,20 @@ class AppTextField extends StatelessWidget {
   final String label;
   final String? hint;
   final IconData? icon;
+  final Widget? suffixIcon;
   final TextInputType? keyboardType;
   final TextInputAction textInputAction;
   final Iterable<String>? autofillHints;
   final String? Function(String?)? validator;
+  final ValueChanged<String>? onChanged;
   final bool enabled;
   final bool autofocus;
+  final bool readOnly;
   final bool compact;
   final TextCapitalization textCapitalization;
+  final int? minLines;
+  final int? maxLines;
+  final int? maxLength;
   final void Function(String)? onFieldSubmitted;
 
   @override
@@ -77,11 +89,16 @@ class AppTextField extends StatelessWidget {
           controller: controller,
           enabled: enabled,
           autofocus: autofocus,
+          readOnly: readOnly,
           keyboardType: keyboardType,
           textInputAction: textInputAction,
           textCapitalization: textCapitalization,
           autofillHints: autofillHints,
           validator: validator,
+          onChanged: onChanged,
+          minLines: minLines,
+          maxLines: maxLines,
+          maxLength: maxLength,
           onFieldSubmitted: onFieldSubmitted,
           style: TextStyle(
             fontSize: compact ? 14 : 15.5,
@@ -94,6 +111,7 @@ class AppTextField extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: icon == null ? null : Icon(icon),
+            suffixIcon: suffixIcon,
             isDense: true,
             contentPadding: EdgeInsets.symmetric(
               horizontal: 14,
