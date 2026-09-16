@@ -15,7 +15,7 @@ Tecnologías: Node.js, TypeScript, NestJS, Prisma, PostgreSQL, MinIO.
 | quality-service | 3004 (**) | `http://localhost:3004` | Pendiente (placeholder) |
 | search-service | 3005 (**) | `http://localhost:3005` | Pendiente (placeholder) |
 
-(*) Puerto para ejecución local, no un valor predeterminado del servicio. El catálogo, tal como está en main, no levanta en 3002 por sí solo: su `.env.example` define `PORT=3001` (que coincide con auth-service) y `src/main.ts` usa `3000` cuando no existe `PORT` (que coincide con api-gateway). Ejecutarlo con `PORT=3002 npm run start:dev` evita ambos conflictos; esa variable tiene prioridad sobre el valor del `.env` durante esa ejecución.
+(*) Puerto para ejecución local. Tras la alineación del PR #76, el catálogo corre por defecto en `3002`: su `.env.example` define `PORT=3002` y `src/main.ts` usa `process.env.PORT ?? 3002`. Así evita colisionar con api-gateway (3000) y auth-service (3001).
 
 (**) Puertos propuestos/reservados para Material, Quality y Search. Todavía no hay servicios disponibles en esas direcciones.
 
