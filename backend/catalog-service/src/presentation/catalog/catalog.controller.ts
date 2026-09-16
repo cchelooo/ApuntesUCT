@@ -10,10 +10,15 @@ export class CatalogController {
 
   @Get('filter')
   @ApiOperation({
-    summary: 'Filtrar catálogo jerárquico de asignaturas y recursos',
+    summary: 'Filtrar catálogo jerárquico de asignaturas',
     description: `
-    Realiza una búsqueda jerárquica devolviendo las asignaturas coincidentes junto con sus dependencias.
-    
+    Realiza una búsqueda jerárquica devolviendo las asignaturas coincidentes junto con sus relaciones principales.
+
+    ### Comportamiento del Endpoint:
+    - **Sin filtros:** Devuelve la lista completa de **Asignaturas**.
+    - **Filtros válidos aplicados:** Devuelve las asignaturas filtradas incluyendo sus relaciones directas (**Carrera**, **Universidad** y **Profesores**).
+    - **Combinación incompatible:** Devuelve un arreglo vacío (\`[]\`).
+
     ### Secuencia Obligatoria de Niveles:
     1. **Universidad** (\`universityId\`)
     2. **Carrera** (\`careerId\`) [requiere \`universityId\`]
@@ -22,17 +27,21 @@ export class CatalogController {
     5. **Año** (\`year\`) [requiere \`professorId\`]
     6. **Tipo** (\`type\`) [requiere \`year\`]
 
-    ### Retorno del Endpoint:
-    Devuelve un arreglo de **Asignaturas**, incluyendo sus relaciones directas (Carrera, Universidad, Profesores) y la lista de **Recursos** filtrados por Año y Tipo.
+    ### Estado de los Filtros de Año y Tipo:
+    Los niveles de **Año** (\`year\`) y **Tipo** (\`type\`) requieren la integración del módulo de **Recursos**. Al enviar una secuencia válida que incluya estos parámetros, el endpoint retornará un estado **501 Not Implemented** indicando que la funcionalidad de filtrado de recursos está pendiente de implementación.
     `,
   })
   @ApiResponse({
     status: 200,
-    description: 'Lista de asignaturas y recursos que cumplen con el filtro.',
+    description: 'Lista de asignaturas que cumplen con el filtro, incluyendo Carrera, Universidad y Profesores.',
   })
   @ApiResponse({
     status: 400,
-    description: 'Error 400 si se rompe la secuencia obligatoria de filtrado.',
+    description: 'Error si se rompe la secuencia obligatoria de filtrado.',
+  })
+  @ApiResponse({
+    status: 501,
+    description: 'Funcionalidad no implementada. Se retorna cuando se envían los parámetros Año/Tipo debido a la dependencia pendiente con el módulo de Recursos.',
   })
   async filterCatalog(@Query() filters: FilterCatalogDto) {
     return this.catalogService.filterCatalog(filters);
