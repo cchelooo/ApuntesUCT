@@ -1,33 +1,24 @@
 import { INestApplication } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
-const SERVICES = [
-  {
-    name: 'API Gateway',
-    description: 'Punto único de entrada a los microservicios de ApuntesUCT.',
-    url: '/api/docs/gateway',
-  },
-  {
-    name: 'Auth Service',
-    description: 'Autenticación y gestión de usuarios.',
-    url: 'http://localhost:3001/api/docs',
-  },
-  {
-    name: 'Catalog Service',
-    description: 'Catálogo de asignaturas y apuntes.',
-    url: 'http://localhost:3002/api/docs',
-  },
-];
+interface DocsService {
+  name: string;
+  description: string;
+  url: string;
+}
 
-function renderDocsIndex(): string {
-  const rows = SERVICES.map(
-    (service) => `
+function renderDocsIndex(services: DocsService[]): string {
+  const rows = services
+    .map(
+      (service) => `
     <tr>
       <td>${service.name}</td>
       <td>${service.description}</td>
       <td><a href="${service.url}">${service.url}</a></td>
     </tr>`,
-  ).join('');
+    )
+    .join('');
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -61,7 +52,10 @@ function renderDocsIndex(): string {
 </html>`;
 }
 
-export function setupApiDocs(app: INestApplication): void {
+export function setupApiDocs(
+  app: INestApplication,
+  configService: ConfigService,
+): void {
   const swaggerConfig = new DocumentBuilder()
     .setTitle('API Gateway')
     .setDescription(
@@ -73,7 +67,31 @@ export function setupApiDocs(app: INestApplication): void {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs/gateway', app, document);
 
+  const services: DocsService[] = [
+    {
+      name: 'API Gateway',
+      description: 'Punto único de entrada a los microservicios de ApuntesUCT.',
+      url: '/api/docs/gateway',
+    },
+    {
+      name: 'Auth Service',
+      description: 'Autenticación y gestión de usuarios.',
+      url: configService.get<string>(
+        'AUTH_DOCS_URL',
+        'http://localhost:3001/api/docs',
+      ),
+    },
+    {
+      name: 'Catalog Service',
+      description: 'Catálogo de asignaturas y apuntes.',
+      url: configService.get<string>(
+        'CATALOG_DOCS_URL',
+        'http://localhost:3002/api/docs',
+      ),
+    },
+  ];
+
   app
     .getHttpAdapter()
-    .get('/api/docs', (_req, res) => res.send(renderDocsIndex()));
+    .get('/api/docs', (_req, res) => res.send(renderDocsIndex(services)));
 }
