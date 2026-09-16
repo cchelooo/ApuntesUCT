@@ -5,7 +5,7 @@ import 'package:apuntesuct_mobile/core/theme/app_theme.dart';
 import 'package:apuntesuct_mobile/features/auth/presentation/login_screen.dart';
 import 'package:apuntesuct_mobile/features/auth/presentation/register_screen.dart';
 import 'package:apuntesuct_mobile/providers/theme_mode_provider.dart';
-import 'package:apuntesuct_mobile/screens/home_screen.dart';
+import 'package:apuntesuct_mobile/features/home/presentation/home_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/login',

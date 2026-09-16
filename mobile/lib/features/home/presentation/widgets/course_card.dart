@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/uct_palette.dart';
-import '../../state/home_state.dart';
+import 'package:apuntesuct_mobile/core/theme/uct_palette.dart';
+import '../providers/home_provider.dart';
 
 /// Paleta de fondos para las tarjetas de curso en modo claro.
 const _kLightCardColors = [

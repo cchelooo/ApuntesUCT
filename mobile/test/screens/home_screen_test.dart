@@ -6,7 +6,7 @@ import 'package:apuntesuct_mobile/core/theme/app_theme.dart';
 import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart';
 import 'package:apuntesuct_mobile/main.dart';
 import 'package:apuntesuct_mobile/providers/theme_mode_provider.dart';
-import 'package:apuntesuct_mobile/screens/home_screen.dart';
+import 'package:apuntesuct_mobile/features/home/presentation/home_screen.dart';
 
 void main() {
   group('HomeScreen Tests', () {
@@ -71,7 +71,7 @@ void main() {
         expect(find.byType(HomeScreen), findsOneWidget);
 
         // 1. Tab Buscar -> /search
-        await tester.tap(find.byIcon(Icons.search_rounded));
+        await tester.tap(find.text('Buscar'));
         await tester.pumpAndSettle();
         expect(find.text('Búsqueda pendiente'), findsOneWidget);
 
@@ -81,7 +81,7 @@ void main() {
         expect(find.byType(HomeScreen), findsOneWidget);
 
         // 2. Tab Guardados -> /library
-        await tester.tap(find.byIcon(Icons.bookmark_rounded));
+        await tester.tap(find.text('Guardados'));
         await tester.pumpAndSettle();
         expect(find.text('Biblioteca pendiente'), findsOneWidget);
 
@@ -90,7 +90,7 @@ void main() {
         expect(find.byType(HomeScreen), findsOneWidget);
 
         // 3. Tab Perfil -> /profile
-        await tester.tap(find.byIcon(Icons.person_rounded));
+        await tester.tap(find.text('Perfil'));
         await tester.pumpAndSettle();
         expect(find.text('Perfil pendiente'), findsOneWidget);
 

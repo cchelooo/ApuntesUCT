@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/uct_palette.dart';
-import '../../models/material_card_data.dart';
+import 'package:apuntesuct_mobile/core/theme/uct_palette.dart';
+import '../../domain/material_card_data.dart';
 
 /// Tarjeta de material reutilizable para las secciones "Material recomendado"
 /// y "Mejores calificados del día".

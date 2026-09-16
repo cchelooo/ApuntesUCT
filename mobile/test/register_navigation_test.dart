@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart';
 import 'package:apuntesuct_mobile/main.dart';
-import 'package:apuntesuct_mobile/screens/home_screen.dart';
+import 'package:apuntesuct_mobile/features/home/presentation/home_screen.dart';
 
 void main() {
   testWidgets('registro exitoso con sesión navega al Home', (
