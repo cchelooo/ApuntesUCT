@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { setupApiDocs } from './../src/api-docs';
@@ -14,7 +15,7 @@ describe('API Gateway (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api/v1');
-    setupApiDocs(app);
+    setupApiDocs(app, app.get(ConfigService));
     await app.init();
   });
 
@@ -55,6 +56,33 @@ describe('API Gateway (e2e)', () => {
       .expect((res) => {
         expect(res.body.info.title).toEqual('API Gateway');
       });
+  });
+
+  it('/api/docs (GET) respeta las URLs configuradas por entorno', async () => {
+    process.env.AUTH_DOCS_URL = 'http://doc-auth.internal/api/docs';
+    process.env.CATALOG_DOCS_URL = 'http://doc-catalog.internal/api/docs';
+
+    const configuredModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+    const configuredApp = configuredModule.createNestApplication();
+    configuredApp.setGlobalPrefix('api/v1');
+    setupApiDocs(configuredApp, configuredApp.get(ConfigService));
+    await configuredApp.init();
+
+    try {
+      const res = await request(configuredApp.getHttpServer())
+        .get('/api/docs')
+        .expect(200);
+      expect(res.text).toContain('http://doc-auth.internal/api/docs');
+      expect(res.text).toContain('http://doc-catalog.internal/api/docs');
+      expect(res.text).not.toContain('http://localhost:3001/api/docs');
+      expect(res.text).not.toContain('http://localhost:3002/api/docs');
+    } finally {
+      await configuredApp.close();
+      delete process.env.AUTH_DOCS_URL;
+      delete process.env.CATALOG_DOCS_URL;
+    }
   });
 
   afterAll(async () => {
