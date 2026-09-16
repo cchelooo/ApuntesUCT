@@ -4,7 +4,7 @@ import { Input } from '../components/Input';
 
 export function LoginPage() {
   return (
-    <div className="min-h-screen flex">
+    <div className="h-full w-full flex">
       
       {/* Panel Izquierdo (Oculto en móviles, visible en pantallas lg) */}
       <div className="hidden lg:flex lg:w-1/2 bg-slate-900 text-white p-12 flex-col justify-between relative overflow-hidden">
@@ -89,7 +89,7 @@ export function LoginPage() {
               </div>
             </div>
 
-            <form className="space-y-4">
+            <form className="space-y-4" onSubmit={(event) => event.preventDefault()}>
               <Input
                 label="Correo electrónico"
                 placeholder="tu@correo.cl"
