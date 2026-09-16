@@ -84,7 +84,7 @@ export function RegisterPage() {
               </div>
             </div>
 
-            <form className="space-y-4">
+            <form className="space-y-4" onSubmit={(event) => event.preventDefault()}>
               <Input
                 label="Nombre completo"
                 placeholder="Valentina Torres"
@@ -110,10 +110,11 @@ export function RegisterPage() {
 
               {/* Selector de Carrera */}
               <div className="flex flex-col gap-1.5 w-full">
-                <label className="text-sm font-medium text-gray-700">
+                <label htmlFor="career" className="text-sm font-medium text-gray-700">
                   Carrera *
                 </label>
                 <select 
+                  id="career"
                   defaultValue="" 
                   className="block w-full rounded-md border border-gray-300 text-sm transition-colors px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
                 >
