@@ -1,5 +1,6 @@
 export interface Subject {
   id: string;
+  careerId: string;
   code: string;
   name: string;
   description: string | null;

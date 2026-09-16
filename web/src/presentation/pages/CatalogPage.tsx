@@ -1,4 +1,5 @@
 import { useCatalogSubjects } from '../../application/catalog/useCatalogSubjects';
+import { CatalogFilterSidebar } from '../components/catalog/CatalogFilterSidebar';
 import { CatalogGrid } from '../components/catalog/CatalogGrid';
 import { Input } from '../components/Input';
 
@@ -7,7 +8,7 @@ export function CatalogPage() {
 
   return (
     <section className="bg-catalog-bg px-6 py-10 font-body text-catalog-ink sm:px-10">
-      <header className="mx-auto mb-8 max-w-6xl">
+      <header className="mx-auto mb-8 max-w-7xl">
         <h1 className="font-display text-3xl text-catalog-ink sm:text-4xl">
           Catálogo
         </h1>
@@ -34,7 +35,7 @@ export function CatalogPage() {
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Buscar por nombre o código"
             aria-label="Buscar asignaturas por nombre o código"
-            className="w-full !bg-transparent text-sm !text-catalog-ink placeholder:!text-catalog-ink/40 focus:!outline-none !border-none focus:!ring-0 !p-0 !m-0 !shadow-none"
+            className="w-full !bg-transparent text-sm !text-catalog-ink placeholder:!text-catalog-ink/40 focus:!outline-none !border-none focus:!ring-0 focus:!ring-offset-0 !p-0 !m-0 !shadow-none"
             containerClassName="flex-1"
           />
         </div>
@@ -44,8 +45,11 @@ export function CatalogPage() {
         </p>
       </header>
 
-      <div className="mx-auto max-w-6xl">
-        <CatalogGrid subjects={subjects} query={query} />
+      <div className="mx-auto flex max-w-7xl flex-col gap-8 lg:flex-row">
+        <CatalogFilterSidebar />
+        <div className="flex-1">
+          <CatalogGrid subjects={subjects} query={query} />
+        </div>
       </div>
     </section>
   );

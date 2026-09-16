@@ -17,7 +17,7 @@ describe('HealthController', () => {
   });
 
   it('should return health status', () => {
-    const response = controller.checkHealth();
+    const response = controller.check();
     expect(response).toHaveProperty('status', 'ok');
     expect(response).toHaveProperty('service', 'API Gateway');
   });
