@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/uct_palette.dart';
+import '../../../core/widgets/app_navigation_bar.dart';
 import '../../../core/widgets/theme_toggle_button.dart';
 import '../../auth/data/mock_auth_repository.dart';
 import 'providers/profile_provider.dart';
@@ -21,7 +22,6 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
-    final esOscuro = Theme.of(context).brightness == Brightness.dark;
     final profileData = ref.watch(profileDataProvider);
 
     return Scaffold(
@@ -108,26 +108,29 @@ class ProfileScreen extends ConsumerWidget {
       // -----------------------------------------------------------------------
       // Barra de navegación inferior
       // -----------------------------------------------------------------------
-      bottomNavigationBar: _ProfileBottomNav(
-        esOscuro: esOscuro,
-        activeIndex: 3, // Perfil activo
-        onTabSelected: (index) => _onNavTabSelected(context, index),
+      bottomNavigationBar: AppNavigationBar(
+        selectedDestination: AppNavigationDestination.profile,
+        onDestinationSelected: (destination) =>
+            _onDestinationSelected(context, destination),
       ),
     );
   }
 
-  void _onNavTabSelected(BuildContext context, int index) {
-    switch (index) {
-      case 0:
+  void _onDestinationSelected(
+    BuildContext context,
+    AppNavigationDestination destination,
+  ) {
+    switch (destination) {
+      case AppNavigationDestination.home:
         context.go('/');
         break;
-      case 1:
+      case AppNavigationDestination.search:
         context.push('/search');
         break;
-      case 2:
+      case AppNavigationDestination.library:
         context.push('/library');
         break;
-      case 3:
+      case AppNavigationDestination.profile:
         // Ya estamos en perfil
         break;
     }
@@ -276,101 +279,3 @@ class _UctIsotype extends StatelessWidget {
   }
 }
 
-class _ProfileBottomNav extends StatelessWidget {
-  const _ProfileBottomNav({
-    required this.esOscuro,
-    required this.activeIndex,
-    required this.onTabSelected,
-  });
-
-  final bool esOscuro;
-  final int activeIndex;
-  final ValueChanged<int> onTabSelected;
-
-  static const _navItems = [
-    _NavItem(icon: Icons.home_rounded, label: 'Inicio'),
-    _NavItem(icon: Icons.search_rounded, label: 'Buscar'),
-    _NavItem(icon: Icons.bookmark_rounded, label: 'Guardados'),
-    _NavItem(icon: Icons.person_rounded, label: 'Perfil'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final colorFondo =
-        esOscuro ? const Color(0xFF0F1722) : const Color(0xFF0A3B65);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: colorFondo,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 10,
-            offset: const Offset(0, -3),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: SizedBox(
-          height: 64,
-          child: Row(
-            children: [
-              for (var i = 0; i < _navItems.length; i++)
-                Expanded(
-                  child: _NavTabButton(
-                    item: _navItems[i],
-                    isActive: i == activeIndex,
-                    onTap: () => onTabSelected(i),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NavItem {
-  const _NavItem({required this.icon, required this.label});
-  final IconData icon;
-  final String label;
-}
-
-class _NavTabButton extends StatelessWidget {
-  const _NavTabButton({
-    required this.item,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  final _NavItem item;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isActive ? UctPalette.amarillo : const Color(0xFF8FBAD8);
-
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(item.icon, color: color, size: isActive ? 26 : 22),
-          const SizedBox(height: 3),
-          Text(
-            item.label,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

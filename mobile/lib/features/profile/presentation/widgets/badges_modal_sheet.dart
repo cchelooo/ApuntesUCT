@@ -37,9 +37,9 @@ class BadgesModalSheet extends StatelessWidget {
     final progress = totalCount > 0 ? unlockedCount / totalCount : 0.0;
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.75,
+      initialChildSize: 0.85,
       minChildSize: 0.5,
-      maxChildSize: 0.92,
+      maxChildSize: 0.95,
       expand: false,
       builder: (context, scrollController) {
         return Padding(
@@ -131,6 +131,9 @@ class BadgesModalSheet extends StatelessWidget {
                         : const Color(0xFFD7E7F3),
                   ),
                 ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [

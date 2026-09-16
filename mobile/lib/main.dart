@@ -11,7 +11,7 @@ import 'package:apuntesuct_mobile/features/profile/presentation/profile_screen.d
 import 'package:apuntesuct_mobile/providers/theme_mode_provider.dart';
 
 final GoRouter appRouter = GoRouter(
-  initialLocation: '/profile',
+  initialLocation: '/login',
   routes: [
     GoRoute(
       path: '/',

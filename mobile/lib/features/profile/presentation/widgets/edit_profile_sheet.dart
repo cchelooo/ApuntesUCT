@@ -65,8 +65,6 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
           bio: _bioController.text.trim(),
         );
 
-    navigator.pop();
-
     messenger.showSnackBar(
       const SnackBar(
         content: Text('Perfil actualizado correctamente'),
@@ -74,6 +72,8 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
         duration: Duration(seconds: 2),
       ),
     );
+
+    navigator.pop();
   }
 
   @override
@@ -140,16 +140,17 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Text(
-                      'Editar Perfil',
-                      style: TextStyle(
-                        color: colorScheme.onSurface,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.3,
+                    Expanded(
+                      child: Text(
+                        'Editar Perfil',
+                        style: TextStyle(
+                          color: colorScheme.onSurface,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.3,
+                        ),
                       ),
                     ),
-                    const Spacer(),
                     IconButton(
                       icon: const Icon(Icons.close_rounded),
                       tooltip: 'Cerrar',
@@ -310,7 +311,9 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
                       child: OutlinedButton(
                         onPressed: () => Navigator.of(context).pop(),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                           side: BorderSide(color: colorBordeCampo),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -330,9 +333,11 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
                       child: ElevatedButton(
                         onPressed: _handleSave,
                         style: ElevatedButton.styleFrom(
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           backgroundColor: colorBotonPrimario,
                           foregroundColor: colorTextoBotonPrimario,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),

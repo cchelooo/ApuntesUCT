@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/uct_palette.dart';
+import '../../../../core/widgets/app_horizontal_list.dart';
+import '../../../../core/widgets/app_section_header.dart';
 import '../../domain/profile_models.dart';
 
 /// Sección horizontal de cursos inscritos en el perfil del estudiante.
@@ -11,65 +12,31 @@ class ProfileCoursesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final esOscuro = Theme.of(context).brightness == Brightness.dark;
-    final colorSemestre = esOscuro ? UctPalette.celeste : UctPalette.azul;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Encabezado: "Cursos" + "Semestre 2"
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Cursos',
-                style: TextStyle(
-                  color: colorScheme.onSurface,
-                  fontSize: 19,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.3,
-                ),
+        AppSectionHeader(
+          title: 'Cursos',
+          actionLabel: 'Semestre 2',
+          onAction: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Filtrado por Semestre 2'),
+                duration: Duration(seconds: 1),
               ),
-              GestureDetector(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Filtrado por Semestre 2'),
-                      duration: Duration(seconds: 1),
-                    ),
-                  );
-                },
-                child: Text(
-                  'Semestre 2',
-                  style: TextStyle(
-                    color: colorSemestre,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         ),
-
         const SizedBox(height: 12),
-
-        // Lista horizontal de tarjetas de cursos
-        SizedBox(
+        AppHorizontalList(
           height: 104,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: courses.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final course = courses[index];
-              return _CourseCard(item: course, esOscuro: esOscuro);
-            },
-          ),
+          itemCount: courses.length,
+          itemBuilder: (context, index) {
+            final course = courses[index];
+            return _CourseCard(item: course, esOscuro: esOscuro);
+          },
         ),
       ],
     );
