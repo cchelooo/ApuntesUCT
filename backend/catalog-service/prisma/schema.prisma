@@ -26,32 +26,40 @@ model Career {
   name         String
   code         String
   active       Boolean    @default(true)
+  subjects     Subject[]
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
+  @@unique([universityId, code])
   @@index([universityId])
   @@map("careers")
 }
 
 model Subject {
-  id          String   @id @default(uuid())
+  id          String      @id @default(uuid())
+  careerId    String      @map("career_id")
+  career      Career      @relation(fields: [careerId], references: [id], onDelete: Cascade)
   code        String
   name        String
   description String?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  active      Boolean     @default(true)
+  professors  Professor[]
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
 
+  @@unique([careerId, code])
+  @@index([careerId])
   @@map("subjects")
 }
 
 model Professor {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   name      String
-  email     String   @unique
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  email     String    @unique
+  active    Boolean   @default(true)
+  subjects  Subject[]
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
   @@map("professors")
 }

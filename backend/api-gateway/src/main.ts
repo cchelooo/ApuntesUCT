@@ -25,7 +25,9 @@ async function bootstrap() {
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('API Gateway')
-    .setDescription('Punto único de entrada a los microservicios de ApuntesUCT.')
+    .setDescription(
+      'Punto único de entrada a los microservicios de ApuntesUCT.',
+    )
     .setVersion('0.0.1')
     .build();
 

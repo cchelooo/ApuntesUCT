@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import 'package:apuntesuct_mobile/core/theme/app_theme.dart';
 import 'package:apuntesuct_mobile/features/auth/presentation/login_screen.dart';
 import 'package:apuntesuct_mobile/features/auth/presentation/register_screen.dart';
@@ -82,6 +81,3 @@ class PendingScreen extends StatelessWidget {
     );
   }
 }
-
-// HomeScreen ahora vive en lib/screens/home_screen.dart (issue #56).
-// Se exporta desde ahí; este archivo solo lo ruta.

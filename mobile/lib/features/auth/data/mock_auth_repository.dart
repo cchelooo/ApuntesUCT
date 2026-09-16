@@ -47,7 +47,7 @@ class MockAuthRepository implements AuthRepository {
     return UserModel.mock(
       email: email,
       name: email.contains('@')
-          ? email.split('@').first.replaceAll('.', ' ').toUpperCase()
+          ? email.split('@').first.replaceAll('.', '').toUpperCase()
           : 'Usuario Mock',
     );
   }
