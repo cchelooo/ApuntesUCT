@@ -6,13 +6,12 @@ import 'package:apuntesuct_mobile/core/widgets/loading_state.dart';
 
 void main() {
   group('Componentes de Estado UI (#55)', () {
-    testWidgets('LoadingState renderiza CircularProgressIndicator y mensaje',
-        (tester) async {
+    testWidgets('LoadingState renderiza CircularProgressIndicator y mensaje', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: LoadingState(message: 'Cargando apuntes...'),
-          ),
+          home: Scaffold(body: LoadingState(message: 'Cargando apuntes...')),
         ),
       );
 
@@ -20,35 +19,38 @@ void main() {
       expect(find.text('Cargando apuntes...'), findsOneWidget);
     });
 
-    testWidgets('ErrorState muestra mensaje y dispara onRetry al presionar botón',
-        (tester) async {
-      bool reintentado = false;
+    testWidgets(
+      'ErrorState muestra mensaje y dispara onRetry al presionar botón',
+      (tester) async {
+        bool reintentado = false;
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: ErrorState(
-              message: 'Error de servidor 500',
-              onRetry: () {
-                reintentado = true;
-              },
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: ErrorState(
+                message: 'Error de servidor 500',
+                onRetry: () {
+                  reintentado = true;
+                },
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      expect(find.text('Ocurrió un problema'), findsOneWidget);
-      expect(find.text('Error de servidor 500'), findsOneWidget);
-      expect(find.byType(FilledButton), findsOneWidget);
+        expect(find.text('Ocurrió un problema'), findsOneWidget);
+        expect(find.text('Error de servidor 500'), findsOneWidget);
+        expect(find.byType(FilledButton), findsOneWidget);
 
-      await tester.tap(find.byType(FilledButton));
-      await tester.pump();
+        await tester.tap(find.byType(FilledButton));
+        await tester.pump();
 
-      expect(reintentado, isTrue);
-    });
+        expect(reintentado, isTrue);
+      },
+    );
 
-    testWidgets('EmptyState muestra título y subtítulo personalizados',
-        (tester) async {
+    testWidgets('EmptyState muestra título y subtítulo personalizados', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(

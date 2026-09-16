@@ -22,7 +22,7 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 56, color: colorScheme.outline),
+            Icon(icon, size: 56, color: colorScheme.onSurfaceVariant),
             const SizedBox(height: 16),
             Text(
               title,
@@ -35,7 +35,7 @@ class EmptyState extends StatelessWidget {
               Text(
                 subtitle!,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: colorScheme.outline),
+                style: TextStyle(color: colorScheme.onSurfaceVariant),
               ),
             ],
           ],

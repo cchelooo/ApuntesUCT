@@ -1,13 +1,13 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
 import 'package:apuntesuct_mobile/core/theme/app_theme.dart';
 import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart'
     show authStateProvider;
 import 'package:apuntesuct_mobile/features/auth/presentation/login_screen.dart';
 import 'package:apuntesuct_mobile/features/auth/presentation/register_screen.dart';
+import 'package:apuntesuct_mobile/features/catalog/presentation/screens/catalog_screen.dart';
 import 'package:apuntesuct_mobile/providers/theme_mode_provider.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/login',
@@ -35,7 +35,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/catalog',
       name: 'catalog',
-      builder: (context, state) => const PendingScreen(title: 'Catálogo'),
+      builder: (context, state) => const CatalogScreen(),
     ),
     GoRoute(
       path: '/search',

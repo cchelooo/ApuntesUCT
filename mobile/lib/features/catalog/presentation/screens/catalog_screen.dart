@@ -1,5 +1,6 @@
+import 'package:apuntesuct_mobile/core/widgets/widgets.dart';
 import 'package:flutter/material.dart';
-import '../../../../core/widgets/widgets.dart';
+
 import '../widgets/material_card.dart';
 
 class CatalogScreen extends StatefulWidget {
@@ -94,7 +95,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         title: item['title']!,
                         author: item['author']!,
                         subject: item['subject']!,
-                        onTap: () {},
+                        onTap: null,
                       );
                     },
                   ),
