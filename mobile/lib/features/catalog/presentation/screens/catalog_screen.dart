@@ -90,7 +90,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   title: item['title']!,
                   author: item['author']!,
                   subject: item['subject']!,
-                  onTap: () {},
+                  onTap: null,
                 );
               },
             ),

@@ -39,7 +39,9 @@ class MaterialCard extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+        trailing: onTap != null
+            ? const Icon(Icons.arrow_forward_ios, size: 14)
+            : null,
         onTap: onTap,
       ),
     );
