@@ -72,11 +72,17 @@ void main() {
           ?.resolve({});
       final darkButton = AppTheme.oscuro.filledButtonTheme.style?.shape
           ?.resolve({});
+      final lightOutlined = AppTheme.claro.outlinedButtonTheme.style?.shape
+          ?.resolve({});
+      final darkOutlined = AppTheme.oscuro.outlinedButtonTheme.style?.shape
+          ?.resolve({});
       final lightField = AppTheme.claro.inputDecorationTheme.border;
       final darkField = AppTheme.oscuro.inputDecorationTheme.border;
 
       expect(lightButton, isA<RoundedRectangleBorder>());
       expect(darkButton, lightButton);
+      expect(lightOutlined, lightButton);
+      expect(darkOutlined, lightButton);
       expect(lightField, isA<OutlineInputBorder>());
       expect(darkField, isA<OutlineInputBorder>());
       expect(
