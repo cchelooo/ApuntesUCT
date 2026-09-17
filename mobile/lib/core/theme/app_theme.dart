@@ -170,6 +170,16 @@ abstract final class AppTheme {
         ),
       ),
 
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: esquema.primary,
+          minimumSize: const Size(0, alturaControl),
+          shape: formaBoton,
+          side: BorderSide(color: esquema.primary, width: 1.5),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+      ),
+
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: colorEnlace,
