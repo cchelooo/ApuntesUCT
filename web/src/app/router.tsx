@@ -1,5 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { MainLayout } from '../presentation/layouts/MainLayout';
+import { AuthLayout } from '../presentation/layouts/AuthLayout';
 import {
   HomePage,
   LoginPage,
@@ -18,7 +19,6 @@ export const router = createBrowserRouter([
     errorElement: <NotFoundPage />,
     children: [
       { index: true, element: <HomePage /> },
-      { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
       { path: 'profile', element: <ProfilePage /> },
       { path: 'catalog', element: <CatalogPage /> },
@@ -26,5 +26,11 @@ export const router = createBrowserRouter([
       { path: 'library', element: <LibraryPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
+  },
+  {
+    path: '/login',
+    element: <AuthLayout />,
+    errorElement: <NotFoundPage />,
+    children: [{ index: true, element: <LoginPage /> }],
   },
 ]);

@@ -4,7 +4,7 @@ import { Input } from '../components/Input';
 
 export function LoginPage() {
   return (
-    <div className="h-full w-full flex">
+    <div className="min-h-screen w-full flex">
       
       {/* Panel Izquierdo (Oculto en móviles, visible en pantallas lg) */}
       <div className="hidden lg:flex lg:w-1/2 bg-slate-900 text-white p-12 flex-col justify-between relative overflow-hidden">
