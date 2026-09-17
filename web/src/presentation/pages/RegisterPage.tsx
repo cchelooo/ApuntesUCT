@@ -4,7 +4,7 @@ import { Input } from '../components/Input';
 
 export function RegisterPage() {
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex lg:h-screen">
       
       {/* Panel Izquierdo */}
       <div className="hidden lg:flex lg:w-1/2 bg-slate-900 text-white p-12 flex-col justify-between relative overflow-hidden">
@@ -50,7 +50,7 @@ export function RegisterPage() {
       </div>
 
       {/* Panel Derecho (Formulario de Registro) */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white overflow-y-auto">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white lg:h-screen lg:overflow-y-auto">
         <div className="w-full max-w-sm space-y-6 my-auto">
           
           <div className="text-center">
