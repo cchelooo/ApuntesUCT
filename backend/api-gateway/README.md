@@ -1,3 +1,60 @@
+## Proxy hacia Auth Service (#91)
+
+El Gateway reenvía `/api/v1/auth` y sus subrutas al origen definido por
+`AUTH_SERVICE_URL` (por defecto `http://127.0.0.1:3001`). Conserva el método,
+query, cuerpo, Authorization y las respuestas del servicio, incluidos cookies y
+códigos de error. Usa `http-proxy-middleware` con `fixRequestBody` para reenviar
+los cuerpos que Nest ya procesó:
+[documentación del middleware](https://github.com/chimurai/http-proxy-middleware).
+
+| Ruta del Gateway | Ruta en Auth |
+| --- | --- |
+| `/api/v1/auth/health` | `/api/v1/health` |
+| `/api/v1/auth/login` | `/api/v1/auth/login` |
+| `/api/v1/auth/register` | `/api/v1/auth/register` |
+
+Solo health existe actualmente en Auth. Las demás rutas devolverán su 404 hasta
+que se implementen. `/api/v1/health` sigue mostrando el estado del Gateway.
+Si Auth no acepta la conexión o excede 5 segundos sin responder, el Gateway
+responde 502 con `Auth Service no disponible`.
+
+### Prueba local
+
+Desde la raíz, inicia la base de datos con `docker compose up -d db-auth`.
+Configura Auth siguiendo `../auth-service/README.md` (entorno, Prisma y migraciones).
+Copia `.env.example` a `.env` dentro de `backend/api-gateway`.
+Luego ejecuta en dos terminales, desde `backend`:
+
+```bash
+npm run start:dev --workspace=auth-service
+npm run start:dev --workspace=api-gateway
+```
+
+```bash
+curl -i http://localhost:3000/api/v1/auth/health
+# 200, service: auth-service
+curl -i http://localhost:3000/api/v1/health
+# 200, service: API Gateway
+```
+
+El Compose actual levanta infraestructura; los procesos Nest se ejecutan en el
+host. Si se despliegan en contenedores, configura `AUTH_SERVICE_URL` con el nombre
+DNS y puerto interno de Auth, sin añadir `/api/v1`.
+
+### Verificación automática
+
+Desde `backend`:
+
+```bash
+npm run build --workspace=api-gateway
+npm run test --workspace=api-gateway -- --runInBand
+npm run test:e2e --workspace=api-gateway -- --runInBand
+```
+
+Las pruebas del proxy abren servidores HTTP locales: comprueban métodos, rutas,
+JSON, query, Authorization, cookies, errores y Auth caído. También llaman al módulo
+health real de Auth, sin iniciar Prisma ni requerir PostgreSQL.
+
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>

@@ -85,7 +85,7 @@ describe('API Gateway (e2e)', () => {
     }
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     await app.close();
   });
 });
