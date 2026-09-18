@@ -107,8 +107,36 @@ según RF-01, y generar el hash de la contraseña antes de persistirla. El índi
 asignar `STUDENT`; los roles privilegiados requieren un flujo autorizado.
 Las respuestas de la API deben omitir `passwordHash`.
 
-Estas validaciones y los endpoints de autenticación todavía no están
-implementados; no las realiza el modelo de Prisma.
+Estas validaciones y la autenticación real todavía no están implementadas;
+no las realiza el modelo de Prisma. El login temporal se describe a continuación.
+
+## Login mock (#92)
+
+`POST /api/v1/auth/login` devuelve `200 OK` con una sesión simulada para integrar
+el frontend. Está disponible directamente en Auth (puerto 3001) y mediante el
+gateway (puerto 3000). El contrato también está documentado en Swagger.
+
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"estudiante@alu.uct.cl","password":"demo"}'
+```
+
+La respuesta contiene `accessToken`, `tokenType: "Bearer"`, `expiresIn: 3600` y
+`user` con `id`, `name`, `email`, `role: "STUDENT"` y `active: true`, compatible
+con `LoginResponseModel` de mobile. El usuario es ficticio, con UUID fijo y el
+correo enviado convertido a minúsculas. No se devuelve refresh token.
+
+El token tiene cabecera y payload codificados en base64url, con `sub`, `email`,
+`role`, `iat`, `exp` y `mock: true`. Usa `alg: none` y firma vacía: **es un JWT
+falso y no debe aceptarse para autorizar peticiones**. Se debe reemplazar este
+controlador antes de habilitar autenticación real en producción.
+
+Acepta cualquier correo con formato válido y contraseña de texto no vacía,
+sin verificar credenciales ni exigir dominio institucional. Un cuerpo inválido
+devuelve `400 Bad Request`. Los campos adicionales se descartan y la contraseña
+no se incluye en la respuesta ni en el token. No crea ni consulta usuarios;
+el arranque general de Auth sigue requiriendo PostgreSQL por `PrismaModule`.
 
 ## Ejecutar
 

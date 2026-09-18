@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { createServer, Server } from 'node:http';
@@ -6,6 +6,7 @@ import { AddressInfo } from 'node:net';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { HealthModule } from '../../auth-service/src/presentation/health/health.module';
+import { AuthModule } from '../../auth-service/src/presentation/auth/auth.module';
 
 describe('Gateway → Auth (HTTP)', () => {
   let gateway: INestApplication;
@@ -110,13 +111,16 @@ describe('Gateway → Auth (HTTP)', () => {
       .expect({ statusCode: 502, message: 'Auth Service no disponible' });
   });
 
-  it('alcanza el controlador health real de Auth por HTTP', async () => {
+  it('alcanza los controladores de health y login mock de Auth por HTTP', async () => {
     await new Promise<void>((resolve) => upstream.close(() => resolve()));
     const authModule = await Test.createTestingModule({
-      imports: [HealthModule],
+      imports: [HealthModule, AuthModule],
     }).compile();
     const auth = authModule.createNestApplication();
     auth.setGlobalPrefix('api/v1');
+    auth.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await auth.listen(Number(new URL(target).port), '127.0.0.1');
     try {
       const res = await request(gateway.getHttpServer())
@@ -124,6 +128,17 @@ describe('Gateway → Auth (HTTP)', () => {
         .expect(200);
       expect(res.body.service).toBe('auth-service');
       expect(res.body.status).toBe('ok');
+      const login = await request(gateway.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({ email: 'estudiante@alu.uct.cl', password: 'demo' })
+        .expect(200);
+      expect(login.body.accessToken).toEqual(expect.any(String));
+      expect(login.body.user.email).toBe('estudiante@alu.uct.cl');
+      expect(login.body.tokenType).toBe('Bearer');
+      await request(gateway.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({ email: 'invalido', password: 'demo' })
+        .expect(400);
     } finally {
       await auth.close();
     }
