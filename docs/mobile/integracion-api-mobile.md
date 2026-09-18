@@ -35,7 +35,7 @@ Toda la comunicación de la app debe apuntar al **API Gateway** (puerto `3000`),
 | Método | Ruta (vía gateway) | Respuesta verificada | Estado |
 |---|---|---|---|
 | GET | `/api/v1/health` | `200` → `{"status":"ok","service":"API Gateway","timestamp":"..."}` | ✅ Verificado |
-| GET | `/api/v1/catalog/filter` | Lista de asignaturas (DTO con filtros opcionales) | ⚠️ En código, ver nota de build |
+| GET | `/api/v1/catalog/filter` (directo a `:3002`) | Lista de asignaturas (DTO con filtros opcionales) | ✅ Compila en `main` (ver nota) |
 
 Comandos de comprobación:
 
@@ -45,9 +45,10 @@ curl http://localhost:3001/api/v1/health        # auth
 curl http://localhost:3000/api/docs/gateway-json # spec OpenAPI del gateway
 ```
 
-> **Bloqueante en Catalog Service:** el `catalog-service` **no compila** en `main`
-> (`npm run build` → `TS2322: Type '{ career: { include: { university: true; }; }; professors: true; }' is not assignable to type 'never'` en `src/application/services/catalog.service.ts:77`).
-> Se debe corregir antes de que INT4 consuma `/api/v1/catalog/*`. Su propietario es el equipo que desarrolla dicho servicio.
+> **Nota de compilación (Catalog Service):** `npm run build` de `catalog-service` falla
+> con `TS2322` en `src/application/services/catalog.service.ts:77` **solo si el cliente Prisma
+> de `node_modules` está desactualizado**. Se resuelve regenerándolo antes de compilar:
+> `npm run prisma:generate` en `backend/catalog-service`.
 
 ## 4. Respuestas a «Pendiente de confirmar» (checklist de INT4)
 
@@ -61,6 +62,6 @@ curl http://localhost:3000/api/docs/gateway-json # spec OpenAPI del gateway
 
 ## 5. Qué puede usar INT4 hoy y qué viene
 
-- **Hoy (main):** healthcheck del gateway y Swagger; healthcheck de auth; contrato de catálogo en código (con bloqueante de build).
-- **Próximo:** proxy Gateway→Auth (**#91**), endpoints de sesión de auth, corrección de build de catálogo, servicios Material / Quality / Search.
+- **Hoy (main):** healthcheck del gateway y Swagger; healthcheck de auth; catálogo compila en `main` (`GET /api/v1/catalog/filter`).
+- **Próximo:** proxy Gateway→Auth (**#91**), endpoints de sesión de auth, servicios Material / Quality / Search.
 - **Formato base propuesto a INT4:** apuntar siempre al gateway (`:3000`) y no a los puertos internos de cada servicio (salvo en Swagger para documentación).
