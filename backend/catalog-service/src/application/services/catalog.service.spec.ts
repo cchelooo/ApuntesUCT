@@ -12,6 +12,9 @@ describe('CatalogService', () => {
     subject: {
       findMany: jest.fn(),
     },
+    university: {
+      findMany: jest.fn(),
+    },
   };
 
   beforeEach(async () => {
@@ -33,6 +36,67 @@ describe('CatalogService', () => {
 
   it('debe estar definido', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('getCatalogTree', () => {
+    it('debe consultar la BD y retornar la estructura en árbol de universidades activas', async () => {
+      const mockResult = [
+        {
+          id: 'univ-123',
+          name: 'Universidad Católica de Temuco',
+          code: 'UCT',
+          active: true,
+          careers: [
+            {
+              id: 'career-123',
+              name: 'Ingeniería Civil en Informática',
+              code: 'ICI',
+              active: true,
+              subjects: [
+                {
+                  id: 'subj-123',
+                  name: 'Estructura de Datos',
+                  code: 'ICI-201',
+                  semester: 3,
+                },
+              ],
+            },
+          ],
+        },
+      ] as unknown as ReturnType<CatalogService['getCatalogTree']>;
+
+      mockPrismaService.university.findMany.mockResolvedValue(mockResult);
+
+      const result = await service.getCatalogTree();
+
+      expect(prismaService.university.findMany).toHaveBeenCalledWith({
+        where: { active: true },
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          active: true,
+          careers: {
+            where: { active: true },
+            select: {
+              id: true,
+              name: true,
+              code: true,
+              active: true,
+              subjects: {
+                select: {
+                  id: true,
+                  name: true,
+                  code: true,
+                  semester: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      expect(result).toEqual(mockResult);
+    });
   });
 
   describe('filterCatalog - Validaciones de la secuencia jerárquica (6 Niveles)', () => {
