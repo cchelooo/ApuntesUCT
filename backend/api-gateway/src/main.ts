@@ -29,6 +29,8 @@ async function bootstrap() {
   await app.listen(port);
   console.log(`🚀 API Gateway corriendo en: http://localhost:${port}/api/v1`);
   console.log(`Índice de documentación en http://localhost:${port}/api/docs`);
-  console.log(`Swagger API Gateway en http://localhost:${port}/api/docs/gateway`);
+  console.log(
+    `Swagger API Gateway en http://localhost:${port}/api/docs/gateway`,
+  );
 }
 bootstrap();
