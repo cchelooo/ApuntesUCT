@@ -132,7 +132,8 @@ El token tiene cabecera y payload codificados en base64url, con `sub`, `email`,
 falso y no debe aceptarse para autorizar peticiones**. Se debe reemplazar este
 controlador antes de habilitar autenticación real en producción.
 
-Acepta cualquier correo con formato válido y contraseña de texto no vacía,
+Acepta cualquier correo con formato válido y contraseña de texto con al menos
+un carácter que no sea espacio en blanco (sin recortar ni modificar la contraseña),
 sin verificar credenciales ni exigir dominio institucional. Un cuerpo inválido
 devuelve `400 Bad Request`. Los campos adicionales se descartan y la contraseña
 no se incluye en la respuesta ni en el token. No crea ni consulta usuarios;

@@ -83,6 +83,23 @@ describe('Login mock (e2e)', () => {
     expect(response.text).not.toContain('cualquier-clave');
   });
 
+  it.each(['   ', '\t', '\n', ' \t\r\n ', '\u00a0'])(
+    'rechaza una contraseña formada solo por espacios en blanco: %j',
+    async (password) => {
+      await request(app.getHttpServer() as Server)
+        .post('/api/v1/auth/login')
+        .send({ email: 'estudiante@alu.uct.cl', password })
+        .expect(400);
+    },
+  );
+
+  it('acepta una contraseña con espacios y otros caracteres', async () => {
+    await request(app.getHttpServer() as Server)
+      .post('/api/v1/auth/login')
+      .send({ email: 'estudiante@alu.uct.cl', password: ' demo con espacios ' })
+      .expect(200);
+  });
+
   it.each([
     {},
     { email: 'estudiante@alu.uct.cl' },

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, Matches } from 'class-validator';
 
 export class LoginDto {
   @ApiProperty({ example: 'estudiante@alu.uct.cl' })
@@ -8,9 +8,14 @@ export class LoginDto {
 
   @ApiProperty({
     example: 'demo',
-    description: 'El mock no verifica credenciales.',
+    description:
+      'Debe contener al menos un carácter que no sea espacio en blanco. El mock no verifica credenciales.',
   })
   @IsString()
   @IsNotEmpty()
+  @Matches(/\S/, {
+    message:
+      'password debe contener al menos un carácter que no sea espacio en blanco',
+  })
   password!: string;
 }

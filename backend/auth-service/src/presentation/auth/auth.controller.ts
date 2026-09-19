@@ -53,7 +53,8 @@ export class AuthController {
     },
   })
   @ApiBadRequestResponse({
-    description: 'Correo inválido o contraseña ausente/vacía.',
+    description:
+      'Correo inválido o contraseña ausente, vacía o formada solo por espacios en blanco.',
   })
   login(@Body() credentials: LoginDto) {
     const user = {
