@@ -13,8 +13,8 @@ los cuerpos que Nest ya procesó:
 | `/api/v1/auth/login` | `/api/v1/auth/login` |
 | `/api/v1/auth/register` | `/api/v1/auth/register` |
 
-Solo health existe actualmente en Auth. Las demás rutas devolverán su 404 hasta
-que se implementen. `/api/v1/health` sigue mostrando el estado del Gateway.
+Auth implementa health y el login mock temporal (#92). El registro devolverá
+404 hasta que se implemente. `/api/v1/health` sigue mostrando el estado del Gateway.
 Si Auth no acepta la conexión o excede 5 segundos sin responder, el Gateway
 responde 502 con `Auth Service no disponible`.
 
@@ -40,6 +40,12 @@ curl -i http://localhost:3000/api/v1/health
 El Compose actual levanta infraestructura; los procesos Nest se ejecutan en el
 host. Si se despliegan en contenedores, configura `AUTH_SERVICE_URL` con el nombre
 DNS y puerto interno de Auth, sin añadir `/api/v1`.
+
+`AUTH_DOCS_URL` y `CATALOG_DOCS_URL` configuran los enlaces del índice
+`/api/docs`. Sus valores de ejemplo son `http://localhost:3001/api/docs` y
+`http://localhost:3002/api/docs`, respectivamente; deben ser accesibles desde
+el navegador. Si ya tienes un `.env`, agrega estas variables si necesitas
+personalizar los enlaces: modificar `.env.example` no actualiza tu `.env`.
 
 ### Verificación automática
 
