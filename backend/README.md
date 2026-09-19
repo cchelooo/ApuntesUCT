@@ -22,7 +22,8 @@ Tecnologías: Node.js, TypeScript, NestJS, Prisma, PostgreSQL, MinIO.
 Notas:
 - Los servicios implementados aplican el prefijo global `api/v1` y cada uno expone su healthcheck `GET /api/v1/health` (api-gateway, auth-service y catalog-service).
 - El api-gateway obtiene el puerto mediante `ConfigService` (`configService.get<number>('PORT') || 3000`), con `3000` como valor predeterminado. Expone `GET /api/v1/health` y Swagger en `/api/docs`. Su módulo de proxy todavía está vacío, por lo que aún no enruta peticiones hacia los servicios.
-- Documentación Swagger por servicio: `http://localhost:<puerto>/api/docs` (api-gateway, auth-service y catalog-service).
+- Documentación Swagger por servicio: API Gateway en `http://localhost:3000/api/docs/gateway` (spec JSON en `/api/docs/gateway-json`); Auth y Catalog en `http://localhost:<puerto>/api/docs` con spec JSON en `/api/docs-json` (puertos 3001 y 3002).
+- CORS: habilitado en api-gateway, auth-service y catalog-service (`app.enableCors()`). Sin restricción de orígenes en desarrollo: los servicios aceptan solicitudes cross-origin (front web y app mobile).
 
 ## Puertos de bases de datos (docker-compose.yml)
 
