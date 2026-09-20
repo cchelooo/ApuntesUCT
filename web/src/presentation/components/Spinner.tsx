@@ -3,9 +3,9 @@ import React from 'react';
 export interface SpinnerProps {
   /** Tamaño del spinner: pequeño, mediano o grande */
   size?: 'sm' | 'md' | 'lg';
-  /** Color CSS o clases de Tailwind (ej. 'text-blue-500'). Por defecto utiliza 'text-current' */
+  /** Color CSS (ej. 'red', '#2563eb'). Se aplica mediante la propiedad style. */
   color?: string;
-  /** Clases adicionales para el contenedor */
+  /** Clases adicionales para el contenedor (ej. clases de Tailwind) */
   className?: string;
 }
 
@@ -17,17 +17,18 @@ const sizeClasses = {
 
 export const Spinner: React.FC<SpinnerProps> = ({
   size = 'md',
-  color = 'text-current',
+  color,
   className = '',
 }) => {
   return (
-    <div
+    <span
       role="status"
-      aria-label="Cargando..."
-      className={`inline-block animate-spin ${sizeClasses[size]} ${color} ${className}`}
+      style={{ color }}
+      className={`inline-block ${sizeClasses[size]} ${className}`}
     >
       <svg
-        className="w-full h-full"
+        aria-hidden="true"
+        className="w-full h-full animate-spin motion-reduce:animate-none"
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
         viewBox="0 0 24 24"
@@ -47,6 +48,6 @@ export const Spinner: React.FC<SpinnerProps> = ({
         />
       </svg>
       <span className="sr-only">Cargando...</span>
-    </div>
+    </span>
   );
 };
