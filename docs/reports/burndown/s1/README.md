@@ -1,7 +1,7 @@
 # Burndown S1
 
 Primer snapshot guardado: 2026-09-05.
-Ultimo snapshot: 2026-09-18.
+Ultimo snapshot: 2026-09-19.
 Trabajo efectivo informado desde: 2026-09-04.
 
 ## Ventanas del sprint
@@ -18,7 +18,7 @@ Las tareas con `Equipo = Compartido` quedan fuera del burndown de equipos e inte
 
 | Equipo | Items | Horas asignadas | Horas usadas | Horas restantes | Horas excedidas | Grafico |
 |---|---:|---:|---:|---:|---:|---|
-| INT2 | 63 | 120 | 74 | 52.2 | 6.2 | [ver (2026-09-02 a 2026-09-30)](charts/team-int2.svg) |
+| INT2 | 63 | 120 | 84 | 42.2 | 6.2 | [ver (2026-09-02 a 2026-09-30)](charts/team-int2.svg) |
 | INT4 | 38 | 79 | 39 | 40 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/team-int4.svg) |
 
 ## Integrantes
@@ -26,11 +26,11 @@ Las tareas con `Equipo = Compartido` quedan fuera del burndown de equipos e inte
 | Equipo | Integrante | Items | Horas asignadas | Horas usadas | Horas restantes | Horas excedidas | Grafico |
 |---|---|---:|---:|---:|---:|---:|---|
 | INT2 | Ailyn Melillan | 10 | 20 | 10.5 | 9.5 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-ailynmelillan.svg) |
-| INT2 | Antonio Lara | 12 | 20 | 12 | 8 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-alara2024uct.svg) |
-| INT2 | David Villegas | 11 | 20 | 9.5 | 10.5 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-david7985.svg) |
-| INT2 | Gabriel Gutierrez | 12 | 20 | 11.5 | 8.5 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-gabrielgutierrez1.svg) |
+| INT2 | Antonio Lara | 12 | 20 | 13 | 7 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-alara2024uct.svg) |
+| INT2 | David Villegas | 11 | 20 | 14.5 | 5.5 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-david7985.svg) |
+| INT2 | Gabriel Gutierrez | 12 | 20 | 14 | 6 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-gabrielgutierrez1.svg) |
 | INT2 | Martina Iturrieta | 9 | 20 | 18 | 8.2 | 6.2 | [ver (2026-09-02 a 2026-09-30)](charts/member-kennyaale.svg) |
-| INT2 | Raul Rodriguez | 9 | 20 | 12.5 | 7.5 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-rrodriguez2025.svg) |
+| INT2 | Raul Rodriguez | 9 | 20 | 14 | 6 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-rrodriguez2025.svg) |
 | INT4 | Eduardo Escares | 9 | 20 | 12 | 8 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-eduardoscrs.svg) |
 | INT4 | Marcelo Santana | 10 | 20 | 10 | 10 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-cchelooo.svg) |
 | INT4 | Nelson Quiñinao Isla | 10 | 19 | 7 | 12 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-anker04.svg) |
