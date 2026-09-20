@@ -149,33 +149,33 @@ La arquitectura general considera:
 
 Diagrama de arquitectura de software. La Figura \ref{fig:arquitectura-software} muestra la arquitectura lógica y de despliegue del MVP, considerando clientes, API Gateway, microservicios, red interna, persistencia privada por microservicio y MinIO.
 
-\diagrama{diagramas/diagrama_arquitectura.png}{Diagrama de arquitectura de software de ApuntesUCT}{ApuntesUCT - Diagrama de Arquitectura de Software.}{fig:arquitectura-software}
+\diagrama{../../diagrams/int4/diagrama_arquitectura.png}{Diagrama de arquitectura de software de ApuntesUCT}{ApuntesUCT - Diagrama de Arquitectura de Software.}{fig:arquitectura-software}
 
 Diagrama de componentes UML. La Figura \ref{fig:componentes-uml} muestra la separación de componentes principales del sistema, sus dependencias y las responsabilidades de cada bloque de software.
 
-\diagrama{diagramas/diagrama_componentes.png}{Diagrama de componentes UML de ApuntesUCT}{ApuntesUCT - Diagrama de Componentes UML.}{fig:componentes-uml}
+\diagrama{../../diagrams/int4/diagrama_componentes.png}{Diagrama de componentes UML de ApuntesUCT}{ApuntesUCT - Diagrama de Componentes UML.}{fig:componentes-uml}
 
 Los modelos entidad-relación se presentan separados por microservicio porque cada dominio administra su propia persistencia. Estos MER se diseñan para implementación con Prisma ORM; dentro de cada microservicio se pueden usar claves primarias y foráneas propias, mientras que los identificadores que apuntan a datos de otros microservicios se tratan como referencias lógicas validadas mediante APIs internas, no como consultas directas entre bases de datos.
 
 La Figura \ref{fig:mer-auth} muestra el MER del Auth Service, encargado de usuarios y sesiones.
 
-\diagrama{diagramas/diagrama_mer_auth.png}{Diagrama MER del Auth Service}{ApuntesUCT - MER Auth Service.}{fig:mer-auth}
+\diagrama{../../diagrams/int4/diagrama_mer_auth.png}{Diagrama MER del Auth Service}{ApuntesUCT - MER Auth Service.}{fig:mer-auth}
 
 La Figura \ref{fig:mer-catalog} muestra el MER del Catalog Service, encargado de universidad, carreras, asignaturas, profesores y ofertas académicas.
 
-\diagrama{diagramas/diagrama_mer_catalog.png}{Diagrama MER del Catalog Service}{ApuntesUCT - MER Catalog Service.}{fig:mer-catalog}
+\diagrama{../../diagrams/int4/diagrama_mer_catalog.png}{Diagrama MER del Catalog Service}{ApuntesUCT - MER Catalog Service.}{fig:mer-catalog}
 
 La Figura \ref{fig:mer-material} muestra el MER del Material Service, encargado de metadatos de materiales, tipos de material y versiones de archivos.
 
-\diagrama{diagramas/diagrama_mer_material.png}{Diagrama MER del Material Service}{ApuntesUCT - MER Material Service.}{fig:mer-material}
+\diagrama{../../diagrams/int4/diagrama_mer_material.png}{Diagrama MER del Material Service}{ApuntesUCT - MER Material Service.}{fig:mer-material}
 
 La Figura \ref{fig:mer-quality} muestra el MER del Quality Service, encargado de favoritos, evaluaciones, reportes, revisiones de moderación, reputación y calidad asociada al material.
 
-\diagrama{diagramas/diagrama_mer_quality.png}{Diagrama MER del Quality Service}{ApuntesUCT - MER Quality Service.}{fig:mer-quality}
+\diagrama{../../diagrams/int4/diagrama_mer_quality.png}{Diagrama MER del Quality Service}{ApuntesUCT - MER Quality Service.}{fig:mer-quality}
 
 La Figura \ref{fig:mer-search} muestra el MER del Search Service, encargado del índice inicial de búsqueda, ranking y datos denormalizados necesarios para consultar material sin depender de joins directos con otros microservicios.
 
-\diagrama{diagramas/diagrama_mer_search.png}{Diagrama MER del Search Service}{ApuntesUCT - MER Search Service.}{fig:mer-search}
+\diagrama{../../diagrams/int4/diagrama_mer_search.png}{Diagrama MER del Search Service}{ApuntesUCT - MER Search Service.}{fig:mer-search}
 
 \subsection{Funciones del sistema (resumen)}
 
@@ -623,13 +623,13 @@ El efecto esperado en la comunidad estudiantil es reducir el tiempo de recuperac
 \subsection*{Anexo E: Diagramas incorporados en esta versión}
 
 \begin{itemize}
-    \item Diagrama de componentes UML: \texttt{diagramas/diagrama\_componentes.png}.
-    \item Diagrama de arquitectura de software: \texttt{diagramas/diagrama\_arquitectura.png}.
-    \item Diagrama MER Auth Service: \texttt{diagramas/diagrama\_mer\_auth.png}.
-    \item Diagrama MER Catalog Service: \texttt{diagramas/diagrama\_mer\_catalog.png}.
-    \item Diagrama MER Material Service: \texttt{diagramas/diagrama\_mer\_material.png}.
-    \item Diagrama MER Quality Service: \texttt{diagramas/diagrama\_mer\_quality.png}.
-    \item Diagrama MER Search Service: \texttt{diagramas/diagrama\_mer\_search.png}.
+    \item Diagrama de componentes UML: \texttt{../../diagrams/int4/diagrama\_componentes.png}.
+    \item Diagrama de arquitectura de software: \texttt{../../diagrams/int4/diagrama\_arquitectura.png}.
+    \item Diagrama MER Auth Service: \texttt{../../diagrams/int4/diagrama\_mer\_auth.png}.
+    \item Diagrama MER Catalog Service: \texttt{../../diagrams/int4/diagrama\_mer\_catalog.png}.
+    \item Diagrama MER Material Service: \texttt{../../diagrams/int4/diagrama\_mer\_material.png}.
+    \item Diagrama MER Quality Service: \texttt{../../diagrams/int4/diagrama\_mer\_quality.png}.
+    \item Diagrama MER Search Service: \texttt{../../diagrams/int4/diagrama\_mer\_search.png}.
 \end{itemize}
 
 \end{document}
