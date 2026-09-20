@@ -20,6 +20,10 @@ src/
 └── infrastructure/ # Prisma, configuración, servicios externos
 ```
 
+## Base de Datos
+
+Este servicio utiliza **Prisma ORM** junto con PostgreSQL para la gestión del modelo de catálogo.
+
 ## Requisitos
 
 - Node.js 22 (`.nvmrc` en la raíz del repo).
@@ -38,6 +42,11 @@ npm run prisma:generate
 ```bash
 npm run prisma:migrate   # aplica la migración inicial en desarrollo
 npm run prisma:studio    # explorar datos
+```
+
+```bash
+npx prisma migrate dev   # aplicar migraciones pendientes en el entorno local
+npm run prisma:generate  # regenerar cliente de prisma
 ```
 
 ## Ejecutar
