@@ -1,19 +1,17 @@
-import 'package:flutter/material.dart';
-
 /// Modelo de curso inscrito que se muestra en la sección horizontal del perfil.
 class ProfileCourseItem {
   final String id;
   final String title;
   final String subtitle;
-  final Color backgroundColor;
-  final Color textColor;
+  final int colorValue;
+  final int textColorValue;
 
   const ProfileCourseItem({
     required this.id,
     required this.title,
     required this.subtitle,
-    required this.backgroundColor,
-    required this.textColor,
+    required this.colorValue,
+    required this.textColorValue,
   });
 }
 
@@ -35,7 +33,7 @@ class ProfileBadge {
   final String id;
   final String title;
   final String description;
-  final IconData icon;
+  final String iconKey;
   final bool isUnlocked;
   final int currentProgress;
   final int maxProgress;
@@ -46,7 +44,7 @@ class ProfileBadge {
     required this.id,
     required this.title,
     required this.description,
-    required this.icon,
+    required this.iconKey,
     required this.isUnlocked,
     required this.currentProgress,
     required this.maxProgress,
@@ -87,8 +85,7 @@ class UserProfileData {
       id: 'usr-marcelo-santana',
       name: customName ?? 'Marcelo Santana',
       career: 'Ingeniería Civil Informática',
-      bio:
-          'Estudiante de Ingeniería Civil Informática. Comparte guías, apuntes y resúmenes verificados por ramo.',
+      bio: 'Estudiante de Ingeniería Civil Informática. Comparte guías, apuntes y resúmenes verificados por ramo.',
       uploadedCount: 8,
       savedCount: 42,
       reputation: 4.8,
@@ -97,22 +94,22 @@ class UserProfileData {
           id: 'c-1',
           title: 'Arquitectura\nde Software',
           subtitle: 'INT4',
-          backgroundColor: Color(0xFF006699),
-          textColor: Colors.white,
+          colorValue: 0xFF006699,
+          textColorValue: 0xFFFFFFFF,
         ),
         ProfileCourseItem(
           id: 'c-2',
           title: 'Ingeniería de\nSoftware',
           subtitle: 'Proyecto',
-          backgroundColor: Color(0xFFEDB002),
-          textColor: Color(0xFF1B2A3D),
+          colorValue: 0xFFEDB002,
+          textColorValue: 0xFF1B2A3D,
         ),
         ProfileCourseItem(
           id: 'c-3',
           title: 'Bases de\nDatos',
           subtitle: 'Avanzadas',
-          backgroundColor: Color(0xFF1E8278),
-          textColor: Colors.white,
+          colorValue: 0xFF1E8278,
+          textColorValue: 0xFFFFFFFF,
         ),
       ],
       uploadedMaterials: const [
@@ -152,7 +149,7 @@ class UserProfileData {
           id: 'b-1',
           title: 'Colaborador Destacado',
           description: 'Has subido 8 apuntes a la comunidad estudiantil.',
-          icon: Icons.military_tech_rounded,
+          iconKey: 'military_tech',
           isUnlocked: true,
           currentProgress: 8,
           maxProgress: 8,
@@ -163,7 +160,7 @@ class UserProfileData {
           id: 'b-2',
           title: 'Top Calificado',
           description: 'Mantienes una calificación superior a 4.5 estrellas.',
-          icon: Icons.star_rounded,
+          iconKey: 'star',
           isUnlocked: true,
           currentProgress: 5,
           maxProgress: 5,
@@ -173,8 +170,9 @@ class UserProfileData {
         ProfileBadge(
           id: 'b-3',
           title: 'Coleccionista',
-          description: 'Has guardado más de 40 recursos útiles en tu biblioteca.',
-          icon: Icons.bookmark_added_rounded,
+          description:
+              'Has guardado más de 40 recursos útiles en tu biblioteca.',
+          iconKey: 'bookmark_added',
           isUnlocked: true,
           currentProgress: 42,
           maxProgress: 40,
@@ -185,7 +183,7 @@ class UserProfileData {
           id: 'b-4',
           title: 'Pionero UCT',
           description: 'Miembro activo y verificado de la carrera en UCT.',
-          icon: Icons.school_rounded,
+          iconKey: 'school',
           isUnlocked: true,
           currentProgress: 3,
           maxProgress: 3,
@@ -196,7 +194,7 @@ class UserProfileData {
           id: 'b-5',
           title: 'Maestro de Apuntes',
           description: 'Sube 15 materiales de estudio verificados por ramo.',
-          icon: Icons.workspace_premium_rounded,
+          iconKey: 'workspace_premium',
           isUnlocked: false,
           currentProgress: 8,
           maxProgress: 15,
@@ -206,7 +204,7 @@ class UserProfileData {
           id: 'b-6',
           title: 'Tutor Guía',
           description: 'Ayuda a responder y clarificar dudas de compañeros.',
-          icon: Icons.forum_rounded,
+          iconKey: 'forum',
           isUnlocked: false,
           currentProgress: 3,
           maxProgress: 10,

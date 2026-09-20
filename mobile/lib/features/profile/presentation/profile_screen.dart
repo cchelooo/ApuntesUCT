@@ -237,8 +237,7 @@ class _TopIconButton extends StatelessWidget {
             : colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color:
-              esOscuro ? UctPalette.bordeOscuro : colorScheme.outlineVariant,
+          color: esOscuro ? UctPalette.bordeOscuro : colorScheme.outlineVariant,
         ),
       ),
       child: IconButton(
@@ -266,16 +265,11 @@ class _UctIsotype extends StatelessWidget {
       child: ClipOval(
         child: Row(
           children: [
-            Expanded(
-              child: Container(color: UctPalette.azul),
-            ),
-            Expanded(
-              child: Container(color: UctPalette.amarillo),
-            ),
+            Expanded(child: Container(color: UctPalette.azul)),
+            Expanded(child: Container(color: UctPalette.amarillo)),
           ],
         ),
       ),
     );
   }
 }
-

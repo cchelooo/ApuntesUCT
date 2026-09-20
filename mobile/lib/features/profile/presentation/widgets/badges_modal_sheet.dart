@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/uct_palette.dart';
 import '../../domain/profile_models.dart';
+import '../extensions/profile_ui_extensions.dart';
 
 /// Modal bottom sheet para explorar las insignias y logros del usuario en ApuntesUCT.
 class BadgesModalSheet extends StatelessWidget {
-  const BadgesModalSheet({
-    super.key,
-    required this.badges,
-  });
+  const BadgesModalSheet({super.key, required this.badges});
 
   final List<ProfileBadge> badges;
 
@@ -185,7 +183,8 @@ class BadgesModalSheet extends StatelessWidget {
                   controller: scrollController,
                   physics: const BouncingScrollPhysics(),
                   itemCount: badges.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 10),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     final badge = badges[index];
                     return _BadgeListItem(
@@ -222,8 +221,8 @@ class _BadgeListItem extends StatelessWidget {
 
     final colorFondoItem = esOscuro
         ? (isUnlocked
-            ? UctPalette.superficieElevadaOscura
-            : UctPalette.superficieOscura)
+              ? UctPalette.superficieElevadaOscura
+              : UctPalette.superficieOscura)
         : (isUnlocked ? Colors.white : const Color(0xFFF7FAFD));
 
     final colorBordeItem = esOscuro
@@ -232,11 +231,9 @@ class _BadgeListItem extends StatelessWidget {
 
     final colorFondoIcono = isUnlocked
         ? (esOscuro
-            ? UctPalette.amarillo.withValues(alpha: 0.2)
-            : const Color(0xFFFCF3D7))
-        : (esOscuro
-            ? UctPalette.fondoOscuro
-            : const Color(0xFFEBF1F7));
+              ? UctPalette.amarillo.withValues(alpha: 0.2)
+              : const Color(0xFFFCF3D7))
+        : (esOscuro ? UctPalette.fondoOscuro : const Color(0xFFEBF1F7));
 
     final colorIcono = isUnlocked
         ? (esOscuro ? UctPalette.amarillo : const Color(0xFFB8860B))
@@ -276,11 +273,7 @@ class _BadgeListItem extends StatelessWidget {
                     )
                   : null,
             ),
-            child: Icon(
-              badge.icon,
-              color: colorIcono,
-              size: 26,
-            ),
+            child: Icon(badge.icon, color: colorIcono, size: 26),
           ),
           const SizedBox(width: 14),
 
@@ -298,8 +291,8 @@ class _BadgeListItem extends StatelessWidget {
                           color: isUnlocked
                               ? colorScheme.onSurface
                               : (esOscuro
-                                  ? UctPalette.textoSuaveOscuro
-                                  : UctPalette.textoSuaveClaro),
+                                    ? UctPalette.textoSuaveOscuro
+                                    : UctPalette.textoSuaveClaro),
                           fontSize: 14.5,
                           fontWeight: FontWeight.w700,
                         ),
@@ -308,7 +301,9 @@ class _BadgeListItem extends StatelessWidget {
                     if (isUnlocked)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: esOscuro
                               ? const Color(0xFF1E3A24)
@@ -368,9 +363,7 @@ class _BadgeListItem extends StatelessWidget {
                                 ? UctPalette.fondoOscuro
                                 : const Color(0xFFDFECF6),
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              esOscuro
-                                  ? UctPalette.celeste
-                                  : UctPalette.azul,
+                              esOscuro ? UctPalette.celeste : UctPalette.azul,
                             ),
                           ),
                         ),

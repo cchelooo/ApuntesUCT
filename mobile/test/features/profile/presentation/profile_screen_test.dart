@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:apuntesuct_mobile/core/theme/app_theme.dart';
 import 'package:apuntesuct_mobile/features/profile/presentation/profile_screen.dart';
+import 'package:apuntesuct_mobile/main.dart';
 import 'package:apuntesuct_mobile/providers/theme_mode_provider.dart';
 
 void main() {
@@ -126,35 +127,34 @@ void main() {
       },
     );
 
-    testWidgets(
-      'botón QR abre diálogo informativo con código QR',
-      (WidgetTester tester) async {
-        await tester.binding.setSurfaceSize(const Size(390, 844));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
+    testWidgets('botón QR abre diálogo informativo con código QR', (
+      WidgetTester tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-        await tester.pumpWidget(
-          ProviderScope(
-            child: MaterialApp(
-              theme: AppTheme.claro,
-              home: const ProfileScreen(),
-            ),
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.claro,
+            home: const ProfileScreen(),
           ),
-        );
-        await tester.pumpAndSettle();
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        // Tap en el botón QR
-        await tester.tap(find.byIcon(Icons.qr_code_2_rounded));
-        await tester.pumpAndSettle();
+      // Tap en el botón QR
+      await tester.tap(find.byIcon(Icons.qr_code_2_rounded));
+      await tester.pumpAndSettle();
 
-        expect(find.text('Código QR de Perfil'), findsOneWidget);
-        expect(find.text('Cerrar'), findsOneWidget);
+      expect(find.text('Código QR de Perfil'), findsOneWidget);
+      expect(find.text('Cerrar'), findsOneWidget);
 
-        await tester.tap(find.text('Cerrar'));
-        await tester.pumpAndSettle();
+      await tester.tap(find.text('Cerrar'));
+      await tester.pumpAndSettle();
 
-        expect(find.text('Código QR de Perfil'), findsNothing);
-      },
-    );
+      expect(find.text('Código QR de Perfil'), findsNothing);
+    });
 
     testWidgets(
       'botón Editar perfil abre modal, permite cambiar nombre/bio y actualiza el perfil reactivamente',
@@ -233,6 +233,25 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Insignias y Logros'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'navega a /profile mediante appRouter y renderiza ProfileScreen correctamente',
+      (WidgetTester tester) async {
+        await tester.binding.setSurfaceSize(const Size(390, 844));
+        addTearDown(() {
+          tester.binding.setSurfaceSize(null);
+          appRouter.go('/login');
+        });
+
+        appRouter.go('/profile');
+        await tester.pumpWidget(const ProviderScope(child: MyApp()));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(ProfileScreen), findsOneWidget);
+        expect(find.text('Marcelo Santana'), findsOneWidget);
+        expect(find.text('Perfil'), findsWidgets);
       },
     );
   });

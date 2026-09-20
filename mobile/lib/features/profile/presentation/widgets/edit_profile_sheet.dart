@@ -59,7 +59,9 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
-    ref.read(profileDataProvider.notifier).updateProfile(
+    ref
+        .read(profileDataProvider.notifier)
+        .updateProfile(
           name: _nameController.text.trim(),
           career: _careerController.text.trim(),
           bio: _bioController.text.trim(),
@@ -81,14 +83,14 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
     final colorScheme = Theme.of(context).colorScheme;
     final esOscuro = Theme.of(context).brightness == Brightness.dark;
 
-    final colorFondoCampo =
-        esOscuro ? UctPalette.superficieElevadaOscura : UctPalette.humo;
-    final colorBordeCampo =
-        esOscuro ? UctPalette.bordeOscuro : UctPalette.bordeClaro;
-    final colorBotonPrimario =
-        esOscuro ? UctPalette.amarillo : UctPalette.azul;
-    final colorTextoBotonPrimario =
-        esOscuro ? UctPalette.navy : Colors.white;
+    final colorFondoCampo = esOscuro
+        ? UctPalette.superficieElevadaOscura
+        : UctPalette.humo;
+    final colorBordeCampo = esOscuro
+        ? UctPalette.bordeOscuro
+        : UctPalette.bordeClaro;
+    final colorBotonPrimario = esOscuro ? UctPalette.amarillo : UctPalette.azul;
+    final colorTextoBotonPrimario = esOscuro ? UctPalette.navy : Colors.white;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -185,7 +187,9 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
                           : UctPalette.textoSuaveClaro,
                     ),
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: colorBordeCampo),
@@ -239,7 +243,9 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
                           : UctPalette.textoSuaveClaro,
                     ),
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: colorBordeCampo),
@@ -313,7 +319,10 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
                         style: OutlinedButton.styleFrom(
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 14,
+                            horizontal: 8,
+                          ),
                           side: BorderSide(color: colorBordeCampo),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -337,7 +346,10 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           backgroundColor: colorBotonPrimario,
                           foregroundColor: colorTextoBotonPrimario,
-                          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 14,
+                            horizontal: 8,
+                          ),
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -345,9 +357,7 @@ class _EditProfileSheetState extends ConsumerState<EditProfileSheet> {
                         ),
                         child: const Text(
                           'Guardar cambios',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                          ),
+                          style: TextStyle(fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),

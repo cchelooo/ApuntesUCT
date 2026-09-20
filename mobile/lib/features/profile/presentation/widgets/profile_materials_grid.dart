@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/uct_palette.dart';
 import '../../domain/profile_models.dart';
+import '../extensions/profile_ui_extensions.dart';
 import '../providers/profile_provider.dart';
 
 /// Sección de pestañas ("Material subido" / "Cursos") y cuadrícula de 3 columnas de materiales.
@@ -102,8 +103,9 @@ class _TabItem extends StatelessWidget {
             child: Text(
               label,
               style: TextStyle(
-                color:
-                    isSelected ? colorScheme.onSurface : colorScheme.onSurfaceVariant,
+                color: isSelected
+                    ? colorScheme.onSurface
+                    : colorScheme.onSurfaceVariant,
                 fontSize: 15,
                 fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
               ),
@@ -115,7 +117,9 @@ class _TabItem extends StatelessWidget {
             width: isSelected ? 120 : 0,
             decoration: BoxDecoration(
               color: isSelected ? indicatorColor : Colors.transparent,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(3),
+              ),
             ),
           ),
         ],
@@ -193,7 +197,10 @@ class _MaterialGridView extends StatelessWidget {
 }
 
 class _CoursesDetailedListView extends StatelessWidget {
-  const _CoursesDetailedListView({required this.courses, required this.esOscuro});
+  const _CoursesDetailedListView({
+    required this.courses,
+    required this.esOscuro,
+  });
 
   final List<ProfileCourseItem> courses;
   final bool esOscuro;

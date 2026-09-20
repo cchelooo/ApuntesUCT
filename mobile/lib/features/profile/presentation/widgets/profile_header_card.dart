@@ -20,18 +20,22 @@ class ProfileHeaderCard extends StatelessWidget {
     final colorFondoBotonAccion = esOscuro
         ? UctPalette.superficieElevadaOscura
         : const Color(0xFFEAF3FA);
-    final colorBordeBotonAccion =
-        esOscuro ? UctPalette.bordeOscuro : const Color(0xFFD4E6F4);
-    final colorTextoBotonAccion =
-        esOscuro ? UctPalette.celeste : const Color(0xFF0C3860);
+    final colorBordeBotonAccion = esOscuro
+        ? UctPalette.bordeOscuro
+        : const Color(0xFFD4E6F4);
+    final colorTextoBotonAccion = esOscuro
+        ? UctPalette.celeste
+        : const Color(0xFF0C3860);
 
     final colorFondoBotonQr = esOscuro
         ? UctPalette.amarillo.withValues(alpha: 0.18)
         : const Color(0xFFFCF4D8);
-    final colorBordeBotonQr =
-        esOscuro ? UctPalette.bordeOscuro : const Color(0xFFF5E4A8);
-    final colorIconoQr =
-        esOscuro ? UctPalette.amarillo : const Color(0xFF825F00);
+    final colorBordeBotonQr = esOscuro
+        ? UctPalette.bordeOscuro
+        : const Color(0xFFF5E4A8);
+    final colorIconoQr = esOscuro
+        ? UctPalette.amarillo
+        : const Color(0xFF825F00);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -151,15 +155,23 @@ class ProfileHeaderCard extends StatelessWidget {
                         content: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.qr_code_2_rounded,
-                                size: 140, color: colorIconoQr),
+                            Icon(
+                              Icons.qr_code_2_rounded,
+                              size: 140,
+                              color: colorIconoQr,
+                            ),
                             const SizedBox(height: 12),
-                            Text(data.name,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold)),
+                            Text(
+                              data.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             const SizedBox(height: 4),
-                            Text('ApuntesUCT: ${data.id}',
-                                style: const TextStyle(fontSize: 12)),
+                            Text(
+                              'ApuntesUCT: ${data.id}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
                           ],
                         ),
                         actions: [
@@ -210,8 +222,9 @@ class _ProfileAvatar extends StatelessWidget {
                   ? UctPalette.superficieElevadaOscura
                   : const Color(0xFFEAF4FB),
               border: Border.all(
-                color:
-                    esOscuro ? UctPalette.bordeOscuro : const Color(0xFFD6E8F5),
+                color: esOscuro
+                    ? UctPalette.bordeOscuro
+                    : const Color(0xFFD6E8F5),
                 width: 2,
               ),
             ),

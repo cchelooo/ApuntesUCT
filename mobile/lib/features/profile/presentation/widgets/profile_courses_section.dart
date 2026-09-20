@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/widgets/app_horizontal_list.dart';
 import '../../../../core/widgets/app_section_header.dart';
 import '../../domain/profile_models.dart';
+import '../extensions/profile_ui_extensions.dart';
 
 /// Sección horizontal de cursos inscritos en el perfil del estudiante.
 class ProfileCoursesSection extends StatelessWidget {
