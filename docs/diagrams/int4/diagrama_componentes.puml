@@ -1,0 +1,138 @@
+@startuml
+title ApuntesUCT - Diagrama de Componentes UML (vista de caja blanca)
+
+top to bottom direction
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam roundcorner 10
+skinparam dpi 120
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam ArrowColor #334155
+skinparam ArrowThickness 1.2
+skinparam ComponentBorderColor #075985
+skinparam ComponentBackgroundColor #E0F2FE
+skinparam PackageBorderColor #0369A1
+skinparam PackageBackgroundColor #F8FAFC
+skinparam DatabaseBorderColor #92400E
+skinparam DatabaseBackgroundColor #FEF3C7
+skinparam InterfaceBorderColor #0369A1
+skinparam InterfaceBackgroundColor #FACC15
+skinparam NoteBorderColor #CA8A04
+skinparam NoteBackgroundColor #FEFCE8
+
+package "Clientes\n<<subsystem>>" as Clients {
+  component "Aplicación Web\nReact + TypeScript" as Web
+  component "Aplicación Mobile\nFlutter + Dart" as Mobile
+}
+
+package "Backend API\n<<subsystem>>" as Backend {
+  package "API Gateway\n<<component - caja blanca>>" as Gateway {
+    interface "API REST pública\nHTTPS / JSON" as PublicApi
+    component "Controladores REST\ny validación de entrada" as GatewayApi
+    component "Autenticación y\nautorización transversal" as GatewayAuth
+    component "Enrutamiento / Proxy\na microservicios" as GatewayRouter
+    component "Contrato público\nOpenAPI / Swagger" as GatewayDocs
+
+    PublicApi --> GatewayApi
+    GatewayApi --> GatewayAuth
+    GatewayAuth --> GatewayRouter
+    GatewayDocs ..> GatewayApi : documenta
+  }
+
+  package "Auth Service\n<<component - caja blanca>>" as Auth {
+    component "Presentación\nAPI REST" as AuthApi
+    component "Aplicación\nCasos de uso" as AuthApp
+    component "Dominio\nUsuarios, roles y tokens" as AuthDomain
+    component "Infraestructura\nAdaptador Prisma" as AuthInfra
+    database "Auth DB\nPostgreSQL 17" as AuthDb
+
+    AuthApi --> AuthApp
+    AuthApp --> AuthDomain
+    AuthInfra ..> AuthDomain : implementa puertos
+    AuthInfra --> AuthDb : Prisma
+  }
+
+  package "Catalog Service\n<<component - caja blanca>>" as Catalog {
+    component "Presentación\nAPI REST" as CatalogApi
+    component "Aplicación\nCasos de uso" as CatalogApp
+    component "Dominio\nUniversidades, carreras,\nasignaturas y profesores" as CatalogDomain
+    component "Infraestructura\nAdaptador Prisma" as CatalogInfra
+    database "Catalog DB\nPostgreSQL 17" as CatalogDb
+
+    CatalogApi --> CatalogApp
+    CatalogApp --> CatalogDomain
+    CatalogInfra ..> CatalogDomain : implementa puertos
+    CatalogInfra --> CatalogDb : Prisma
+  }
+
+  package "Material Service\n<<component - caja blanca>>" as Material {
+    component "Presentación\nAPI REST" as MaterialApi
+    component "Aplicación\nCasos de uso" as MaterialApp
+    component "Dominio\nMateriales y versiones" as MaterialDomain
+    component "Infraestructura\nPrisma + almacenamiento" as MaterialInfra
+    database "Material DB\nPostgreSQL 17" as MaterialDb
+    database "MinIO\nS3 compatible" as Minio
+
+    MaterialApi --> MaterialApp
+    MaterialApp --> MaterialDomain
+    MaterialInfra ..> MaterialDomain : implementa puertos
+    MaterialInfra --> MaterialDb : Prisma
+    MaterialInfra --> Minio : S3 API
+  }
+
+  package "Quality Service\n<<component - caja blanca>>" as Quality {
+    component "Presentación\nAPI REST" as QualityApi
+    component "Aplicación\nCasos de uso" as QualityApp
+    component "Dominio\nEvaluaciones, favoritos,\nreportes y reputación" as QualityDomain
+    component "Infraestructura\nAdaptador Prisma" as QualityInfra
+    database "Quality DB\nPostgreSQL 17" as QualityDb
+
+    QualityApi --> QualityApp
+    QualityApp --> QualityDomain
+    QualityInfra ..> QualityDomain : implementa puertos
+    QualityInfra --> QualityDb : Prisma
+  }
+
+  package "Search Service\n<<component - caja blanca>>" as Search {
+    component "Presentación\nAPI REST" as SearchApi
+    component "Aplicación\nBúsqueda, filtros y ranking" as SearchApp
+    component "Dominio\nÍndice de materiales" as SearchDomain
+    component "Infraestructura\nAdaptador Prisma" as SearchInfra
+    database "Search DB\nPostgreSQL 17" as SearchDb
+
+    SearchApi --> SearchApp
+    SearchApp --> SearchDomain
+    SearchInfra ..> SearchDomain : implementa puertos
+    SearchInfra --> SearchDb : Prisma
+  }
+}
+
+Web --> PublicApi
+Mobile --> PublicApi
+
+GatewayRouter --> AuthApi : REST / JSON
+GatewayRouter --> CatalogApi : REST / JSON
+GatewayRouter --> MaterialApi : REST / JSON
+GatewayRouter --> QualityApi : REST / JSON
+GatewayRouter --> SearchApi : REST / JSON
+
+Auth -[hidden]right-> Catalog
+Catalog -[hidden]right-> Material
+Material -[hidden]right-> Quality
+Quality -[hidden]right-> Search
+AuthApi -[hidden]right-> CatalogApi
+CatalogApi -[hidden]right-> MaterialApi
+MaterialApi -[hidden]right-> QualityApi
+QualityApi -[hidden]right-> SearchApi
+
+legend bottom
+  |= Vista |= Alcance |
+  | Caja blanca | Se muestran las capas internas y sus dependencias. |
+  | Gateway | Es el único punto público y no contiene reglas de negocio centrales. |
+  | Persistencia privada | Cada microservicio accede únicamente a sus propios datos. |
+  | Comunicación | Clientes: HTTPS/JSON. Gateway a servicios: REST/JSON. |
+endlegend
+
+@enduml

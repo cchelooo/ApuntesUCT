@@ -3,7 +3,7 @@ import type { Career } from '../../../domain/catalog/career';
 import { careersMock } from '../../../infrastructure/catalog/careers.mock';
 import { professorsMock } from '../../../infrastructure/catalog/professors.mock';
 import { universitiesMock } from '../../../infrastructure/catalog/universities.mock';
-
+import { Button } from '../Button';
 function careersByUniversity(universityId: string): Career[] {
   return careersMock.filter((career) => career.universityId === universityId);
 }
@@ -55,13 +55,15 @@ export function CatalogFilterSidebar() {
       <div className="flex items-center justify-between border-b border-catalog-line px-4 py-3">
         <h2 className="font-display text-lg text-catalog-ink">Filtros</h2>
         {hasActiveFilters && (
-          <button
+          <Button
             type="button"
             onClick={clearFilters}
-            className="text-xs font-medium text-catalog-ink/60 underline-offset-2 hover:text-catalog-ink hover:underline"
+            variant="ghost"
+            size="sm"
+            className="text-xs font-medium !text-catalog-ink/60 underline-offset-2 hover:!text-catalog-ink hover:underline !p-0 !bg-transparent"
           >
             Limpiar filtros
-          </button>
+          </Button>
         )}
       </div>
 
@@ -92,14 +94,16 @@ export function CatalogFilterSidebar() {
                   </label>
 
                   {careers.length > 0 && (
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() =>
                         toggleInSet(setOpenUniversities, university.id)
                       }
                       aria-expanded={isOpen}
                       aria-controls={panelId}
-                      className="rounded-sm p-1 text-catalog-ink/50 hover:text-catalog-ink"
+                      className="!rounded-sm !p-1 !text-catalog-ink/50 hover:!text-catalog-ink !bg-transparent"
                     >
                       <span className="sr-only">
                         {isOpen ? 'Ocultar carreras de' : 'Mostrar carreras de'}{' '}
@@ -115,7 +119,7 @@ export function CatalogFilterSidebar() {
                       >
                         <path d="m6 8 4 4 4-4" />
                       </svg>
-                    </button>
+                    </Button>
                   )}
                 </div>
 
