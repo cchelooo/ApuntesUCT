@@ -5,13 +5,17 @@ import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart'
 import 'package:apuntesuct_mobile/features/auth/presentation/login_screen.dart';
 import 'package:apuntesuct_mobile/features/auth/presentation/register_screen.dart';
 import 'package:apuntesuct_mobile/features/catalog/presentation/screens/catalog_screen.dart';
+import 'package:apuntesuct_mobile/features/profile/presentation/profile_screen.dart';
 import 'package:apuntesuct_mobile/providers/theme_mode_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 final GoRouter appRouter = GoRouter(
-  initialLocation: '/login',
+  initialLocation: const String.fromEnvironment(
+    'INITIAL_ROUTE',
+    defaultValue: '/login',
+  ),
   routes: [
     GoRoute(
       path: '/',
@@ -31,7 +35,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/profile',
       name: 'profile',
-      builder: (context, state) => const PendingScreen(title: 'Perfil'),
+      builder: (context, state) => const ProfileScreen(),
     ),
     GoRoute(
       path: '/catalog',

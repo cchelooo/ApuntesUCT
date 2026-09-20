@@ -10,7 +10,12 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(() {
+      tester.binding.setSurfaceSize(null);
+      appRouter.go('/login');
+    });
+
+    appRouter.go('/login');
 
     await tester.pumpWidget(
       ProviderScope(
