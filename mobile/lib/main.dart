@@ -12,7 +12,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 final GoRouter appRouter = GoRouter(
-  initialLocation: '/login',
+  initialLocation: const String.fromEnvironment(
+    'INITIAL_ROUTE',
+    defaultValue: '/login',
+  ),
   routes: [
     GoRoute(
       path: '/',

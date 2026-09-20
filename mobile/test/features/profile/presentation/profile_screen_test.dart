@@ -62,6 +62,45 @@ void main() {
     );
 
     testWidgets(
+      'renderiza responsive sin desbordamiento en pantallas pequeñas de 360x640 y 320x568',
+      (WidgetTester tester) async {
+        for (final size in [const Size(360, 640), const Size(320, 568)]) {
+          await tester.binding.setSurfaceSize(size);
+          addTearDown(() => tester.binding.setSurfaceSize(null));
+
+          for (final themeMode in [ThemeMode.light, ThemeMode.dark]) {
+            await tester.pumpWidget(
+              ProviderScope(
+                overrides: [
+                  themeModeProvider.overrideWith(
+                    () => _ThemeTestController(themeMode),
+                  ),
+                ],
+                child: MaterialApp(
+                  theme: AppTheme.claro,
+                  darkTheme: AppTheme.oscuro,
+                  themeMode: themeMode,
+                  home: const ProfileScreen(),
+                ),
+              ),
+            );
+            await tester.pumpAndSettle();
+
+            // Verifica AppBar con isotipo, título y acciones
+            expect(find.byType(ProfileScreen), findsOneWidget);
+            expect(find.text('Perfil'), findsWidgets);
+            expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
+            expect(
+              find.byIcon(Icons.notifications_none_rounded),
+              findsOneWidget,
+            );
+            expect(tester.takeException(), isNull);
+          }
+        }
+      },
+    );
+
+    testWidgets(
       'muestra la cuadrícula de materiales subidos y permite alternar a la pestaña cursos',
       (WidgetTester tester) async {
         await tester.binding.setSurfaceSize(const Size(390, 844));

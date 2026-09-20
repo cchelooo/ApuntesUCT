@@ -34,9 +34,9 @@ class ProfileScreen extends ConsumerWidget {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: true,
-        leadingWidth: 72,
+        leadingWidth: 56,
         leading: Padding(
-          padding: const EdgeInsets.only(left: 16),
+          padding: const EdgeInsets.only(left: 12),
           child: Center(
             child: _TopIconButton(
               icon: Icons.settings_outlined,
@@ -45,28 +45,35 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
         ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Isotipo circular UCT (mitad azul, mitad amarillo)
-            const _UctIsotype(),
-            const SizedBox(width: 8),
-            Text(
-              'Perfil',
-              style: TextStyle(
-                color: colorScheme.onSurface,
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.4,
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Isotipo circular UCT (mitad azul, mitad amarillo)
+              const _UctIsotype(),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  'Perfil',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.4,
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           // Botón para alternar tema claro / oscuro
-          const ThemeToggleButton(),
+          const SizedBox(width: 40, height: 40, child: ThemeToggleButton()),
+          const SizedBox(width: 4),
           Padding(
-            padding: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.only(right: 12),
             child: _TopIconButton(
               icon: Icons.notifications_none_rounded,
               tooltip: 'Notificaciones',
@@ -229,21 +236,22 @@ class _TopIconButton extends StatelessWidget {
     final esOscuro = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      width: 44,
-      height: 44,
+      width: 40,
+      height: 40,
       decoration: BoxDecoration(
         color: esOscuro
             ? UctPalette.superficieOscura
             : colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: esOscuro ? UctPalette.bordeOscuro : colorScheme.outlineVariant,
         ),
       ),
       child: IconButton(
-        icon: Icon(icon, color: colorScheme.onSurface, size: 22),
+        icon: Icon(icon, color: colorScheme.onSurface, size: 20),
         tooltip: tooltip,
         padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(),
         onPressed: onTap,
       ),
     );
