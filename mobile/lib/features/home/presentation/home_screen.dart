@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:apuntesuct_mobile/core/widgets/widgets.dart';
 import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart'
     show authStateProvider;
+
 import 'providers/home_provider.dart';
 import 'widgets/course_card.dart';
 import 'widgets/material_card.dart';

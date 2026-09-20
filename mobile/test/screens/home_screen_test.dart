@@ -7,6 +7,7 @@ import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart';
 import 'package:apuntesuct_mobile/main.dart';
 import 'package:apuntesuct_mobile/providers/theme_mode_provider.dart';
 import 'package:apuntesuct_mobile/features/home/presentation/home_screen.dart';
+import 'package:apuntesuct_mobile/features/catalog/presentation/screens/catalog_screen.dart';
 
 void main() {
   group('HomeScreen Tests', () {
@@ -126,7 +127,7 @@ void main() {
       // "Ver todos" -> Catálogo
       await tester.tap(find.text('Ver todos'));
       await tester.pumpAndSettle();
-      expect(find.text('Catálogo pendiente'), findsOneWidget);
+      expect(find.byType(CatalogScreen), findsOneWidget);
 
       await tester.pageBack();
       await tester.pumpAndSettle();
@@ -134,7 +135,7 @@ void main() {
       // "Más" -> Catálogo
       await tester.tap(find.text('Más'));
       await tester.pumpAndSettle();
-      expect(find.text('Catálogo pendiente'), findsOneWidget);
+      expect(find.byType(CatalogScreen), findsOneWidget);
 
       await tester.pageBack();
       await tester.pumpAndSettle();

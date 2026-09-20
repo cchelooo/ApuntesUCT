@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:apuntesuct_mobile/models/subject_model.dart';
+
 import '../../domain/material_card_data.dart';
 
 /// Par de [SubjectModel] con el conteo de apuntes disponibles, solo para UI.
