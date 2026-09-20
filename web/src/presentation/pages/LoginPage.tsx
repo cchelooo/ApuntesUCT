@@ -1,8 +1,47 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 
 export function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const loginMutation = useMutation({
+    mutationFn: async (credentials: Record<string, string>) => {
+      const response = await fetch('http://localhost:3000/api/v1/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+      });
+
+      if (!response.ok) {
+        throw new Error('Credenciales inválidas');
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      console.log('JWT falso recibido:', data);
+      alert('Login exitoso. Revisa la consola para ver el token.');
+    },
+    onError: (error) => {
+      console.error('Error al iniciar sesión:', error);
+      alert('Hubo un error al intentar iniciar sesión.');
+    },
+  });
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (email && password) {
+      loginMutation.mutate({ email, password });
+    } else {
+      alert('Por favor, completa todos los campos.');
+    }
+  };
+
   return (
     <div className="min-h-screen w-full flex">
       
@@ -89,11 +128,13 @@ export function LoginPage() {
               </div>
             </div>
 
-            <form className="space-y-4" onSubmit={(event) => event.preventDefault()}>
+            <form className="space-y-4" onSubmit={handleSubmit}>
               <Input
                 label="Correo electrónico"
                 placeholder="tu@correo.cl"
                 type="email"
+                value={email}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
               />
 
               <div className="space-y-1">
@@ -101,6 +142,8 @@ export function LoginPage() {
                   label="Contraseña"
                   placeholder="••••••••"
                   type="password"
+                  value={password}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                 />
                 <div className="flex justify-end">
                   <a href="#" className="text-xs text-blue-600 hover:text-blue-500 font-medium transition-colors">
@@ -110,8 +153,12 @@ export function LoginPage() {
               </div>
 
               <div className="pt-2">
-                <Button type="submit" className="w-full">
-                  Ingresar
+                <Button 
+                  type="submit" 
+                  className="w-full"
+                  disabled={loginMutation.isPending}
+                >
+                  {loginMutation.isPending ? 'Ingresando...' : 'Ingresar'}
                 </Button>
               </div>
             </form>
@@ -119,7 +166,6 @@ export function LoginPage() {
 
           <p className="text-center text-sm text-gray-600">
             ¿No tienes cuenta?{' '}
-            {/*Link de React Router*/}
             <Link to="/register" className="font-semibold text-blue-600 hover:text-blue-500 transition-colors">
               Registrarse
             </Link>
