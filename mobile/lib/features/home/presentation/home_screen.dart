@@ -65,38 +65,46 @@ class HomeScreen extends ConsumerWidget {
         elevation: 0,
         scrolledUnderElevation: 0,
         titleSpacing: 16,
-        title: Row(
-          children: [
-            // Isotipo con inicial de marca
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: colorScheme.primary,
-              ),
-              child: Center(
-                child: Text(
-                  'A',
-                  style: TextStyle(
-                    color: colorScheme.onPrimary,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16,
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Isotipo con inicial de marca
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: colorScheme.primary,
+                ),
+                child: Center(
+                  child: Text(
+                    'A',
+                    style: TextStyle(
+                      color: colorScheme.onPrimary,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'ApuntesUCT',
-              style: TextStyle(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
-                letterSpacing: -0.3,
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  'ApuntesUCT',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                    letterSpacing: -0.3,
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           const ThemeToggleButton(),

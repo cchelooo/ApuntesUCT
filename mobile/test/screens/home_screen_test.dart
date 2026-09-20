@@ -8,6 +8,7 @@ import 'package:apuntesuct_mobile/main.dart';
 import 'package:apuntesuct_mobile/providers/theme_mode_provider.dart';
 import 'package:apuntesuct_mobile/features/home/presentation/home_screen.dart';
 import 'package:apuntesuct_mobile/features/catalog/presentation/screens/catalog_screen.dart';
+import 'package:apuntesuct_mobile/features/profile/presentation/profile_screen.dart';
 
 void main() {
   group('HomeScreen Tests', () {
@@ -41,6 +42,37 @@ void main() {
           expect(find.text('Tus cursos'), findsOneWidget);
           expect(find.text('Material recomendado'), findsOneWidget);
           expect(find.text('Mejores calificados del día'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        }
+      },
+    );
+
+    testWidgets(
+      'se adapta a pantalla de 320x568 sin desbordamiento en modo claro y oscuro',
+      (WidgetTester tester) async {
+        await tester.binding.setSurfaceSize(const Size(320, 568));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        for (final themeMode in [ThemeMode.light, ThemeMode.dark]) {
+          await tester.pumpWidget(
+            ProviderScope(
+              overrides: [
+                themeModeProvider.overrideWith(
+                  () => _ThemeController(themeMode),
+                ),
+              ],
+              child: MaterialApp(
+                theme: AppTheme.claro,
+                darkTheme: AppTheme.oscuro,
+                themeMode: themeMode,
+                home: const HomeScreen(),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          expect(find.byType(HomeScreen), findsOneWidget);
+          expect(find.text('ApuntesUCT'), findsOneWidget);
           expect(tester.takeException(), isNull);
         }
       },
@@ -93,9 +125,9 @@ void main() {
         // 3. Tab Perfil -> /profile
         await tester.tap(find.text('Perfil'));
         await tester.pumpAndSettle();
-        expect(find.text('Perfil pendiente'), findsOneWidget);
+        expect(find.byType(ProfileScreen), findsOneWidget);
 
-        await tester.pageBack();
+        await tester.tap(find.text('Inicio'));
         await tester.pumpAndSettle();
         expect(find.byType(HomeScreen), findsOneWidget);
       },
