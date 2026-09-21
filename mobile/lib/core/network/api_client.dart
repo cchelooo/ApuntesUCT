@@ -1,8 +1,14 @@
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/api_config.dart';
 import 'error_interceptor.dart';
+
+final apiclientProvider = Provider<ApiClient>((ref) {
+  // Provedor Global
+  return ApiClient();
+});
 
 class ApiClient {
   final Dio dio;
