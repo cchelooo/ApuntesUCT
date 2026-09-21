@@ -3,43 +3,89 @@ import { Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
+import { Alert } from '../components/Alert';
+
+type LoginAlert = {
+  variant: 'error' | 'success';
+  message: string;
+};
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loginAlert, setLoginAlert] = useState<LoginAlert | null>(null);
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: Record<string, string>) => {
-      const response = await fetch('http://localhost:3000/api/v1/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(credentials),
-      });
+      let response: Response;
+
+      try {
+        response = await fetch(
+          `${import.meta.env.VITE_API_URL}/auth/login`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(credentials),
+          },
+        );
+      } catch {
+        throw new Error(
+          'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo nuevamente.',
+        );
+      }
+
+      if (response.status === 400) {
+        throw new Error(
+          'Los datos ingresados no son válidos. Revisa tu correo y contraseña.',
+        );
+      }
+
+      if (response.status === 502) {
+        throw new Error(
+          'El servicio de autenticación no está disponible. Inténtalo nuevamente más tarde.',
+        );
+      }
 
       if (!response.ok) {
-        throw new Error('Credenciales inválidas');
+        throw new Error(
+          'No fue posible iniciar sesión. Inténtalo nuevamente más tarde.',
+        );
       }
+
       return response.json();
     },
-    onSuccess: (data) => {
-      console.log('JWT falso recibido:', data);
-      alert('Login exitoso. Revisa la consola para ver el token.');
+    onSuccess: () => {
+      setLoginAlert({
+        variant: 'success',
+        message: 'Inicio de sesión exitoso.',
+      });
     },
     onError: (error) => {
-      console.error('Error al iniciar sesión:', error);
-      alert('Hubo un error al intentar iniciar sesión.');
+      setLoginAlert({
+        variant: 'error',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'No fue posible iniciar sesión. Inténtalo nuevamente.',
+      });
     },
   });
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    if (email && password) {
-      loginMutation.mutate({ email, password });
-    } else {
-      alert('Por favor, completa todos los campos.');
+    setLoginAlert(null);
+
+    if (!email.trim() || !password.trim()) {
+      setLoginAlert({
+        variant: 'error',
+        message: 'Por favor, completa tu correo y contraseña.',
+      });
+      return;
     }
+
+    loginMutation.mutate({ email, password });
   };
 
   return (
@@ -151,6 +197,13 @@ export function LoginPage() {
             </div>
 
             <form className="space-y-4" onSubmit={handleSubmit}>
+              {loginAlert && (
+                <Alert
+                  variant={loginAlert.variant}
+                  message={loginAlert.message}
+                />
+              )}
+
               <Input
                 label="Correo electrónico"
                 placeholder="tu@correo.cl"
