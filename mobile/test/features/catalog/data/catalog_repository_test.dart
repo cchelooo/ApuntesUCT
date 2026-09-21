@@ -22,31 +22,41 @@ class MockDioAdapter implements HttpClientAdapter {
 }
 
 void main() {
-  group('CatalogRepository Tests (#66)', () {
+  group('CatalogRepository Tests (#66 - Estructura Árbol)', () {
     late Dio dio;
     late ApiClient apiClient;
     late CatalogRepository repository;
 
-    setUp(() {
-      dio = Dio(BaseOptions(baseUrl: 'http://localhost:3000'));
-      dio.httpClientAdapter = MockDioAdapter((options) {
-        if (options.queryParameters['search'] == 'Física') {
-          return ResponseBody.fromString(
-            '''[
-              {"id": "3", "title": "Física I", "author": "Sears", "subject": "Física"}
-            ]''',
-            200,
-            headers: {
-              Headers.contentTypeHeader: [Headers.jsonContentType],
-            },
-          );
-        }
+    final treeMockJson = '''[
+      {
+        "id": "uni-1",
+        "name": "Universidad Católica de Temuco",
+        "careers": [
+          {
+            "id": "car-1",
+            "name": "Ingeniería Civil Informática",
+            "subjects": [
+              {
+                "id": "sub-1",
+                "name": "Estructuras de Datos",
+                "description": "Algoritmos y estructuras"
+              },
+              {
+                "id": "sub-2",
+                "name": "Cálculo I",
+                "description": "Límites y derivadas"
+              }
+            ]
+          }
+        ]
+      }
+    ]''';
 
+    setUp(() {
+      dio = Dio(BaseOptions(baseUrl: 'http://localhost:3002/api/v1'));
+      dio.httpClientAdapter = MockDioAdapter((options) {
         return ResponseBody.fromString(
-          '''[
-            {"id": "1", "title": "Cálculo I", "author": "Stewart", "subject": "Matemática"},
-            {"id": "2", "title": "Álgebra Linear", "author": "Lay", "subject": "Álgebra"}
-          ]''',
+          treeMockJson,
           200,
           headers: {
             Headers.contentTypeHeader: [Headers.jsonContentType],
@@ -59,23 +69,24 @@ void main() {
     });
 
     test(
-      'getCatalog retorna lista de CatalogItem en respuesta de éxito',
+      'getCatalog aplana el árbol y retorna las asignaturas como CatalogItem',
       () async {
         final result = await repository.getCatalog();
 
         expect(result.length, 2);
-        expect(result.first.title, 'Cálculo I');
-        expect(result.first.author, 'Stewart');
+        expect(result.first.title, 'Estructuras de Datos');
+        expect(result.first.subject, 'Ingeniería Civil Informática');
+        expect(result.first.author, 'Universidad Católica de Temuco');
       },
     );
 
     test(
-      'getCatalog envía query parameter cuando search es informado',
+      'getCatalog filtra en memoria correctamente cuando search está presente',
       () async {
-        final result = await repository.getCatalog(search: 'Física');
+        final result = await repository.getCatalog(search: 'Cálculo');
 
         expect(result.length, 1);
-        expect(result.first.subject, 'Física');
+        expect(result.first.title, 'Cálculo I');
       },
     );
   });

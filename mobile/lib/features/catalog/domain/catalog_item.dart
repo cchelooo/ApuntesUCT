@@ -17,17 +17,17 @@ class CatalogItem {
     return CatalogItem(
       id: json['id']?.toString() ?? '',
       title:
-          json['title'] as String? ?? json['name'] as String? ?? 'Sem título',
+          json['title'] as String? ?? json['name'] as String? ?? 'Sin título',
       author:
           json['author'] as String? ??
           json['professor'] as String? ??
-          json['user']?['name'] as String? ??
-          'Autor desconhecido',
+          json['careerName'] as String? ??
+          'Universidad Católica de Temuco',
       subject:
           json['subject'] as String? ??
-          json['subject']?['name'] as String? ??
-          json['career']?['name'] as String? ??
-          'Geral',
+          json['subjectName'] as String? ??
+          json['name'] as String? ??
+          'General',
       description: json['description'] as String?,
     );
   }
