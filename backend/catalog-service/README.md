@@ -24,6 +24,12 @@ src/
 
 Este servicio utiliza **Prisma ORM** junto con PostgreSQL para la gestión del modelo de catálogo.
 
+### Manejo de Campo `semester` en Asignaturas
+
+- **Valor por defecto:** `1`
+- **Comportamiento con datos existentes:** Durante la migración, todas las asignaturas preexistentes en la base de datos que carezcan de un semestre asignado recibirán automáticamente el valor por defecto `1` mediante una consulta `UPDATE` previa a la aplicación de la restricción `NOT NULL`.
+- **Nuevos registros:** Si no se especifica el campo `semester` al crear una asignatura, la base de datos le asignará automáticamente el valor `1`.
+
 ## Requisitos
 
 - Node.js 22 (`.nvmrc` en la raíz del repo).

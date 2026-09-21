@@ -46,18 +46,25 @@ describe('CatalogService', () => {
           name: 'Universidad Católica de Temuco',
           code: 'UCT',
           active: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
           careers: [
             {
               id: 'career-123',
               name: 'Ingeniería Civil en Informática',
               code: 'ICI',
               active: true,
+              createdAt: new Date(),
+              updatedAt: new Date(),
               subjects: [
                 {
                   id: 'subj-123',
                   name: 'Estructura de Datos',
                   code: 'ICI-201',
                   semester: 3,
+                  active: true,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
                 },
               ],
             },
@@ -76,6 +83,8 @@ describe('CatalogService', () => {
           name: true,
           code: true,
           active: true,
+          createdAt: true,
+          updatedAt: true,
           careers: {
             where: { active: true },
             select: {
@@ -83,12 +92,17 @@ describe('CatalogService', () => {
               name: true,
               code: true,
               active: true,
+              createdAt: true,
+              updatedAt: true,
               subjects: {
                 select: {
                   id: true,
                   name: true,
                   code: true,
                   semester: true,
+                  active: true,
+                  createdAt: true,
+                  updatedAt: true,
                 },
               },
             },

@@ -24,6 +24,8 @@ export class CatalogService {
         name: true,
         code: true,
         active: true,
+        createdAt: true,
+        updatedAt: true,
         careers: {
           where: { active: true },
           select: {
@@ -31,12 +33,17 @@ export class CatalogService {
             name: true,
             code: true,
             active: true,
+            createdAt: true,
+            updatedAt: true,
             subjects: {
               select: {
                 id: true,
                 name: true,
                 code: true,
                 semester: true, // <-- Incluido para cumplir la firma de SubjectResponseDto
+                active: true,
+                createdAt: true,
+                updatedAt: true
               },
             },
           },
