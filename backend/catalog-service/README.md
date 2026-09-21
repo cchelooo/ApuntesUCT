@@ -73,3 +73,33 @@ npm run test      # unitarios
 npm run test:e2e  # e2e
 npm run lint
 ```
+
+### 🛠️ Procedimiento de Recuperación ante error P3009 (Failed Migrations)
+
+Si al ejecutar `npx prisma migrate deploy` se obtiene el error `P3009: Migrate found failed migrations in the target database`, siga estos pasos de recuperación sin pérdida de datos:
+
+1. **Marcar la migración fallida como resuelta:**
+   Ejecute el siguiente comando indicando el nombre de la carpeta de la migración afectada (ej. `20260901000000_add_semester_to_subject`):
+
+```bash
+npx prisma migrate resolve --applied "NOMBRE_DE_LA_MIGRACION"
+```
+
+   (Si la migración no se llegó a aplicar en la BD física, use --rolled-back en lugar de --applied)
+
+2. **Re-ejecutar el despliegue de migraciones**
+
+```bash
+npx run prisma:deploy
+```
+
+### 🧪 Ejecución de Pruebas de Migración
+Para ejecutar la prueba automatizada de la migración de base de datos (verificación de conservación de datos y asignación por defecto del campo `semester`):
+
+```bash
+npm run test:migration
+```
+(Si se quiere correr prueba de migración, ejecutar el comando en catalog-service)
+
+
+

@@ -1,6 +1,6 @@
 -- AlterTable
--- Paso 1: Agregar la columna permitiendo NULL temporalmente
-ALTER TABLE "subjects" ADD COLUMN "semester" INTEGER;
+-- Paso 1: Agregar la columna permitiendo NULL temporalmente y solo si no existe previamente
+ALTER TABLE "subjects" ADD COLUMN IF NOT EXISTS "semester" INTEGER;
 
 -- Paso 2: Asignar el valor por defecto (1) a las asignaturas existentes con NULL
 UPDATE "subjects" SET "semester" = 1 WHERE "semester" IS NULL;
