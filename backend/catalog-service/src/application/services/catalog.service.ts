@@ -5,10 +5,52 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { FilterCatalogDto } from '../dtos/filter-catalog.dto';
+import { UniversityResponseDto } from '../dtos/catalog-response.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class CatalogService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Obtiene la estructura completa del catálogo en forma de árbol
+   * (Universidad -> Carrera -> Asignatura)
+   */
+  async getCatalogTree(): Promise<UniversityResponseDto[]> {
+    return this.prisma.university.findMany({
+      where: { active: true },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        active: true,
+        createdAt: true,
+        updatedAt: true,
+        careers: {
+          where: { active: true },
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            active: true,
+            createdAt: true,
+            updatedAt: true,
+            subjects: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+                semester: true, // <-- Incluido para cumplir la firma de SubjectResponseDto
+                active: true,
+                createdAt: true,
+                updatedAt: true
+              },
+            },
+          },
+        },
+      },
+    });
+  }
 
   async filterCatalog(filters: FilterCatalogDto) {
     // 1. Validaciones de la secuencia jerárquica (los 6 niveles)
@@ -43,19 +85,19 @@ export class CatalogService {
     }
 
     // 2. Documentar la dependencia pendiente para los niveles 5 y 6 (Año y Tipo)
-    // NOTA: Los filtros 'year' y 'type' pertenecen al recurso (Resource).
-    // Hasta que el modelo Resource esté integrado en Prisma, informamos al cliente.
     if (filters.year || filters.type) {
       throw new NotImplementedException(
         'Los filtros por Año y Tipo requieren el módulo de Recursos (Resource), el cual está pendiente de integración en la base de datos.',
       );
     }
 
-    // 3. Consulta en BD para niveles 1 al 4 (Universidad, Carrera, Asignatura, Profesor)
-    const whereCondition: Record<string, unknown> = {};
+    // 3. Consulta en BD para niveles 1 al 4 utilizando tipos estrictos de Prisma
+    const whereCondition: Prisma.SubjectWhereInput = {};
 
     if (filters.universityId) {
-      whereCondition.career = { universityId: filters.universityId };
+      whereCondition.career = {
+        universityId: filters.universityId,
+      };
     }
 
     if (filters.careerId) {

@@ -40,6 +40,7 @@ model Subject {
   careerId    String      @map("career_id")
   career      Career      @relation(fields: [careerId], references: [id], onDelete: Cascade)
   code        String
+  semester    Int         @default(1)
   name        String
   description String?
   active      Boolean     @default(true)
