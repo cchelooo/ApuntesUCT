@@ -2,20 +2,11 @@ import { PrismaClient, ResourceType } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// UUIDs estables para garantizar idempotencia y pruebas de integración repetibles
-const SEED_IDS = {
-  UNIVERSITY: '0a00e26a-7312-40e7-97cc-a7155431b34d',
-  CAREER: 'b32137fd-86a6-4632-9e88-0ca70707a422',
-  PROFESSOR: 'f87a912b-1111-42a1-9876-543210fedcba',
-  SUBJECT: 'ce6574dd-bca2-49c3-a24c-518c82547af8',
-  RESOURCE: 'd98234ea-3333-4bb3-8888-000000111222',
-};
-
 async function main() {
-  console.log('🌱 Iniciando seeding atómico e idempotente para pruebas de integración...');
+  console.log('🌱 Iniciando seeding idempotente y compatible con datos preexistentes...');
 
   await prisma.$transaction(async (tx) => {
-    // 1. Upsert Universidad (Clave única: code)
+    // 1. Universidad (Clave única: code)
     const uct = await tx.university.upsert({
       where: { code: 'UCT' },
       update: {
@@ -23,24 +14,25 @@ async function main() {
         active: true,
       },
       create: {
-        id: SEED_IDS.UNIVERSITY,
         name: 'Universidad Católica de Temuco',
         code: 'UCT',
         active: true,
       },
     });
 
-    // 2. Upsert Carrera (Identificador estable)
+    // 2. Carrera (Punto 1 Solicitado: Clave única compuesta universityId_code)
     const ici = await tx.career.upsert({
-      where: { id: SEED_IDS.CAREER },
+      where: {
+        universityId_code: {
+          universityId: uct.id,
+          code: 'ICI',
+        },
+      },
       update: {
         name: 'Ingeniería Civil en Informática',
-        code: 'ICI',
         active: true,
-        universityId: uct.id,
       },
       create: {
-        id: SEED_IDS.CAREER,
         name: 'Ingeniería Civil en Informática',
         code: 'ICI',
         active: true,
@@ -48,39 +40,40 @@ async function main() {
       },
     });
 
-    // 3. Upsert Profesor (Clave única: email)
+    // 3. Profesor (Clave única: email)
     const professor = await tx.professor.upsert({
       where: { email: 'cramirez@uct.cl' },
       update: {
         name: 'Carlos Ramírez',
       },
       create: {
-        id: SEED_IDS.PROFESSOR,
         name: 'Carlos Ramírez',
         email: 'cramirez@uct.cl',
       },
     });
 
-    // 4. Upsert Asignatura (Conexión explícita con el Profesor)
+    // 4. Asignatura (Punto 2 Solicitado: Clave única compuesta careerId_code)
     const dataStructures = await tx.subject.upsert({
-      where: { id: SEED_IDS.SUBJECT },
+      where: {
+        careerId_code: {
+          careerId: ici.id,
+          code: 'ICI-314',
+        },
+      },
       update: {
         name: 'Estructuras de Datos',
-        code: 'ICI-314',
         semester: 3,
-        careerId: ici.id,
         professors: {
-          connect: { id: professor.id }, // Conexión implícita en N-N
+          connect: { id: professor.id }, // Mantiene la relación con el profesor
         },
       },
       create: {
-        id: SEED_IDS.SUBJECT,
         name: 'Estructuras de Datos',
         code: 'ICI-314',
         semester: 3,
         careerId: ici.id,
         professors: {
-          connect: { id: professor.id }, // Conexión requerida para GET /catalog/filter
+          connect: { id: professor.id },
         },
       },
       include: {
@@ -88,20 +81,26 @@ async function main() {
       },
     });
 
-    // 5. Upsert Recurso (Identificador estable)
-    const resource = await tx.resource.upsert({
-      where: { id: SEED_IDS.RESOURCE },
-      update: {
+    // 5. Recurso (Punto 3 Solicitado: Detectar recurso preexistente para evitar duplicados)
+    const existingResource = await tx.resource.findFirst({
+      where: {
+        subjectId: dataStructures.id,
         title: 'Certamen 1 - Algoritmos y Árboles',
+      },
+    });
+
+    const resource = await tx.resource.upsert({
+      where: {
+        id: existingResource?.id ?? '00000000-0000-0000-0000-000000000000', // Reutiliza el ID si ya existía
+      },
+      update: {
         description: 'Evaluación parcial del primer semestre de Estructuras de Datos.',
         fileUrl: 'https://minio.local/materials/certamenes/c1-2026.pdf',
         type: ResourceType.EXAM,
         year: 2026,
-        subjectId: dataStructures.id,
         professorId: professor.id,
       },
       create: {
-        id: SEED_IDS.RESOURCE,
         title: 'Certamen 1 - Algoritmos y Árboles',
         description: 'Evaluación parcial del primer semestre de Estructuras de Datos.',
         fileUrl: 'https://minio.local/materials/certamenes/c1-2026.pdf',
@@ -112,12 +111,12 @@ async function main() {
       },
     });
 
-    console.log('✅ Seeding completado exitosamente dentro de la transacción:');
+    console.log('✅ Seeding completado exitosamente sin duplicados:');
     console.log(` - Universidad: ${uct.name} (${uct.id})`);
     console.log(` - Carrera: ${ici.name} (${ici.id})`);
     console.log(` - Profesor: ${professor.name} (${professor.id})`);
-    console.log(` - Asignatura: ${dataStructures.name} [Profesores conectados: ${dataStructures.professors.length}]`);
-    console.log(` - Recurso: ${resource.title} [Tipo: ${resource.type}, Año: ${resource.year}]`);
+    console.log(` - Asignatura: ${dataStructures.name} [Profesores: ${dataStructures.professors.length}]`);
+    console.log(` - Recurso: ${resource.title} (${resource.id}) [Tipo: ${resource.type}, Año: ${resource.year}]`);
   });
 }
 
