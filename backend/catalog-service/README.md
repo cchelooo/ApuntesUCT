@@ -101,5 +101,22 @@ npm run test:migration
 ```
 (Si se quiere correr prueba de migración, ejecutar el comando en catalog-service)
 
+## 🛠️ Ejecución de Base de Datos y Seeding
+
+Para desplegar la base de datos y poblar los datos de prueba del catálogo de forma segura e idempotente, ejecuta los siguientes comandos desde la carpeta del servicio (`backend/catalog-service`):
+
+```bash
+# 1. Generar los tipos del cliente de Prisma
+npm run prisma:generate
+
+# 2. Desplegar migraciones pendientes en PostgreSQL
+npm run prisma:deploy
+
+# 3. Poblar o actualizar los datos de prueba (idempotente via upsert)
+npm run prisma:seed
+```
+
+
+
 
 
