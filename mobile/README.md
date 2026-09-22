@@ -66,6 +66,10 @@ flutter analyze
 flutter test
 ```
 
+La línea base inicial del análisis estático y su entorno reproducible están
+registrados en
+[`docs/mobile/validacion-flutter-analyze.md`](../docs/mobile/validacion-flutter-analyze.md).
+
 Si Android informa que faltan licencias del SDK, acéptalas y vuelve a comprobar el entorno:
 
 ```bash

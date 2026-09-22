@@ -8,6 +8,7 @@ describe('CatalogController', () => {
   let service: jest.Mocked<CatalogService>;
 
   const mockCatalogService = {
+    getCatalogTree: jest.fn(),
     filterCatalog: jest.fn(),
   };
 
@@ -32,6 +33,27 @@ describe('CatalogController', () => {
     expect(controller).toBeDefined();
   });
 
+  describe('GET /catalog', () => {
+    it('debe llamar a catalogService.getCatalogTree y retornar el árbol del catálogo', async () => {
+      const mockResult = [
+        {
+          id: 'univ-1',
+          name: 'Universidad Católica de Temuco',
+          code: 'UCT',
+          active: true,
+          careers: [],
+        },
+      ] as unknown as ReturnType<CatalogService['getCatalogTree']>;
+
+      mockCatalogService.getCatalogTree.mockResolvedValue(mockResult);
+
+      const result = await controller.getCatalog();
+
+      expect(service.getCatalogTree).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(mockResult);
+    });
+  });
+
   describe('GET /catalog/filter', () => {
     it('debe llamar a catalogService.filterCatalog con los filtros proporcionados', async () => {
       const filters: FilterCatalogDto = {
@@ -39,7 +61,6 @@ describe('CatalogController', () => {
         careerId: 'car-1',
       };
 
-      // Se utiliza castear a 'unknown' antes del tipo destino para evitar el 'any' explícito
       const mockResult = [
         { id: 'subj-1', name: 'Programación' },
       ] as unknown as ReturnType<CatalogService['filterCatalog']>;
