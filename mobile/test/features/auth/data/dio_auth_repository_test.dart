@@ -4,6 +4,7 @@ import 'package:apuntesuct_mobile/core/errors/api_exception.dart';
 import 'package:apuntesuct_mobile/core/network/api_client.dart';
 import 'package:apuntesuct_mobile/features/auth/data/dio_auth_repository.dart';
 import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart';
+import 'package:apuntesuct_mobile/models/user_model.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -111,10 +112,38 @@ void main() {
         ),
       );
     });
+
+    test(
+      'delega las operaciones todavía pendientes al repositorio mock',
+      () async {
+        final fallback = _FallbackSpy();
+        final repository = _repository(
+          _StubAdapter((_) => _jsonResponse({})),
+          fallback: fallback,
+        );
+
+        final registeredUser = await repository.register(
+          name: 'Camila Soto',
+          email: 'camila.soto@uct.cl',
+          password: 'Apuntes2026',
+        );
+        final currentUser = await repository.getCurrentUser();
+        await repository.logout();
+
+        expect(registeredUser.email, 'camila.soto@uct.cl');
+        expect(currentUser.email, 'current@uct.cl');
+        expect(fallback.registerCalls, 1);
+        expect(fallback.currentUserCalls, 1);
+        expect(fallback.logoutCalls, 1);
+      },
+    );
   });
 }
 
-DioAuthRepository _repository(_StubAdapter adapter) {
+DioAuthRepository _repository(
+  _StubAdapter adapter, {
+  AuthRepository? fallback,
+}) {
   final dio = Dio(
     BaseOptions(
       baseUrl: 'http://localhost:3000/api/v1',
@@ -124,8 +153,40 @@ DioAuthRepository _repository(_StubAdapter adapter) {
 
   return DioAuthRepository(
     ApiClient(customDio: dio),
-    const MockAuthRepository(simulatedDelay: Duration.zero),
+    fallback ?? const MockAuthRepository(simulatedDelay: Duration.zero),
   );
+}
+
+class _FallbackSpy implements AuthRepository {
+  int registerCalls = 0;
+  int currentUserCalls = 0;
+  int logoutCalls = 0;
+
+  @override
+  Future<UserModel> login({required String email, required String password}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<UserModel> register({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    registerCalls++;
+    return UserModel.mock(name: name, email: email);
+  }
+
+  @override
+  Future<UserModel> getCurrentUser() async {
+    currentUserCalls++;
+    return UserModel.mock(email: 'current@uct.cl');
+  }
+
+  @override
+  Future<void> logout() async {
+    logoutCalls++;
+  }
 }
 
 ResponseBody _jsonResponse(Map<String, dynamic> body, {int statusCode = 200}) {
