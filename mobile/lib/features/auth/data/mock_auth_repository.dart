@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/api_client.dart';
 import '../../../models/user_model.dart';
 import 'auth_repository.dart';
+import 'dio_auth_repository.dart';
 
 export 'auth_repository.dart';
 
@@ -75,9 +77,14 @@ class MockAuthRepository implements AuthRepository {
   }
 }
 
-/// Provider para inyectar la instancia de [AuthRepository] en cualquier parte de la app.
+/// Provider de autenticación usado por Login, Registro y Logout.
+///
+/// Login consume el endpoint mock real del Gateway mediante Dio. Las operaciones
+/// que Backend todavía no expone se mantienen en [MockAuthRepository] a través
+/// del fallback de [DioAuthRepository].
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return const MockAuthRepository();
+  final apiClient = ref.watch(apiclientProvider);
+  return DioAuthRepository(apiClient, const MockAuthRepository());
 });
 
 /// AsyncNotifier para gestionar el estado del usuario autenticado (Riverpod 3.x).
