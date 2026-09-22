@@ -1,8 +1,93 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
+import { Alert } from '../components/Alert';
+
+type LoginAlert = {
+  variant: 'error' | 'success';
+  message: string;
+};
 
 export function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginAlert, setLoginAlert] = useState<LoginAlert | null>(null);
+
+  const loginMutation = useMutation({
+    mutationFn: async (credentials: Record<string, string>) => {
+      let response: Response;
+
+      try {
+        response = await fetch(
+          `${import.meta.env.VITE_API_URL}/auth/login`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(credentials),
+          },
+        );
+      } catch {
+        throw new Error(
+          'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo nuevamente.',
+        );
+      }
+
+      if (response.status === 400) {
+        throw new Error(
+          'Los datos ingresados no son válidos. Revisa tu correo y contraseña.',
+        );
+      }
+
+      if (response.status === 502) {
+        throw new Error(
+          'El servicio de autenticación no está disponible. Inténtalo nuevamente más tarde.',
+        );
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          'No fue posible iniciar sesión. Inténtalo nuevamente más tarde.',
+        );
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      setLoginAlert({
+        variant: 'success',
+        message: 'Inicio de sesión exitoso.',
+      });
+    },
+    onError: (error) => {
+      setLoginAlert({
+        variant: 'error',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'No fue posible iniciar sesión. Inténtalo nuevamente.',
+      });
+    },
+  });
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoginAlert(null);
+
+    if (!email.trim() || !password.trim()) {
+      setLoginAlert({
+        variant: 'error',
+        message: 'Por favor, completa tu correo y contraseña.',
+      });
+      return;
+    }
+
+    loginMutation.mutate({ email, password });
+  };
+
   return (
     <div className="min-h-screen w-full flex">
       {/* Panel Izquierdo (Oculto en móviles, visible en pantallas lg) */}
@@ -111,14 +196,20 @@ export function LoginPage() {
               </div>
             </div>
 
-            <form
-              className="space-y-4"
-              onSubmit={(event) => event.preventDefault()}
-            >
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              {loginAlert && (
+                <Alert
+                  variant={loginAlert.variant}
+                  message={loginAlert.message}
+                />
+              )}
+
               <Input
                 label="Correo electrónico"
                 placeholder="tu@correo.cl"
                 type="email"
+                value={email}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
               />
 
               <div className="space-y-1">
@@ -126,6 +217,8 @@ export function LoginPage() {
                   label="Contraseña"
                   placeholder="••••••••"
                   type="password"
+                  value={password}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                 />
                 <div className="flex justify-end">
                   <a
@@ -138,19 +231,20 @@ export function LoginPage() {
               </div>
 
               <div className="pt-2">
-                <Button type="submit" className="w-full">
-                  Ingresar
+                <Button 
+                  type="submit" 
+                  className="w-full"
+                  disabled={loginMutation.isPending}
+                >
+                  {loginMutation.isPending ? 'Ingresando...' : 'Ingresar'}
                 </Button>
               </div>
             </form>
           </div>
 
           <p className="text-center text-sm text-gray-600">
-            ¿No tienes cuenta? {/*Link de React Router*/}
-            <Link
-              to="/register"
-              className="font-semibold text-blue-600 hover:text-blue-500 transition-colors"
-            >
+            ¿No tienes cuenta?{' '}
+            <Link to="/register" className="font-semibold text-blue-600 hover:text-blue-500 transition-colors">
               Registrarse
             </Link>
           </p>
