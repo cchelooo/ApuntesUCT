@@ -1,63 +1,72 @@
 import 'package:apuntesuct_mobile/core/widgets/empty_state.dart';
+import 'package:apuntesuct_mobile/features/catalog/domain/catalog_item.dart';
+import 'package:apuntesuct_mobile/features/catalog/presentation/providers/catalog_provider.dart';
 import 'package:apuntesuct_mobile/features/catalog/presentation/screens/catalog_screen.dart';
 import 'package:apuntesuct_mobile/features/catalog/presentation/widgets/material_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 void main() {
-  group('CatalogScreen Router Tests', () {
-    testWidgets(
-      'CatalogScreen se muestra al navegar a /catalog mediante GoRouter',
-      (WidgetTester tester) async {
-        final testRouter = GoRouter(
-          initialLocation: '/catalog',
-          routes: [
-            GoRoute(
-              path: '/catalog',
-              builder: (context, state) => const CatalogScreen(),
-            ),
-          ],
-        );
-
-        await tester.pumpWidget(MaterialApp.router(routerConfig: testRouter));
-        await tester.pumpAndSettle();
-
-        expect(find.byType(SearchBar), findsOneWidget);
-        expect(find.byType(MaterialCard), findsWidgets);
-        expect(find.text('Catálogo de Materiales'), findsOneWidget);
-
-        await tester.enterText(find.byType(SearchBar), 'Cálculo');
-        await tester.pump();
-
-        expect(find.text('Cálculo Diferencial e Integral'), findsOneWidget);
-        expect(find.text('Álgebra Lineal y sus Aplicaciones'), findsNothing);
-      },
+  Widget buildTestWidget({List<dynamic> overrides = const []}) {
+    final testRouter = GoRouter(
+      initialLocation: '/catalog',
+      routes: [
+        GoRoute(
+          path: '/catalog',
+          builder: (context, state) => const CatalogScreen(),
+        ),
+      ],
     );
 
-    testWidgets(
-      'Muestra EmptyState cuando una búsqueda no encuentra resultados',
-      (WidgetTester tester) async {
-        final testRouter = GoRouter(
-          initialLocation: '/catalog',
-          routes: [
-            GoRoute(
-              path: '/catalog',
-              builder: (context, state) => const CatalogScreen(),
+    return ProviderScope(
+      overrides: overrides.cast(),
+      child: MaterialApp.router(routerConfig: testRouter),
+    );
+  }
+
+  group('CatalogScreen Provider Integration Tests (#66)', () {
+    testWidgets('CatalogScreen consume catalogListProvider y renderiza items', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        buildTestWidget(
+          overrides: [
+            catalogListProvider.overrideWith(
+              (ref) async => [
+                const CatalogItem(
+                  id: '1',
+                  title: 'Cálculo I',
+                  author: 'UCT',
+                  subject: 'Informática',
+                ),
+              ],
             ),
           ],
-        );
+        ),
+      );
 
-        await tester.pumpWidget(MaterialApp.router(routerConfig: testRouter));
-        await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
 
-        await tester.enterText(find.byType(SearchBar), 'TextoInexistente999');
-        await tester.pump();
+      expect(find.byType(SearchBar), findsOneWidget);
+      expect(find.byType(MaterialCard), findsOneWidget);
+      expect(find.text('Cálculo I'), findsOneWidget);
+    });
 
-        expect(find.byType(MaterialCard), findsNothing);
-        expect(find.byType(EmptyState), findsOneWidget);
-        expect(find.text('No se encontraron materiales'), findsOneWidget);
-      },
-    );
+    testWidgets('Muestra EmptyState cuando no hay resultados en el provider', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        buildTestWidget(
+          overrides: [catalogListProvider.overrideWith((ref) async => [])],
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.byType(EmptyState), findsOneWidget);
+      expect(find.text('No se encontraron materiales'), findsOneWidget);
+    });
   });
 }
