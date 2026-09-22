@@ -4,12 +4,24 @@
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
   "transform": {
-    "^.+\\.(t|j)s$": [
+    "^.+\\.ts$": [
       "ts-jest",
       {
         "useESM": true
       }
+    ],
+    "^.+\\.m?js$": [
+      "ts-jest",
+      {
+        "tsconfig": {
+          "allowJs": true,
+          "module": "CommonJS",
+          "moduleResolution": "Node"
+        }
+      }
     ]
   },
-  "transformIgnorePatterns": ["node_modules/(?!@nestjs)"]
+  "transformIgnorePatterns": [
+    "node_modules/(?!(@nestjs|http-proxy-middleware|httpxy|is-plain-obj)/)"
+  ]
 }
