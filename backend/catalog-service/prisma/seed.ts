@@ -20,7 +20,7 @@ async function main() {
       },
     });
 
-    // 2. Carrera (Punto 1 Solicitado: Clave única compuesta universityId_code)
+    // 2. Carrera (Clave única compuesta: universityId_code)
     const ici = await tx.career.upsert({
       where: {
         universityId_code: {
@@ -52,7 +52,7 @@ async function main() {
       },
     });
 
-    // 4. Asignatura (Punto 2 Solicitado: Clave única compuesta careerId_code)
+    // 4. Asignatura (Clave única compuesta: careerId_code)
     const dataStructures = await tx.subject.upsert({
       where: {
         careerId_code: {
@@ -64,7 +64,7 @@ async function main() {
         name: 'Estructuras de Datos',
         semester: 3,
         professors: {
-          connect: { id: professor.id }, // Mantiene la relación con el profesor
+          connect: { id: professor.id }, // Mantiene relación N-N con el profesor
         },
       },
       create: {
@@ -81,37 +81,41 @@ async function main() {
       },
     });
 
-    // 5. Recurso (Punto 3 Solicitado: Detectar recurso preexistente para evitar duplicados)
+    // 5. Recurso (Identificación exacta por combinación completa de atributos)
+    const resourceData = {
+      title: 'Certamen 1 - Algoritmos y Árboles',
+      description:
+        'Evaluación parcial del primer semestre de Estructuras de Datos.',
+      fileUrl: 'https://minio.local/materials/certamenes/c1-2026.pdf',
+      type: ResourceType.EXAM,
+      year: 2026,
+      subjectId: dataStructures.id,
+      professorId: professor.id,
+    };
+
+    // Búsqueda del recurso exacto para no sobrescribir materiales ajenos con mismo título
     const existingResource = await tx.resource.findFirst({
       where: {
-        subjectId: dataStructures.id,
-        title: 'Certamen 1 - Algoritmos y Árboles',
+        subjectId: resourceData.subjectId,
+        title: resourceData.title,
+        year: resourceData.year,
+        type: resourceData.type,
+        professorId: resourceData.professorId,
+        fileUrl: resourceData.fileUrl,
       },
     });
 
-    const resource = await tx.resource.upsert({
-      where: {
-        id: existingResource?.id ?? '00000000-0000-0000-0000-000000000000', // Reutiliza el ID si ya existía
-      },
-      update: {
-        description: 'Evaluación parcial del primer semestre de Estructuras de Datos.',
-        fileUrl: 'https://minio.local/materials/certamenes/c1-2026.pdf',
-        type: ResourceType.EXAM,
-        year: 2026,
-        professorId: professor.id,
-      },
-      create: {
-        title: 'Certamen 1 - Algoritmos y Árboles',
-        description: 'Evaluación parcial del primer semestre de Estructuras de Datos.',
-        fileUrl: 'https://minio.local/materials/certamenes/c1-2026.pdf',
-        type: ResourceType.EXAM,
-        year: 2026,
-        subjectId: dataStructures.id,
-        professorId: professor.id,
-      },
-    });
+    // Actualización manteniendo ID si es idéntico, o creación limpia sin UUIDs ficticios
+    const resource = existingResource
+      ? await tx.resource.update({
+          where: { id: existingResource.id },
+          data: resourceData,
+        })
+      : await tx.resource.create({
+          data: resourceData,
+        });
 
-    console.log('✅ Seeding completado exitosamente sin duplicados:');
+    console.log('✅ Seeding completado exitosamente sin duplicados ni sobreescritura de datos:');
     console.log(` - Universidad: ${uct.name} (${uct.id})`);
     console.log(` - Carrera: ${ici.name} (${ici.id})`);
     console.log(` - Profesor: ${professor.name} (${professor.id})`);
