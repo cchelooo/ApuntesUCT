@@ -4,6 +4,7 @@ export interface RawCatalogSubject {
   code: string;
   name: string;
   description: string | null;
+  semester?: number;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -22,4 +23,5 @@ export interface RawCatalogSubject {
     name: string;
     email: string;
   }>;
+  notesCount?: number;
 }

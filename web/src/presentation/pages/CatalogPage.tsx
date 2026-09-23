@@ -4,7 +4,8 @@ import { CatalogGrid } from '../components/catalog/CatalogGrid';
 import { Input } from '../components/Input';
 
 export function CatalogPage() {
-  const { subjects, query, setQuery, total } = useCatalogSubjects();
+  const { subjects, query, setQuery, total, isLoading, isError } =
+    useCatalogSubjects();
 
   return (
     <section className="bg-catalog-bg px-6 py-10 font-body text-catalog-ink sm:px-10">
@@ -41,14 +42,36 @@ export function CatalogPage() {
         </div>
 
         <p className="mt-2 text-xs text-catalog-ink/50">
-          {subjects.length} de {total} asignaturas
+          {isLoading
+            ? 'Cargando asignaturas…'
+            : `${subjects.length} de ${total} asignaturas`}
         </p>
       </header>
 
       <div className="mx-auto flex max-w-7xl flex-col gap-8 lg:flex-row">
         <CatalogFilterSidebar />
         <div className="flex-1">
-          <CatalogGrid subjects={subjects} query={query} />
+          {isError ? (
+            <div className="rounded-sm border border-dashed border-catalog-line bg-catalog-paperMuted px-6 py-12 text-center">
+              <p className="font-display text-lg text-catalog-ink">
+                No se pudo cargar el catálogo
+              </p>
+              <p className="mt-1 text-sm text-catalog-ink/60">
+                Intenta recargar la página en unos minutos.
+              </p>
+            </div>
+          ) : isLoading ? (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-40 animate-pulse rounded-sm border border-catalog-line bg-catalog-paperMuted"
+                />
+              ))}
+            </div>
+          ) : (
+            <CatalogGrid subjects={subjects} query={query} />
+          )}
         </div>
       </div>
     </section>

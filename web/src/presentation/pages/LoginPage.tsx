@@ -20,37 +20,34 @@ export function LoginPage() {
       let response: Response;
 
       try {
-        response = await fetch(
-          `${import.meta.env.VITE_API_URL}/auth/login`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(credentials),
+        response = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
           },
-        );
+          body: JSON.stringify(credentials),
+        });
       } catch {
         throw new Error(
-          'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo nuevamente.',
+          'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo nuevamente.'
         );
       }
 
       if (response.status === 400) {
         throw new Error(
-          'Los datos ingresados no son válidos. Revisa tu correo y contraseña.',
+          'Los datos ingresados no son válidos. Revisa tu correo y contraseña.'
         );
       }
 
       if (response.status === 502) {
         throw new Error(
-          'El servicio de autenticación no está disponible. Inténtalo nuevamente más tarde.',
+          'El servicio de autenticación no está disponible. Inténtalo nuevamente más tarde.'
         );
       }
 
       if (!response.ok) {
         throw new Error(
-          'No fue posible iniciar sesión. Inténtalo nuevamente más tarde.',
+          'No fue posible iniciar sesión. Inténtalo nuevamente más tarde.'
         );
       }
 
@@ -209,7 +206,9 @@ export function LoginPage() {
                 placeholder="tu@correo.cl"
                 type="email"
                 value={email}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setEmail(e.target.value)
+                }
               />
 
               <div className="space-y-1">
@@ -218,7 +217,9 @@ export function LoginPage() {
                   placeholder="••••••••"
                   type="password"
                   value={password}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setPassword(e.target.value)
+                  }
                 />
                 <div className="flex justify-end">
                   <a
@@ -231,8 +232,8 @@ export function LoginPage() {
               </div>
 
               <div className="pt-2">
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="w-full"
                   disabled={loginMutation.isPending}
                 >
@@ -244,7 +245,10 @@ export function LoginPage() {
 
           <p className="text-center text-sm text-gray-600">
             ¿No tienes cuenta?{' '}
-            <Link to="/register" className="font-semibold text-blue-600 hover:text-blue-500 transition-colors">
+            <Link
+              to="/register"
+              className="font-semibold text-blue-600 hover:text-blue-500 transition-colors"
+            >
               Registrarse
             </Link>
           </p>
