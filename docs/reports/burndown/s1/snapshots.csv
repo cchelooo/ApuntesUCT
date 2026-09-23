@@ -168,7 +168,7 @@ snapshot_date,sprint,scope,key,name,equipo,items,horas_asignadas,horas_usadas,ho
 2026-09-21,S1,Integrante,cchelooo,Marcelo Santana,INT4,10,20,12,8,0
 2026-09-21,S1,Integrante,eduardoscrs,Eduardo Escares,INT4,9,20,11,9,0
 2026-09-22,S1,Equipo,INT2,INT2,INT2,63,120,95.4,31.8,7.2
-2026-09-22,S1,Equipo,INT4,INT4,INT4,38,79,46.5,34.5,0
+2026-09-22,S1,Equipo,INT4,INT4,INT4,38,79,49.5,31.5,0
 2026-09-22,S1,Integrante,AilynMelillan,Ailyn Melillan,INT2,10,20,15,5,0
 2026-09-22,S1,Integrante,David7985,David Villegas,INT2,11,20,14.5,5.5,0
 2026-09-22,S1,Integrante,KennyaAle,Martina Iturrieta,INT2,9,20,20.9,6.3,7.2
@@ -177,5 +177,5 @@ snapshot_date,sprint,scope,key,name,equipo,items,horas_asignadas,horas_usadas,ho
 2026-09-22,S1,Integrante,rrodriguez2025,Raul Rodriguez,INT2,9,20,17,3,0
 2026-09-22,S1,Integrante,Anker04,Nelson Quiñinao Isla,INT4,10,19,9,10,0
 2026-09-22,S1,Integrante,Yaninna137,Yaninna Alvarez,INT4,9,20,13.5,6.5,0
-2026-09-22,S1,Integrante,cchelooo,Marcelo Santana,INT4,10,20,12,8,0
+2026-09-22,S1,Integrante,cchelooo,Marcelo Santana,INT4,10,20,15,5,0
 2026-09-22,S1,Integrante,eduardoscrs,Eduardo Escares,INT4,9,20,12,10,0
