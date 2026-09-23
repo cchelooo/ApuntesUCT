@@ -21,7 +21,7 @@ export function mapRawSubjectToSubject(raw: RawCatalogSubject): Subject {
     careerName: raw.career?.name ?? UNKNOWN_CAREER,
     semester: raw.semester ?? 1,
     professorName: formatProfessorNames(raw.professors),
-    notesCount: raw.notesCount ?? 0,
+    notesCount: raw.notesCount ?? null,
   };
 }
 

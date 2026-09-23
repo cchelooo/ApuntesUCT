@@ -21,24 +21,26 @@ function normalizeText(value: string): string {
 
 export function useCatalogSubjects(): UseCatalogSubjectsResult {
   const [query, setQuery] = useState('');
-  const { data = [], isLoading, isError } = useCatalogSubjectsQuery();
+  const { data, isLoading, isError } = useCatalogSubjectsQuery();
+
+  const allSubjects = useMemo(() => data ?? [], [data]);
 
   const subjects = useMemo(() => {
     const normalized = normalizeText(query);
-    if (!normalized) return data;
+    if (!normalized) return allSubjects;
 
-    return data.filter(
+    return allSubjects.filter(
       (subject) =>
         normalizeText(subject.name).includes(normalized) ||
         normalizeText(subject.code).includes(normalized)
     );
-  }, [data, query]);
+  }, [allSubjects, query]);
 
   return {
     subjects,
     query,
     setQuery,
-    total: data.length,
+    total: allSubjects.length,
     isLoading,
     isError,
   };
