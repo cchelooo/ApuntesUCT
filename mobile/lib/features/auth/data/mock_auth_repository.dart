@@ -3,21 +3,9 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/user_model.dart';
+import 'auth_repository.dart';
 
-/// Contrato abstracto para autenticación (preparado para integración real futura).
-abstract class AuthRepository {
-  Future<UserModel> login({required String email, required String password});
-
-  /// Crea una cuenta institucional y devuelve el usuario con sesión iniciada.
-  Future<UserModel> register({
-    required String name,
-    required String email,
-    required String password,
-  });
-
-  Future<UserModel> getCurrentUser();
-  Future<void> logout();
-}
+export 'auth_repository.dart';
 
 /// Implementación Mock de [AuthRepository] que simula latencia de red con [Future.delayed].
 class MockAuthRepository implements AuthRepository {
