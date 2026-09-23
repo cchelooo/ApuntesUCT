@@ -82,7 +82,19 @@ class MockAuthRepository implements AuthRepository {
 /// Login consume el endpoint mock real del Gateway mediante Dio. Las operaciones
 /// que Backend todavía no expone se mantienen en [MockAuthRepository] a través
 /// del fallback de [DioAuthRepository].
+///
+/// Para demostraciones sin Backend se puede ejecutar Mobile con
+/// `--dart-define=AUTH_DEMO_MODE=true`. El modo normal sigue usando Dio para que
+/// una caída del Gateway no quede oculta durante el desarrollo de integración.
+final authDemoModeProvider = Provider<bool>((ref) {
+  return const bool.fromEnvironment('AUTH_DEMO_MODE', defaultValue: false);
+});
+
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  if (ref.watch(authDemoModeProvider)) {
+    return const MockAuthRepository();
+  }
+
   final apiClient = ref.watch(apiclientProvider);
   return DioAuthRepository(apiClient, const MockAuthRepository());
 });

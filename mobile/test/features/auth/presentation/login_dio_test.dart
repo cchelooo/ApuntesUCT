@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:apuntesuct_mobile/core/network/api_client.dart';
 import 'package:apuntesuct_mobile/features/auth/data/auth_repository.dart';
 import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart'
-    show authRepositoryProvider;
+    show authDemoModeProvider, authRepositoryProvider;
 import 'package:apuntesuct_mobile/features/auth/presentation/login_screen.dart';
 import 'package:apuntesuct_mobile/models/user_model.dart';
 import 'package:dio/dio.dart';
@@ -119,6 +119,36 @@ void main() {
       },
     );
 
+    testWidgets('modo demo navega al Home sin consultar el Gateway', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final adapter = _StubAdapter(
+        (_) => throw StateError('El modo demo no debe consultar el Gateway'),
+      );
+      final router = _router();
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        _testApp(router: router, adapter: adapter, demoMode: true),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byType(TextFormField).first,
+        'estudiante2026',
+      );
+      await tester.enterText(find.byType(TextFormField).last, 'demo');
+      await tester.tap(find.widgetWithText(FilledButton, 'Ingresar'));
+      await tester.pumpAndSettle();
+
+      expect(adapter.lastRequest, isNull);
+      expect(find.text('HOME_AUTENTICADO'), findsOneWidget);
+      expect(find.byType(LoginScreen), findsNothing);
+    });
+
     testWidgets('muestra el error del Gateway y permanece en Login', (
       tester,
     ) async {
@@ -194,6 +224,7 @@ Widget _testApp({
   required GoRouter router,
   required _StubAdapter adapter,
   AuthRepository? repository,
+  bool demoMode = false,
 }) {
   final dio = Dio(
     BaseOptions(
@@ -205,6 +236,7 @@ Widget _testApp({
   return ProviderScope(
     overrides: [
       apiclientProvider.overrideWith((ref) => ApiClient(customDio: dio)),
+      authDemoModeProvider.overrideWithValue(demoMode),
       if (repository != null)
         authRepositoryProvider.overrideWithValue(repository),
     ],
