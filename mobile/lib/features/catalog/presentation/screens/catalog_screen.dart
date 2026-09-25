@@ -72,7 +72,11 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
             child: RefreshIndicator(
               onRefresh: () async {
                 ref.invalidate(catalogListProvider);
-                await ref.read(catalogListProvider.future);
+                try {
+                  await ref.read(catalogListProvider.future);
+                } catch (_) {
+                  // Riverpod maneja el error internamente y actualiza el provider a AsyncError
+                }
               },
               child: catalogAsync.when(
                 loading: () =>

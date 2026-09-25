@@ -140,5 +140,52 @@ void main() {
       expect(find.text('Estructuras de Datos'), findsOneWidget);
       expect(find.text('Cálculo I'), findsOneWidget);
     });
+    testWidgets(
+      'Pull-to-refresh fallido transiciona de datos a ErrorState sin lanzar excepcion no controlada',
+      (WidgetTester tester) async {
+        bool failNext = false;
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            overrides: [
+              catalogListProvider.overrideWith((ref) async {
+                if (failNext) {
+                  throw Exception('Error en recarga');
+                }
+                return [
+                  const CatalogItem(
+                    id: '1',
+                    title: 'Cálculo I',
+                    author: 'UCT',
+                    subject: 'Informática',
+                  ),
+                ];
+              }),
+            ],
+          ),
+        );
+
+        await tester.pumpAndSettle();
+
+        // Verifica estado inicial con datos
+        expect(find.text('Cálculo I'), findsOneWidget);
+
+        // Simula que la próxima petición fallará
+        failNext = true;
+
+        // Dispara el gesto de pull-to-refresh
+        await tester.fling(find.byType(ListView), const Offset(0, 300), 1000);
+        await tester.pumpAndSettle();
+
+        // Debe mostrar ErrorState sin romper la ejecución
+        expect(find.byType(ErrorState), findsOneWidget);
+        expect(
+          find.text(
+            'Error al cargar el catálogo. Por favor intenta nuevamente.',
+          ),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }
