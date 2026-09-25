@@ -1,7 +1,7 @@
 {
   "name": "auth-service",
   "version": "0.0.1",
-  "description": "Microservicio de identidad, autenticación, usuarios y roles.",
+  "description": "Microservicio de identidad, autenticaci\u00f3n, usuarios y roles.",
   "author": "INT2 - ApuntesUCT",
   "private": true,
   "license": "UNLICENSED",
@@ -23,7 +23,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "test:ci": "jest --ci --runInBand"
   },
   "dependencies": {
     "@nestjs/common": "11.2.3",
@@ -62,22 +63,5 @@
     "tsconfig-paths": "4.2.0",
     "typescript": "5.9.3",
     "typescript-eslint": "8.70.0"
-  },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
-    ],
-    "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
   }
 }
