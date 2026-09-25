@@ -27,6 +27,8 @@ describe('Auth Service - Endpoints HTTP (E2E)', () => {
 
     app = moduleFixture.createNestApplication();
 
+    // Paso 2/3: Sincronización del prefijo global y pipes de validación con main.ts
+    app.setGlobalPrefix('api/v1');
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -43,24 +45,25 @@ describe('Auth Service - Endpoints HTTP (E2E)', () => {
   });
 
   // ==========================================
-  // INICIO DE SESIÓN (/auth/login - Mock #92)
+  // INICIO DE SESIÓN (/api/v1/auth/login)
   // ==========================================
-  describe('POST /auth/login', () => {
+  describe('POST /api/v1/auth/login', () => {
     it('debe autenticar correctamente y retornar accessToken/datos (200 OK)', async () => {
       const response = await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/v1/auth/login')
         .send(mockUser)
         .expect(HttpStatus.OK);
 
       // Verificación acorde al DTO/Swagger actual (accessToken)
       expect(response.body).toHaveProperty('accessToken');
       expect(typeof response.body.accessToken).toBe('string');
+      expect(response.body).toHaveProperty('user');
       expect(response.body.user).toHaveProperty('email', mockUser.email.toLowerCase());
     });
 
     it('debe retornar 400 Bad Request si el email es inválido o falta la contraseña', async () => {
       await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/v1/auth/login')
         .send({
           email: 'email-invalido',
           password: '   ',

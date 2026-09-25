@@ -6,6 +6,14 @@ import { AppModule } from '../src/app.module';
 describe('Catalog Service - Endpoints HTTP (E2E)', () => {
   let app: INestApplication;
 
+  // UUIDs formato v4 válidos para superar la validación del ValidationPipe
+  const validUUIDs = {
+    universityId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    careerId: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
+    subjectId: 'c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33',
+    professorId: 'd3eebc99-9c0b-4ef8-bb6d-6bb9bd380a44',
+  };
+
   jest.setTimeout(30000);
 
   beforeAll(async () => {
@@ -15,9 +23,8 @@ describe('Catalog Service - Endpoints HTTP (E2E)', () => {
 
     app = moduleFixture.createNestApplication();
 
-    // Si tu main.ts usa setGlobalPrefix, descomenta la siguiente línea:
-    // app.setGlobalPrefix('api');
-
+    // Sincronización del prefijo global y pipes de validación exactamente como en main.ts
+    app.setGlobalPrefix('api/v1');
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -34,12 +41,12 @@ describe('Catalog Service - Endpoints HTTP (E2E)', () => {
   });
 
   // ==========================================
-  // 1. ÁRBOL DEL CATÁLOGO (GET /catalog)
+  // 1. ÁRBOL DEL CATÁLOGO (GET /api/v1/catalog)
   // ==========================================
-  describe('GET /catalog', () => {
+  describe('GET /api/v1/catalog', () => {
     it('debe obtener la estructura jerárquica del catálogo (200 OK)', async () => {
       const response = await request(app.getHttpServer())
-        .get('/catalog')
+        .get('/api/v1/catalog')
         .expect(HttpStatus.OK);
 
       expect(Array.isArray(response.body)).toBe(true);
@@ -47,37 +54,37 @@ describe('Catalog Service - Endpoints HTTP (E2E)', () => {
   });
 
   // ==========================================
-  // 2. FILTRADO DEL CATÁLOGO (GET /catalog/filter)
+  // 2. FILTRADO DEL CATÁLOGO (GET /api/v1/catalog/filter)
   // ==========================================
-  describe('GET /catalog/filter', () => {
+  describe('GET /api/v1/catalog/filter', () => {
     it('debe retornar resultados al consultar sin query params (200 OK)', async () => {
       const response = await request(app.getHttpServer())
-        .get('/catalog/filter')
+        .get('/api/v1/catalog/filter')
         .expect(HttpStatus.OK);
 
       expect(Array.isArray(response.body)).toBe(true);
     });
 
     it('debe retornar 400 Bad Request si la secuencia jerárquica de filtros es inválida', async () => {
-      // Filtrar por careerId sin universityId rompe la regla de la secuencia jerárquica
+      // Filtrar por careerId sin universityId viola la regla de la secuencia jerárquica
       await request(app.getHttpServer())
-        .get('/catalog/filter')
-        .query({ careerId: '00000000-0000-0000-0000-000000000001' })
+        .get('/api/v1/catalog/filter')
+        .query({ careerId: validUUIDs.careerId })
         .expect(HttpStatus.BAD_REQUEST);
     });
 
-    it('debe gestionar el envío del filtro year (Nivel 5)', async () => {
-      const response = await request(app.getHttpServer())
-        .get('/catalog/filter')
+    it('debe retornar 501 Not Implemented al solicitar el filtro year (Nivel 5) sobre jerarquía válida', async () => {
+      // Petición con secuencia jerárquica completa + nivel no implementado (year)
+      await request(app.getHttpServer())
+        .get('/api/v1/catalog/filter')
         .query({
-          universityId: '00000000-0000-0000-0000-000000000001',
-          careerId: '00000000-0000-0000-0000-000000000002',
-          subjectId: '00000000-0000-0000-0000-000000000003',
-          professorId: '00000000-0000-0000-0000-000000000004',
+          universityId: validUUIDs.universityId,
+          careerId: validUUIDs.careerId,
+          subjectId: validUUIDs.subjectId,
+          professorId: validUUIDs.professorId,
           year: 2026,
-        });
-
-      expect([HttpStatus.NOT_IMPLEMENTED, HttpStatus.BAD_REQUEST]).toContain(response.status);
+        })
+        .expect(HttpStatus.NOT_IMPLEMENTED); // Aserción estricta de estado 501 exigida por el revisor
     });
   });
 });
