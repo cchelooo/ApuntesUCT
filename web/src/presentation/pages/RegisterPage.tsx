@@ -59,7 +59,7 @@ export function RegisterPage() {
       </div>
 
       {/* Panel Derecho (Formulario de Registro) */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white lg:h-screen lg:overflow-y-auto">
+      <div className="w-full lg:w-1/2 flex items-center justify-center px-4 py-10 sm:p-8 md:p-12 bg-white lg:h-screen lg:overflow-y-auto">
         <div className="w-full max-w-sm space-y-6 my-auto">
           <div className="text-center">
             <h2 className="text-3xl font-semibold text-gray-900">
