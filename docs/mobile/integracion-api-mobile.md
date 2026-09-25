@@ -16,7 +16,7 @@
 
 ### 1.1 API Gateway (`:3000`) — tráfico de autenticación y salud
 
-El **API Gateway** (puerto `3000`) es la entrada de la app para los servicios de **Auth** (login, salud) y para el healthcheck del propio gateway.
+El **API Gateway** (puerto `3000`) es la entrada prevista para los servicios de **Auth** (login mock y salud) y expone el healthcheck del propio gateway. Importante: **en el código de Mobile revisado, el flujo de login aún se simula en el cliente y no se envía al gateway** (ver sección 6.2); el endpoint y el proxy de Auth existen en el backend y quedan documentados aquí como contrato disponible para integrar ese flujo.
 
 | Entorno / Plataforma | URL Base Gateway | Cómo se resuelve |
 |---|---|---|
@@ -33,7 +33,7 @@ Por lo tanto, **no es correcto afirmar que toda la comunicación actual pasa por
 
 ### 1.3 CORS y Swagger
 
-- **CORS:** habilitado en el gateway (`app.enableCors()`, origenes abiertos en desarrollo). Los servicios Auth y Catalog aún no lo tienen; se habilita en el PR de la issue **#97** (pendiente de merge).
+- **CORS:** habilitado en los tres servicios (`app.enableCors()` en api-gateway, auth-service y catalog-service), sin restricción de orígenes en desarrollo.
 - **Documentación OpenAPI:**
   - Índice de servicios: `http://<host>:3000/api/docs`
   - Spec del gateway (JSON): `http://<host>:3000/api/docs/gateway-json`
@@ -123,9 +123,11 @@ Devuelve la jerarquía **Universidad → Carreras → Asignaturas** (universidad
 
 - **Universidad:** `id`, `name`, `code`, `active`, `careers[]`, `createdAt`, `updatedAt`
 - **Carrera:** `id`, `name`, `code`, `active`, `subjects[]`, `createdAt`, `updatedAt`
-- **Asignatura:** `id`, `name`, `code`, **`semester`** (semestre del plan de estudios, mínimo 1, máximo 12), `active`, `createdAt`, `updatedAt`
+- **Asignatura:** `id`, `name`, `code`, **`semester`** (semestre del plan de estudios; valor por defecto `1`), `active`, `createdAt`, `updatedAt`
 
 > En el árbol las asignaturas se devuelven sin `description` ni `professors` (solo en `/filter`).
+>
+> **Precisión sobre `semester`:** el DTO de respuesta documenta en Swagger el rango `1–12`, pero el **máximo `12` no está impuesto** ni por el DTO de creación (en `create-subject` solo se exige `>= 1`) ni por el esquema de la base de datos (`Int @default(1)`). Se trata de una convención documentada en Swagger, no de una restricción garantizada. Ver también la sección de manejo de `semester` en `backend/catalog-service/README.md`.
 
 **Ejemplo de respuesta `200`:**
 
@@ -190,7 +192,7 @@ Devuelve la jerarquía **Universidad → Carreras → Asignaturas** (universidad
 
 **Relaciones incluidas en cada asignatura devuelta:** `career` (con su `university`) y `professors`.
 
-**`year`/`type` → `501 Not Implemented`:** dependen del módulo de Recursos, pendiente de integración.
+**`year`/`type` → `501 Not Implemented` solo si pasan las validaciones previas:** un parámetro mal formado (p. ej., `year` fuera de `2000–2100`) responde `400`, y una secuencia jerárquica incompleta (p. ej., `year` sin `professorId`) también responde `400`. Recién cuando el formato y la secuencia son válidos, solicitar año o tipo produce `501` (depende del módulo de Recursos, pendiente de integración):
 
 ```json
 {
@@ -198,6 +200,52 @@ Devuelve la jerarquía **Universidad → Carreras → Asignaturas** (universidad
   "message": "Los filtros por Año y Tipo requieren el módulo de Recursos (Resource), el cual está pendiente de integración en la base de datos.",
   "error": "Not Implemented"
 }
+```
+
+**Ejemplo de respuesta `200` (con filtros de niveles 1–4):** asignatura con sus relaciones `career`, `career.university` y `professors`.
+
+> **Ejemplo ilustrativo:** construido a partir del código (`Prisma SubjectWhereInput` con `include` de `career`/`university`/`professors`), no de una consulta ejecutada.
+
+```json
+[
+  {
+    "id": "uuid-asignatura",
+    "name": "Programación II",
+    "code": "PROG2",
+    "semester": 3,
+    "active": true,
+    "createdAt": "2026-09-22T00:00:00.000Z",
+    "updatedAt": "2026-09-22T00:00:00.000Z",
+    "careerId": "uuid-carrera",
+    "career": {
+      "id": "uuid-carrera",
+      "name": "Ingeniería Civil Informática",
+      "code": "ICI",
+      "active": true,
+      "universityId": "uuid-universidad",
+      "createdAt": "2026-09-22T00:00:00.000Z",
+      "updatedAt": "2026-09-22T00:00:00.000Z",
+      "university": {
+        "id": "uuid-universidad",
+        "name": "Universidad Católica de Temuco",
+        "code": "UCT",
+        "active": true,
+        "createdAt": "2026-09-22T00:00:00.000Z",
+        "updatedAt": "2026-09-22T00:00:00.000Z"
+      }
+    },
+    "professors": [
+      {
+        "id": "uuid-profesor",
+        "name": "Profesora Ana Pérez",
+        "email": "ana.perez@uct.cl",
+        "active": true,
+        "createdAt": "2026-09-22T00:00:00.000Z",
+        "updatedAt": "2026-09-22T00:00:00.000Z"
+      }
+    ]
+  }
+]
 ```
 
 **Resultado vacío:** la combinación de filtros incompatibles (p. ej., `universityId` de una institución con `careerId` de otra) devuelve `[]`. Sin filtros devuelve la lista completa de asignaturas.
@@ -216,8 +264,7 @@ Devuelve la jerarquía **Universidad → Carreras → Asignaturas** (universidad
 | Recuperación de contraseña | **Pendiente/Propuesta** | Endpoints aún por definir |
 | Autenticación real (JWT firmado y autorización) | **Pendiente** | El login actual es mock (sección 3.3); el esquema final es JWT Bearer |
 | Paginación `page`/`limit` (`items`/`total`) | **Propuesta** | **No implementada** en los endpoints actuales de catálogo; si se requiere, debe proponerse y aprobarse el contrato |
-| `year`/`type` en `/catalog/filter` | Pendiente | Devuelve `501`; depende del módulo de Recursos |
-| CORS en Auth y Catalog | Pendiente | PR de la issue **#97** (abierto) |
+| `year`/`type` en `/catalog/filter` | Pendiente | `501` solo si la secuencia es válida; depende del módulo de Recursos |
 | Proxy Gateway → `/catalog` | Pendiente | Hoy Mobile consulta el catálogo directo en `:3002` (sección 1.2) |
 
 ---
@@ -245,8 +292,18 @@ Devuelve la jerarquía **Universidad → Carreras → Asignaturas** (universidad
 
 ### 6.2 Autenticación (todavía mock)
 
-- La pantalla de login **sigue usando `MockAuthRepository`** (`authRepositoryProvider` → `MockAuthRepository`): latencia simulada (~1 s), `password == 'error'` simula un `401`, `registrado@uct.cl` simula un `409` en registro.
-- **Que exista `POST /api/v1/auth/login` en el backend no significa que la pantalla lo consuma:** la integración HTTP de login no está conectada aún.
+**Panorama del login por frontend en `main` (sin implementar ni corregir aquí, solo describir el estado):**
+
+| Cliente | Estado |
+|---|---|
+| **Web** | Realiza solicitudes HTTP a `/auth/login` (login mock del backend). |
+| **Mobile** | Simula el login localmente: la pantalla **sigue usando `MockAuthRepository`**; no envía la solicitud al gateway todavía. |
+| **Backend** | Expone `POST /api/v1/auth/login` (mock, sección 3.3) que **no comprueba credenciales reales**; sirve para integrar el frontend. |
+
+Detalles de la implementación actual de Mobile:
+
+- La pantalla de login usa `MockAuthRepository` (`authRepositoryProvider` → `MockAuthRepository`): latencia simulada (~1 s), `password == 'error'` simula un `401`, `registrado@uct.cl` simula un `409` en registro.
+- **Que exista `POST /api/v1/auth/login` en el backend no significa que la pantalla de Mobile lo consuma:** la integración HTTP de login no está conectada aún.
 - **No hay renovación automática de tokens** en el cliente revisado (no hay flujo de refresh en el estado de sesión `AuthStateNotifier`).
 - Estados de sesión vía Riverpod `AsyncValue` (loading / data / error), compartidos con la UI de login y registro.
 
@@ -254,19 +311,27 @@ Devuelve la jerarquía **Universidad → Carreras → Asignaturas** (universidad
 
 ## 7. Configuración de Mobile (`--dart-define`)
 
-Ambas URLs son configurables en tiempo de compilación (ver `mobile/lib/core/config/api_config.dart`). Sin `--dart-define` se usan los valores por defecto según plataforma.
+Ambas URLs son configurables en tiempo de compilación (ver `mobile/lib/core/config/api_config.dart`). Sin `--dart-define` se usan los valores por defecto según plataforma. **Los comandos se ejecutan desde `mobile/`.**
 
 | Variable | Puerto por defecto | Rol |
 |---|---|---|
 | `API_GATEWAY_URL` | `:3000/api/v1` | Gateway (auth y salud) |
 | `CATALOG_SERVICE_URL` | `:3002/api/v1` | Catálogo directo (excepción, sección 1.2) |
 
-**Ejemplo — emulador/escritorio:**
+**Ejemplo — Android Emulator:**
 
 ```bash
 flutter run \
   --dart-define=API_GATEWAY_URL=http://10.0.2.2:3000/api/v1 \
   --dart-define=CATALOG_SERVICE_URL=http://10.0.2.2:3002/api/v1
+```
+
+**Ejemplo — escritorio/local:**
+
+```bash
+flutter run \
+  --dart-define=API_GATEWAY_URL=http://localhost:3000/api/v1 \
+  --dart-define=CATALOG_SERVICE_URL=http://localhost:3002/api/v1
 ```
 
 **Ejemplo — dispositivo físico (misma red, IP LAN del host, p. ej. `192.168.1.50`):**
@@ -281,11 +346,11 @@ flutter run \
 
 ## 8. Comprobaciones reproducibles
 
-**Preparación del entorno:** seguir `backend/README.md` (Node.js 22, `docker compose up -d` para las bases de datos, instalación de dependencias). En `catalog-service` y `auth-service` ejecutar antes del build:
+**Preparación del entorno:** instalar dependencias y levantar PostgreSQL con la raíz del repo (ver `backend/README.md`). Para reproducir las pruebas de cada servicio, seguir los README específicos — no se duplican aquí todas las instrucciones, los enlaces permiten reproducir:
 
-```bash
-npm run prisma:generate
-```
+- `backend/auth-service/README.md` y `backend/catalog-service/README.md` cubren la **preparación de `.env`** (copiar `.env.example` y ajustar URLs/credenciales), la **aplicación de migraciones** (`prisma migrate deploy`), la **generación del cliente Prisma** (`npm run prisma:generate`) y el **inicio del servicio** en su puerto (auth `3001`, catalog `3002`).
+- El catálogo además requiere el **seeding** de datos de prueba (script idempotente vía `upsert`, `npm run prisma:seed`; sección «Ejecución de Base de Datos y Seeding» de `backend/catalog-service/README.md`). Levantar PostgreSQL **no crea tablas ni carga datos** por sí solo.
+- Puertos: gateway `3000`, auth `3001`, catalog `3002`.
 
 **Solicitudes de ejemplo:**
 
