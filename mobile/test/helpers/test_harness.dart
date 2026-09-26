@@ -10,6 +10,18 @@ const defaultTestSurfaceSize = Size(390, 844);
 /// widgets requeridos por cada escenario.
 typedef TestAppWrapper = Widget Function(Widget child);
 
+/// Monta una aplicación completa conservando su configuración de Material,
+/// Riverpod y rutas.
+Future<void> pumpAppUnderTest(
+  WidgetTester tester, {
+  required Widget app,
+  Size surfaceSize = defaultTestSurfaceSize,
+}) async {
+  _configureSurface(tester, surfaceSize);
+  await tester.pumpWidget(app);
+  await tester.pumpAndSettle();
+}
+
 /// Monta un widget dentro de Material y Riverpod con un tamaño reproducible.
 Future<void> pumpWidgetUnderTest(
   WidgetTester tester, {
@@ -20,8 +32,6 @@ Future<void> pumpWidgetUnderTest(
   ThemeData? darkTheme,
   ThemeMode? themeMode,
 }) async {
-  _configureSurface(tester, surfaceSize);
-
   final app = MaterialApp(
     theme: theme,
     darkTheme: darkTheme,
@@ -29,8 +39,11 @@ Future<void> pumpWidgetUnderTest(
     home: child,
   );
 
-  await tester.pumpWidget(_wrapWithScope(app, wrapper));
-  await tester.pumpAndSettle();
+  await pumpAppUnderTest(
+    tester,
+    app: _wrapWithScope(app, wrapper),
+    surfaceSize: surfaceSize,
+  );
 }
 
 /// Monta un router para pruebas de navegación sin depender del router global.
@@ -43,8 +56,6 @@ Future<void> pumpRouterUnderTest(
   ThemeData? darkTheme,
   ThemeMode? themeMode,
 }) async {
-  _configureSurface(tester, surfaceSize);
-
   final app = MaterialApp.router(
     theme: theme,
     darkTheme: darkTheme,
@@ -52,8 +63,11 @@ Future<void> pumpRouterUnderTest(
     routerConfig: router,
   );
 
-  await tester.pumpWidget(_wrapWithScope(app, wrapper));
-  await tester.pumpAndSettle();
+  await pumpAppUnderTest(
+    tester,
+    app: _wrapWithScope(app, wrapper),
+    surfaceSize: surfaceSize,
+  );
 }
 
 Widget _wrapWithScope(Widget app, TestAppWrapper? wrapper) {
