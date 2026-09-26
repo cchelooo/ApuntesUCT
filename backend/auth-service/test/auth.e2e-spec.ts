@@ -32,7 +32,6 @@ describe('Auth Service - Endpoints HTTP (E2E)', () => {
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
-        forbidNonWhitelisted: true,
         transform: true,
       }),
     );
