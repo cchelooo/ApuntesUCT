@@ -10,13 +10,15 @@
   "scripts": {
     "prisma:generate": "npm run prisma:generate --workspaces --if-present",
     "build": "npm run prisma:generate && npm run build --workspaces --if-present",
-    "test": "npm run prisma:generate && npm run test --workspaces --if-present",
+    "test": "npm run prisma:generate && npm run test --workspaces --",
     "lint": "npm run lint --workspaces --if-present",
     "lint:fix": "npm run lint:fix --workspaces --if-present",
     "lint:gateway": "npm run lint --workspace=api-gateway",
     "lint:auth": "npm run lint --workspace=auth-service",
     "lint:catalog": "npm run lint --workspace=catalog-service",
-    "format": "prettier --write \"./**/*.ts\""
+    "format": "prettier --write \"./**/*.ts\"",
+    "test:cov": "npm run prisma:generate && npm run test:cov --workspaces --",
+    "test:ci": "npm run prisma:generate && npm run test:ci --workspaces --"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

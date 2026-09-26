@@ -150,3 +150,60 @@ catalog-service             Endpoints, HTTP, Filtros y Migraciones          SI(P
    npm run test:e2e
 ```
 
+
+
+## Pruebas unitarias con Jest
+
+Desde la raíz del repositorio, con Node.js 22 y npm:
+
+```bash
+cd backend
+npm ci
+npm test
+```
+
+`npm test` genera los clientes Prisma y ejecuta las pruebas de `api-gateway`,
+`auth-service` y `catalog-service`. No requiere PostgreSQL ni Docker en ejecución:
+las pruebas unitarias simulan sus dependencias externas. La generación de Prisma
+puede necesitar descargar sus binarios en la primera instalación.
+
+La configuración común está en `jest.config.base.cjs`; cada servicio la extiende
+con su propio `jest.config.cjs`. Jest usa el entorno Node y `ts-jest` para transformar
+TypeScript con el `tsconfig.json` de cada servicio, incluidos los decoradores de
+NestJS. Busca únicamente archivos `src/**/*.spec.ts`. Antes de cada prueba limpia
+el historial de los mocks y restaura los métodos reemplazados mediante `jest.spyOn`.
+
+Comandos desde `backend/`:
+
+```bash
+# Todas las pruebas, en serie dentro de cada servicio
+npm test -- --runInBand
+
+# Ejecución para CI, sin modo interactivo
+npm run test:ci
+
+# Cobertura de los tres servicios
+npm run test:cov -- --runInBand
+
+# Un único servicio (generar antes los clientes Prisma)
+npm run prisma:generate
+npm test --workspace=auth-service -- --runInBand
+
+# Modo watch de un servicio
+npm run test:watch --workspace=catalog-service
+```
+
+La cobertura se guarda en `backend/<servicio>/coverage/`, con resumen en terminal,
+reporte HTML (`index.html`) y LCOV (`lcov.info`). Excluye los archivos de pruebas,
+declaraciones de tipos, módulos de NestJS y el arranque `main.ts`. Los reportes
+están ignorados por Git; no se impone todavía un porcentaje mínimo de cobertura.
+
+Para agregar una prueba, crea un archivo `*.spec.ts` junto al código que verifica
+y usa `@nestjs/testing` con mocks para las dependencias externas. Hay ejemplos en
+`catalog-service/src/application/services/catalog.service.spec.ts` y en los
+controladores de health de cada servicio.
+
+Las pruebas E2E de `test/` mantienen su configuración independiente y se ejecutan
+con `npm run test:e2e --workspace=<servicio>`; pueden requerir base de datos u otros
+servicios según la prueba. Los servicios placeholder no forman parte de los
+workspaces ni de esta ejecución.
