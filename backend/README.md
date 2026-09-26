@@ -112,6 +112,46 @@ curl http://localhost:3002/api/v1/health
 
 Cada uno debe responder `200 OK` con `{"status":"ok",...}` mientras su servicio esté corriendo.
 
+
+## Paso a paso para ejecución de pruebas del backend
+
+Base de Datos PostgreSQL (Requerida para auth-service y catalog-service):
+
+Asegurar que el contenedor o servicio local de PostgreSQL esté arriba (puertos 5432 o 5433).
+
+Verificar la variable DATABASE_URL en cada archivo .env.
+
+# Preparación de Esquemas de Prisma
+
+# En backend/auth-service
+npx prisma db push
+
+# En backend/catalog-service
+npx prisma migrate dev
+npx prisma db seed
+
+## Clasificacion Tests E2E de microservicios
+
+# -----------------------------------------------------------------------------------------------------------------
+
+# Microservicio                       Tipo de Prueba                         Requeiere BD Real?             
+
+api-gateway                       Proxy e Integración Mock                NO(Usa servidores simulados)
+
+auth-service                   Endpoints, HTTP y Persistencia               SI(PostgreSQL/Prisma)
+
+catalog-service             Endpoints, HTTP, Filtros y Migraciones          SI(PostgreSQL/Prisma)
+
+# -----------------------------------------------------------------------------------------------------------------
+
+# Comando para ejecutar las pruebas (Dentro de cada microservicio)
+
+```bash
+   npm run test:e2e
+```
+
+
+
 ## Pruebas unitarias con Jest
 
 Desde la raíz del repositorio, con Node.js 22 y npm:
