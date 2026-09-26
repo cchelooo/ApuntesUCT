@@ -207,3 +207,28 @@ Las pruebas E2E de `test/` mantienen su configuración independiente y se ejecut
 con `npm run test:e2e --workspace=<servicio>`; pueden requerir base de datos u otros
 servicios según la prueba. Los servicios placeholder no forman parte de los
 workspaces ni de esta ejecución.
+
+
+### Casos críticos de autenticación (#115)
+
+Las pruebas unitarias de `auth-service/src/presentation/auth/` cubren:
+
+- El contrato de sesión y la normalización del correo.
+- Los claims del JWT mock, su marca de simulación y su vigencia de una hora,
+  usando un reloj fijo para que la prueba sea determinista.
+- La ausencia de contraseñas en la respuesta y en el token decodificado.
+- El rechazo de correos inválidos y contraseñas ausentes, de tipo incorrecto
+  o compuestas únicamente por espacios en blanco.
+- La eliminación de campos no permitidos mediante `ValidationPipe` y la
+  imposibilidad de sobrescribir la identidad o el rol simulado desde el cuerpo.
+
+Para ejecutar solo estos casos desde `backend/`:
+
+```bash
+npm test --workspace=auth-service -- --runInBand --testPathPatterns=presentation/auth
+```
+
+Estas pruebas no necesitan HTTP, PostgreSQL ni servicios externos. El login
+actual es un mock: no verifica usuarios ni contraseñas y emite un JWT sin firma.
+La verificación de credenciales, la firma y validación de tokens, la renovación
+y la revocación de sesiones requieren pruebas cuando se implementen esos flujos.
