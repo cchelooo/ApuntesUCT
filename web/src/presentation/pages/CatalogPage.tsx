@@ -8,7 +8,7 @@ export function CatalogPage() {
     useCatalogSubjects();
 
   return (
-    <section className="bg-catalog-bg px-6 py-10 font-body text-catalog-ink sm:px-10">
+    <section className="bg-catalog-bg px-4 py-8 font-body text-catalog-ink sm:px-6 md:px-10 md:py-10">
       <header className="mx-auto mb-8 max-w-7xl">
         <h1 className="font-display text-3xl text-catalog-ink sm:text-4xl">
           Catálogo
@@ -18,7 +18,7 @@ export function CatalogPage() {
           compartido la comunidad.
         </p>
 
-        <div className="mt-6 flex max-w-sm items-center gap-2 rounded-sm border border-catalog-line bg-catalog-paper px-3 py-2 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
+        <div className="mt-6 flex w-full max-w-sm items-center gap-2 rounded-sm border border-catalog-line bg-catalog-paper px-3 py-2 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
           <svg
             viewBox="0 0 20 20"
             className="h-4 w-4 shrink-0 text-catalog-ink/50"
@@ -50,7 +50,7 @@ export function CatalogPage() {
 
       <div className="mx-auto flex max-w-7xl flex-col gap-8 lg:flex-row">
         <CatalogFilterSidebar />
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           {isError ? (
             <div className="rounded-sm border border-dashed border-catalog-line bg-catalog-paperMuted px-6 py-12 text-center">
               <p className="font-display text-lg text-catalog-ink">

@@ -10,7 +10,7 @@ export function CatalogGrid({ subjects, query }: CatalogGridProps) {
   if (subjects.length === 0) {
     return (
       <div className="rounded-sm border border-dashed border-catalog-line bg-catalog-paperMuted px-6 py-12 text-center">
-        <p className="font-display text-lg text-catalog-ink">
+        <p className="font-display text-lg text-catalog-ink break-words">
           No hay asignaturas para “{query}”
         </p>
         <p className="mt-1 text-sm text-catalog-ink/60">

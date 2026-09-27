@@ -35,6 +35,7 @@ export function CatalogFilterSidebar() {
   const [checkedProfessors, setCheckedProfessors] = useState<Set<string>>(
     new Set()
   );
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const hasActiveFilters =
     checkedUniversities.size > 0 ||
@@ -54,126 +55,146 @@ export function CatalogFilterSidebar() {
     >
       <div className="flex items-center justify-between border-b border-catalog-line px-4 py-3">
         <h2 className="font-display text-lg text-catalog-ink">Filtros</h2>
-        {hasActiveFilters && (
-          <Button
+        <div className="flex items-center gap-2">
+          {hasActiveFilters && (
+            <Button
+              type="button"
+              onClick={clearFilters}
+              variant="ghost"
+              size="sm"
+              className="text-xs font-medium !text-catalog-ink/60 underline-offset-2 hover:!text-catalog-ink hover:underline !p-0 !bg-transparent"
+            >
+              Limpiar filtros
+            </Button>
+          )}
+          <button
             type="button"
-            onClick={clearFilters}
-            variant="ghost"
-            size="sm"
-            className="text-xs font-medium !text-catalog-ink/60 underline-offset-2 hover:!text-catalog-ink hover:underline !p-0 !bg-transparent"
+            className="lg:hidden text-xs font-medium text-catalog-ink/60 hover:text-catalog-ink"
+            onClick={() => setIsMobileOpen(!isMobileOpen)}
+            aria-expanded={isMobileOpen}
+            aria-controls="mobile-filters-panel"
           >
-            Limpiar filtros
-          </Button>
-        )}
+            {isMobileOpen ? 'Ocultar' : 'Mostrar'}
+          </button>
+        </div>
       </div>
 
-      <fieldset className="border-b border-catalog-line px-4 py-4">
-        <legend className="font-display text-sm text-catalog-ink">
-          Universidad
-        </legend>
+      <div
+        id="mobile-filters-panel"
+        className={`${isMobileOpen ? 'block' : 'hidden'} lg:block`}
+      >
+        <fieldset className="border-b border-catalog-line px-4 py-4">
+          <legend className="font-display text-sm text-catalog-ink">
+            Universidad
+          </legend>
 
-        <div className="mt-3 flex flex-col gap-3">
-          {universitiesMock.map((university) => {
-            const careers = careersByUniversity(university.id);
-            const isOpen = openUniversities.has(university.id);
-            const panelId = `careers-${university.id}`;
+          <div className="mt-3 flex flex-col gap-3">
+            {universitiesMock.map((university) => {
+              const careers = careersByUniversity(university.id);
+              const isOpen = openUniversities.has(university.id);
+              const panelId = `careers-${university.id}`;
 
-            return (
-              <div key={university.id}>
-                <div className="flex items-center gap-2">
-                  <label className="flex flex-1 items-center gap-2 text-sm text-catalog-ink">
-                    <input
-                      type="checkbox"
-                      checked={checkedUniversities.has(university.id)}
-                      onChange={() =>
-                        toggleInSet(setCheckedUniversities, university.id)
-                      }
-                      className="h-4 w-4 rounded-sm border-catalog-line accent-catalog-maroon"
-                    />
-                    <span>{university.name}</span>
-                  </label>
+              return (
+                <div key={university.id}>
+                  <div className="flex items-center gap-2">
+                    <label className="flex flex-1 items-center gap-2 text-sm text-catalog-ink">
+                      <input
+                        type="checkbox"
+                        checked={checkedUniversities.has(university.id)}
+                        onChange={() =>
+                          toggleInSet(setCheckedUniversities, university.id)
+                        }
+                        className="h-4 w-4 rounded-sm border-catalog-line accent-catalog-maroon"
+                      />
+                      <span>{university.name}</span>
+                    </label>
 
-                  {careers.length > 0 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        toggleInSet(setOpenUniversities, university.id)
-                      }
-                      aria-expanded={isOpen}
-                      aria-controls={panelId}
-                      className="!rounded-sm !p-1 !text-catalog-ink/50 hover:!text-catalog-ink !bg-transparent"
-                    >
-                      <span className="sr-only">
-                        {isOpen ? 'Ocultar carreras de' : 'Mostrar carreras de'}{' '}
-                        {university.name}
-                      </span>
-                      <svg
-                        viewBox="0 0 20 20"
-                        className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        aria-hidden="true"
+                    {careers.length > 0 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          toggleInSet(setOpenUniversities, university.id)
+                        }
+                        aria-expanded={isOpen}
+                        aria-controls={panelId}
+                        className="!rounded-sm !p-1 !text-catalog-ink/50 hover:!text-catalog-ink !bg-transparent"
                       >
-                        <path d="m6 8 4 4 4-4" />
-                      </svg>
-                    </Button>
+                        <span className="sr-only">
+                          {isOpen
+                            ? 'Ocultar carreras de'
+                            : 'Mostrar carreras de'}{' '}
+                          {university.name}
+                        </span>
+                        <svg
+                          viewBox="0 0 20 20"
+                          className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          aria-hidden="true"
+                        >
+                          <path d="m6 8 4 4 4-4" />
+                        </svg>
+                      </Button>
+                    )}
+                  </div>
+
+                  {isOpen && careers.length > 0 && (
+                    <div
+                      id={panelId}
+                      className="ml-6 mt-2 flex flex-col gap-2 border-l border-catalog-line pl-3"
+                    >
+                      {careers.map((career) => (
+                        <label
+                          key={career.id}
+                          className="flex items-center gap-2 text-sm text-catalog-ink/80"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checkedCareers.has(career.id)}
+                            onChange={() =>
+                              toggleInSet(setCheckedCareers, career.id)
+                            }
+                            className="h-4 w-4 rounded-sm border-catalog-line accent-catalog-maroon"
+                          />
+                          <span>{career.name}</span>
+                        </label>
+                      ))}
+                    </div>
                   )}
                 </div>
+              );
+            })}
+          </div>
+        </fieldset>
 
-                {isOpen && careers.length > 0 && (
-                  <div
-                    id={panelId}
-                    className="ml-6 mt-2 flex flex-col gap-2 border-l border-catalog-line pl-3"
-                  >
-                    {careers.map((career) => (
-                      <label
-                        key={career.id}
-                        className="flex items-center gap-2 text-sm text-catalog-ink/80"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checkedCareers.has(career.id)}
-                          onChange={() =>
-                            toggleInSet(setCheckedCareers, career.id)
-                          }
-                          className="h-4 w-4 rounded-sm border-catalog-line accent-catalog-maroon"
-                        />
-                        <span>{career.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </fieldset>
+        <fieldset className="px-4 py-4">
+          <legend className="font-display text-sm text-catalog-ink">
+            Profesor
+          </legend>
 
-      <fieldset className="px-4 py-4">
-        <legend className="font-display text-sm text-catalog-ink">
-          Profesor
-        </legend>
-
-        <div className="mt-3 flex max-h-56 flex-col gap-2 overflow-y-auto pr-1">
-          {professorsMock.map((professor) => (
-            <label
-              key={professor.id}
-              className="flex items-center gap-2 text-sm text-catalog-ink/80"
-            >
-              <input
-                type="checkbox"
-                checked={checkedProfessors.has(professor.id)}
-                onChange={() => toggleInSet(setCheckedProfessors, professor.id)}
-                className="h-4 w-4 rounded-sm border-catalog-line accent-catalog-maroon"
-              />
-              <span>{professor.name}</span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+          <div className="mt-3 flex max-h-56 flex-col gap-2 overflow-y-auto pr-1">
+            {professorsMock.map((professor) => (
+              <label
+                key={professor.id}
+                className="flex items-center gap-2 text-sm text-catalog-ink/80"
+              >
+                <input
+                  type="checkbox"
+                  checked={checkedProfessors.has(professor.id)}
+                  onChange={() =>
+                    toggleInSet(setCheckedProfessors, professor.id)
+                  }
+                  className="h-4 w-4 rounded-sm border-catalog-line accent-catalog-maroon"
+                />
+                <span>{professor.name}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      </div>
     </aside>
   );
 }
