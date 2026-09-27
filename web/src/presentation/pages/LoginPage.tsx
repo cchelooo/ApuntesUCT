@@ -145,7 +145,7 @@ export function LoginPage() {
       </div>
 
       {/* Panel Derecho (Formulario) */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white">
+      <div className="w-full lg:w-1/2 flex items-center justify-center px-4 py-8 sm:p-8 md:p-12 bg-white">
         <div className="w-full max-w-sm space-y-8">
           <div className="text-center">
             <h2 className="text-3xl font-semibold text-gray-900">Ingresar</h2>
