@@ -1,8 +1,9 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, Query } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CatalogService } from '../../application/services/catalog.service';
 import { FilterCatalogDto } from '../../application/dtos/filter-catalog.dto';
 import { UniversityResponseDto } from '../../application/dtos/catalog-response.dto';
+import { CreateSubjectDto } from '../../application/dtos/create-subject.dto';
 
 @ApiTags('Catalog')
 @Controller('catalog')
@@ -63,5 +64,30 @@ export class CatalogController {
   })
   async filterCatalog(@Query() filters: FilterCatalogDto) {
     return this.catalogService.filterCatalog(filters);
+  }
+
+  // =========================================================================
+  // ENDPOINTS DE GESTIÓN DE ASIGNATURAS
+  // =========================================================================
+
+  @Post('subjects')
+  @ApiOperation({ summary: 'Crear nueva asignatura' })
+  @ApiResponse({ status: 201, description: 'Asignatura creada exitosamente.' })
+  @ApiResponse({ status: 400, description: 'Datos de entrada inválidos.' })
+  @ApiResponse({ status: 404, description: 'La carrera especificada no existe.' })
+  @ApiResponse({
+    status: 409,
+    description: 'Conflicto: Ya existe una asignatura con el mismo código en esta carrera.',
+  })
+  async createSubject(@Body() createSubjectDto: CreateSubjectDto) {
+    return this.catalogService.createSubject(createSubjectDto);
+  }
+
+  @Delete('subjects/:id')
+  @ApiOperation({ summary: 'Eliminar una asignatura por ID' })
+  @ApiResponse({ status: 200, description: 'Asignatura eliminada exitosamente.' })
+  @ApiResponse({ status: 404, description: 'La asignatura especificada no existe.' })
+  async deleteSubject(@Param('id') id: string) {
+    return this.catalogService.deleteSubject(id);
   }
 }

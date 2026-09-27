@@ -232,3 +232,23 @@ Estas pruebas no necesitan HTTP, PostgreSQL ni servicios externos. El login
 actual es un mock: no verifica usuarios ni contraseñas y emite un JWT sin firma.
 La verificación de credenciales, la firma y validación de tokens, la renovación
 y la revocación de sesiones requieren pruebas cuando se implementen esos flujos.
+
+### Ejecución de pruebas en catalog.http
+
+## Requisitos para funcionamiento
+
+* Extensión **REST Client** en VSC
+
+* Tener levantados los contenedores Docker del proyecto
+```bash
+  docker compose up -d
+```
+* Tener corriendo la aplicación o los microservicios necesarios (`api-gateway` en el puerto `3000` y/o `catalog-service` en el puerto `3001`).
+
+**Base de Datos Migrada y Poblada (Seed):**
+* Es imprescindible contar con la estructura de tablas y los datos base (Universidades, Carreras, Asignaturas) precargados:
+```bash
+  npx prisma db push
+  npx prisma db seed
+```
+# Realizar consultas del catalog.http una vez cumplidos los pasos anteriores y teniendo los contenedores/microservicios corriendo

@@ -1,0 +1,84 @@
+### Variables de entorno
+@baseUrl = http://localhost:3000/api/v1
+@catalogDirectUrl = http://localhost:3001/api/v1
+@contentType = application/json
+@token = token
+
+###############################################
+# 1. PRUEBAS DEL CATÁLOGO (PÚBLICO)
+###############################################
+
+### 1.1 Obtener árbol jerárquico completo del catálogo
+# Esperado: 200 OK - Retorna Universidad -> Carrera -> Asignatura
+GET {{baseUrl}}/catalog
+Content-Type: {{contentType}}
+
+###
+
+### 1.1b Obtener árbol jerárquico directo (Catalog Service)
+# Esperado: 200 OK
+GET {{catalogDirectUrl}}/catalog
+Content-Type: {{contentType}}
+
+###
+
+### 1.2 Filtrar catálogo con jerarquía completa (Universidad + Carrera + Asignatura)
+# Esperado: 200 OK
+GET {{baseUrl}}/catalog/filter?universityId=0a00e26a-7312-40e7-97cc-a7155431b34d&careerId=b32137fd-86a6-4632-9e88-0ca70707a422&subjectId=ce6574dd-bca2-49c3-a24c-518c82547af8
+Content-Type: {{contentType}}
+
+###
+
+### 1.3 Intentar filtrar con jerarquía incompleta (Falta universityId)
+# Esperado: 400 Bad Request
+GET {{baseUrl}}/catalog/filter?careerId=b32137fd-86a6-4632-9e88-0ca70707a422
+Content-Type: {{contentType}}
+
+###
+
+### 1.4 Filtrar enviando 'year' con jerarquía válida
+# Esperado: 501 Not Implemented
+GET {{baseUrl}}/catalog/filter?universityId=0a00e26a-7312-40e7-97cc-a7155431b34d&careerId=b32137fd-86a6-4632-9e88-0ca70707a422&subjectId=ce6574dd-bca2-49c3-a24c-518c82547af8&year=2026
+Content-Type: {{contentType}}
+
+
+###############################################
+# 2. GESTIÓN DE ASIGNATURAS (PROTEGIDO / ADMIN)
+###############################################
+
+### 2.1 Crear una asignatura con código dinámico
+# Nota: {{$timestamp}} genera un sufijo único para evitar el error 409 por duplicado al ejecutar varias veces.
+# @name createSubject
+POST {{baseUrl}}/catalog/subjects
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{
+  "name": "Arquitectura de Software",
+  "code": "ICI-{{$timestamp}}",
+  "semester": 5,
+  "careerId": "c4e13339-2dd8-49cf-8715-b8598a8dbcdc"
+}
+
+###
+
+### 2.2 Intentar crear asignatura con payload inválido
+# Esperado: 400 Bad Request
+POST {{baseUrl}}/catalog/subjects
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{
+  "code": "INV-101"
+}
+
+###
+
+### 2.3 Eliminar la última asignatura creada en 2.1 (Arrojará 404 Not Found si se vuelve a ejecutar sin volver a crear la
+# asignatura nuevamente en el punto 2.1)
+# Esperado: 200 OK / 204 No Content (Con la asignatura creada previamente)
+DELETE {{baseUrl}}/catalog/subjects/{{createSubject.response.body.id}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+###
