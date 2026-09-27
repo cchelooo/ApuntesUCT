@@ -50,7 +50,7 @@ export function CatalogPage() {
 
       <div className="mx-auto flex max-w-7xl flex-col gap-8 lg:flex-row">
         <CatalogFilterSidebar />
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           {isError ? (
             <div className="rounded-sm border border-dashed border-catalog-line bg-catalog-paperMuted px-6 py-12 text-center">
               <p className="font-display text-lg text-catalog-ink">
