@@ -248,11 +248,15 @@ y la revocación de sesiones requieren pruebas cuando se implementen esos flujos
 * Es imprescindible contar con la estructura de tablas y los datos base (Universidades, Carreras, Asignaturas) precargados en catalog-service, para ello ejecutar dentro de catalog-service:
 
 ```bash
-  npx prisma db push
+  npx prisma migrate dev
   npx prisma db seed
 ```
 
-* Tener corriendo la aplicación o los microservicios necesarios (`api-gateway` en el puerto `3000` y `catalog-service` en el puerto `3002`) mediante 2 terminales separadas cada una corriendo 1 de los servicios.
+* Tener corriendo la aplicación o los microservicios necesarios (`api-gateway` en el puerto `3000` y `catalog-service` en el puerto `3002`) mediante 2 terminales separadas cada una corriendo 1 de los servicios usando dentro de su respectiva carpeta del microservicio:
+
+```bash
+  npm run start: dev
+```
 
 ## Para levantar los servicios
 
@@ -264,6 +268,10 @@ y la revocación de sesiones requieren pruebas cuando se implementen esos flujos
 
 ## Una vez corriendo los 2 servicios:
 
-* Realizar consultas del catalog.http 1.1 y 1.1b para obtener el arbol jerárquico y los UUIDs.
-* Reemplazar los UUIDs: universityId, careerId, subjectId, professorId, por las UUIDs reales obtenidas en las pruebas 1.1 y 1.1b.
-* Una vez reemplazados los UUIDs reales puede continuar con el resto de pruebas de catalog.http para probar las consultas.
+# Obtención de IDs para las variables
+1. Ejecutar **1.1** (`GET /catalog`) para obtener `@universityId`, `@careerId` y `@subjectId`.
+2. Ejecutar **1.2a** (`GET /catalog/filter`) para buscar la asignatura seleccionada y copiar el ID de uno de sus profesores en `@professorId` y sus respectivos UUIDs de `@universityId`, `@careerId` y `@subjectId` relacionados con el profesor.
+
+## Verificaciones Manuales Esperadas
+- **Campo `semester`:** En **1.1 / 1.1b**, verificar que cada asignatura contenga la propiedad `semester`.
+- **Datos de Creación:** En **2.3**, verificar que el objeto devuelto en la respuesta `201 Created` coincida en `name`, `code`, `semester` y `careerId` con el cuerpo enviado.
