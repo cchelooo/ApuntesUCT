@@ -1,105 +1,126 @@
 ### ============================================================================
 ### VARIABLES DE ENTORNO Y CONFIGURACIÓN
 ### ============================================================================
-# Servidores
 @baseUrl = http://localhost:3000/api/v1
-@catalogDirectUrl = http://localhost:3001/api/v1
+@catalogDirectUrl = http://localhost:3002/api/v1
 @contentType = application/json
 
-# IMPORTANTE TENER CORRIENDO LOS SERVICIOS/CONTENEDORES (catalog-service y api-gateway, ejecutando 'npm run start:dev'
-# dentro de ambos microservicios mediante 2 terminales separadas dedicadas a cada uno)
-
-# NOTA: Reemplazar los UUIDs con valores reales obtenidos del árbol de las pruebas 1.1 y 1.1b para continuar con el resto de pruebas
+# 1. Obtener @universityId, @careerId y @subjectId ejecutando 1.1 (GET {{baseUrl}}/catalog)
+# 2. Obtener @professorId ejecutando 1.2a (GET {{baseUrl}}/catalog/filter) buscando el 'id' dentro de 'professors'
+# Y reemplazar cada variable por las arrojadas por las pruebas para obtener los datos
 @universityId = b10cd461-93a7-4b66-a300-231fab5f0e28
 @careerId = c4e13339-2dd8-49cf-8715-b8598a8dbcdc
-@subjectId = b66ddc0d-9a39-4263-b22b-3fc7f94edf55
+@subjectId = 50a0e8e3-3e7b-4bcb-b663-3997e64c259d
 @professorId = ba8c3fcc-0a08-419f-89b3-0f571ef649d1
-@nonExistentId = 00000000-0000-0000-0000-000000000000
+
+@invalidUuid = 123-invalid-uuid
+@nonExistentUuid = 00000000-0000-0000-0000-000000000000
 
 
 ###############################################
 # 1. PRUEBAS DEL CATÁLOGO (PÚBLICO)
 ###############################################
 
-### 1.1 Obtener árbol jerárquico completo (Vía API Gateway :3000)
-# Requiere: API Gateway (:3000) y Catalog-Service (:3001) en ejecución.
-# Esperado: 200 OK - Array de Universidades con Carreras y Asignaturas (con campo 'semester').
+### 1.1 Obtener árbol jerárquico completo (Vía Gateway)
+# Esperado: 200 OK - Universidad -> Carrera -> Asignatura
 GET {{baseUrl}}/catalog
 Content-Type: {{contentType}}
 
 ###
 
-### 1.1b Obtener árbol jerárquico directo (Vía Catalog Service :3001)
+### 1.1b Obtener árbol jerárquico directo (Catalog Service :3002)
 # Esperado: 200 OK
 GET {{catalogDirectUrl}}/catalog
 Content-Type: {{contentType}}
 
 ###
 
-### 1.2a Filtrado: Consulta sin filtros (Raíz del catálogo)
-# Esperado: 200 OK - Retorna lista completa
+### 1.2a Filtrado sin parámetros (Retorna raíz con profesores)
+# USAR ESTA RESPUESTA PARA OBTENER UN professorId REAL DE LA ASIGNATURA SELECCIONADA
+# Esperado: 200 OK
 GET {{baseUrl}}/catalog/filter
 Content-Type: {{contentType}}
 
 ###
 
-### 1.2b Filtrado: Jerarquía completa válida hasta Profesor (Nivel 4)
-# Esperado: 200 OK - Los resultados deben corresponder estrictamente a los filtros aplicados.
+### 1.2b Filtrado válido con secuencia completa hasta Profesor (Nivel 4)
+# REQUISITO REVISOR: Debe devolver la asignatura esperada con 'career.university' y el 'professorId' seleccionado (NO array vacío [])
+# Asegurarse de usar los UUIDs relacionados al profesor para cada variable usando de guía los casos anteriores (university, career, subject y professor)
+# Esperado: 200 OK
 GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}
 Content-Type: {{contentType}}
 
 ###
 
-### 1.2c Filtrado: Consulta con combinación que retorne resultados vacíos
-# Esperado: 200 OK - Retorna Array vacío []
-GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{nonExistentId}}
+### 1.3a Error: UUID con formato inválido
+# Esperado: 400 Bad Request (ValidationPipe - IsUuid)
+GET {{baseUrl}}/catalog/filter?universityId={{invalidUuid}}
 Content-Type: {{contentType}}
 
 ###
 
-### 1.3a Validación de Jerarquía: Salto de jerarquía / Incompleto (Falta universityId)
+### 1.3b Error: Año con formato inválido o fuera de rango (e.g., año 1800 o texto)
 # Esperado: 400 Bad Request
-GET {{baseUrl}}/catalog/filter?careerId={{careerId}}
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year=invalid_year
 Content-Type: {{contentType}}
 
 ###
 
-### 1.3b Validación de Jerarquía: 'year' sin 'professorId' (Violación de secuencia)
+### 1.3c Error: Salto de jerarquía (Asignatura sin Carrera)
+# Esperado: 400 Bad Request
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&subjectId={{subjectId}}
+Content-Type: {{contentType}}
+
+###
+
+### 1.3d Error: Salto de jerarquía (Profesor sin Asignatura)
+# Esperado: 400 Bad Request
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&professorId={{professorId}}
+Content-Type: {{contentType}}
+
+###
+
+### 1.3e Error: 'year' sin 'professorId'
 # Esperado: 400 Bad Request
 GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&year=2026
 Content-Type: {{contentType}}
 
 ###
 
-### 1.3c Validación de Jerarquía: 'type' sin 'year' (Violación de secuencia)
+### 1.3f Error: 'type' sin 'year'
 # Esperado: 400 Bad Request
 GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&type=APUNTE
 Content-Type: {{contentType}}
 
 ###
 
-### 1.4a Nivel No Implementado: Filtro 'year' con secuencia completa previa (Nivel 5)
-# Requisito: Debe incluir universityId, careerId, subjectId Y professorId.
+### 1.4 Nivel No Implementado: Secuencia completa hasta 'year' (Nivel 5)
 # Esperado: 501 Not Implemented
 GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year=2026
-Content-Type: {{contentType}}
-
-###
-
-### 1.4b Nivel No Implementado: Filtro 'type' con secuencia completa previa incluyendo 'year' (Nivel 6)
-# Esperado: 501 Not Implemented
-GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year=2026&type=APUNTE
 Content-Type: {{contentType}}
 
 
 ###############################################
 # 2. GESTIÓN DE ASIGNATURAS (OPERACIONES CRUD)
 ###############################################
-# NOTA: Estas rutas NO validan autenticación ni rol actualmente.
 
-### 2.1 Crear asignatura válida
+### 2.1 Crear asignatura con carrera inexistente
+# Esperado: 404 Not Found ("La carrera con ID ... no existe")
+POST {{baseUrl}}/catalog/subjects
+Content-Type: {{contentType}}
+
+{
+  "name": "Asignatura Huérfana",
+  "code": "INV-999",
+  "semester": 1,
+  "careerId": "{{nonExistentUuid}}"
+}
+
+###
+
+### 2.2 Crear asignatura válida
 # @name createSubject
-# Esperado: 201 Created - Retorna la asignatura creada incluyendo 'id' y 'semester'.
+# Esperado: 201 Created
 POST {{baseUrl}}/catalog/subjects
 Content-Type: {{contentType}}
 
@@ -112,14 +133,13 @@ Content-Type: {{contentType}}
 
 ###
 
-### 2.2 Intentar crear asignatura duplicada (Mismo código)
-# Requisito: Ejecutar nuevamente después de 2.1 sin eliminarla.
+### 2.3 Crear asignatura duplicada (Mismo código)
 # Esperado: 409 Conflict
 POST {{baseUrl}}/catalog/subjects
 Content-Type: {{contentType}}
 
 {
-  "name": "Arquitectura de Software Duplicada",
+  "name": "Arquitectura Duplicada",
   "code": "ICI-412-TMP",
   "semester": 5,
   "careerId": "{{careerId}}"
@@ -127,26 +147,14 @@ Content-Type: {{contentType}}
 
 ###
 
-### 2.3 Intentar crear asignatura con payload inválido
-# Esperado: 400 Bad Request
-POST {{baseUrl}}/catalog/subjects
-Content-Type: {{contentType}}
-
-{
-  "code": "INV-101"
-}
-
-###
-
-### 2.4 Eliminar la asignatura recién creada
-# Utiliza automáticamente el ID retornado por la petición 2.1.
+### 2.4 Eliminar asignatura creada
 # Esperado: 200 OK
 DELETE {{baseUrl}}/catalog/subjects/{{createSubject.response.body.id}}
 Content-Type: {{contentType}}
 
 ###
 
-### 2.5 Intentar eliminar una asignatura inexistente
+### 2.5 Eliminar asignatura inexistente
 # Esperado: 404 Not Found
-DELETE {{baseUrl}}/catalog/subjects/{{nonExistentId}}
+DELETE {{baseUrl}}/catalog/subjects/{{nonExistentUuid}}
 Content-Type: {{contentType}}

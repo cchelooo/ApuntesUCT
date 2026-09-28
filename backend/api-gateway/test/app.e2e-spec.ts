@@ -49,8 +49,8 @@ describe('API Gateway (e2e)', () => {
       .expect('Content-Type', /text\/html/)
       .expect((res) => {
         expect(res.text).toContain('API Gateway — Documentación');
-        expect(res.text).toContain('http://127.0.0.1:3001/api/docs');
-        expect(res.text).toContain('http://127.0.0.1:3002/api/docs');
+        expect(res.text).toContain('http://localhost:3001/api/docs');
+        expect(res.text).toContain('http://localhost:3002/api/docs');
       });
   });
 

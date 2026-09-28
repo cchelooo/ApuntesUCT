@@ -252,7 +252,7 @@ y la revocación de sesiones requieren pruebas cuando se implementen esos flujos
   npx prisma db seed
 ```
 
-* Tener corriendo la aplicación o los microservicios necesarios (`api-gateway` en el puerto `3000` y `catalog-service` en el puerto `3001`) mediante 2 terminales separadas cada una corriendo 1 de los servicios.
+* Tener corriendo la aplicación o los microservicios necesarios (`api-gateway` en el puerto `3000` y `catalog-service` en el puerto `3002`) mediante 2 terminales separadas cada una corriendo 1 de los servicios.
 
 ## Para levantar los servicios
 
