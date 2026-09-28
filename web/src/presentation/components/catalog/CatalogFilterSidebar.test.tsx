@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { CatalogFilterSidebar } from './CatalogFilterSidebar';
@@ -8,6 +8,12 @@ import { professorsMock } from '../../../infrastructure/catalog/professors.mock'
 
 function careersOf(universityId: string) {
   return careersMock.filter((career) => career.universityId === universityId);
+}
+
+function getCareersPanel(universityId: string): HTMLElement {
+  const panel = document.getElementById(`careers-${universityId}`);
+  expect(panel).not.toBeNull();
+  return panel as HTMLElement;
 }
 
 describe('CatalogFilterSidebar', () => {
@@ -31,32 +37,51 @@ describe('CatalogFilterSidebar', () => {
     render(<CatalogFilterSidebar />);
 
     const [firstUniversity, ...restUniversities] = universitiesMock;
+    expect(restUniversities.length).toBeGreaterThan(0);
 
-    careersOf(firstUniversity.id).forEach((career) => {
+    const firstUniversityCareers = careersOf(firstUniversity.id);
+    expect(firstUniversityCareers.length).toBeGreaterThan(0);
+    firstUniversityCareers.forEach((career) => {
       expect(screen.getByText(career.name)).toBeInTheDocument();
     });
 
     restUniversities.forEach((university) => {
-      careersOf(university.id).forEach((career) => {
+      const careers = careersOf(university.id);
+      expect(careers.length).toBeGreaterThan(0);
+      careers.forEach((career) => {
         expect(screen.queryByText(career.name)).not.toBeInTheDocument();
       });
     });
   });
 
-  it('respeta la jerarquía Universidad -> Carrera: cada carrera solo aparece bajo su propia universidad', () => {
+  it('respeta la jerarquía Universidad -> Carrera: cada panel expandido muestra únicamente sus propias carreras', async () => {
+    const user = userEvent.setup();
     render(<CatalogFilterSidebar />);
-    const [firstUniversity, secondUniversity] = universitiesMock;
-    if (!secondUniversity) return;
 
-    const firstUniversityCareerNames = careersOf(firstUniversity.id).map(
-      (career) => career.name
-    );
-    const secondUniversityCareerNames = careersOf(secondUniversity.id).map(
-      (career) => career.name
-    );
+    const [uct, ufro] = universitiesMock;
+    expect(uct).toBeDefined();
+    expect(ufro).toBeDefined();
 
-    firstUniversityCareerNames.forEach((name) => {
-      expect(secondUniversityCareerNames).not.toContain(name);
+    const uctCareers = careersOf(uct.id);
+    const ufroCareers = careersOf(ufro.id);
+    expect(uctCareers.length).toBe(4);
+    expect(ufroCareers.length).toBe(2);
+    const showUfroButton = screen.getByRole('button', {
+      name: `Mostrar carreras de ${ufro.name}`,
+    });
+    await user.click(showUfroButton);
+
+    const uctPanel = within(getCareersPanel(uct.id));
+    const ufroPanel = within(getCareersPanel(ufro.id));
+
+    uctCareers.forEach((career) => {
+      expect(uctPanel.getByText(career.name)).toBeInTheDocument();
+      expect(ufroPanel.queryByText(career.name)).not.toBeInTheDocument();
+    });
+
+    ufroCareers.forEach((career) => {
+      expect(ufroPanel.getByText(career.name)).toBeInTheDocument();
+      expect(uctPanel.queryByText(career.name)).not.toBeInTheDocument();
     });
   });
 
@@ -65,8 +90,9 @@ describe('CatalogFilterSidebar', () => {
     render(<CatalogFilterSidebar />);
 
     const secondUniversity = universitiesMock[1];
+    expect(secondUniversity).toBeDefined();
     const secondUniversityCareers = careersOf(secondUniversity.id);
-    if (secondUniversityCareers.length === 0) return;
+    expect(secondUniversityCareers.length).toBeGreaterThan(0);
 
     const showButton = screen.getByRole('button', {
       name: `Mostrar carreras de ${secondUniversity.name}`,
@@ -102,6 +128,7 @@ describe('CatalogFilterSidebar', () => {
     render(<CatalogFilterSidebar />);
 
     const firstUniversity = universitiesMock[0];
+    expect(firstUniversity).toBeDefined();
     const universityCheckbox = screen.getByRole('checkbox', {
       name: firstUniversity.name,
     });
@@ -119,8 +146,9 @@ describe('CatalogFilterSidebar', () => {
     render(<CatalogFilterSidebar />);
 
     const firstUniversity = universitiesMock[0];
-    const firstCareer = careersOf(firstUniversity.id)[0];
-    if (!firstCareer) return;
+    expect(firstUniversity).toBeDefined();
+    const [firstCareer] = careersOf(firstUniversity.id);
+    expect(firstCareer).toBeDefined();
 
     const careerCheckbox = screen.getByRole('checkbox', {
       name: firstCareer.name,
@@ -136,6 +164,7 @@ describe('CatalogFilterSidebar', () => {
     render(<CatalogFilterSidebar />);
 
     const firstProfessor = professorsMock[0];
+    expect(firstProfessor).toBeDefined();
     const professorCheckbox = screen.getByRole('checkbox', {
       name: firstProfessor.name,
     });
@@ -150,29 +179,28 @@ describe('CatalogFilterSidebar', () => {
     render(<CatalogFilterSidebar />);
 
     const firstUniversity = universitiesMock[0];
-    const firstCareer = careersOf(firstUniversity.id)[0];
+    expect(firstUniversity).toBeDefined();
+    const [firstCareer] = careersOf(firstUniversity.id);
+    expect(firstCareer).toBeDefined();
     const firstProfessor = professorsMock[0];
+    expect(firstProfessor).toBeDefined();
 
     const universityCheckbox = screen.getByRole('checkbox', {
       name: firstUniversity.name,
+    });
+    const careerCheckbox = screen.getByRole('checkbox', {
+      name: firstCareer.name,
     });
     const professorCheckbox = screen.getByRole('checkbox', {
       name: firstProfessor.name,
     });
 
     await user.click(universityCheckbox);
+    await user.click(careerCheckbox);
     await user.click(professorCheckbox);
 
-    let careerCheckbox: HTMLElement | null = null;
-    if (firstCareer) {
-      careerCheckbox = screen.getByRole('checkbox', {
-        name: firstCareer.name,
-      });
-      await user.click(careerCheckbox);
-      expect(careerCheckbox).toBeChecked();
-    }
-
     expect(universityCheckbox).toBeChecked();
+    expect(careerCheckbox).toBeChecked();
     expect(professorCheckbox).toBeChecked();
 
     const clearButton = screen.getByRole('button', {
@@ -181,10 +209,8 @@ describe('CatalogFilterSidebar', () => {
     await user.click(clearButton);
 
     expect(universityCheckbox).not.toBeChecked();
+    expect(careerCheckbox).not.toBeChecked();
     expect(professorCheckbox).not.toBeChecked();
-    if (careerCheckbox) {
-      expect(careerCheckbox).not.toBeChecked();
-    }
     expect(
       screen.queryByRole('button', { name: 'Limpiar filtros' })
     ).not.toBeInTheDocument();
