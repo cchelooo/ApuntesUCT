@@ -112,6 +112,126 @@ curl http://localhost:3002/api/v1/health
 
 Cada uno debe responder `200 OK` con `{"status":"ok",...}` mientras su servicio esté corriendo.
 
+## Paso a paso para ejecución de pruebas del backend
+
+Base de Datos PostgreSQL (Requerida para auth-service y catalog-service):
+
+Asegurar que el contenedor o servicio local de PostgreSQL esté arriba (puertos 5432 o 5433).
+
+Verificar la variable DATABASE_URL en cada archivo .env.
+
+# Preparación de Esquemas de Prisma
+
+# En backend/auth-service
+npx prisma db push
+
+# En backend/catalog-service
+npx prisma migrate dev
+npx prisma db seed
+
+## Clasificacion Tests E2E de microservicios
+
+# -----------------------------------------------------------------------------------------------------------------
+
+# Microservicio                       Tipo de Prueba                         Requeiere BD Real?             
+
+api-gateway                       Proxy e Integración Mock                NO(Usa servidores simulados)
+
+auth-service                   Endpoints, HTTP y Persistencia               SI(PostgreSQL/Prisma)
+
+catalog-service             Endpoints, HTTP, Filtros y Migraciones          SI(PostgreSQL/Prisma)
+
+# -----------------------------------------------------------------------------------------------------------------
+
+# Comando para ejecutar las pruebas (Dentro de cada microservicio)
+
+```bash
+   npm run test:e2e
+```
+
+
+
+## Pruebas unitarias con Jest
+
+Desde la raíz del repositorio, con Node.js 22 y npm:
+
+```bash
+cd backend
+npm ci
+npm test
+```
+
+`npm test` genera los clientes Prisma y ejecuta las pruebas de `api-gateway`,
+`auth-service` y `catalog-service`. No requiere PostgreSQL ni Docker en ejecución:
+las pruebas unitarias simulan sus dependencias externas. La generación de Prisma
+puede necesitar descargar sus binarios en la primera instalación.
+
+La configuración común está en `jest.config.base.cjs`; cada servicio la extiende
+con su propio `jest.config.cjs`. Jest usa el entorno Node y `ts-jest` para transformar
+TypeScript con el `tsconfig.json` de cada servicio, incluidos los decoradores de
+NestJS. Busca únicamente archivos `src/**/*.spec.ts`. Antes de cada prueba limpia
+el historial de los mocks y restaura los métodos reemplazados mediante `jest.spyOn`.
+
+Comandos desde `backend/`:
+
+```bash
+# Todas las pruebas, en serie dentro de cada servicio
+npm test -- --runInBand
+
+# Ejecución para CI, sin modo interactivo
+npm run test:ci
+
+# Cobertura de los tres servicios
+npm run test:cov -- --runInBand
+
+# Un único servicio (generar antes los clientes Prisma)
+npm run prisma:generate
+npm test --workspace=auth-service -- --runInBand
+
+# Modo watch de un servicio
+npm run test:watch --workspace=catalog-service
+```
+
+La cobertura se guarda en `backend/<servicio>/coverage/`, con resumen en terminal,
+reporte HTML (`index.html`) y LCOV (`lcov.info`). Excluye los archivos de pruebas,
+declaraciones de tipos, módulos de NestJS y el arranque `main.ts`. Los reportes
+están ignorados por Git; no se impone todavía un porcentaje mínimo de cobertura.
+
+Para agregar una prueba, crea un archivo `*.spec.ts` junto al código que verifica
+y usa `@nestjs/testing` con mocks para las dependencias externas. Hay ejemplos en
+`catalog-service/src/application/services/catalog.service.spec.ts` y en los
+controladores de health de cada servicio.
+
+Las pruebas E2E de `test/` mantienen su configuración independiente y se ejecutan
+con `npm run test:e2e --workspace=<servicio>`; pueden requerir base de datos u otros
+servicios según la prueba. Los servicios placeholder no forman parte de los
+workspaces ni de esta ejecución.
+
+
+### Casos críticos de autenticación (#115)
+
+Las pruebas unitarias de `auth-service/src/presentation/auth/` cubren:
+
+- El contrato de sesión y la normalización del correo.
+- Los claims del JWT mock, su marca de simulación y su vigencia de una hora,
+  usando un reloj fijo para que la prueba sea determinista.
+- La ausencia de contraseñas en la respuesta y en el token decodificado.
+- El rechazo de correos inválidos y contraseñas ausentes, de tipo incorrecto
+  o compuestas únicamente por espacios en blanco.
+- La eliminación de campos no permitidos mediante `ValidationPipe` y la
+  imposibilidad de sobrescribir la identidad o el rol simulado desde el cuerpo.
+
+Para ejecutar solo estos casos desde `backend/`:
+
+```bash
+npm test --workspace=auth-service -- --runInBand --testPathPatterns=presentation/auth
+```
+
+Estas pruebas no necesitan HTTP, PostgreSQL ni servicios externos. El login
+actual es un mock: no verifica usuarios ni contraseñas y emite un JWT sin firma.
+La verificación de credenciales, la firma y validación de tokens, la renovación
+y la revocación de sesiones requieren pruebas cuando se implementen esos flujos.
+
 ## Deuda técnica
 
 Registro de la deuda conocida del backend. La mayoría corresponde a decisiones de
@@ -138,7 +258,7 @@ constancia explícita para priorizar su cierre antes de producción.
 | --- | --- | --- |
 | El gateway enruta solo Auth | `/catalog`, `/material`, `/quality` y `/search` no pasan por el gateway; Mobile consulta el catálogo directo en `:3002` | `api-gateway/README.md` |
 | Registro por el gateway | `/api/v1/auth/register` devuelve `404` hasta que se implemente el endpoint | `api-gateway/README.md` |
-| Filtros `year` y `type` del catálogo | Devuelven `501 Not Implemented`; dependen del módulo de Recursos | `catalog-service` (Swagger y `docs/mobile/integracion-api-mobile.md`) |
+| Filtros `year` y `type` del catálogo | Devuelven `501 Not Implemented`; dependen del módulo de Recursos | `catalog-service` (Swagger `http://localhost:3002/api/docs`) |
 | Paginación del catálogo | Los endpoints no implementan `page`/`limit` (propuesto, no implementado) | `docs/mobile/integracion-api-mobile.md` |
-| Autenticación en Mobile | La pantalla de login de la app sigue usando `MockAuthRepository` (simulado en cliente) pese a que el backend expone el login HTTP mock | `mobile/` |
+| Autenticación en Mobile | El login ya consume el gateway mediante `DioAuthRepository`. `MockAuthRepository` queda para el modo demo (`--dart-define=AUTH_DEMO_MODE=true`) y como fallback de las operaciones que el backend aún no expone, como registro y logout | `mobile/lib/features/auth/data/` |
 | Swagger por servicio | Cada microservicio expone su propia especificación; no hay una spec unificada del ecosistema | índice `/api/docs` del gateway |
