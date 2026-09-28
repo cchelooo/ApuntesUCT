@@ -1,7 +1,7 @@
 # Burndown S1
 
 Primer snapshot guardado: 2026-09-05.
-Ultimo snapshot: 2026-09-26.
+Ultimo snapshot: 2026-09-27.
 Trabajo efectivo informado desde: 2026-09-04.
 
 ## Ventanas del sprint
@@ -18,23 +18,23 @@ Las tareas con `Equipo = Compartido` quedan fuera del burndown de equipos e inte
 
 | Equipo | Items | Horas asignadas | Horas usadas | Horas restantes | Horas excedidas | Grafico |
 |---|---:|---:|---:|---:|---:|---|
-| INT2 | 63 | 120 | 109.6 | 19.2 | 8.8 | [ver (2026-09-02 a 2026-09-30)](charts/team-int2.svg) |
-| INT4 | 38 | 79 | 58 | 21 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/team-int4.svg) |
+| INT2 | 63 | 120 | 120.2 | 9.2 | 9.4 | [ver (2026-09-02 a 2026-09-30)](charts/team-int2.svg) |
+| INT4 | 38 | 79 | 60 | 19 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/team-int4.svg) |
 
 ## Integrantes
 
 | Equipo | Integrante | Items | Horas asignadas | Horas usadas | Horas restantes | Horas excedidas | Grafico |
 |---|---|---:|---:|---:|---:|---:|---|
-| INT2 | Ailyn Melillan | 10 | 20 | 19 | 1 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-ailynmelillan.svg) |
-| INT2 | Antonio Lara | 12 | 20 | 15.2 | 5 | 0.2 | [ver (2026-09-02 a 2026-09-30)](charts/member-alara2024uct.svg) |
-| INT2 | David Villegas | 11 | 20 | 17.5 | 3.5 | 1 | [ver (2026-09-02 a 2026-09-30)](charts/member-david7985.svg) |
+| INT2 | Ailyn Melillan | 10 | 20 | 19.5 | 0.5 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-ailynmelillan.svg) |
+| INT2 | Antonio Lara | 12 | 20 | 19.2 | 1 | 0.2 | [ver (2026-09-02 a 2026-09-30)](charts/member-alara2024uct.svg) |
+| INT2 | David Villegas | 11 | 20 | 19.5 | 1.5 | 1 | [ver (2026-09-02 a 2026-09-30)](charts/member-david7985.svg) |
 | INT2 | Gabriel Gutierrez | 12 | 20 | 18 | 2 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-gabrielgutierrez1.svg) |
-| INT2 | Martina Iturrieta | 9 | 20 | 22.4 | 5.2 | 7.6 | [ver (2026-09-02 a 2026-09-30)](charts/member-kennyaale.svg) |
-| INT2 | Raul Rodriguez | 9 | 20 | 17.5 | 2.5 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-rrodriguez2025.svg) |
-| INT4 | Eduardo Escares | 9 | 20 | 14 | 6 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-eduardoscrs.svg) |
+| INT2 | Martina Iturrieta | 9 | 20 | 26 | 2.2 | 8.2 | [ver (2026-09-02 a 2026-09-30)](charts/member-kennyaale.svg) |
+| INT2 | Raul Rodriguez | 9 | 20 | 18 | 2 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-rrodriguez2025.svg) |
+| INT4 | Eduardo Escares | 9 | 20 | 15 | 5 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-eduardoscrs.svg) |
 | INT4 | Marcelo Santana | 10 | 20 | 20 | 0 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-cchelooo.svg) |
 | INT4 | Nelson Quiñinao Isla | 10 | 19 | 9 | 10 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-anker04.svg) |
-| INT4 | Yaninna Alvarez | 9 | 20 | 15 | 5 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-yaninna137.svg) |
+| INT4 | Yaninna Alvarez | 9 | 20 | 16 | 4 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-yaninna137.svg) |
 
 ## Uso diario
 
