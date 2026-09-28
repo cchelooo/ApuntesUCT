@@ -1,72 +1,136 @@
-### Variables de entorno
+### ============================================================================
+### VARIABLES DE ENTORNO Y CONFIGURACIÓN
+### ============================================================================
+# Servidores
 @baseUrl = http://localhost:3000/api/v1
 @catalogDirectUrl = http://localhost:3001/api/v1
 @contentType = application/json
-@token = token
+
+# IMPORTANTE TENER CORRIENDO LOS SERVICIOS/CONTENEDORES (catalog-service y api-gateway, ejecutando 'npm run start:dev'
+# dentro de ambos microservicios mediante 2 terminales separadas dedicadas a cada uno)
+
+# NOTA: Reemplazar los UUIDs con valores reales obtenidos del árbol de las pruebas 1.1 y 1.1b para continuar con el resto de pruebas
+@universityId = b10cd461-93a7-4b66-a300-231fab5f0e28
+@careerId = c4e13339-2dd8-49cf-8715-b8598a8dbcdc
+@subjectId = b66ddc0d-9a39-4263-b22b-3fc7f94edf55
+@professorId = ba8c3fcc-0a08-419f-89b3-0f571ef649d1
+@nonExistentId = 00000000-0000-0000-0000-000000000000
+
 
 ###############################################
 # 1. PRUEBAS DEL CATÁLOGO (PÚBLICO)
 ###############################################
 
-### 1.1 Obtener árbol jerárquico completo del catálogo
-# Esperado: 200 OK - Retorna Universidad -> Carrera -> Asignatura
+### 1.1 Obtener árbol jerárquico completo (Vía API Gateway :3000)
+# Requiere: API Gateway (:3000) y Catalog-Service (:3001) en ejecución.
+# Esperado: 200 OK - Array de Universidades con Carreras y Asignaturas (con campo 'semester').
 GET {{baseUrl}}/catalog
 Content-Type: {{contentType}}
 
 ###
 
-### 1.1b Obtener árbol jerárquico directo (Catalog Service)
+### 1.1b Obtener árbol jerárquico directo (Vía Catalog Service :3001)
 # Esperado: 200 OK
 GET {{catalogDirectUrl}}/catalog
 Content-Type: {{contentType}}
 
 ###
 
-### 1.2 Filtrar catálogo con jerarquía completa (Universidad + Carrera + Asignatura)
-# Esperado: 200 OK
-GET {{baseUrl}}/catalog/filter?universityId=0a00e26a-7312-40e7-97cc-a7155431b34d&careerId=b32137fd-86a6-4632-9e88-0ca70707a422&subjectId=ce6574dd-bca2-49c3-a24c-518c82547af8
+### 1.2a Filtrado: Consulta sin filtros (Raíz del catálogo)
+# Esperado: 200 OK - Retorna lista completa
+GET {{baseUrl}}/catalog/filter
 Content-Type: {{contentType}}
 
 ###
 
-### 1.3 Intentar filtrar con jerarquía incompleta (Falta universityId)
+### 1.2b Filtrado: Jerarquía completa válida hasta Profesor (Nivel 4)
+# Esperado: 200 OK - Los resultados deben corresponder estrictamente a los filtros aplicados.
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}
+Content-Type: {{contentType}}
+
+###
+
+### 1.2c Filtrado: Consulta con combinación que retorne resultados vacíos
+# Esperado: 200 OK - Retorna Array vacío []
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{nonExistentId}}
+Content-Type: {{contentType}}
+
+###
+
+### 1.3a Validación de Jerarquía: Salto de jerarquía / Incompleto (Falta universityId)
 # Esperado: 400 Bad Request
-GET {{baseUrl}}/catalog/filter?careerId=b32137fd-86a6-4632-9e88-0ca70707a422
+GET {{baseUrl}}/catalog/filter?careerId={{careerId}}
 Content-Type: {{contentType}}
 
 ###
 
-### 1.4 Filtrar enviando 'year' con jerarquía válida
+### 1.3b Validación de Jerarquía: 'year' sin 'professorId' (Violación de secuencia)
+# Esperado: 400 Bad Request
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&year=2026
+Content-Type: {{contentType}}
+
+###
+
+### 1.3c Validación de Jerarquía: 'type' sin 'year' (Violación de secuencia)
+# Esperado: 400 Bad Request
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&type=APUNTE
+Content-Type: {{contentType}}
+
+###
+
+### 1.4a Nivel No Implementado: Filtro 'year' con secuencia completa previa (Nivel 5)
+# Requisito: Debe incluir universityId, careerId, subjectId Y professorId.
 # Esperado: 501 Not Implemented
-GET {{baseUrl}}/catalog/filter?universityId=0a00e26a-7312-40e7-97cc-a7155431b34d&careerId=b32137fd-86a6-4632-9e88-0ca70707a422&subjectId=ce6574dd-bca2-49c3-a24c-518c82547af8&year=2026
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year=2026
+Content-Type: {{contentType}}
+
+###
+
+### 1.4b Nivel No Implementado: Filtro 'type' con secuencia completa previa incluyendo 'year' (Nivel 6)
+# Esperado: 501 Not Implemented
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year=2026&type=APUNTE
 Content-Type: {{contentType}}
 
 
 ###############################################
-# 2. GESTIÓN DE ASIGNATURAS (PROTEGIDO / ADMIN)
+# 2. GESTIÓN DE ASIGNATURAS (OPERACIONES CRUD)
 ###############################################
+# NOTA: Estas rutas NO validan autenticación ni rol actualmente.
 
-### 2.1 Crear una asignatura con código dinámico
-# Nota: {{$timestamp}} genera un sufijo único para evitar el error 409 por duplicado al ejecutar varias veces.
+### 2.1 Crear asignatura válida
 # @name createSubject
+# Esperado: 201 Created - Retorna la asignatura creada incluyendo 'id' y 'semester'.
 POST {{baseUrl}}/catalog/subjects
 Content-Type: {{contentType}}
-Authorization: Bearer {{token}}
 
 {
   "name": "Arquitectura de Software",
-  "code": "ICI-{{$timestamp}}",
+  "code": "ICI-412-TMP",
   "semester": 5,
-  "careerId": "c4e13339-2dd8-49cf-8715-b8598a8dbcdc"
+  "careerId": "{{careerId}}"
 }
 
 ###
 
-### 2.2 Intentar crear asignatura con payload inválido
+### 2.2 Intentar crear asignatura duplicada (Mismo código)
+# Requisito: Ejecutar nuevamente después de 2.1 sin eliminarla.
+# Esperado: 409 Conflict
+POST {{baseUrl}}/catalog/subjects
+Content-Type: {{contentType}}
+
+{
+  "name": "Arquitectura de Software Duplicada",
+  "code": "ICI-412-TMP",
+  "semester": 5,
+  "careerId": "{{careerId}}"
+}
+
+###
+
+### 2.3 Intentar crear asignatura con payload inválido
 # Esperado: 400 Bad Request
 POST {{baseUrl}}/catalog/subjects
 Content-Type: {{contentType}}
-Authorization: Bearer {{token}}
 
 {
   "code": "INV-101"
@@ -74,11 +138,15 @@ Authorization: Bearer {{token}}
 
 ###
 
-### 2.3 Eliminar la última asignatura creada en 2.1 (Arrojará 404 Not Found si se vuelve a ejecutar sin volver a crear la
-# asignatura nuevamente en el punto 2.1)
-# Esperado: 200 OK / 204 No Content (Con la asignatura creada previamente)
+### 2.4 Eliminar la asignatura recién creada
+# Utiliza automáticamente el ID retornado por la petición 2.1.
+# Esperado: 200 OK
 DELETE {{baseUrl}}/catalog/subjects/{{createSubject.response.body.id}}
 Content-Type: {{contentType}}
-Authorization: Bearer {{token}}
 
 ###
+
+### 2.5 Intentar eliminar una asignatura inexistente
+# Esperado: 404 Not Found
+DELETE {{baseUrl}}/catalog/subjects/{{nonExistentId}}
+Content-Type: {{contentType}}

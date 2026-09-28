@@ -56,14 +56,7 @@ export class CatalogService {
   }
 
   async filterCatalog(filters: FilterCatalogDto) {
-    // 1. PRIORIDAD MÁXIMA: Si se solicita 'year' o 'type', retorna 501 Not Implemented de inmediato.
-    if (filters.year !== undefined || filters.type !== undefined) {
-      throw new NotImplementedException(
-        'Los filtros por Año y Tipo requieren el módulo de Recursos (Resource), el cual está pendiente de integración en la base de datos.',
-      );
-    }
-
-    // 2. Validaciones de la secuencia jerárquica (Niveles 1 al 4)
+    // 1. Validaciones de la secuencia jerárquica (Niveles 1 al 4)
     if (filters.careerId && !filters.universityId) {
       throw new BadRequestException(
         'Secuencia inválida: Para filtrar por Carrera (careerId) debe especificar Universidad (universityId).',
@@ -82,7 +75,27 @@ export class CatalogService {
       );
     }
 
-    // 3. Consulta en BD para niveles 1 al 4 utilizando tipos estrictos de Prisma
+    // 2. Validaciones de la secuencia jerárquica (Niveles 5 y 6)
+    if (filters.year !== undefined && !filters.professorId) {
+      throw new BadRequestException(
+        'Secuencia inválida: Para filtrar por Año (year) debe especificar Profesor (professorId).',
+      );
+    }
+
+    if (filters.type !== undefined && filters.year === undefined) {
+      throw new BadRequestException(
+        'Secuencia inválida: Para filtrar por Tipo (type) debe especificar Año (year).',
+      );
+    }
+
+    // 3. Respuesta de niveles pendientes de integración en BD (Niveles 5 y 6)
+    if (filters.year !== undefined || filters.type !== undefined) {
+      throw new NotImplementedException(
+        'Los filtros por Año y Tipo requieren el módulo de Recursos (Resource), el cual está pendiente de integración en la base de datos.',
+      );
+    }
+
+    // 4. Consulta en BD para niveles válidos (1 al 4) utilizando tipos estrictos de Prisma
     const whereCondition: Prisma.SubjectWhereInput = {};
 
     if (filters.universityId) {

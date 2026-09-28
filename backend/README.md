@@ -243,12 +243,27 @@ y la revocación de sesiones requieren pruebas cuando se implementen esos flujos
 ```bash
   docker compose up -d
 ```
-* Tener corriendo la aplicación o los microservicios necesarios (`api-gateway` en el puerto `3000` y/o `catalog-service` en el puerto `3001`).
 
 **Base de Datos Migrada y Poblada (Seed):**
-* Es imprescindible contar con la estructura de tablas y los datos base (Universidades, Carreras, Asignaturas) precargados:
+* Es imprescindible contar con la estructura de tablas y los datos base (Universidades, Carreras, Asignaturas) precargados en catalog-service, para ello ejecutar dentro de catalog-service:
+
 ```bash
   npx prisma db push
   npx prisma db seed
 ```
-# Realizar consultas del catalog.http una vez cumplidos los pasos anteriores y teniendo los contenedores/microservicios corriendo
+
+* Tener corriendo la aplicación o los microservicios necesarios (`api-gateway` en el puerto `3000` y `catalog-service` en el puerto `3001`) mediante 2 terminales separadas cada una corriendo 1 de los servicios.
+
+## Para levantar los servicios
+
+* Moverse a cada microservicio en su respectiva terminal dedicada y ejecutar:
+
+```bash
+  npm run start:dev
+```
+
+## Una vez corriendo los 2 servicios:
+
+* Realizar consultas del catalog.http 1.1 y 1.1b para obtener el arbol jerárquico y los UUIDs.
+* Reemplazar los UUIDs: universityId, careerId, subjectId, professorId, por las UUIDs reales obtenidas en las pruebas 1.1 y 1.1b.
+* Una vez reemplazados los UUIDs reales puede continuar con el resto de pruebas de catalog.http para probar las consultas.
