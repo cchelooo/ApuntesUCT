@@ -3,10 +3,10 @@
 Colección generada a partir del OpenAPI de los tres servicios del backend, para
 probar la API sin escribir código.
 
-| Archivo                               | Contenido                                                                                              |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `apuntesuct.postman_collection.json`  | Colección Postman v2.1 con 9 peticiones agrupadas en `API Gateway`, `Auth Service` y `Catalog Service` |
-| `apuntesuct.postman_environment.json` | Environment `ApuntesUCT local` con las URLs y variables                                                |
+| Archivo                               | Contenido                                                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `apuntesuct.postman_collection.json`  | Colección Postman v2.1 con 11 peticiones agrupadas en `API Gateway`, `Auth Service` y `Catalog Service` |
+| `apuntesuct.postman_environment.json` | Environment `ApuntesUCT local` con las URLs y variables                                                 |
 
 ## Importar
 
@@ -18,16 +18,18 @@ seleccionar ambos archivos. Insomnia crea el environment y los request groups.
 
 ## Variables
 
-| Variable                                               | Valor por defecto       | Uso                                                   |
-| ------------------------------------------------------ | ----------------------- | ----------------------------------------------------- |
-| `gatewayUrl`                                           | `http://localhost:3000` | API Gateway (proxy de `/api/v1/auth`)                 |
-| `authUrl`                                              | `http://localhost:3001` | Auth Service directo                                  |
-| `catalogUrl`                                           | `http://localhost:3002` | Catalog Service directo                               |
-| `mockEmail`                                            | `estudiante@alu.uct.cl` | Login mock: acepta cualquier correo válido            |
-| `mockPassword`                                         | `demo`                  | Login mock: al menos un carácter no blanco            |
-| `universityId`, `careerId`, `subjectId`, `professorId` | UUID de ejemplo         | Sustituye por los ids reales de `GET /api/v1/catalog` |
-| `catalogYear`                                          | `2026`                  | Parámetro `year` del filtro (responde `501`)          |
-| `catalogType`                                          | `apunte`                | Parámetro `type` del filtro (responde `501`)          |
+| Variable                                | Valor por defecto       | Uso                                                                                                                                     |
+| --------------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `gatewayUrl`                            | `http://localhost:3000` | API Gateway (proxy de `/api/v1/auth` y `/api/v1/catalog`)                                                                               |
+| `authUrl`                               | `http://localhost:3001` | Auth Service directo                                                                                                                    |
+| `catalogUrl`                            | `http://localhost:3002` | Catalog Service directo                                                                                                                 |
+| `mockEmail`                             | `estudiante@alu.uct.cl` | Login mock: acepta cualquier correo válido                                                                                              |
+| `mockPassword`                          | `demo`                  | Login mock: al menos un carácter no blanco                                                                                              |
+| `accessToken`                           | _(vacío)_               | Lo rellena el test del login; se inyecta como `Bearer` en las peticiones de catálogo                                                    |
+| `universityId`, `careerId`, `subjectId` | UUID de ejemplo         | Sustituye por los ids reales de `GET /api/v1/catalog`                                                                                   |
+| `professorId`                           | UUID de ejemplo         | **No** viene en `GET /api/v1/catalog`: obténlo de `GET /api/v1/catalog/filter` sin filtros, en el array `professors` de cada asignatura |
+| `catalogYear`                           | `2026`                  | Parámetro `year` del filtro (responde `501`)                                                                                            |
+| `catalogType`                           | `apunte`                | Parámetro `type` del filtro (responde `501`)                                                                                            |
 
 ## Requisitos para ejecutar las peticiones
 
@@ -41,16 +43,27 @@ seleccionar ambos archivos. Insomnia crea el environment y los request groups.
 ## Particularidades de la API que la colección refleja
 
 - **Login mock (#92)**: no verifica credenciales y devuelve un JWT sin firma
-  (`alg: none`). No sirve para autorizar peticiones.
+  (`alg: none`). No sirve para autorizar peticiones. Los dos peticiones de login
+  (directo y vía gateway) usan `mockEmail`/`mockPassword` y su test guarda el
+  `accessToken` de la respuesta en la variable `accessToken` de la colección.
+- **Bearer**: las peticiones de catálogo (directas y vía gateway) llevan
+  `Authorization: Bearer {{accessToken}}`. Hoy ningún endpoint lo valida; queda
+  preparado para cuando exista autenticación real.
 - **Filtro del catálogo**: el orden jerárquico es obligatorio
   (`universityId` → `careerId` → `subjectId` → `professorId`); sin el orden
   completo responde `400 Bad Request`.
+- **`professorId`**: `GET /api/v1/catalog` devuelve el árbol
+  universidad → carrera → asignatura, **sin profesores**. Los UUID de profesor se
+  obtienen de `GET /api/v1/catalog/filter` sin filtros, que responde las
+  asignaturas con su array `professors`.
 - **`year` y `type`**: responden `501 Not Implemented` porque dependen del módulo
   de Recursos. La colección incluye una petición para comprobarlos.
-- **Rutas proxeadas**: `/api/v1/auth/health` y `/api/v1/auth/login` a través del
-  gateway no aparecen en el OpenAPI del gateway (el proxy es middleware), por lo
-  que el generador las añade explícitamente. Responden `502` si Auth no está
-  disponible.
+- **Rutas proxeadas**: el gateway enruta `/api/v1/auth` y `/api/v1/catalog` con
+  middleware, así que no aparecen en su OpenAPI y el generador las añade
+  explícitamente. Responden `502` si el servicio no responde. El gateway solo
+  reescribe el health de Auth (`/api/v1/auth/health` → `/api/v1/health` en Auth);
+  el healthcheck de Catalog está en `{{catalogUrl}}/api/v1/health`, sin
+  equivalente vía gateway.
 - **Parámetros del filtro**: todavía no están documentados en el OpenAPI del
   Catalog Service (a `FilterCatalogDto` le faltan los `@ApiProperty`), así que el
   generador los declara a mano. Al documentarlos en el DTO, la siguiente

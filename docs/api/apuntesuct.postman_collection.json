@@ -45,7 +45,7 @@
               "host": ["{{gatewayUrl}}"],
               "path": ["api", "v1", "auth", "health"]
             },
-            "description": "Ruta proxeada hacia Auth (no aparece en el OpenAPI del gateway porque el proxy es middleware). Responde 502 si Auth no acepta la conexión o tarda más de 5 segundos."
+            "description": "Ruta proxeada hacia Auth (no aparece en el OpenAPI del gateway porque el proxy es middleware). El gateway reescribe la ruta a /api/v1/health en Auth. Responde 502 si Auth no acepta la conexión o tarda más de 5 segundos."
           },
           "response": [],
           "event": [
@@ -86,7 +86,114 @@
               "host": ["{{gatewayUrl}}"],
               "path": ["api", "v1", "auth", "login"]
             },
-            "description": "Ruta proxeada hacia Auth (ver #91). Devuelve el JWT sin firma del login mock (#92). Responde 502 si Auth no está disponible."
+            "description": "Ruta proxeada hacia Auth (ver #91). Devuelve el JWT sin firma del login mock (#92) y guarda el accessToken en la variable accessToken. Responde 502 si Auth no está disponible."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });",
+                  "pm.test('Guarda el accessToken', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.accessToken).to.be.a('string').and.not.empty;",
+                  "  pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Árbol del catálogo a través del gateway",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
+              }
+            ],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/v1/catalog",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "v1", "catalog"]
+            },
+            "description": "Ruta proxeada hacia Catalog (ProxyModule, #122). No hay health reescrito para Catalog: su healthcheck está en {{catalogUrl}}/api/v1/health. Responde 502 con \"Catalog Service no disponible\" si Catalog no responde."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtro jerárquico a través del gateway",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
+              }
+            ],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/v1/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "v1", "catalog", "filter"],
+              "query": [
+                {
+                  "key": "universityId",
+                  "value": "{{universityId}}",
+                  "description": "Nivel 1. Sin requisito previo.",
+                  "disabled": false
+                },
+                {
+                  "key": "careerId",
+                  "value": "{{careerId}}",
+                  "description": "Nivel 2. Requiere universityId.",
+                  "disabled": false
+                },
+                {
+                  "key": "subjectId",
+                  "value": "{{subjectId}}",
+                  "description": "Nivel 3. Requiere careerId.",
+                  "disabled": false
+                },
+                {
+                  "key": "professorId",
+                  "value": "{{professorId}}",
+                  "description": "Nivel 4. Requiere subjectId.",
+                  "disabled": false
+                },
+                {
+                  "key": "year",
+                  "value": "{{catalogYear}}",
+                  "description": "Entero entre 2000 y 2100. Responde 501 Not Implemented.",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "{{catalogType}}",
+                  "description": "Tipo de material. Responde 501 Not Implemented.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Misma ruta proxeada hacia Catalog, con el prefijo jerárquico completo (los tres primeros UUID de GET /api/v1/catalog y el professorId de GET /api/v1/catalog/filter sin filtros). year y type van desactivados porque responden 501 Not Implemented."
           },
           "response": [],
           "event": [
@@ -147,7 +254,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"estudiante@alu.uct.cl\",\n  \"password\": \"demo\"\n}",
+              "raw": "{\n  \"email\": \"{{mockEmail}}\",\n  \"password\": \"{{mockPassword}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -169,7 +276,12 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
+                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });",
+                  "pm.test('Guarda el accessToken', function () {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.accessToken).to.be.a('string').and.not.empty;",
+                  "  pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "});"
                 ]
               }
             }
@@ -211,7 +323,13 @@
           "name": "Obtener árbol básico del catálogo",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
+              }
+            ],
             "url": {
               "raw": "{{catalogUrl}}/api/v1/catalog",
               "host": ["{{catalogUrl}}"],
@@ -237,7 +355,13 @@
           "name": "Filtro jerárquico del catálogo",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
+              }
+            ],
             "url": {
               "raw": "{{catalogUrl}}/api/v1/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}",
               "host": ["{{catalogUrl}}"],
@@ -281,7 +405,7 @@
                 }
               ]
             },
-            "description": "Realiza una búsqueda jerárquica devolviendo las asignaturas coincidentes junto con sus relaciones principales.\n\n    ### Comportamiento del Endpoint:\n    - **Sin filtros:** Devuelve la lista completa de **Asignaturas**.\n    - **Filtros válidos aplicados:** Devuelve las asignaturas filtradas incluyendo sus relaciones directas (**Carrera**, **Universidad** y **Profesores**).\n    - **Combinación incompatible:** Devuelve un arreglo vacío (`[]`).\n\n    ### Secuencia Obligatoria de Niveles:\n    1. **Universidad** (`universityId`)\n    2. **Carrera** (`careerId`) [requiere `universityId`]\n    3. **Asignatura** (`subjectId`) [requiere `careerId`]\n    4. **Profesor** (`professorId`) [requiere `subjectId`]\n    5. **Año** (`year`) [requiere `professorId`]\n    6. **Tipo** (`type`) [requiere `year`]\n\n    ### Estado de los Filtros de Año y Tipo:\n    Los niveles de **Año** (`year`) y **Tipo** (`type`) requieren la integración del módulo de **Recursos**. Al enviar una secuencia válida que incluya estos parámetros, el endpoint retornará un estado **501 Not Implemented** indicando que la funcionalidad de filtrado de recursos está pendiente de implementación.\n    \n\nUsa los UUID obtenidos de GET /api/v1/catalog, en ese orden. Los parámetros year y type están desactivados porque responden 501 Not Implemented; usa la petición siguiente para comprobarlos."
+            "description": "Realiza una búsqueda jerárquica devolviendo las asignaturas coincidentes junto con sus relaciones principales.\n\n    ### Comportamiento del Endpoint:\n    - **Sin filtros:** Devuelve la lista completa de **Asignaturas**.\n    - **Filtros válidos aplicados:** Devuelve las asignaturas filtradas incluyendo sus relaciones directas (**Carrera**, **Universidad** y **Profesores**).\n    - **Combinación incompatible:** Devuelve un arreglo vacío (`[]`).\n\n    ### Secuencia Obligatoria de Niveles:\n    1. **Universidad** (`universityId`)\n    2. **Carrera** (`careerId`) [requiere `universityId`]\n    3. **Asignatura** (`subjectId`) [requiere `careerId`]\n    4. **Profesor** (`professorId`) [requiere `subjectId`]\n    5. **Año** (`year`) [requiere `professorId`]\n    6. **Tipo** (`type`) [requiere `year`]\n\n    ### Estado de los Filtros de Año y Tipo:\n    Los niveles de **Año** (`year`) y **Tipo** (`type`) requieren la integración del módulo de **Recursos**. Al enviar una secuencia válida que incluya estos parámetros, el endpoint retornará un estado **501 Not Implemented** indicando que la funcionalidad de filtrado de recursos está pendiente de implementación.\n    \n\nOrden obligatorio: universityId → careerId → subjectId → professorId. Los tres primeros UUID salen de GET /api/v1/catalog; el professorId no viene en ese árbol: se obtiene de GET /api/v1/catalog/filter sin filtros, en el array professors de cada asignatura. Los parámetros year y type están desactivados porque responden 501 Not Implemented; usa la petición siguiente para comprobarlos."
           },
           "response": [],
           "event": [
@@ -301,7 +425,13 @@
           "name": "Filtro por año y tipo (501 Not Implemented)",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
+              }
+            ],
             "url": {
               "raw": "{{catalogUrl}}/api/v1/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year={{catalogYear}}&type={{catalogType}}",
               "host": ["{{catalogUrl}}"],
@@ -388,6 +518,11 @@
     {
       "key": "mockPassword",
       "value": "demo",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
       "type": "string"
     },
     {

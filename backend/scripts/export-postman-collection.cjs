@@ -38,6 +38,7 @@ const SERVICES = [
     baseUrlVariable: 'catalogUrl',
     title: 'Catalog Service',
     description: 'Microservicio de universidad, carrera, asignatura, profesor y sus relaciones.',
+    bearer: true,
   },
 ];
 const VARIABLES = [
@@ -46,6 +47,7 @@ const VARIABLES = [
   { key: 'catalogUrl', value: 'http://localhost:3002' },
   { key: 'mockEmail', value: 'estudiante@alu.uct.cl' },
   { key: 'mockPassword', value: 'demo' },
+  { key: 'accessToken', value: '' },
   { key: 'universityId', value: '00000000-0000-4000-8000-000000000001' },
   { key: 'careerId', value: '00000000-0000-4000-8000-000000000002' },
   { key: 'subjectId', value: '00000000-0000-4000-8000-000000000003' },
@@ -53,6 +55,8 @@ const VARIABLES = [
   { key: 'catalogYear', value: '2026' },
   { key: 'catalogType', value: 'apunte' },
 ];
+
+const BODY_VARIABLES = { email: 'mockEmail', password: 'mockPassword' };
 
 const FILTER_NOT_IMPLEMENTED = ['year', 'type'];
 
@@ -207,9 +211,14 @@ function buildBody(operation, components) {
   if (!operation.requestBody) return undefined;
   const json = operation.requestBody.content?.['application/json'];
   if (!json) return undefined;
+  const sample = sampleFromSchema(json.schema, components);
+  const body = { ...sample };
+  for (const [field, variable] of Object.entries(BODY_VARIABLES)) {
+    if (field in body) body[field] = `{{${variable}}}`;
+  }
   return {
     mode: 'raw',
-    raw: JSON.stringify(sampleFromSchema(json.schema, components), null, 2),
+    raw: JSON.stringify(body, null, 2),
     options: { raw: { language: 'json' } },
   };
 }
@@ -228,19 +237,21 @@ function buildUrl(baseUrlVariable, apiPath, query) {
   };
 }
 
-function buildTestEvent(status) {
-  return [
-    {
-      listen: 'test',
-      script: {
-        type: 'text/javascript',
-        exec: [
-          `pm.test('Responde ${status}', function () { pm.response.to.have.status(${status}); });`,
-          `pm.test('Devuelve JSON', function () { pm.response.to.be.json; });`,
-        ],
-      },
-    },
+function buildTestEvent(status, { captureToken } = {}) {
+  const exec = [
+    `pm.test('Responde ${status}', function () { pm.response.to.have.status(${status}); });`,
+    `pm.test('Devuelve JSON', function () { pm.response.to.be.json; });`,
   ];
+  if (captureToken) {
+    exec.push(
+      `pm.test('Guarda el accessToken', function () {`,
+      `  const json = pm.response.json();`,
+      `  pm.expect(json.accessToken).to.be.a('string').and.not.empty;`,
+      `  pm.collectionVariables.set('accessToken', json.accessToken);`,
+      `});`,
+    );
+  }
+  return [{ listen: 'test', script: { type: 'text/javascript', exec } }];
 }
 
 function buildItem({
@@ -254,11 +265,21 @@ function buildItem({
   status,
   extraBody,
   components,
+  bearer,
+  captureToken,
 }) {
   const requestBody = extraBody ?? buildBody(operation ?? {}, components);
   const headers = buildHeaders(operation ?? {}, components);
   if (extraBody) {
     headers.push({ key: 'Content-Type', value: 'application/json', description: '' });
+  }
+  if (bearer ?? service.bearer) {
+    headers.push({
+      key: 'Authorization',
+      value: 'Bearer {{accessToken}}',
+      description:
+        'Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real.',
+    });
   }
   return {
     name,
@@ -270,7 +291,7 @@ function buildItem({
       description: description ?? operation?.description ?? `${apiPath} (${service.title})`,
     },
     response: [],
-    event: buildTestEvent(status),
+    event: buildTestEvent(status, { captureToken }),
   };
 }
 
@@ -285,6 +306,7 @@ function collectItems(service, document) {
       const query = buildQuery(parameters, apiPath);
       const status = expectedStatus(operation);
       const name = operation.summary ?? `${method.toUpperCase()} ${apiPath}`;
+      const captureToken = apiPath === '/api/v1/auth/login';
 
       if (apiPath === '/api/v1/catalog/filter') {
         items.push(
@@ -295,7 +317,7 @@ function collectItems(service, document) {
             operation,
             name: 'Filtro jerárquico del catálogo',
             description:
-              `${operation.description ?? ''}\n\nUsa los UUID obtenidos de GET /api/v1/catalog, en ese orden. Los parámetros year y type están desactivados porque responden 501 Not Implemented; usa la petición siguiente para comprobarlos.`.trim(),
+              `${operation.description ?? ''}\n\nOrden obligatorio: universityId → careerId → subjectId → professorId. Los tres primeros UUID salen de GET /api/v1/catalog; el professorId no viene en ese árbol: se obtiene de GET /api/v1/catalog/filter sin filtros, en el array professors de cada asignatura. Los parámetros year y type están desactivados porque responden 501 Not Implemented; usa la petición siguiente para comprobarlos.`.trim(),
             query,
             status,
             components,
@@ -334,6 +356,8 @@ function collectItems(service, document) {
           query,
           status,
           components,
+          captureToken,
+          bearer: apiPath === '/api/v1/health' ? false : undefined,
         }),
       );
     }
@@ -347,7 +371,7 @@ const GATEWAY_PROXIED = [
     apiPath: '/api/v1/auth/health',
     name: 'Health de Auth a través del gateway',
     description:
-      'Ruta proxeada hacia Auth (no aparece en el OpenAPI del gateway porque el proxy es middleware). Responde 502 si Auth no acepta la conexión o tarda más de 5 segundos.',
+      'Ruta proxeada hacia Auth (no aparece en el OpenAPI del gateway porque el proxy es middleware). El gateway reescribe la ruta a /api/v1/health en Auth. Responde 502 si Auth no acepta la conexión o tarda más de 5 segundos.',
     query: [],
     status: '200',
   },
@@ -356,14 +380,40 @@ const GATEWAY_PROXIED = [
     apiPath: '/api/v1/auth/login',
     name: 'Login mock a través del gateway',
     description:
-      'Ruta proxeada hacia Auth (ver #91). Devuelve el JWT sin firma del login mock (#92). Responde 502 si Auth no está disponible.',
+      'Ruta proxeada hacia Auth (ver #91). Devuelve el JWT sin firma del login mock (#92) y guarda el accessToken en la variable accessToken. Responde 502 si Auth no está disponible.',
     query: [],
     status: '200',
+    captureToken: true,
     extraBody: {
       mode: 'raw',
       raw: JSON.stringify({ email: '{{mockEmail}}', password: '{{mockPassword}}' }, null, 2),
       options: { raw: { language: 'json' } },
     },
+  },
+  {
+    method: 'get',
+    apiPath: '/api/v1/catalog',
+    name: 'Árbol del catálogo a través del gateway',
+    description:
+      'Ruta proxeada hacia Catalog (ProxyModule, #122). No hay health reescrito para Catalog: su healthcheck está en {{catalogUrl}}/api/v1/health. Responde 502 con "Catalog Service no disponible" si Catalog no responde.',
+    query: [],
+    status: '200',
+    bearer: true,
+  },
+  {
+    method: 'get',
+    apiPath: '/api/v1/catalog/filter',
+    name: 'Filtro jerárquico a través del gateway',
+    description:
+      'Misma ruta proxeada hacia Catalog, con el prefijo jerárquico completo (los tres primeros UUID de GET /api/v1/catalog y el professorId de GET /api/v1/catalog/filter sin filtros). year y type van desactivados porque responden 501 Not Implemented.',
+    query: CATALOG_FILTER_PARAMETERS.map((parameter) => ({
+      key: parameter.name,
+      value: `{{${parameter.variable}}}`,
+      description: parameter.description,
+      disabled: FILTER_NOT_IMPLEMENTED.includes(parameter.name),
+    })),
+    status: '200',
+    bearer: true,
   },
 ];
 
