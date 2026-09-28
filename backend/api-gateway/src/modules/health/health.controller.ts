@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Header } from '@nestjs/common';
 import {
   ApiOkResponse,
   ApiOperation,
@@ -18,10 +18,15 @@ export class HealthResponse {
 }
 
 @ApiTags('health')
-@Controller('health')
+@Controller(['health', 'api/v1/health'])
 export class HealthController {
   @Get()
-  @ApiOperation({ summary: 'Verifica el estado del servicio' })
+  @Header('Cache-Control', 'no-store')
+  @ApiOperation({
+    summary: 'Verifica que el API Gateway está operativo',
+    description:
+      'Chequeo público de disponibilidad del Gateway. No consulta bases de datos ni otros microservicios.',
+  })
   @ApiOkResponse({ type: HealthResponse })
   check(): HealthResponse {
     return {

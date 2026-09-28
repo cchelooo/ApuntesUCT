@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { configureRoutes } from './configure-routes';
 import { AppModule } from './app.module';
 import { setupApiDocs } from './api-docs';
 
@@ -11,8 +12,8 @@ async function bootstrap() {
   // Habilitar CORS
   app.enableCors();
 
-  // Prefijo global /api/v1
-  app.setGlobalPrefix('api/v1');
+  // Prefijo global /api/v1 y rutas públicas de health
+  configureRoutes(app);
 
   // Validaciones globales de DTOs
   app.useGlobalPipes(

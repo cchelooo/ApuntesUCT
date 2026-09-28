@@ -1,3 +1,4 @@
+import { configureRoutes } from '../src/configure-routes';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
@@ -7,6 +8,8 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { HealthModule } from '../../auth-service/src/presentation/health/health.module';
 import { AuthModule } from '../../auth-service/src/presentation/auth/auth.module';
+import { PrismaService } from '../../auth-service/src/infrastructure/prisma/prisma.service';
+import { PrismaModule } from '../../auth-service/src/infrastructure/prisma/prisma.module';
 
 describe('Gateway → Auth (HTTP)', () => {
   let gateway: INestApplication;
@@ -46,7 +49,7 @@ describe('Gateway → Auth (HTTP)', () => {
       })
       .compile();
     gateway = module.createNestApplication();
-    gateway.setGlobalPrefix('api/v1');
+    configureRoutes(gateway);
     await gateway.init();
   });
 
@@ -114,8 +117,11 @@ describe('Gateway → Auth (HTTP)', () => {
   it('alcanza los controladores de health y login mock de Auth por HTTP', async () => {
     await new Promise<void>((resolve) => upstream.close(() => resolve()));
     const authModule = await Test.createTestingModule({
-      imports: [HealthModule, AuthModule],
-    }).compile();
+      imports: [PrismaModule, HealthModule, AuthModule],
+    })
+      .overrideProvider(PrismaService)
+      .useValue({ $queryRaw: jest.fn().mockResolvedValue([{ '?column?': 1 }]) })
+      .compile();
     const auth = authModule.createNestApplication();
     auth.setGlobalPrefix('api/v1');
     auth.useGlobalPipes(
@@ -128,6 +134,7 @@ describe('Gateway → Auth (HTTP)', () => {
         .expect(200);
       expect(res.body.service).toBe('auth-service');
       expect(res.body.status).toBe('ok');
+      expect(res.body.database).toBe('connected');
       const login = await request(gateway.getHttpServer())
         .post('/api/v1/auth/login')
         .send({ email: 'estudiante@alu.uct.cl', password: 'demo' })
