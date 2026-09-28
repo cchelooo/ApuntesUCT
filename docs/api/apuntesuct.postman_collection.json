@@ -1,0 +1,418 @@
+{
+  "info": {
+    "name": "ApuntesUCT API",
+    "description": "Colección generada desde el OpenAPI de api-gateway, auth-service y catalog-service (ver backend/scripts/export-postman-collection.cjs). Requiere los servicios levantados; auth y catalog necesitan su PostgreSQL. Importa también el environment apuntesuct.postman_environment.json.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "API Gateway",
+      "description": "Punto único de entrada a los microservicios de ApuntesUCT.",
+      "item": [
+        {
+          "name": "Verifica el estado del servicio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/v1/health",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "v1", "health"]
+            },
+            "description": "/api/v1/health (API Gateway)"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Health de Auth a través del gateway",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/v1/auth/health",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "v1", "auth", "health"]
+            },
+            "description": "Ruta proxeada hacia Auth (no aparece en el OpenAPI del gateway porque el proxy es middleware). Responde 502 si Auth no acepta la conexión o tarda más de 5 segundos."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login mock a través del gateway",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{mockEmail}}\",\n  \"password\": \"{{mockPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/v1/auth/login",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "Ruta proxeada hacia Auth (ver #91). Devuelve el JWT sin firma del login mock (#92). Responde 502 si Auth no está disponible."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth Service",
+      "description": "Microservicio de identidad, autenticación, usuarios y roles.",
+      "item": [
+        {
+          "name": "Verifica el estado del servicio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/health",
+              "host": ["{{authUrl}}"],
+              "path": ["api", "v1", "health"]
+            },
+            "description": "/api/v1/health (Auth Service)"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login mock temporal (#92)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"estudiante@alu.uct.cl\",\n  \"password\": \"demo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/login",
+              "host": ["{{authUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "Acepta cualquier credencial con formato válido. Devuelve un JWT falso sin firma, solo para integración del frontend; no autentica usuarios."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Catalog Service",
+      "description": "Microservicio de universidad, carrera, asignatura, profesor y sus relaciones.",
+      "item": [
+        {
+          "name": "Verifica el estado del servicio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{catalogUrl}}/api/v1/health",
+              "host": ["{{catalogUrl}}"],
+              "path": ["api", "v1", "health"]
+            },
+            "description": "/api/v1/health (Catalog Service)"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener árbol básico del catálogo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{catalogUrl}}/api/v1/catalog",
+              "host": ["{{catalogUrl}}"],
+              "path": ["api", "v1", "catalog"]
+            },
+            "description": "Devuelve la jerarquía base completa del catálogo (Universidades -> Carreras -> Asignaturas) para ser consumida de forma inicial por el frontend."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtro jerárquico del catálogo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{catalogUrl}}/api/v1/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}",
+              "host": ["{{catalogUrl}}"],
+              "path": ["api", "v1", "catalog", "filter"],
+              "query": [
+                {
+                  "key": "universityId",
+                  "value": "{{universityId}}",
+                  "description": "Nivel 1. Sin requisito previo.",
+                  "disabled": false
+                },
+                {
+                  "key": "careerId",
+                  "value": "{{careerId}}",
+                  "description": "Nivel 2. Requiere universityId.",
+                  "disabled": false
+                },
+                {
+                  "key": "subjectId",
+                  "value": "{{subjectId}}",
+                  "description": "Nivel 3. Requiere careerId.",
+                  "disabled": false
+                },
+                {
+                  "key": "professorId",
+                  "value": "{{professorId}}",
+                  "description": "Nivel 4. Requiere subjectId.",
+                  "disabled": false
+                },
+                {
+                  "key": "year",
+                  "value": "{{catalogYear}}",
+                  "description": "Entero entre 2000 y 2100. Responde 501 Not Implemented.",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "{{catalogType}}",
+                  "description": "Tipo de material. Responde 501 Not Implemented.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Realiza una búsqueda jerárquica devolviendo las asignaturas coincidentes junto con sus relaciones principales.\n\n    ### Comportamiento del Endpoint:\n    - **Sin filtros:** Devuelve la lista completa de **Asignaturas**.\n    - **Filtros válidos aplicados:** Devuelve las asignaturas filtradas incluyendo sus relaciones directas (**Carrera**, **Universidad** y **Profesores**).\n    - **Combinación incompatible:** Devuelve un arreglo vacío (`[]`).\n\n    ### Secuencia Obligatoria de Niveles:\n    1. **Universidad** (`universityId`)\n    2. **Carrera** (`careerId`) [requiere `universityId`]\n    3. **Asignatura** (`subjectId`) [requiere `careerId`]\n    4. **Profesor** (`professorId`) [requiere `subjectId`]\n    5. **Año** (`year`) [requiere `professorId`]\n    6. **Tipo** (`type`) [requiere `year`]\n\n    ### Estado de los Filtros de Año y Tipo:\n    Los niveles de **Año** (`year`) y **Tipo** (`type`) requieren la integración del módulo de **Recursos**. Al enviar una secuencia válida que incluya estos parámetros, el endpoint retornará un estado **501 Not Implemented** indicando que la funcionalidad de filtrado de recursos está pendiente de implementación.\n    \n\nUsa los UUID obtenidos de GET /api/v1/catalog, en ese orden. Los parámetros year y type están desactivados porque responden 501 Not Implemented; usa la petición siguiente para comprobarlos."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtro por año y tipo (501 Not Implemented)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{catalogUrl}}/api/v1/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year={{catalogYear}}&type={{catalogType}}",
+              "host": ["{{catalogUrl}}"],
+              "path": ["api", "v1", "catalog", "filter"],
+              "query": [
+                {
+                  "key": "universityId",
+                  "value": "{{universityId}}",
+                  "description": "Nivel 1. Sin requisito previo.",
+                  "disabled": false
+                },
+                {
+                  "key": "careerId",
+                  "value": "{{careerId}}",
+                  "description": "Nivel 2. Requiere universityId.",
+                  "disabled": false
+                },
+                {
+                  "key": "subjectId",
+                  "value": "{{subjectId}}",
+                  "description": "Nivel 3. Requiere careerId.",
+                  "disabled": false
+                },
+                {
+                  "key": "professorId",
+                  "value": "{{professorId}}",
+                  "description": "Nivel 4. Requiere subjectId.",
+                  "disabled": false
+                },
+                {
+                  "key": "year",
+                  "value": "{{catalogYear}}",
+                  "description": "Entero entre 2000 y 2100. Responde 501 Not Implemented.",
+                  "disabled": false
+                },
+                {
+                  "key": "type",
+                  "value": "{{catalogType}}",
+                  "description": "Tipo de material. Responde 501 Not Implemented.",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Requiere un prefijo jerárquico válido (400 si falta el orden) y responde 501 Not Implemented porque depende del módulo de Recursos."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 501', function () { pm.response.to.have.status(501); });",
+                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "gatewayUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "authUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "catalogUrl",
+      "value": "http://localhost:3002",
+      "type": "string"
+    },
+    {
+      "key": "mockEmail",
+      "value": "estudiante@alu.uct.cl",
+      "type": "string"
+    },
+    {
+      "key": "mockPassword",
+      "value": "demo",
+      "type": "string"
+    },
+    {
+      "key": "universityId",
+      "value": "00000000-0000-4000-8000-000000000001",
+      "type": "string"
+    },
+    {
+      "key": "careerId",
+      "value": "00000000-0000-4000-8000-000000000002",
+      "type": "string"
+    },
+    {
+      "key": "subjectId",
+      "value": "00000000-0000-4000-8000-000000000003",
+      "type": "string"
+    },
+    {
+      "key": "professorId",
+      "value": "00000000-0000-4000-8000-000000000004",
+      "type": "string"
+    },
+    {
+      "key": "catalogYear",
+      "value": "2026",
+      "type": "string"
+    },
+    {
+      "key": "catalogType",
+      "value": "apunte",
+      "type": "string"
+    }
+  ]
+}
