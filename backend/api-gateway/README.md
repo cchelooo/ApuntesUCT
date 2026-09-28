@@ -1,3 +1,48 @@
+## Estado del API Gateway (#116)
+
+El endpoint `GET /health` responde **HTTP 200** con JSON cuando el Gateway
+está operativo. Es público y no requiere token ni cuerpo. Se excluye del prefijo
+global `/api/v1` para exponer la ruta solicitada en #116. La URL existente
+`GET /api/v1/health` se conserva como alias con la misma respuesta.
+
+```json
+{
+  "status": "ok",
+  "service": "API Gateway",
+  "timestamp": "2026-09-28T12:00:00.000Z"
+}
+```
+
+`timestamp` es la fecha UTC de cada consulta en formato ISO 8601. La respuesta
+incluye `Cache-Control: no-store` para evitar reutilizar un estado anterior.
+Este chequeo verifica que el Gateway responde; no comprueba la disponibilidad de
+Auth, Catalog ni de las bases de datos. Puede ejecutarse sin iniciar esos servicios.
+
+Desde `backend`, con las dependencias instaladas:
+
+```bash
+npm run start:dev --workspace=api-gateway
+```
+
+En otra terminal (puerto predeterminado `3000`; ajústalo si cambiaste `PORT`):
+
+```bash
+curl --fail-with-body -i http://localhost:3000/health
+```
+
+Comprueba el código `200`, `Content-Type: application/json`,
+`Cache-Control: no-store` y los tres campos del ejemplo. También está disponible
+en Swagger: `http://localhost:3000/api/docs/gateway`.
+
+Las pruebas automáticas verifican el contrato completo, la fecha actual en UTC,
+su actualización entre consultas y el acceso HTTP sin autenticación en ambas rutas:
+
+```bash
+# Desde backend
+npm run test --workspace=api-gateway -- --runInBand
+npm run test:e2e --workspace=api-gateway -- --runInBand
+```
+
 ## Proxy hacia Auth Service (#91)
 
 El Gateway reenvía `/api/v1/auth` y sus subrutas al origen definido por
