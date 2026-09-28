@@ -29,6 +29,19 @@ Para garantizar la estabilidad y reproducibilidad de las pruebas automatizadas, 
    - Se simuló una respuesta exitosa con código `200` y con la estructura esperada según el modelo de datos (lista de `RawCatalogSubject` con relaciones como `career` y `professors`).
    - **Resultado:** ✅ Éxito. Los componentes hijos (`CatalogGrid`) renderizan correctamente el nombre, código y semestre de la asignatura desde el endpoint.
 
+### Pruebas de Integración con Servicios Reales
+
+Para validar la correcta integración del frontend con los servicios backend desplegados, se realizaron pruebas manuales de conexión a los endpoints reales.
+
+1. **Flujo de Catálogo:**
+   - **Pasos:** Navegar a la vista de Catálogo (`/catalog`) habiendo levantado la infraestructura y los servicios de `api-gateway` y `catalog-service`.
+   - **Resultado Esperado:** La página carga el listado de asignaturas, mostrando detalles como código, nombre y semestre obtenidos directamente desde la base de datos real.
+   - **Resultado Obtenido (Evidencia):** Se visualizaron correctamente las asignaturas correspondientes a los registros de la base de datos. Al conectar con el endpoint `GET /api/v1/catalog/filter`, los datos retornaron estado HTTP 200 y se reflejaron dinámicamente en la UI.
+2. **Flujo de Login:**
+   - **Pasos:** Ingresar credenciales válidas en el formulario de la página de Login y enviar, interactuando con el `auth-service`.
+   - **Resultado Esperado:** El sistema autentica al usuario, almacena el token JWT retornado y redirige al dashboard.
+   - **Resultado Obtenido (Evidencia):** La petición `POST /api/v1/auth/login` retornó un estado HTTP 200 con el token. La aplicación almacenó correctamente la sesión y efectuó la redirección esperada.
+
 ## Incidencias y Desajustes Encontrados
 
 Durante la prueba de los endpoints reales, se registraron y documentaron las siguientes incidencias:
@@ -37,14 +50,16 @@ Durante la prueba de los endpoints reales, se registraron y documentaron las sig
    - **Pasos:** Iniciar Docker Compose, abrir la aplicación web y navegar a la página de catálogo (o login) esperando respuesta del backend.
    - **Resultado Esperado:** La página debería mostrar el catálogo real y permitir inicio de sesión.
    - **Resultado Obtenido (Evidencia):** El endpoint en `http://localhost:3002/api/v1/catalog/filter` arroja _Connection Refused_.
-   - **Resolución y Corrección de directrices:** Se aclaró la ejecución del backend. **Docker Compose levanta únicamente la infraestructura base** (Bases de datos, Redis, RabbitMQ, etc.). **Los microservicios correspondientes (Catalog, Auth, API Gateway) se ejecutan por separado** (vía scripts de NPM, ej. `npm run start:dev`). Por ello, las pruebas automatizadas del frontend se aíslan con mocks globales.
+   - **Resolución y Corrección de directrices:** Se aclaró la ejecución del backend. **Docker Compose levanta únicamente la infraestructura base (incluyendo PostgreSQL y MinIO, pero excluyendo explícitamente Redis y RabbitMQ)**. **Los microservicios correspondientes (Catalog, Auth, API Gateway) se ejecutan por separado** (vía scripts de NPM, ej. `npm run start:dev`). Por ello, las pruebas automatizadas del frontend se aíslan con mocks globales.
 
-2. **Detalles de Contrato de Error:**
-   - **Pasos:** Simular una interrupción en el API Gateway o un error de CORS, realizando una petición de catálogo.
-   - **Resultado Esperado:** El cliente debería poder extraer el objeto de error estándar `{ statusCode, message, error }`.
-   - **Resultado Obtenido (Evidencia):** En caídas drásticas (502 o CORS), la respuesta omite la propiedad `error`, lo que puede generar fallos en el frontend si asume que siempre existirá.
-   - **Resolución:** El frontend maneja de manera genérica el fallo (bloque `!response.ok`), utilizando un mensaje de error estándar ("No se pudo cargar el catálogo") que permite al usuario saber qué ocurre sin romper la aplicación.
+2. **Detalles de Contrato de Error y Explicación de CORS:**
+   - **Pasos:** Simular una interrupción en el API Gateway (Error 502 Bad Gateway) y evaluar el comportamiento ante un bloqueo por CORS.
+   - **Resultado Esperado:** El cliente debería poder extraer un objeto de error estándar y diferenciar caídas del servidor respecto a bloqueos de red.
+   - **Resultado Obtenido (Evidencia):** Se clarificó la diferencia técnica entre ambos casos:
+     - **Error del Servidor (502):** La respuesta HTTP llega al frontend pero con un estado no exitoso (`!response.ok`). En caídas drásticas, la respuesta omite la propiedad `error` esperada. Este fue el escenario principal que se verificó, provocando fallos previos en el frontend al intentar parsear un contrato incompleto.
+     - **Bloqueo por CORS:** Un bloqueo por CORS rechaza la solicitud de fetch a nivel de red/navegador. A diferencia del error 502, un fallo de CORS **no devuelve una respuesta JSON ni pasa por la validación `!response.ok`**, sino que lanza una excepción de red directamente en la promesa del fetch.
+   - **Resolución:** El frontend ahora maneja de manera genérica el fallo al evaluar `!response.ok` (para respuestas HTTP defectuosas como un 502) o al capturar el rechazo de la promesa (para errores de CORS/red), utilizando un mensaje de error estándar ("No se pudo cargar el catálogo") que permite al usuario saber qué ocurre sin romper la aplicación.
 
 ## Conclusión
 
-La integración del listado del catálogo es robusta frente a estados intermedios. Los Spinners y Alertas de error funcionan según lo esperado, cumpliendo con los últimos ajustes de la Issue #128 en cuanto a manejo global de mocks y documentación de infraestructura.
+La integración del listado del catálogo es robusta frente a estados intermedios. Los Spinners y Alertas de error funcionan según lo esperado, cumpliendo con los últimos ajustes de la Issue #128 en cuanto a manejo global de mocks, documentación de infraestructura, y clarificación sobre errores de red (CORS) frente a errores HTTP del servidor.
