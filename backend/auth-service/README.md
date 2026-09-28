@@ -159,9 +159,13 @@ npm run test:integration # persistencia real; requiere PostgreSQL migrado y .env
 npm run lint
 ```
 
-El test HTTP de health sustituye Prisma para ejecutarse sin PostgreSQL. Para
-comprobar la conexión real, inicia `db-auth`, aplica las migraciones y ejecuta
-`npm run start:dev`: debe aparecer `Conexión a PostgreSQL establecida`.
+`GET /api/v1/health` verifica además la conexión a PostgreSQL con `SELECT 1`
+vía Prisma: responde `200` con `database: "connected"` cuando la base responde y
+`503` con `database: "disconnected"` cuando no (el cuerpo conserva `status`,
+`service` y `timestamp` en ambos casos). Los tests de health sustituyen Prisma
+con un stub para ejecutarse sin PostgreSQL. Para comprobar la conexión real,
+inicia `db-auth`, aplica las migraciones y ejecuta `npm run start:dev`: debe
+aparecer `Conexión a PostgreSQL establecida`.
 
 ### Migración local de usuarios (#52)
 

@@ -44,6 +44,8 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
   @override
   Widget build(BuildContext context) {
     final catalogAsync = ref.watch(catalogListProvider);
+    final activeQuery = ref.watch(catalogSearchQueryProvider);
+    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -56,7 +58,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: SearchBar(
               controller: _searchController,
-              hintText: 'Buscar apuntes, libros, ramos...',
+              hintText: 'Buscar asignaturas, carreras...',
               leading: const Icon(Icons.search),
               trailing: [
                 if (_searchController.text.isNotEmpty)
@@ -74,9 +76,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
                 ref.invalidate(catalogListProvider);
                 try {
                   await ref.read(catalogListProvider.future);
-                } catch (_) {
-                  // Riverpod maneja el error internamente y actualiza el provider a AsyncError
-                }
+                } catch (_) {}
               },
               child: catalogAsync.when(
                 loading: () =>
@@ -92,12 +92,17 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
                 ),
                 data: (List<CatalogItem> materials) {
                   if (materials.isEmpty) {
+                    final isFiltering = activeQuery.isNotEmpty;
                     return Center(
                       child: SingleChildScrollView(
                         physics: const AlwaysScrollableScrollPhysics(),
                         child: EmptyState(
-                          title: 'No se encontraron materiales',
-                          subtitle: 'Prueba buscando con otro término o revisa la ortografía.',
+                          title: isFiltering
+                              ? 'Sin resultados para "$activeQuery"'
+                              : 'No se encontraron materiales',
+                          subtitle: isFiltering
+                              ? 'Intenta con otro término o revisa la ortografía.'
+                              : 'Por el momento no hay ramos cargados en el sistema.',
                         ),
                       ),
                     );
@@ -105,9 +110,22 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
 
                   return ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    itemCount: materials.length,
+                    itemCount: materials.length + 1,
                     itemBuilder: (context, index) {
-                      final item = materials[index];
+                      if (index == 0) {
+                        return Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 6),
+                          child: Text(
+                            '${materials.length} ${materials.length == 1 ? 'resultado encontrado' : 'resultados encontrados'}',
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: theme.colorScheme.outline,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      }
+
+                      final item = materials[index - 1];
                       return MaterialCard(
                         title: item.title,
                         author: item.author,
