@@ -232,3 +232,46 @@ Estas pruebas no necesitan HTTP, PostgreSQL ni servicios externos. El login
 actual es un mock: no verifica usuarios ni contraseñas y emite un JWT sin firma.
 La verificación de credenciales, la firma y validación de tokens, la renovación
 y la revocación de sesiones requieren pruebas cuando se implementen esos flujos.
+
+### Ejecución de pruebas en catalog.http
+
+## Requisitos para funcionamiento
+
+* Extensión **REST Client** en VSC
+
+* Tener levantados los contenedores Docker del proyecto
+```bash
+  docker compose up -d
+```
+
+**Base de Datos Migrada y Poblada (Seed):**
+* Es imprescindible contar con la estructura de tablas y los datos base (Universidades, Carreras, Asignaturas) precargados en catalog-service, para ello ejecutar dentro de catalog-service:
+
+```bash
+  npx prisma migrate dev
+  npx prisma db seed
+```
+
+* Tener corriendo la aplicación o los microservicios necesarios (`api-gateway` en el puerto `3000` y `catalog-service` en el puerto `3002`) mediante 2 terminales separadas cada una corriendo 1 de los servicios usando dentro de su respectiva carpeta del microservicio:
+
+```bash
+  npm run start: dev
+```
+
+## Para levantar los servicios
+
+* Moverse a cada microservicio en su respectiva terminal dedicada y ejecutar:
+
+```bash
+  npm run start:dev
+```
+
+## Una vez corriendo los 2 servicios:
+
+# Obtención de IDs para las variables
+1. Ejecutar **1.1** (`GET /catalog`) para obtener `@universityId`, `@careerId` y `@subjectId`.
+2. Ejecutar **1.2a** (`GET /catalog/filter`) para buscar la asignatura seleccionada y copiar el ID de uno de sus profesores en `@professorId` y sus respectivos UUIDs de `@universityId`, `@careerId` y `@subjectId` relacionados con el profesor.
+
+## Verificaciones Manuales Esperadas
+- **Campo `semester`:** En **1.1 / 1.1b**, verificar que cada asignatura contenga la propiedad `semester`.
+- **Datos de Creación:** En **2.3**, verificar que el objeto devuelto en la respuesta `201 Created` coincida en `name`, `code`, `semester` y `careerId` con el cuerpo enviado.
