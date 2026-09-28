@@ -1,3 +1,4 @@
+import { configureRoutes } from '../src/configure-routes';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
@@ -48,7 +49,7 @@ describe('Gateway → Auth (HTTP)', () => {
       })
       .compile();
     gateway = module.createNestApplication();
-    gateway.setGlobalPrefix('api/v1');
+    configureRoutes(gateway);
     await gateway.init();
   });
 
