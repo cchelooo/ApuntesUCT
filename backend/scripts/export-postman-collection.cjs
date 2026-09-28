@@ -256,11 +256,15 @@ function buildItem({
   components,
 }) {
   const requestBody = extraBody ?? buildBody(operation ?? {}, components);
+  const headers = buildHeaders(operation ?? {}, components);
+  if (extraBody) {
+    headers.push({ key: 'Content-Type', value: 'application/json', description: '' });
+  }
   return {
     name,
     request: {
       method: method.toUpperCase(),
-      header: buildHeaders(operation ?? {}, components),
+      header: headers,
       ...(requestBody ? { body: requestBody } : {}),
       url: buildUrl(service.baseUrlVariable, apiPath, query ?? []),
       description: description ?? operation?.description ?? `${apiPath} (${service.title})`,
@@ -363,6 +367,22 @@ const GATEWAY_PROXIED = [
   },
 ];
 
+function disambiguateNames(folders) {
+  const counts = new Map();
+  for (const folder of folders) {
+    for (const item of folder.item) {
+      counts.set(item.name, (counts.get(item.name) ?? 0) + 1);
+    }
+  }
+  for (const folder of folders) {
+    for (const item of folder.item) {
+      if (counts.get(item.name) > 1) {
+        item.name = `${folder.name}: ${item.name}`;
+      }
+    }
+  }
+}
+
 async function main() {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
@@ -380,6 +400,8 @@ async function main() {
       ],
     });
   }
+
+  disambiguateNames(items);
 
   const collection = {
     info: {

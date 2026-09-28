@@ -10,7 +10,7 @@
       "description": "Punto único de entrada a los microservicios de ApuntesUCT.",
       "item": [
         {
-          "name": "Verifica el estado del servicio",
+          "name": "API Gateway: Verifica el estado del servicio",
           "request": {
             "method": "GET",
             "header": [],
@@ -65,7 +65,13 @@
           "name": "Login mock a través del gateway",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": ""
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{mockEmail}}\",\n  \"password\": \"{{mockPassword}}\"\n}",
@@ -103,7 +109,7 @@
       "description": "Microservicio de identidad, autenticación, usuarios y roles.",
       "item": [
         {
-          "name": "Verifica el estado del servicio",
+          "name": "Auth Service: Verifica el estado del servicio",
           "request": {
             "method": "GET",
             "header": [],
@@ -176,7 +182,7 @@
       "description": "Microservicio de universidad, carrera, asignatura, profesor y sus relaciones.",
       "item": [
         {
-          "name": "Verifica el estado del servicio",
+          "name": "Catalog Service: Verifica el estado del servicio",
           "request": {
             "method": "GET",
             "header": [],
