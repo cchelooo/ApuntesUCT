@@ -16,9 +16,21 @@ describe('HealthController', () => {
     expect(controller).toBeDefined();
   });
 
-  it('should return health status', () => {
-    const response = controller.check();
-    expect(response).toHaveProperty('status', 'ok');
-    expect(response).toHaveProperty('service', 'API Gateway');
+  it('returns the gateway status with the current UTC timestamp on each check', () => {
+    jest.useFakeTimers();
+
+    try {
+      jest.setSystemTime(new Date('2026-09-28T12:00:00.000Z'));
+      expect(controller.check()).toEqual({
+        status: 'ok',
+        service: 'API Gateway',
+        timestamp: '2026-09-28T12:00:00.000Z',
+      });
+
+      jest.advanceTimersByTime(1000);
+      expect(controller.check().timestamp).toBe('2026-09-28T12:00:01.000Z');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

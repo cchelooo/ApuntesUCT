@@ -25,35 +25,39 @@ class CatalogRepository {
 
       final List<CatalogItem> items = [];
 
-      // Parseo del árbol: Universidad -> Carreras -> Asignaturas
+      if (rawData == null) {
+        return items;
+      }
+
+      // Parseo defensivo del arbol: Universidad -> Carreras -> Asignaturas
       if (rawData is List) {
         for (final uni in rawData) {
-          if (uni is Map<String, dynamic>) {
-            final uniName = uni['name'] as String? ?? 'UCT';
-            final careers = uni['careers'] as List<dynamic>? ?? [];
+          if (uni is! Map<String, dynamic>) continue;
 
-            if (careers.isEmpty) {
-              items.add(CatalogItem.fromJson(uni));
-            } else {
-              for (final car in careers) {
-                if (car is Map<String, dynamic>) {
-                  final carName = car['name'] as String? ?? '';
-                  final subjects = car['subjects'] as List<dynamic>? ?? [];
+          final uniName = uni['name'] as String? ?? 'UCT';
+          final careers = uni['careers'] as List<dynamic>? ?? [];
 
-                  for (final sub in subjects) {
-                    if (sub is Map<String, dynamic>) {
-                      items.add(
-                        CatalogItem(
-                          id: sub['id']?.toString() ?? '',
-                          title: sub['name'] as String? ?? 'Asignatura',
-                          author: uniName,
-                          subject: carName.isNotEmpty ? carName : 'General',
-                          description: sub['description'] as String?,
-                        ),
-                      );
-                    }
-                  }
-                }
+          if (careers.isEmpty) {
+            items.add(CatalogItem.fromJson(uni));
+          } else {
+            for (final car in careers) {
+              if (car is! Map<String, dynamic>) continue;
+
+              final carName = car['name'] as String? ?? '';
+              final subjects = car['subjects'] as List<dynamic>? ?? [];
+
+              for (final sub in subjects) {
+                if (sub is! Map<String, dynamic>) continue;
+
+                items.add(
+                  CatalogItem(
+                    id: sub['id']?.toString() ?? '',
+                    title: sub['name'] as String? ?? 'Asignatura',
+                    author: uniName,
+                    subject: carName.isNotEmpty ? carName : 'General',
+                    description: sub['description'] as String?,
+                  ),
+                );
               }
             }
           }
@@ -67,7 +71,7 @@ class CatalogRepository {
         }
       }
 
-      // Filtrado en memoria/cliente
+      // Filtrado en memoria si search viene informado
       if (search != null && search.trim().isNotEmpty) {
         final query = search.trim().toLowerCase();
         return items.where((item) {
@@ -79,8 +83,10 @@ class CatalogRepository {
 
       return items;
     } on DioException {
+      // Propagar el DioException para que Riverpod exponga AsyncError
       rethrow;
     } catch (_) {
+      // Si el formato es totalmente ajeno o corrupto, retornar lista vacia
       return [];
     }
   }

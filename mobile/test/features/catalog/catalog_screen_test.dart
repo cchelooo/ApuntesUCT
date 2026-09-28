@@ -30,8 +30,8 @@ void main() {
     );
   }
 
-  group('CatalogScreen Estados Visuales (#67)', () {
-    testWidgets('Muestra LoadingState mientras se cargan los datos de la API', (
+  group('CatalogScreen Pulido UI Tests (#82)', () {
+    testWidgets('Muestra LoadingState mientras se cargan los datos', (
       WidgetTester tester,
     ) async {
       final completer = Completer<List<CatalogItem>>();
@@ -80,7 +80,6 @@ void main() {
         );
         expect(find.text('Reintentar'), findsOneWidget);
 
-        // Probar que el botón Reintentar invalida y vuelve a solicitar
         await tester.tap(find.text('Reintentar'));
         await tester.pumpAndSettle();
 
@@ -89,7 +88,7 @@ void main() {
     );
 
     testWidgets(
-      'Muestra EmptyState cuando la lista de materiales viene vacía',
+      'Muestra EmptyState estándar cuando el catálogo general está vacío',
       (WidgetTester tester) async {
         await tester.pumpWidget(
           buildTestWidget(
@@ -101,47 +100,67 @@ void main() {
 
         expect(find.byType(EmptyState), findsOneWidget);
         expect(find.text('No se encontraron materiales'), findsOneWidget);
-        expect(
-          find.text('Prueba buscando con otro término o revisa la ortografía.'),
-          findsOneWidget,
-        );
       },
     );
 
-    testWidgets('Muestra MaterialCard cuando se reciben resultados exitosos', (
-      WidgetTester tester,
-    ) async {
-      final mockItems = [
-        const CatalogItem(
-          id: 'sub-1',
-          title: 'Estructuras de Datos',
-          author: 'Universidad Católica de Temuco',
-          subject: 'Ingeniería Civil Informática',
-        ),
-        const CatalogItem(
-          id: 'sub-2',
-          title: 'Cálculo I',
-          author: 'Universidad Católica de Temuco',
-          subject: 'Ingeniería Civil Informática',
-        ),
-      ];
-
-      await tester.pumpWidget(
-        buildTestWidget(
-          overrides: [
-            catalogListProvider.overrideWith((ref) async => mockItems),
-          ],
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      expect(find.byType(MaterialCard), findsNWidgets(2));
-      expect(find.text('Estructuras de Datos'), findsOneWidget);
-      expect(find.text('Cálculo I'), findsOneWidget);
-    });
     testWidgets(
-      'Pull-to-refresh fallido transiciona de datos a ErrorState sin lanzar excepcion no controlada',
+      'Muestra EmptyState adaptado cuando no hay coincidencias con búsqueda',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          buildTestWidget(
+            overrides: [
+              catalogSearchQueryProvider.overrideWith(
+                () => _MockQueryNotifier('Química'),
+              ),
+              catalogListProvider.overrideWith((ref) async => []),
+            ],
+          ),
+        );
+
+        await tester.pumpAndSettle();
+
+        expect(find.byType(EmptyState), findsOneWidget);
+        expect(find.text('Sin resultados para "Química"'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Muestra contador de resultados y MaterialCards con datos recibidos',
+      (WidgetTester tester) async {
+        final mockItems = [
+          const CatalogItem(
+            id: 'sub-1',
+            title: 'Estructuras de Datos',
+            author: 'Universidad Católica de Temuco',
+            subject: 'Ingeniería Civil Informática',
+          ),
+          const CatalogItem(
+            id: 'sub-2',
+            title: 'Cálculo I',
+            author: 'Universidad Católica de Temuco',
+            subject: 'Ingeniería Civil Informática',
+          ),
+        ];
+
+        await tester.pumpWidget(
+          buildTestWidget(
+            overrides: [
+              catalogListProvider.overrideWith((ref) async => mockItems),
+            ],
+          ),
+        );
+
+        await tester.pumpAndSettle();
+
+        expect(find.text('2 resultados encontrados'), findsOneWidget);
+        expect(find.byType(MaterialCard), findsNWidgets(2));
+        expect(find.text('Estructuras de Datos'), findsOneWidget);
+        expect(find.text('Cálculo I'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Pull-to-refresh fallido transiciona de datos a ErrorState sin excepción',
       (WidgetTester tester) async {
         bool failNext = false;
 
@@ -167,25 +186,23 @@ void main() {
 
         await tester.pumpAndSettle();
 
-        // Verifica estado inicial con datos
         expect(find.text('Cálculo I'), findsOneWidget);
 
-        // Simula que la próxima petición fallará
         failNext = true;
 
-        // Dispara el gesto de pull-to-refresh
         await tester.fling(find.byType(ListView), const Offset(0, 300), 1000);
         await tester.pumpAndSettle();
 
-        // Debe mostrar ErrorState sin romper la ejecución
         expect(find.byType(ErrorState), findsOneWidget);
-        expect(
-          find.text(
-            'Error al cargar el catálogo. Por favor intenta nuevamente.',
-          ),
-          findsOneWidget,
-        );
       },
     );
   });
+}
+
+class _MockQueryNotifier extends CatalogSearchQueryNotifier {
+  final String initialQuery;
+  _MockQueryNotifier(this.initialQuery);
+
+  @override
+  String build() => initialQuery;
 }

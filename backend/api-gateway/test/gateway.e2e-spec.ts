@@ -1,3 +1,4 @@
+import { configureRoutes } from '../src/configure-routes';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, HttpStatus, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
@@ -64,7 +65,7 @@ describe('API Gateway - Integration & Proxying Tests (E2E)', () => {
 
     app = moduleFixture.createNestApplication();
 
-    app.setGlobalPrefix('api/v1');
+    configureRoutes(app);
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
