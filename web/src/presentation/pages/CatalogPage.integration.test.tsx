@@ -23,6 +23,7 @@ describe('Pruebas de Integración - CatalogPage', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     queryClient.clear();
   });
 
