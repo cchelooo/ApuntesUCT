@@ -4,11 +4,14 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:apuntesuct_mobile/core/theme/app_theme.dart';
 import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart';
+import 'package:apuntesuct_mobile/features/catalog/data/catalog_repository.dart';
 import 'package:apuntesuct_mobile/main.dart';
 import 'package:apuntesuct_mobile/providers/theme_mode_provider.dart';
 import 'package:apuntesuct_mobile/features/home/presentation/home_screen.dart';
 import 'package:apuntesuct_mobile/features/catalog/presentation/screens/catalog_screen.dart';
 import 'package:apuntesuct_mobile/features/profile/presentation/profile_screen.dart';
+
+import '../helpers/fake_catalog_repository.dart';
 
 void main() {
   group('HomeScreen Tests', () {
@@ -148,6 +151,9 @@ void main() {
           overrides: [
             authRepositoryProvider.overrideWith(
               (ref) => const MockAuthRepository(simulatedDelay: Duration.zero),
+            ),
+            catalogRepositoryProvider.overrideWithValue(
+              const FakeCatalogRepository(),
             ),
           ],
           child: const MyApp(),
