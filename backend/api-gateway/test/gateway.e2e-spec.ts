@@ -13,7 +13,7 @@ describe('API Gateway - Integration & Proxying Tests (E2E)', () => {
   let lastCapturedRequest: {
     url?: string;
     headers?: http.IncomingHttpHeaders;
-    body?: any;
+    body?: Record<string, unknown> | null; // 👈 Corregido: Reemplazado 'any' por Record<string, unknown> | null
   } = {};
 
   const mockValidToken =
@@ -22,15 +22,15 @@ describe('API Gateway - Integration & Proxying Tests (E2E)', () => {
   beforeAll(async () => {
     // 1. Crear el servidor HTTP simulado (Downstream Mock)
     mockDownstreamServer = http.createServer((req, res) => {
-      const bodyChunks: any[] = [];
+      const bodyChunks: Buffer[] = []; // 👈 Corregido: Reemplazado 'any[]' por 'Buffer[]'
       req
-        .on('data', (chunk) => bodyChunks.push(chunk))
+        .on('data', (chunk: Buffer) => bodyChunks.push(chunk))
         .on('end', () => {
           const rawBody = Buffer.concat(bodyChunks).toString();
           lastCapturedRequest = {
             url: req.url,
             headers: req.headers,
-            body: rawBody ? JSON.parse(rawBody) : null,
+            body: rawBody ? (JSON.parse(rawBody) as Record<string, unknown>) : null,
           };
 
           // Responder 200 OK con el payload capturado o simulado

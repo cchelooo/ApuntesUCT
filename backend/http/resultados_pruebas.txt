@@ -1,0 +1,28 @@
+Resultados pruebas HTTP (Número de prueba, código de salida, mensaje):
+
+1. Pruebas del Catálogo
+
+1.1: 200 OK, devuelve árbol jerárquico con universidad, carrera y asignaturas
+1.1b: 200 OK, devuelve árbol jerárquico directo (catalog-service) con universidad, carrera y asignaturas
+1.2a: 200 OK, devuelve universidad, carrera, asignaturas y profesores
+1.2b: 200 OK, devuelve la relación de universidad, carrera, asignatura con el profesor relacionado.
+1.2c: 200 OK, retorna arreglo vacío
+1.3a: 400 Bad Request, “universityId must be an UUID”
+1.3b1: 400 Bad Request, "year must not be greater tan 2100", "year must not be less than 2000", "year must be an integer number"
+1.3b2: 400 Bad Request, “year must not be less than 2000”
+1.3c: 400 Bad Request, "Secuencia inválida: Para filtrar por Asignatura (subjectId) debe especificar Carrera (careerId)."
+1.3d: 400 Bad Request, "Secuencia inválida: Para filtrar por Profesor (professorId) debe especificar Asignatura (subjectId)."
+1.3e: 400 Bad Request, "Secuencia inválida: Para filtrar por Año (year) debe especificar Profesor (professorId)."
+1.3f: 400 Bad Request, "Secuencia inválida: Para filtrar por Tipo (type) debe especificar Año (year)."
+1.3g: 400 Bad Request, "Secuencia inválida: Para filtrar por Carrera (careerId) debe especificar Universidad (universityId)."
+1.4a: 501 Not Implemented, "Los filtros por Año y Tipo requieren el módulo de Recursos (Resource), el cual está pendiente de integración en la base de datos."
+1.4b: 501 Not Implemented, "Los filtros por Año y Tipo requieren el módulo de Recursos (Resource), el cual está pendiente de integración en la base de datos."
+
+2. Gestión de Asignaturas
+
+2.1: 404 Not Found, "La carrera con ID 00000000-0000-0000-0000-000000000000 no existe."
+2.2: 400 Bad Request, ": [ "careerId should not be empty", "careerId must be a UUID", "name should not be empty", "name must be a string", "semester should not be empty", "semester must not be less than 1", "semester must be an integer number" ],
+2.3: 201 Created, "id": "7ae49bea-899c-4bdb-aa83-0ab372b94aae", "careerId": "c4e13339-2dd8-49cf-8715-b8598a8dbcdc", "code": "ICI-412-TMP", "semester": 5, "name": "Arquitectura de Software", "description": null, "active": true, "createdAt": "2026-09-28T21:29:06.031Z", "updatedAt": "2026-09-28T21:29:06.031Z"
+2.4: 409 Conflict, "message": "Ya existe una asignatura con el código 'ICI-412-TMP' registrada en esta carrera.", "error": "Conflict", "statusCode": 409
+2.5: 200 OK, "id": "7ae49bea-899c-4bdb-aa83-0ab372b94aae", "careerId": "c4e13339-2dd8-49cf-8715-b8598a8dbcdc", "code": "ICI-412-TMP", "semester": 5, "name": "Arquitectura de Software", "description": null, "active": true, "createdAt": "2026-09-28T21:29:06.031Z", "updatedAt": "2026-09-28T21:29:06.031Z"
+2.6: 404 Not Found, "message": "La asignatura con ID 00000000-0000-0000-0000-000000000000 no existe.", "error": "Not Found", "statusCode": 404
