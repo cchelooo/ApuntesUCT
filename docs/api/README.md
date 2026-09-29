@@ -18,18 +18,18 @@ seleccionar ambos archivos. Insomnia crea el environment y los request groups.
 
 ## Variables
 
-| Variable                                | Valor por defecto       | Uso                                                                                                                                     |
-| --------------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `gatewayUrl`                            | `http://localhost:3000` | API Gateway (proxy de `/api/v1/auth` y `/api/v1/catalog`)                                                                               |
-| `authUrl`                               | `http://localhost:3001` | Auth Service directo                                                                                                                    |
-| `catalogUrl`                            | `http://localhost:3002` | Catalog Service directo                                                                                                                 |
-| `mockEmail`                             | `estudiante@alu.uct.cl` | Login mock: acepta cualquier correo válido                                                                                              |
-| `mockPassword`                          | `demo`                  | Login mock: al menos un carácter no blanco                                                                                              |
-| `accessToken`                           | _(vacío)_               | Lo rellena el test del login; se inyecta como `Bearer` en las peticiones de catálogo                                                    |
-| `universityId`, `careerId`, `subjectId` | UUID de ejemplo         | Sustituye por los ids reales de `GET /api/v1/catalog`                                                                                   |
-| `professorId`                           | UUID de ejemplo         | **No** viene en `GET /api/v1/catalog`: obténlo de `GET /api/v1/catalog/filter` sin filtros, en el array `professors` de cada asignatura |
-| `catalogYear`                           | `2026`                  | Parámetro `year` del filtro (responde `501`)                                                                                            |
-| `catalogType`                           | `apunte`                | Parámetro `type` del filtro (responde `501`)                                                                                            |
+| Variable                                | Valor por defecto       | Uso                                                                                                                                                                                                                                                                   |
+| --------------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gatewayUrl`                            | `http://localhost:3000` | API Gateway (proxy de `/api/v1/auth` y `/api/v1/catalog`)                                                                                                                                                                                                             |
+| `authUrl`                               | `http://localhost:3001` | Auth Service directo                                                                                                                                                                                                                                                  |
+| `catalogUrl`                            | `http://localhost:3002` | Catalog Service directo                                                                                                                                                                                                                                               |
+| `mockEmail`                             | `estudiante@alu.uct.cl` | Login mock: acepta cualquier correo válido                                                                                                                                                                                                                            |
+| `mockPassword`                          | `demo`                  | Login mock: al menos un carácter no blanco                                                                                                                                                                                                                            |
+| `accessToken`                           | _(vacío)_               | **No está en el environment a propósito.** Lo rellena el test del login y vive solo en la colección: en Postman la variable de environment tiene prioridad sobre la de colección, así que si estuviera aquí (vacía) taparía el token y se enviaría `Bearer ` sin nada |
+| `universityId`, `careerId`, `subjectId` | UUID de ejemplo         | Sustituye por los ids reales de `GET /api/v1/catalog`                                                                                                                                                                                                                 |
+| `professorId`                           | UUID de ejemplo         | **No** viene en `GET /api/v1/catalog`: obténlo de `GET /api/v1/catalog/filter` sin filtros, en el array `professors` de cada asignatura                                                                                                                               |
+| `catalogYear`                           | `2026`                  | Parámetro `year` del filtro (responde `501`)                                                                                                                                                                                                                          |
+| `catalogType`                           | `apunte`                | Parámetro `type` del filtro (responde `501`)                                                                                                                                                                                                                          |
 
 ## Requisitos para ejecutar las peticiones
 
@@ -48,7 +48,10 @@ seleccionar ambos archivos. Insomnia crea el environment y los request groups.
   `accessToken` de la respuesta en la variable `accessToken` de la colección.
 - **Bearer**: las peticiones de catálogo (directas y vía gateway) llevan
   `Authorization: Bearer {{accessToken}}`. Hoy ningún endpoint lo valida; queda
-  preparado para cuando exista autenticación real.
+  preparado para cuando exista autenticación real. Ejecuta primero una de las dos
+  peticiones de login para que el token quede disponible: la variable
+  `accessToken` se guarda **en la colección**, no en el environment, para que un
+  valor vacío del environment no la sobrescriba.
 - **Filtro del catálogo**: el orden jerárquico es obligatorio
   (`universityId` → `careerId` → `subjectId` → `professorId`); sin el orden
   completo responde `400 Bad Request`.

@@ -47,7 +47,7 @@ const VARIABLES = [
   { key: 'catalogUrl', value: 'http://localhost:3002' },
   { key: 'mockEmail', value: 'estudiante@alu.uct.cl' },
   { key: 'mockPassword', value: 'demo' },
-  { key: 'accessToken', value: '' },
+  { key: 'accessToken', value: '', runtimeOnly: true },
   { key: 'universityId', value: '00000000-0000-4000-8000-000000000001' },
   { key: 'careerId', value: '00000000-0000-4000-8000-000000000002' },
   { key: 'subjectId', value: '00000000-0000-4000-8000-000000000003' },
@@ -471,7 +471,10 @@ async function main() {
   const environment = {
     id: 'apuntesuct-local',
     name: 'ApuntesUCT local',
-    values: VARIABLES.map((variable) => ({
+    // `runtimeOnly` no se exporta al environment: en Postman la variable de
+    // environment tiene prioridad sobre la de colección, así que un valor vacío
+    // en el environment taparía el accessToken que guarda el test del login.
+    values: VARIABLES.filter((variable) => !variable.runtimeOnly).map((variable) => ({
       key: variable.key,
       value: variable.value,
       type: 'default',
