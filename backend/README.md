@@ -232,7 +232,6 @@ actual es un mock: no verifica usuarios ni contraseñas y emite un JWT sin firma
 La verificación de credenciales, la firma y validación de tokens, la renovación
 y la revocación de sesiones requieren pruebas cuando se implementen esos flujos.
 
-<<<<<<< HEAD
 ## Deuda técnica
 
 Registro de la deuda conocida del backend. La mayoría corresponde a decisiones de
@@ -263,7 +262,7 @@ constancia explícita para priorizar su cierre antes de producción.
 | Paginación del catálogo | Los endpoints no implementan `page`/`limit` (propuesto, no implementado) | `docs/mobile/integracion-api-mobile.md` |
 | Autenticación en Mobile | El login ya consume el gateway mediante `DioAuthRepository`. `MockAuthRepository` queda para el modo demo (`--dart-define=AUTH_DEMO_MODE=true`) y como fallback de las operaciones que el backend aún no expone, como registro y logout | `mobile/lib/features/auth/data/` |
 | Swagger por servicio | Cada microservicio expone su propia especificación; no hay una spec unificada del ecosistema | índice `/api/docs` del gateway |
-=======
+
 ### Ejecución de pruebas en catalog.http
 
 ## Requisitos para funcionamiento
@@ -306,4 +305,3 @@ constancia explícita para priorizar su cierre antes de producción.
 ## Verificaciones Manuales Esperadas
 - **Campo `semester`:** En **1.1 / 1.1b**, verificar que cada asignatura contenga la propiedad `semester`.
 - **Datos de Creación:** En **2.3**, verificar que el objeto devuelto en la respuesta `201 Created` coincida en `name`, `code`, `semester` y `careerId` con el cuerpo enviado.
->>>>>>> origin/main
