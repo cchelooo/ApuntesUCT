@@ -36,11 +36,11 @@ Para validar la correcta integración del frontend con los servicios backend des
 1. **Flujo de Catálogo:**
    - **Pasos:** Navegar a la vista de Catálogo (`/catalog`) habiendo levantado la infraestructura y los servicios de `api-gateway` y `catalog-service`.
    - **Resultado Esperado:** La página carga el listado de asignaturas, mostrando detalles como código, nombre y semestre obtenidos directamente desde la base de datos real.
-   - **Resultado Obtenido (Evidencia):** Se visualizaron correctamente las asignaturas correspondientes a los registros de la base de datos. Al conectar con el endpoint `GET /api/v1/catalog/filter`, los datos retornaron estado HTTP 200 y se reflejaron dinámicamente en la UI.
+   - **Resultado Obtenido (Evidencia):** Funciona correctamente; responde HTTP 200 y muestra los datos dinámicos coincidentes con los registros existentes en PostgreSQL.
 2. **Flujo de Login:**
    - **Pasos:** Ingresar credenciales válidas en el formulario de la página de Login y enviar, interactuando con el `auth-service`.
    - **Resultado Esperado:** El sistema autentica al usuario, almacena el token JWT retornado y redirige al dashboard.
-   - **Resultado Obtenido (Evidencia):** La petición `POST /api/v1/auth/login` retornó un estado HTTP 200 con el token. La aplicación almacenó correctamente la sesión y efectuó la redirección esperada.
+   - **Resultado Obtenido (Evidencia):** Responde HTTP 200 devolviendo un token simulado y la interfaz muestra el mensaje de éxito. Sin embargo, **no almacena la sesión ni redirige** (permanece en `/login`), lo cual queda explícitamente registrado como una limitación actual del flujo.
 
 ## Incidencias y Desajustes Encontrados
 
@@ -56,9 +56,9 @@ Durante la prueba de los endpoints reales, se registraron y documentaron las sig
    - **Pasos:** Simular una interrupción en el API Gateway (Error 502 Bad Gateway) y evaluar el comportamiento ante un bloqueo por CORS.
    - **Resultado Esperado:** El cliente debería poder extraer un objeto de error estándar y diferenciar caídas del servidor respecto a bloqueos de red.
    - **Resultado Obtenido (Evidencia):** Se clarificó la diferencia técnica entre ambos casos:
-     - **Error del Servidor (502):** La respuesta HTTP llega al frontend pero con un estado no exitoso (`!response.ok`). En caídas drásticas, la respuesta omite la propiedad `error` esperada. Este fue el escenario principal que se verificó, provocando fallos previos en el frontend al intentar parsear un contrato incompleto.
+     - **Error del Servidor (502):** La respuesta HTTP llega al frontend pero con un estado no exitoso (`!response.ok`). La interfaz muestra correctamente el mensaje «No se pudo cargar el catálogo», aunque la respuesta omitió incluir un objeto de error estructurado.
      - **Bloqueo por CORS:** Un bloqueo por CORS rechaza la solicitud de fetch a nivel de red/navegador. A diferencia del error 502, un fallo de CORS **no devuelve una respuesta JSON ni pasa por la validación `!response.ok`**, sino que lanza una excepción de red directamente en la promesa del fetch.
-   - **Resolución:** El frontend ahora maneja de manera genérica el fallo al evaluar `!response.ok` (para respuestas HTTP defectuosas como un 502) o al capturar el rechazo de la promesa (para errores de CORS/red), utilizando un mensaje de error estándar ("No se pudo cargar el catálogo") que permite al usuario saber qué ocurre sin romper la aplicación.
+   - **Resolución:** Se registra este comportamiento confirmando que la interfaz resuelve de manera estable (mostrando el mensaje predeterminado), sin atribuir ni implementar ninguna corrección adicional de parseo.
 
 ## Conclusión
 
