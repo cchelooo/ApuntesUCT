@@ -19,7 +19,7 @@ Las tareas con `Equipo = Compartido` quedan fuera del burndown de equipos e inte
 | Equipo | Items | Horas asignadas | Horas usadas | Horas restantes | Horas excedidas | Grafico |
 |---|---:|---:|---:|---:|---:|---|
 | INT2 | 63 | 120 | 126.5 | 3.7 | 10.2 | [ver (2026-09-02 a 2026-09-30)](charts/team-int2.svg) |
-| INT4 | 39 | 79 | 69 | 10 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/team-int4.svg) |
+| INT4 | 39 | 79 | 78 | 0 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/team-int4.svg) |
 
 ## Integrantes
 
@@ -31,9 +31,9 @@ Las tareas con `Equipo = Compartido` quedan fuera del burndown de equipos e inte
 | INT2 | Gabriel Gutierrez | 12 | 20 | 20 | 0 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-gabrielgutierrez1.svg) |
 | INT2 | Martina Iturrieta | 9 | 20 | 26.6 | 2.2 | 8.8 | [ver (2026-09-02 a 2026-09-30)](charts/member-kennyaale.svg) |
 | INT2 | Raul Rodriguez | 9 | 20 | 20 | 0 | 0 | [ver (2026-09-02 a 2026-09-30)](charts/member-rrodriguez2025.svg) |
-| INT4 | Eduardo Escares | 9 | 20 | 18 | 2 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-eduardoscrs.svg) |
+| INT4 | Eduardo Escares | 9 | 20 | 19 | 0 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-eduardoscrs.svg) |
 | INT4 | Marcelo Santana | 10 | 20 | 20 | 0 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-cchelooo.svg) |
-| INT4 | Nelson Quiñinao Isla | 10 | 19 | 11 | 8 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-anker04.svg) |
+| INT4 | Nelson Quiñinao Isla | 10 | 19 | 19 | 0 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-anker04.svg) |
 | INT4 | Yaninna Alvarez | 10 | 20 | 20 | 0 | 0 | [ver (2026-09-03 a 2026-10-01)](charts/member-yaninna137.svg) |
 
 ## Uso diario
