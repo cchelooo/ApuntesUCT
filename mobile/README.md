@@ -57,16 +57,79 @@ flutter emulators
 flutter emulators --launch <emulator-id>
 ```
 
-## Verificar el proyecto
+## Configuración de red y conexión con API Gateway
 
-Antes de subir cambios, ejecuta:
+La aplicación móvil se conecta con el ecosistema de backend a través del **API Gateway** (`:3000`) para autenticación y salud, y directamente con el **Catalog Service** (`:3002`) para el catálogo académico (excepción arquitectónica temporal documentada en [`docs/mobile/integracion-api-mobile.md`](../docs/mobile/integracion-api-mobile.md)).
+
+Las URLs base se resuelven mediante la clase `ApiConfig` (`lib/core/config/api_config.dart`) y pueden ser parametrizadas en tiempo de compilación con `--dart-define`.
+
+### Variables de configuración disponibles
+
+| Variable | Valor por defecto | Descripción |
+|---|---|---|
+| `API_GATEWAY_URL` | Android: `http://10.0.2.2:3000/api/v1`<br>Desktop/Web: `http://localhost:3000/api/v1` | URL base del API Gateway (Auth y salud). |
+| `CATALOG_SERVICE_URL` | Android: `http://10.0.2.2:3002/api/v1`<br>Desktop/Web: `http://localhost:3002/api/v1` | URL base directa del Catalog Service. |
+| `AUTH_DEMO_MODE` | `false` | Si se define en `true`, activa `MockAuthRepository` para demostraciones o desarrollo offline sin requerir el backend levantado. |
+
+### Ejemplos de ejecución según entorno
+
+> **Nota sobre emuladores Android:** La dirección `127.0.0.1` o `localhost` dentro de un emulador apunta al propio emulador. Para acceder al localhost de tu máquina host se utiliza el alias especial `10.0.2.2`.
+
+#### 1. Emulador Android (valores por defecto o explícitos)
 
 ```bash
-flutter analyze
-flutter test
+flutter run \
+  --dart-define=API_GATEWAY_URL=http://10.0.2.2:3000/api/v1 \
+  --dart-define=CATALOG_SERVICE_URL=http://10.0.2.2:3002/api/v1
 ```
 
-## Pruebas automatizadas
+#### 2. Escritorio / Localhost / Web
+
+```bash
+flutter run \
+  --dart-define=API_GATEWAY_URL=http://localhost:3000/api/v1 \
+  --dart-define=CATALOG_SERVICE_URL=http://localhost:3002/api/v1
+```
+
+#### 3. Dispositivo físico (misma red Wi-Fi / LAN)
+
+Reemplaza `192.168.1.X` con la dirección IP local de tu computador en la red Wi-Fi (asegúrate de que los puertos 3000 y 3002 no estén bloqueados por el firewall):
+
+```bash
+flutter run -d <device-id> \
+  --dart-define=API_GATEWAY_URL=http://192.168.1.50:3000/api/v1 \
+  --dart-define=CATALOG_SERVICE_URL=http://192.168.1.50:3002/api/v1
+```
+
+#### 4. Modo demostración offline (sin Backend)
+
+Si el backend o PostgreSQL no están disponibles, puedes ejecutar la app con autenticación simulada:
+
+```bash
+flutter run --dart-define=AUTH_DEMO_MODE=true
+```
+
+## Comandos básicos de desarrollo
+
+### Análisis estático y formato
+
+Antes de enviar cambios o abrir un Pull Request, comprueba el formato y el linter:
+
+```bash
+# Aplicar formato automático a código y pruebas
+dart format lib test
+
+# Validar formato sin modificar archivos (falla si hay desalineación)
+dart format --output=none --set-exit-if-changed lib test
+
+# Ejecutar el analizador estático oficial
+flutter analyze
+```
+
+La línea base inicial del análisis estático y su entorno reproducible están registrados en
+[`docs/mobile/validacion-flutter-analyze.md`](../docs/mobile/validacion-flutter-analyze.md).
+
+### Pruebas automatizadas
 
 Las pruebas están organizadas en `test/` siguiendo la estructura de `lib/`.
 Los recorridos que abarcan varias pantallas se ubican en `test/navigation/` y
@@ -83,30 +146,41 @@ Los providers que normalmente consultan servicios externos deben reemplazarse
 mediante `ProviderScope.overrides`. Así, las pruebas no dependen del Backend ni
 de Internet y siguen verificando la interfaz y la navegación reales.
 
-Desde `mobile/` se puede ejecutar toda la batería o un archivo específico:
+Desde `mobile/` se puede ejecutar toda la batería o archivos específicos:
 
 ```bash
+# Ejecutar todas las pruebas unitarias y de widgets
 flutter test
+
+# Ejecutar pruebas individuales
 flutter test test/widget_test.dart
-flutter test test/navigation/register_navigation_test.dart
+flutter test test/navigation/app_navigation_test.dart
+flutter test test/features/auth/presentation/login_dio_test.dart
+
+# Generar reporte de cobertura
 flutter test --coverage
 ```
 
-Antes de entregar cambios de Mobile también se debe comprobar el formato y el
-análisis estático:
+### Limpieza y mantenimiento del proyecto
+
+Si experimentas problemas con paquetes o artefactos de compilación obsoletos:
 
 ```bash
-dart format --output=none --set-exit-if-changed lib test
-flutter analyze
+flutter clean
+flutter pub get
 ```
 
-La línea base inicial del análisis estático y su entorno reproducible están
-registrados en
-[`docs/mobile/validacion-flutter-analyze.md`](../docs/mobile/validacion-flutter-analyze.md).
-
-Si Android informa que faltan licencias del SDK, acéptalas y vuelve a comprobar el entorno:
+Si Android informa que faltan licencias del SDK:
 
 ```bash
 flutter doctor --android-licenses
 flutter doctor
 ```
+
+## Documentación relacionada
+
+- [Soporte de integración con Backend](../docs/mobile/integracion-api-mobile.md) — endpoints disponibles, modelos, contratos y notas técnicas.
+- [Estructura del proyecto Mobile](../docs/mobile/estructura-proyecto-mobile.md) — convención de carpetas por capas y features.
+- [Tema visual y diseño](../docs/mobile/tema-visual.md) — paleta de colores institucional, tipografía y componentes base.
+- [Puertos y ejecución local del Backend](../backend/README.md) — instrucciones para levantar Gateway, Auth y Catalog.
+
