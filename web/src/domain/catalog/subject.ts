@@ -5,5 +5,5 @@ export interface Subject {
   careerName: string;
   semester: number;
   professorName: string;
-  notesCount: number;
+  notesCount: number | null;
 }

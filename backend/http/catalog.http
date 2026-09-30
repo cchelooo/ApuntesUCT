@@ -1,0 +1,200 @@
+### ============================================================================
+### VARIABLES DE ENTORNO Y CONFIGURACIÓN
+### ============================================================================
+@baseUrl = http://localhost:3000/api/v1
+@catalogDirectUrl = http://localhost:3002/api/v1
+@contentType = application/json
+
+# INSTRUCCIONES PARA OBTENER LOS IDs:
+# 1. Obtener @universityId, @careerId y @subjectId ejecutando 1.1 (GET {{baseUrl}}/catalog).
+# 2. Obtener @professorId ejecutando 1.2a (GET {{baseUrl}}/catalog/filter) seleccionando un 'id' del arreglo 'professors' de la asignatura elegida.
+@universityId = b10cd461-93a7-4b66-a300-231fab5f0e28
+@careerId = c4e13339-2dd8-49cf-8715-b8598a8dbcdc
+@subjectId = 50a0e8e3-3e7b-4bcb-b663-3997e64c259d
+@professorId = ba8c3fcc-0a08-419f-89b3-0f571ef649d1
+
+@invalidUuid = 123-invalid-uuid
+@nonExistentUuid = 00000000-0000-0000-0000-000000000000
+
+
+###############################################
+# 1. PRUEBAS DEL CATÁLOGO (PÚBLICO)
+###############################################
+
+### 1.1 Obtener árbol jerárquico completo (Vía Gateway)
+# Esperado: 200 OK - Estructura Universidad -> Carrera -> Asignatura
+# VERIFICACIÓN: Comprobar manualmente que cada objeto Asignatura contenga la propiedad 'semester' (e.g. semester: 1, 5, etc.)
+GET {{baseUrl}}/catalog
+Content-Type: {{contentType}}
+
+###
+
+### 1.1b Obtener árbol jerárquico directo (Catalog Service :3002)
+# Esperado: 200 OK
+GET {{catalogDirectUrl}}/catalog
+Content-Type: {{contentType}}
+
+###
+
+### 1.2a Filtrado sin parámetros (Retorna raíz con profesores)
+# USAR ESTA RESPUESTA PARA OBTENER UN professorId REAL ASOCIADO A LA ASIGNATURA SELECCIONADA
+# Esperado: 200 OK
+GET {{baseUrl}}/catalog/filter
+Content-Type: {{contentType}}
+
+###
+
+### 1.2b Filtrado válido con secuencia completa hasta Profesor (Nivel 4)
+# Esperado: 200 OK - Retorna las asignaturas coincidentes con sus relaciones (carrera, universidad y profesores)
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}
+Content-Type: {{contentType}}
+
+###
+
+### 1.2c Filtrado con combinación sin coincidencias
+# Esperado: 200 OK - Retorna un arreglo vacío []
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{nonExistentUuid}}
+Content-Type: {{contentType}}
+
+###
+
+### 1.3a Error: UUID con formato inválido
+# Esperado: 400 Bad Request (ValidationPipe - IsUuid)
+GET {{baseUrl}}/catalog/filter?universityId={{invalidUuid}}
+Content-Type: {{contentType}}
+
+###
+
+### 1.3b1 Error: Año con formato no numérico/inválido
+# Esperado: 400 Bad Request
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year=invalid_year
+Content-Type: {{contentType}}
+
+###
+
+### 1.3b2 Error: Año fuera de rango permitido (e.g., year=1800)
+# Esperado: 400 Bad Request
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year=1800
+Content-Type: {{contentType}}
+
+###
+
+### 1.3c Error: Salto de jerarquía (Asignatura sin Carrera)
+# Esperado: 400 Bad Request
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&subjectId={{subjectId}}
+Content-Type: {{contentType}}
+
+###
+
+### 1.3d Error: Salto de jerarquía (Profesor sin Asignatura)
+# Esperado: 400 Bad Request
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&professorId={{professorId}}
+Content-Type: {{contentType}}
+
+###
+
+### 1.3e Error: 'year' sin 'professorId' (Violación de secuencia)
+# Esperado: 400 Bad Request
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&year=2026
+Content-Type: {{contentType}}
+
+###
+
+### 1.3f Error: 'type' sin 'year' (Violación de secuencia)
+# Esperado: 400 Bad Request
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&type=APUNTE
+Content-Type: {{contentType}}
+
+###
+
+### 1.3g Error: Carrera sin Universidad (Ruptura de secuencia)
+# Esperado: 400 Bad Request
+GET {{baseUrl}}/catalog/filter?careerId={{careerId}}
+Content-Type: {{contentType}}
+
+###
+
+### 1.4a Nivel No Implementado: Secuencia completa hasta 'year' (Nivel 5)
+# Esperado: 501 Not Implemented
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year=2026
+Content-Type: {{contentType}}
+
+###
+
+### 1.4b Nivel No Implementado: Secuencia completa previa incluyendo 'year' y 'type' (Nivel 6)
+# Esperado: 501 Not Implemented
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year=2026&type=APUNTE
+Content-Type: {{contentType}}
+
+
+###############################################
+# 2. GESTIÓN DE ASIGNATURAS (OPERACIONES CRUD)
+###############################################
+
+### 2.1 Crear asignatura con carrera inexistente
+# Esperado: 404 Not Found ("La carrera con ID ... no existe")
+POST {{baseUrl}}/catalog/subjects
+Content-Type: {{contentType}}
+
+{
+  "name": "Asignatura Huérfana",
+  "code": "INV-999",
+  "semester": 1,
+  "careerId": "{{nonExistentUuid}}"
+}
+
+###
+
+### 2.2 Crear asignatura con payload inválido/incompleto
+# Esperado: 400 Bad Request
+POST {{baseUrl}}/catalog/subjects
+Content-Type: {{contentType}}
+
+{
+  "code": "INV-101"
+}
+
+###
+
+### 2.3 Crear asignatura válida
+# @name createSubject
+# Esperado: 201 Created
+# VERIFICACIÓN: Validar que el cuerpo de la respuesta contenga 'id', 'semester': 5 y que 'name', 'code' y 'careerId' correspondan con los valores enviados
+POST {{baseUrl}}/catalog/subjects
+Content-Type: {{contentType}}
+
+{
+  "name": "Arquitectura de Software",
+  "code": "ICI-412-TMP",
+  "semester": 5,
+  "careerId": "{{careerId}}"
+}
+
+###
+
+### 2.4 Crear asignatura duplicada (Mismo código)
+# Esperado: 409 Conflict
+POST {{baseUrl}}/catalog/subjects
+Content-Type: {{contentType}}
+
+{
+  "name": "Arquitectura Duplicada",
+  "code": "ICI-412-TMP",
+  "semester": 5,
+  "careerId": "{{careerId}}"
+}
+
+###
+
+### 2.5 Eliminar la asignatura recién creada
+# Utiliza automáticamente el ID retornado en la petición 2.3
+# Esperado: 200 OK
+DELETE {{baseUrl}}/catalog/subjects/{{createSubject.response.body.id}}
+Content-Type: {{contentType}}
+
+###
+
+### 2.6 Eliminar asignatura inexistente
+# Esperado: 404 Not Found
+DELETE {{baseUrl}}/catalog/subjects/{{nonExistentUuid}}
+Content-Type: {{contentType}}

@@ -1,12 +1,29 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, Query } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CatalogService } from '../../application/services/catalog.service';
 import { FilterCatalogDto } from '../../application/dtos/filter-catalog.dto';
+import { UniversityResponseDto } from '../../application/dtos/catalog-response.dto';
+import { CreateSubjectDto } from '../../application/dtos/create-subject.dto';
 
 @ApiTags('Catalog')
 @Controller('catalog')
 export class CatalogController {
   constructor(private readonly catalogService: CatalogService) {}
+
+  @Get()
+  @ApiOperation({
+    summary: 'Obtener árbol básico del catálogo',
+    description:
+      'Devuelve la jerarquía base completa del catálogo (Universidades -> Carreras -> Asignaturas) para ser consumida de forma inicial por el frontend.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Estructura en árbol del catálogo consultada exitosamente.',
+    type: [UniversityResponseDto],
+  })
+  async getCatalog(): Promise<UniversityResponseDto[]> {
+    return this.catalogService.getCatalogTree();
+  }
 
   @Get('filter')
   @ApiOperation({
@@ -33,7 +50,8 @@ export class CatalogController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Lista de asignaturas que cumplen con el filtro, incluyendo Carrera, Universidad y Profesores.',
+    description:
+      'Lista de asignaturas que cumplen con el filtro, incluyendo Carrera, Universidad y Profesores.',
   })
   @ApiResponse({
     status: 400,
@@ -41,9 +59,35 @@ export class CatalogController {
   })
   @ApiResponse({
     status: 501,
-    description: 'Funcionalidad no implementada. Se retorna cuando se envían los parámetros Año/Tipo debido a la dependencia pendiente con el módulo de Recursos.',
+    description:
+      'Funcionalidad no implementada. Se retorna cuando se envían los parámetros Año/Tipo debido a la dependencia pendiente con el módulo de Recursos.',
   })
   async filterCatalog(@Query() filters: FilterCatalogDto) {
     return this.catalogService.filterCatalog(filters);
+  }
+
+  // =========================================================================
+  // ENDPOINTS DE GESTIÓN DE ASIGNATURAS
+  // =========================================================================
+
+  @Post('subjects')
+  @ApiOperation({ summary: 'Crear nueva asignatura' })
+  @ApiResponse({ status: 201, description: 'Asignatura creada exitosamente.' })
+  @ApiResponse({ status: 400, description: 'Datos de entrada inválidos.' })
+  @ApiResponse({ status: 404, description: 'La carrera especificada no existe.' })
+  @ApiResponse({
+    status: 409,
+    description: 'Conflicto: Ya existe una asignatura con el mismo código en esta carrera.',
+  })
+  async createSubject(@Body() createSubjectDto: CreateSubjectDto) {
+    return this.catalogService.createSubject(createSubjectDto);
+  }
+
+  @Delete('subjects/:id')
+  @ApiOperation({ summary: 'Eliminar una asignatura por ID' })
+  @ApiResponse({ status: 200, description: 'Asignatura eliminada exitosamente.' })
+  @ApiResponse({ status: 404, description: 'La asignatura especificada no existe.' })
+  async deleteSubject(@Param('id') id: string) {
+    return this.catalogService.deleteSubject(id);
   }
 }

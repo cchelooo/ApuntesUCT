@@ -12,6 +12,9 @@ describe('CatalogService', () => {
     subject: {
       findMany: jest.fn(),
     },
+    university: {
+      findMany: jest.fn(),
+    },
   };
 
   beforeEach(async () => {
@@ -33,6 +36,81 @@ describe('CatalogService', () => {
 
   it('debe estar definido', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('getCatalogTree', () => {
+    it('debe consultar la BD y retornar la estructura en árbol de universidades activas', async () => {
+      const mockResult = [
+        {
+          id: 'univ-123',
+          name: 'Universidad Católica de Temuco',
+          code: 'UCT',
+          active: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          careers: [
+            {
+              id: 'career-123',
+              name: 'Ingeniería Civil en Informática',
+              code: 'ICI',
+              active: true,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              subjects: [
+                {
+                  id: 'subj-123',
+                  name: 'Estructura de Datos',
+                  code: 'ICI-201',
+                  semester: 3,
+                  active: true,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                },
+              ],
+            },
+          ],
+        },
+      ] as unknown as ReturnType<CatalogService['getCatalogTree']>;
+
+      mockPrismaService.university.findMany.mockResolvedValue(mockResult);
+
+      const result = await service.getCatalogTree();
+
+      expect(prismaService.university.findMany).toHaveBeenCalledWith({
+        where: { active: true },
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          active: true,
+          createdAt: true,
+          updatedAt: true,
+          careers: {
+            where: { active: true },
+            select: {
+              id: true,
+              name: true,
+              code: true,
+              active: true,
+              createdAt: true,
+              updatedAt: true,
+              subjects: {
+                select: {
+                  id: true,
+                  name: true,
+                  code: true,
+                  semester: true,
+                  active: true,
+                  createdAt: true,
+                  updatedAt: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      expect(result).toEqual(mockResult);
+    });
   });
 
   describe('filterCatalog - Validaciones de la secuencia jerárquica (6 Niveles)', () => {

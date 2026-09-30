@@ -1,17 +1,62 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotImplementedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { FilterCatalogDto } from '../dtos/filter-catalog.dto';
+import { UniversityResponseDto } from '../dtos/catalog-response.dto';
+import { Prisma } from '@prisma/client';
+import { CreateSubjectDto } from '../dtos/create-subject.dto';
 
 @Injectable()
 export class CatalogService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Obtiene la estructura completa del catálogo en forma de árbol
+   * (Universidad -> Carrera -> Asignatura)
+   */
+  async getCatalogTree(): Promise<UniversityResponseDto[]> {
+    return this.prisma.university.findMany({
+      where: { active: true },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        active: true,
+        createdAt: true,
+        updatedAt: true,
+        careers: {
+          where: { active: true },
+          select: {
+            id: true,
+            name: true,
+            code: true,
+            active: true,
+            createdAt: true,
+            updatedAt: true,
+            subjects: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+                semester: true,
+                active: true,
+                createdAt: true,
+                updatedAt: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
   async filterCatalog(filters: FilterCatalogDto) {
-    // 1. Validaciones de la secuencia jerárquica (los 6 niveles)
+    // 1. Validaciones de la secuencia jerárquica (Niveles 1 al 4)
     if (filters.careerId && !filters.universityId) {
       throw new BadRequestException(
         'Secuencia inválida: Para filtrar por Carrera (careerId) debe especificar Universidad (universityId).',
@@ -30,32 +75,33 @@ export class CatalogService {
       );
     }
 
-    if (filters.year && !filters.professorId) {
+    // 2. Validaciones de la secuencia jerárquica (Niveles 5 y 6)
+    if (filters.year !== undefined && !filters.professorId) {
       throw new BadRequestException(
         'Secuencia inválida: Para filtrar por Año (year) debe especificar Profesor (professorId).',
       );
     }
 
-    if (filters.type && !filters.year) {
+    if (filters.type !== undefined && filters.year === undefined) {
       throw new BadRequestException(
         'Secuencia inválida: Para filtrar por Tipo (type) debe especificar Año (year).',
       );
     }
 
-    // 2. Documentar la dependencia pendiente para los niveles 5 y 6 (Año y Tipo)
-    // NOTA: Los filtros 'year' y 'type' pertenecen al recurso (Resource).
-    // Hasta que el modelo Resource esté integrado en Prisma, informamos al cliente.
-    if (filters.year || filters.type) {
+    // 3. Respuesta de niveles pendientes de integración en BD (Niveles 5 y 6)
+    if (filters.year !== undefined || filters.type !== undefined) {
       throw new NotImplementedException(
         'Los filtros por Año y Tipo requieren el módulo de Recursos (Resource), el cual está pendiente de integración en la base de datos.',
       );
     }
 
-    // 3. Consulta en BD para niveles 1 al 4 (Universidad, Carrera, Asignatura, Profesor)
-    const whereCondition: Record<string, unknown> = {};
+    // 4. Consulta en BD para niveles válidos (1 al 4) utilizando tipos estrictos de Prisma
+    const whereCondition: Prisma.SubjectWhereInput = {};
 
     if (filters.universityId) {
-      whereCondition.career = { universityId: filters.universityId };
+      whereCondition.career = {
+        universityId: filters.universityId,
+      };
     }
 
     if (filters.careerId) {
@@ -82,6 +128,62 @@ export class CatalogService {
         },
         professors: true,
       },
+    });
+  }
+
+  // =========================================================================
+  // GESTIÓN DE ASIGNATURAS (Creación y Eliminación)
+  // =========================================================================
+
+  async createSubject(data: CreateSubjectDto) {
+    // Verificar que la carrera especificada exista
+    const career = await this.prisma.career.findUnique({
+      where: { id: data.careerId },
+    });
+
+    if (!career) {
+      throw new NotFoundException(
+        `La carrera con ID ${data.careerId} no existe.`,
+      );
+    }
+
+    try {
+      // Intentar crear la asignatura vinculada a la carrera
+      return await this.prisma.subject.create({
+        data: {
+          name: data.name,
+          code: data.code,
+          semester: data.semester,
+          careerId: data.careerId,
+        },
+      });
+    } catch (error) {
+      // Error P2002: Violación de restricción de clave única (career_id, code)
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          `Ya existe una asignatura con el código '${data.code}' registrada en esta carrera.`,
+        );
+      }
+      throw error;
+    }
+  }
+
+  async deleteSubject(id: string) {
+    const subject = await this.prisma.subject.findUnique({
+      where: { id },
+    });
+
+    if (!subject) {
+      throw new NotFoundException(
+        `La asignatura con ID ${id} no existe.`,
+      );
+    }
+
+    return this.prisma.subject.delete({
+      where: { id },
     });
   }
 }

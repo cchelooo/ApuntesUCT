@@ -2,22 +2,12 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/network/api_client.dart';
 import '../../../models/user_model.dart';
+import 'auth_repository.dart';
+import 'dio_auth_repository.dart';
 
-/// Contrato abstracto para autenticación (preparado para integración real futura).
-abstract class AuthRepository {
-  Future<UserModel> login({required String email, required String password});
-
-  /// Crea una cuenta institucional y devuelve el usuario con sesión iniciada.
-  Future<UserModel> register({
-    required String name,
-    required String email,
-    required String password,
-  });
-
-  Future<UserModel> getCurrentUser();
-  Future<void> logout();
-}
+export 'auth_repository.dart';
 
 /// Implementación Mock de [AuthRepository] que simula latencia de red con [Future.delayed].
 class MockAuthRepository implements AuthRepository {
@@ -87,9 +77,26 @@ class MockAuthRepository implements AuthRepository {
   }
 }
 
-/// Provider para inyectar la instancia de [AuthRepository] en cualquier parte de la app.
+/// Provider de autenticación usado por Login, Registro y Logout.
+///
+/// Login consume el endpoint mock real del Gateway mediante Dio. Las operaciones
+/// que Backend todavía no expone se mantienen en [MockAuthRepository] a través
+/// del fallback de [DioAuthRepository].
+///
+/// Para demostraciones sin Backend se puede ejecutar Mobile con
+/// `--dart-define=AUTH_DEMO_MODE=true`. El modo normal sigue usando Dio para que
+/// una caída del Gateway no quede oculta durante el desarrollo de integración.
+final authDemoModeProvider = Provider<bool>((ref) {
+  return const bool.fromEnvironment('AUTH_DEMO_MODE', defaultValue: false);
+});
+
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return const MockAuthRepository();
+  if (ref.watch(authDemoModeProvider)) {
+    return const MockAuthRepository();
+  }
+
+  final apiClient = ref.watch(apiclientProvider);
+  return DioAuthRepository(apiClient, const MockAuthRepository());
 });
 
 /// AsyncNotifier para gestionar el estado del usuario autenticado (Riverpod 3.x).

@@ -4,15 +4,16 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:apuntesuct_mobile/main.dart';
 
+import 'helpers/test_harness.dart';
+
 void main() {
   testWidgets('muestra el flujo de autenticación de la maqueta', (
     WidgetTester tester,
   ) async {
-    await tester.binding.setSurfaceSize(const Size(390, 844));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    appRouter.go('/login');
+    addTearDown(() => appRouter.go('/login'));
 
-    await tester.pumpWidget(const ProviderScope(child: MyApp()));
-    await tester.pumpAndSettle();
+    await pumpAppUnderTest(tester, app: const ProviderScope(child: MyApp()));
 
     expect(find.text('Iniciar sesión'), findsOneWidget);
     expect(find.text('Correo institucional'), findsOneWidget);
@@ -40,7 +41,7 @@ void main() {
     expect(find.text('Repetir contraseña'), findsOneWidget);
     expect(find.byType(TextFormField), findsNWidgets(4));
 
-    await tester.binding.setSurfaceSize(const Size(844, 390));
+    tester.view.physicalSize = const Size(844, 390);
     await tester.pumpAndSettle();
     expect(find.text('Crear cuenta'), findsNWidgets(2));
     expect(tester.takeException(), isNull);
