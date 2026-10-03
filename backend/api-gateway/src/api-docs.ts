@@ -46,7 +46,9 @@ function renderDocsIndex(services: DocsService[]): string {
         </thead>
         <tbody>${rows}</tbody>
       </table>
-      <p>Servicios pendientes de implementación: material, quality y search.</p>
+      <p>Quality Service todavía no está enrutado por el gateway. Material y Search ya lo
+      están, pero sus servicios siguen pendientes de implementación: sus enlaces
+      responden 502 hasta que exista el microservicio correspondiente.</p>
     </main>
   </body>
 </html>`;
@@ -87,6 +89,22 @@ export function setupApiDocs(
       url: configService.get<string>(
         'CATALOG_DOCS_URL',
         'http://localhost:3002/api/docs',
+      ),
+    },
+    {
+      name: 'Material Service',
+      description: 'Materiales, metadatos, archivos, versiones y descargas.',
+      url: configService.get<string>(
+        'MATERIAL_DOCS_URL',
+        'http://localhost:3003/api/docs',
+      ),
+    },
+    {
+      name: 'Search Service',
+      description: 'Búsqueda, filtros, ordenamiento y posicionamiento.',
+      url: configService.get<string>(
+        'SEARCH_DOCS_URL',
+        'http://localhost:3005/api/docs',
       ),
     },
   ];
