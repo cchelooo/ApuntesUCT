@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('CatalogRepository API Error & Edge Cases Tests (#83)', () {
-    test('Lanza DioException ante error de conexión o timeout', () async {
+    test('Lanza DioException ante connectionTimeout', () async {
       final apiClient = ApiClient(baseUrl: 'http://localhost:3002/api/v1');
       apiClient.dio.interceptors.clear();
       apiClient.dio.interceptors.add(
@@ -24,10 +24,19 @@ void main() {
 
       final repository = CatalogRepository(apiClient);
 
-      expect(() => repository.getCatalog(), throwsA(isA<DioException>()));
+      expect(
+        () => repository.getCatalog(),
+        throwsA(
+          isA<DioException>().having(
+            (e) => e.type,
+            'type',
+            DioExceptionType.connectionTimeout,
+          ),
+        ),
+      );
     });
 
-    test('Lanza DioException ante fallo de backend HTTP 500', () async {
+    test('Lanza DioException ante connectionError (servidor caído)', () async {
       final apiClient = ApiClient(baseUrl: 'http://localhost:3002/api/v1');
       apiClient.dio.interceptors.clear();
       apiClient.dio.interceptors.add(
@@ -36,12 +45,8 @@ void main() {
             handler.reject(
               DioException(
                 requestOptions: options,
-                response: Response(
-                  requestOptions: options,
-                  statusCode: 500,
-                  data: {'message': 'Internal Server Error'},
-                ),
-                type: DioExceptionType.badResponse,
+                type: DioExceptionType.connectionError,
+                message: 'Conexión rechazada',
               ),
             );
           },
@@ -50,34 +55,93 @@ void main() {
 
       final repository = CatalogRepository(apiClient);
 
-      expect(() => repository.getCatalog(), throwsA(isA<DioException>()));
-    });
-
-    test('Lanza DioException ante recurso no encontrado HTTP 404', () async {
-      final apiClient = ApiClient(baseUrl: 'http://localhost:3002/api/v1');
-      apiClient.dio.interceptors.clear();
-      apiClient.dio.interceptors.add(
-        InterceptorsWrapper(
-          onRequest: (options, handler) {
-            handler.reject(
-              DioException(
-                requestOptions: options,
-                response: Response(
-                  requestOptions: options,
-                  statusCode: 404,
-                  data: {'message': 'Not Found'},
-                ),
-                type: DioExceptionType.badResponse,
-              ),
-            );
-          },
+      expect(
+        () => repository.getCatalog(),
+        throwsA(
+          isA<DioException>().having(
+            (e) => e.type,
+            'type',
+            DioExceptionType.connectionError,
+          ),
         ),
       );
-
-      final repository = CatalogRepository(apiClient);
-
-      expect(() => repository.getCatalog(), throwsA(isA<DioException>()));
     });
+
+    test(
+      'Lanza DioException ante fallo de backend HTTP 500 con statusCode 500',
+      () async {
+        final apiClient = ApiClient(baseUrl: 'http://localhost:3002/api/v1');
+        apiClient.dio.interceptors.clear();
+        apiClient.dio.interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              handler.reject(
+                DioException(
+                  requestOptions: options,
+                  response: Response(
+                    requestOptions: options,
+                    statusCode: 500,
+                    data: {'message': 'Internal Server Error'},
+                  ),
+                  type: DioExceptionType.badResponse,
+                ),
+              );
+            },
+          ),
+        );
+
+        final repository = CatalogRepository(apiClient);
+
+        expect(
+          () => repository.getCatalog(),
+          throwsA(
+            isA<DioException>().having(
+              (e) => e.response?.statusCode,
+              'statusCode',
+              500,
+            ),
+          ),
+        );
+      },
+    );
+
+    test(
+      'Lanza DioException ante recurso HTTP 404 con statusCode 404',
+      () async {
+        final apiClient = ApiClient(baseUrl: 'http://localhost:3002/api/v1');
+        apiClient.dio.interceptors.clear();
+        apiClient.dio.interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              handler.reject(
+                DioException(
+                  requestOptions: options,
+                  response: Response(
+                    requestOptions: options,
+                    statusCode: 404,
+                    data: {'message': 'Not Found'},
+                  ),
+                  type: DioExceptionType.badResponse,
+                ),
+              );
+            },
+          ),
+        );
+
+        final repository = CatalogRepository(apiClient);
+
+        expect(
+          () => repository.getCatalog(),
+          throwsA(
+            isA<DioException>().having(
+              (e) => e.response?.statusCode,
+              'statusCode',
+              404,
+            ),
+          ),
+        );
+      },
+    );
 
     test('Retorna lista vacía si el backend responde con data nula', () async {
       final apiClient = ApiClient(baseUrl: 'http://localhost:3002/api/v1');
@@ -135,13 +199,13 @@ void main() {
                   'name': 'Estructuras de Datos',
                   'description': 'Algoritmos y complejidad',
                 },
-                null, // Caso borde: asignatura nula
+                null,
               ],
             },
             {
               'id': 'car-vacia',
               'name': 'Carrera Sin Asignaturas',
-              'subjects': [], // Caso borde: carrera sin ramos
+              'subjects': [],
             },
           ],
         },
