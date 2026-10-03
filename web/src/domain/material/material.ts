@@ -1,9 +1,6 @@
 export type MaterialViewStatus =
-  | 'ready'
-  | 'loading'
-  | 'unavailable'
-  | 'not-found';
- 
+  'ready' | 'loading' | 'unavailable' | 'not-found';
+
 export interface MaterialVersion {
   number: number;
   uploadedAt: string | null;
@@ -11,7 +8,7 @@ export interface MaterialVersion {
   fileFormat: string | null;
   fileSizeLabel: string | null;
 }
- 
+
 export interface MaterialDetail {
   id: string;
   title: string;

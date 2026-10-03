@@ -1,13 +1,13 @@
 import type { MaterialVersion } from '../../../domain/material/material';
 import { MaterialDownloadButton } from './MaterialDownloadButton';
- 
+
 interface MaterialVersionCardProps {
   version?: MaterialVersion | null;
   downloadUrl?: string | null;
 }
- 
+
 const EMPTY_VALUE = 'Por definir';
- 
+
 export function MaterialVersionCard({
   version,
   downloadUrl,
@@ -18,7 +18,7 @@ export function MaterialVersionCard({
     { label: 'Formato', value: version?.fileFormat },
     { label: 'Tamaño', value: version?.fileSizeLabel },
   ];
- 
+
   return (
     <aside
       aria-labelledby="material-version-title"
@@ -38,7 +38,7 @@ export function MaterialVersionCard({
           {version ? `v${version.number}` : 'v—'}
         </span>
       </div>
- 
+
       <dl className="flex flex-col gap-3">
         {rows.map(({ label, value }) => (
           <div key={label} className="flex justify-between gap-4 text-sm">
@@ -53,7 +53,7 @@ export function MaterialVersionCard({
           </div>
         ))}
       </dl>
- 
+
       <MaterialDownloadButton url={downloadUrl} />
     </aside>
   );

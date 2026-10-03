@@ -6,13 +6,13 @@ import type {
 import { MaterialMetadata } from '../components/material/MaterialMetadata';
 import { MaterialUnavailable } from '../components/material/MaterialUnavailable';
 import { MaterialVersionCard } from '../components/material/MaterialVersionCard';
- 
+
 interface MaterialDetailPageProps {
-    materialId?: string;
-    material?: MaterialDetail | null;
+  materialId?: string;
+  material?: MaterialDetail | null;
   status?: MaterialViewStatus;
 }
- 
+
 export function MaterialDetailPage({
   materialId: materialIdProp,
   material = null,
@@ -20,10 +20,8 @@ export function MaterialDetailPage({
 }: MaterialDetailPageProps) {
   const params = useParams<{ materialId: string }>();
   const materialId = materialIdProp ?? params.materialId;
-  const effectiveStatus: MaterialViewStatus = materialId
-    ? status
-    : 'not-found';
- 
+  const effectiveStatus: MaterialViewStatus = materialId ? status : 'not-found';
+
   return (
     <section className="bg-catalog-bg px-4 py-8 font-body text-catalog-ink sm:px-6 md:px-10 md:py-10">
       <div className="mx-auto max-w-5xl">
@@ -41,7 +39,7 @@ export function MaterialDetailPage({
             Material
           </span>
         </nav>
- 
+
         {effectiveStatus === 'unavailable' ||
         effectiveStatus === 'not-found' ? (
           <div className="mt-6">
@@ -59,7 +57,7 @@ export function MaterialDetailPage({
                 ID: <span data-testid="material-id">{materialId}</span>
               </p>
             </header>
- 
+
             <div
               className={`mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_20rem] ${
                 effectiveStatus === 'loading' ? 'animate-pulse' : ''

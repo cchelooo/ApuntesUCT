@@ -1,9 +1,9 @@
 import { Button } from '../Button';
- 
+
 interface MaterialDownloadButtonProps {
   url?: string | null;
 }
- 
+
 function DownloadIcon() {
   return (
     <svg
@@ -32,7 +32,7 @@ export function MaterialDownloadButton({ url }: MaterialDownloadButtonProps) {
       </a>
     );
   }
- 
+
   return (
     <div className="flex flex-col gap-2">
       <Button
