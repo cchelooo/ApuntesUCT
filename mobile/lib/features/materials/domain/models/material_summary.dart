@@ -6,6 +6,10 @@ class MaterialSummary {
   final String subjectName;
   final String careerName;
   final String fileType;
+  final String? professor;
+  final int academicYear;
+  final String materialType; // apunte, certamen, guia, etc.
+  final String status; // aprobado, pendiente, etc.
   final int downloadCount;
   final double rating;
   final DateTime createdAt;
@@ -18,6 +22,10 @@ class MaterialSummary {
     required this.subjectName,
     required this.careerName,
     required this.fileType,
+    this.professor,
+    this.academicYear = 2026,
+    this.materialType = 'apunte',
+    this.status = 'aprobado',
     this.downloadCount = 0,
     this.rating = 0.0,
     required this.createdAt,
@@ -38,6 +46,16 @@ class MaterialSummary {
           'General',
       careerName: json['careerName'] as String? ?? 'UCT',
       fileType: json['fileType'] as String? ?? 'pdf',
+      professor: json['professor'] as String?,
+      academicYear:
+          (json['academicYear'] as num?)?.toInt() ??
+          (json['year'] as num?)?.toInt() ??
+          2026,
+      materialType:
+          json['materialType'] as String? ??
+          json['type'] as String? ??
+          'apunte',
+      status: json['status'] as String? ?? 'aprobado',
       downloadCount: (json['downloadCount'] as num?)?.toInt() ?? 0,
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       createdAt: json['createdAt'] != null
@@ -55,6 +73,10 @@ class MaterialSummary {
       'subjectName': subjectName,
       'careerName': careerName,
       'fileType': fileType,
+      'professor': professor,
+      'academicYear': academicYear,
+      'materialType': materialType,
+      'status': status,
       'downloadCount': downloadCount,
       'rating': rating,
       'createdAt': createdAt.toIso8601String(),
