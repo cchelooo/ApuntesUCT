@@ -47,21 +47,22 @@ void main() {
     );
 
     testWidgets(
-      'MaterialSummaryCard no genera overflow en pantallas angostas de 320px con autor largo',
+      'MaterialSummaryCard y navegación a MaterialDetailScreen no generan overflow en 320px',
       (WidgetTester tester) async {
-        final longAuthorSample = MaterialSummary(
+        final longDataSample = MaterialSummary(
           id: 'mat-overflow-test',
           title: 'Título muy largo para probar overflows en pantalla pequeña',
-          description: 'Descripción de prueba para verificar altura y desborde',
+          description:
+              'Descripción extensa de prueba para verificar altura y desborde',
           authorName: 'Estudiante Con Nombre Extremadamente Largo Y Extenso Del Sur De Chile',
-          subjectName: 'Estructuras de Datos',
-          careerName: 'Ingeniería Civil Informática',
+          subjectName: 'Ingeniería Civil Informática Mención Ciberseguridad',
+          careerName: 'Facultad de Ingeniería UCT',
           fileType: 'pdf',
-          professor: 'Profesor Nombre Muy Largo',
+          professor: 'Profesor Nombre Muy Largo Con Apellidos Largos',
           academicYear: 2026,
           materialType: 'certamen',
           status: 'aprobado',
-          downloadCount: 9999,
+          downloadCount: 99999,
           rating: 5.0,
           createdAt: DateTime(2026, 3, 15),
         );
@@ -73,12 +74,19 @@ void main() {
 
         await tester.pumpWidget(
           MaterialApp(
-            home: Scaffold(
-              body: MaterialSummaryCard(material: longAuthorSample),
-            ),
+            home: Scaffold(body: MaterialSummaryCard(material: longDataSample)),
           ),
         );
 
+        // Sin desborde en la tarjeta
+        expect(tester.takeException(), isNull);
+
+        // Tocar la tarjeta para abrir el detalle en 320px
+        await tester.tap(find.byType(MaterialSummaryCard));
+        await tester.pumpAndSettle();
+
+        // Debe haber navegado y el detalle debe estar libre de overflows
+        expect(find.byType(MaterialDetailScreen), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );

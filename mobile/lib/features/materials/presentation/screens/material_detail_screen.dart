@@ -30,11 +30,15 @@ class MaterialDetailScreen extends StatelessWidget {
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            // Wrap seguro ante pantallas estrechas para chips superiores
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -53,9 +57,13 @@ class MaterialDetailScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
                 Chip(
                   label: Text('${summary.academicYear}'),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                ),
+                Chip(
+                  label: Text(summary.materialType.toUpperCase()),
                   padding: EdgeInsets.zero,
                   visualDensity: VisualDensity.compact,
                 ),
@@ -130,27 +138,35 @@ class MaterialDetailScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 14,
+                  horizontal: 8,
+                ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildStatColumn(
-                      'Descargas',
-                      '${summary.downloadCount}',
-                      Icons.download,
-                      colorScheme.primary,
+                    Expanded(
+                      child: _buildStatColumn(
+                        'Descargas',
+                        '${summary.downloadCount}',
+                        Icons.download,
+                        colorScheme.primary,
+                      ),
                     ),
-                    _buildStatColumn(
-                      'Calificación',
-                      summary.rating.toStringAsFixed(1),
-                      Icons.star,
-                      Colors.amber.shade700,
+                    Expanded(
+                      child: _buildStatColumn(
+                        'Calificación',
+                        summary.rating.toStringAsFixed(1),
+                        Icons.star,
+                        Colors.amber.shade700,
+                      ),
                     ),
-                    _buildStatColumn(
-                      'Tamaño',
-                      _formatBytes(detail.fileSizeBytes),
-                      Icons.folder_zip,
-                      colorScheme.secondary,
+                    Expanded(
+                      child: _buildStatColumn(
+                        'Tamaño',
+                        _formatBytes(detail.fileSizeBytes),
+                        Icons.folder_zip,
+                        colorScheme.secondary,
+                      ),
                     ),
                   ],
                 ),
@@ -179,15 +195,25 @@ class MaterialDetailScreen extends StatelessWidget {
     Color iconColor,
   ) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: iconColor, size: 22),
-        const SizedBox(height: 6),
-        Text(
-          value,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        Icon(icon, color: iconColor, size: 20),
+        const SizedBox(height: 4),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
         ),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: Colors.grey),
+          ),
+        ),
       ],
     );
   }
