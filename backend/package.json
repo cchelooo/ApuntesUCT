@@ -5,7 +5,8 @@
   "workspaces": [
     "./api-gateway",
     "./auth-service",
-    "./catalog-service"
+    "./catalog-service",
+    "./search-service"
   ],
   "scripts": {
     "prisma:generate": "npm run prisma:generate --workspaces --if-present",
