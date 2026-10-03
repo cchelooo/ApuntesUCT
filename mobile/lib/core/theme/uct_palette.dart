@@ -37,6 +37,23 @@ abstract final class UctPalette {
   /// Azul profundo de apoyo para titulares y contrastes de marca.
   static const Color navy = Color(0xFF0F1D34);
 
+  // --- Colores complementarios para asignaturas y tarjetas -----------------
+
+  /// Verde institucional / académico para tarjetas de cursos.
+  static const Color verde = Color(0xFF2F8F73);
+
+  /// Verde con contraste equilibrado para tarjetas en modo oscuro.
+  static const Color verdeOscuro = Color(0xFF1B5C49);
+
+  /// Ámbar / dorado para acentos de tarjetas, estrellas y doblez decorativo.
+  static const Color dorado = Color(0xFFEAA83A);
+
+  /// Ámbar con contraste equilibrado para tarjetas en modo oscuro.
+  static const Color doradoOscuro = Color(0xFF805E00);
+
+  /// Azul equilibrado para tarjetas en modo oscuro.
+  static const Color azulTarjetaOscura = Color(0xFF154C79);
+
   // --- Superficies oscuras -------------------------------------------------
 
   /// Carbón casi negro. Fondo principal del modo oscuro.

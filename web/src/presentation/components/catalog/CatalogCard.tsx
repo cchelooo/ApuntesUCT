@@ -46,21 +46,23 @@ export function CatalogCard({ subject }: CatalogCardProps) {
 
       <div className="flex items-center justify-between border-t border-catalog-line/70 px-4 py-3 text-sm text-catalog-ink/80">
         <span className="line-clamp-1">{subject.professorName}</span>
-        <span className="flex shrink-0 items-center gap-1 font-medium">
-          <svg
-            viewBox="0 0 20 20"
-            className="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            aria-hidden="true"
-          >
-            <path d="M5 3.5h7l3 3v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-12a1 1 0 0 1 1-1Z" />
-            <path d="M12 3.5v3h3" />
-            <path d="M6.5 10.5h7M6.5 13h5" />
-          </svg>
-          {subject.notesCount}
-        </span>
+        {subject.notesCount !== null && (
+          <span className="flex shrink-0 items-center gap-1 font-medium">
+            <svg
+              viewBox="0 0 20 20"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              aria-hidden="true"
+            >
+              <path d="M5 3.5h7l3 3v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-12a1 1 0 0 1 1-1Z" />
+              <path d="M12 3.5v3h3" />
+              <path d="M6.5 10.5h7M6.5 13h5" />
+            </svg>
+            {subject.notesCount}
+          </span>
+        )}
       </div>
     </article>
   );

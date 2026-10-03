@@ -1,3 +1,4 @@
+import { configureRoutes } from '../src/configure-routes';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -14,20 +15,32 @@ describe('API Gateway (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api/v1');
+    configureRoutes(app);
     setupApiDocs(app, app.get(ConfigService));
     await app.init();
   });
 
-  it('/api/v1/health (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/api/v1/health')
-      .expect(200)
-      .expect((res) => {
-        expect(res.body.status).toEqual('ok');
-        expect(res.body.service).toEqual('API Gateway');
+  it.each(['/health', '/api/v1/health'])(
+    '%s (GET) responde sin autenticación con el estado actual del Gateway',
+    async (path) => {
+      const beforeRequest = Date.now();
+      const response = await request(app.getHttpServer())
+        .get(path)
+        .expect(200)
+        .expect('Content-Type', /application\/json/)
+        .expect('Cache-Control', 'no-store');
+
+      expect(response.body).toEqual({
+        status: 'ok',
+        service: 'API Gateway',
+        timestamp: expect.any(String),
       });
-  });
+      const timestamp = Date.parse(response.body.timestamp);
+      expect(timestamp).toBeGreaterThanOrEqual(beforeRequest);
+      expect(timestamp).toBeLessThanOrEqual(Date.now());
+      expect(new Date(timestamp).toISOString()).toBe(response.body.timestamp);
+    },
+  );
 
   it('/api/docs (GET) expone el índice de documentación', () => {
     return request(app.getHttpServer())
@@ -55,6 +68,10 @@ describe('API Gateway (e2e)', () => {
       .expect('Content-Type', /application\/json/)
       .expect((res) => {
         expect(res.body.info.title).toEqual('API Gateway');
+        for (const path of ['/health', '/api/v1/health']) {
+          expect(res.body.paths[path].get.responses['200']).toBeDefined();
+        }
+        expect(res.body.paths['/api/v1/api/v1/health']).toBeUndefined();
       });
   });
 
@@ -66,7 +83,7 @@ describe('API Gateway (e2e)', () => {
       imports: [AppModule],
     }).compile();
     const configuredApp = configuredModule.createNestApplication();
-    configuredApp.setGlobalPrefix('api/v1');
+    configureRoutes(configuredApp);
     setupApiDocs(configuredApp, configuredApp.get(ConfigService));
     await configuredApp.init();
 

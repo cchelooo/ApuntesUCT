@@ -1,100 +1,137 @@
 # Estructura del proyecto mobile
 
-Este documento describe la organización de la aplicación Flutter ubicada en `mobile/`.
+Documento actualizado el 22 de septiembre de 2026 a partir de la estructura
+presente en `main` (`7d80289`). No se modificó código fuente como parte de esta
+revisión.
+
+## Estado de las tareas revisadas
+
+| Issue | Tarea | Estado en GitHub | Avance verificado en el código |
+|---|---|---|---|
+| #35 | Configurar navegación base con `go_router` | Cerrada | `main.dart` usa `GoRouter`, `MaterialApp.router` y rutas principales. |
+| #36 | Crear rutas vacías para Login, Registro, Catálogo y Perfil | Cerrada | Las rutas `/login`, `/register`, `/catalog` y `/profile` existen; catálogo y perfil ya tienen pantallas reales. |
+| #37 | Validar estructura de carpetas mobile con el equipo | Cerrada | La app está separada en `core`, `features`, `models`, `providers` y tests. |
+| #49 | Maquetar pantalla Login Mobile | Cerrada | `LoginScreen`, validadores, widgets compartidos y pruebas de UI/responsive presentes. |
+| #50 | Maquetar pantalla Registro Mobile | Cerrada | `RegisterScreen`, validaciones institucionales, confirmación de contraseña y prueba de navegación presentes. |
+| #64 | Crear modelos de respuesta Catálogo Mobile | Lista para cierre | Existen `UniversityModel`, `CareerModel`, `SubjectModel` y `ProfessorModel`; la integración actual usa `CatalogItem` para aplanar la respuesta del catálogo. |
+| #65 | Crear modelos de respuesta Auth Mobile | Lista para cierre | Existen modelos de request/response y tokens en `features/auth/data/models/`, con `fromJson`, `toJson`, mocks y representación segura de tokens. |
+| #79 | Pulir pantallas Login y Registro Mobile | Lista para cierre | La UI tiene tema UCT claro/oscuro, layout responsive, validaciones, widgets reutilizables y tests. |
+| #80 | Validar flujo Auth Mobile con API | Abierta / Todo | Pendiente: Login y Registro todavía usan `MockAuthRepository`; no existe `AuthApi` ni repositorio remoto en `main`. |
+
+### Evidencia formal
+
+- Las issues #35, #36, #37, #49 y #50 aparecen cerradas en GitHub.
+- El PR #146 fue integrado y contiene el avance de las pantallas; este commit
+  agrega referencias de cierre para #35, #36, #37, #49, #50, #64, #65 y #79.
+- La issue #80 se mantiene abierta porque falta la API Auth real. El flujo actual
+  es funcional mediante `MockAuthRepository` y queda cubierto por pruebas.
+- La validación ejecutada sobre `main` fue `flutter analyze` sin issues y
+  `flutter test` con **44 pruebas aprobadas**.
 
 ## Árbol de directorios
 
 ```text
 mobile/
-├── android/                          # Proyecto Android nativo (Gradle, manifests, íconos)
-│   ├── app/src/main/AndroidManifest.xml
-│   └── build.gradle.kts
-├── ios/                              # Proyecto iOS nativo (Xcode, assets, launch screen)
-│   ├── Runner/
-│   └── Runner.xcodeproj/
-├── lib/                              # Código Dart de la app
-│   ├── app/                          # Configuración global de la app (pendiente)
-│   ├── core/                         # Infraestructura compartida entre toda la app
+├── android/                                  # Proyecto Android nativo y configuración Gradle
+├── ios/                                      # Proyecto iOS nativo y configuración Xcode
+├── lib/                                      # Código Dart de la aplicación
+│   ├── core/                                 # Infraestructura transversal
 │   │   ├── config/
-│   │   │   └── api_config.dart       # URL del API Gateway (#39): API_GATEWAY_URL o 10.0.2.2 en emulador
+│   │   │   └── api_config.dart               # URLs del Gateway y Catalog Service por plataforma
 │   │   ├── errors/
-│   │   │   ├── api_exception.dart    # Excepción centralizada con fromDioException (#40)
-│   │   │   └── error_messages.dart   # Mensajes de error reutilizables para la UI
+│   │   │   ├── api_exception.dart            # Excepción centralizada para Dio (#40)
+│   │   │   └── error_messages.dart           # Mensajes de error mostrables en la UI
 │   │   ├── network/
-│   │   │   ├── api_client.dart       # Cliente Dio con ErrorInterceptor y logs (#38, #40)
-│   │   │   ├── api_response.dart     # Helper AsyncValue para respuestas API (#40)
-│   │   │   └── error_interceptor.dart # Interceptor unificado de errores (#40)
+│   │   │   ├── api_client.dart               # Cliente Dio base e interceptor de errores
+│   │   │   ├── api_response.dart             # Conversión de peticiones a AsyncValue
+│   │   │   └── error_interceptor.dart         # Normalización de DioException
 │   │   ├── theme/
-│   │   │   ├── app_theme.dart        # Tema claro/oscuro de la app
-│   │   │   └── uct_palette.dart      # Colores institucionales UCT
+│   │   │   ├── app_theme.dart                # Temas claro y oscuro
+│   │   │   └── uct_palette.dart              # Paleta institucional UCT
 │   │   ├── validation/
-│   │   │   └── validators.dart       # Validaciones de formularios (email UCT, contraseña, etc.)
-│   │   └── widgets/                  # Widgets reutilizables
+│   │   │   └── validators.dart               # Validaciones de formularios
+│   │   └── widgets/                          # Componentes visuales reutilizables
+│   │       ├── app_button.dart
+│   │       ├── app_card.dart
+│   │       ├── app_horizontal_list.dart
+│   │       ├── app_navigation_bar.dart
 │   │       ├── app_password_field.dart
 │   │       ├── app_primary_button.dart
+│   │       ├── app_section_header.dart
 │   │       ├── app_text_field.dart
-│   │       ├── auth_scaffold.dart    # Layout responsive de Login/Registro
+│   │       ├── auth_scaffold.dart
+│   │       ├── empty_state.dart
+│   │       ├── error_state.dart
 │   │       ├── form_error_banner.dart
 │   │       ├── institutional_email_field.dart
+│   │       ├── loading_state.dart
 │   │       ├── theme_toggle_button.dart
-│   │       └── widgets.dart          # Barrel export
-│   ├── features/                     # Módulos por funcionalidad (auth, catalog, library, etc.)
+│   │       └── widgets.dart                  # Barrel export
+│   ├── features/                             # Módulos funcionales por dominio
 │   │   ├── auth/
-│   │   │   ├── data/                 # Capa de datos de autenticación
-│   │   │   │   ├── models/           # Modelos de respuesta Auth (#65)
-│   │   │   │   └── mock_auth_repository.dart  # Contrato AuthRepository + mock con login/registro
-│   │   │   ├── domain/               # Lógica de negocio pura (pendiente)
-│   │   │   └── presentation/         # Pantallas de autenticación
+│   │   │   ├── data/
+│   │   │   │   ├── mock_auth_repository.dart # AuthRepository mock y estado Riverpod
+│   │   │   │   └── models/                   # Modelos de request/response Auth (#65)
+│   │   │   └── presentation/
 │   │   │       ├── login_screen.dart
 │   │   │       └── register_screen.dart
 │   │   ├── catalog/
-│   │   ├── library/
-│   │   ├── profile/
-│   │   └── search/                   # Estructura data/domain/presentation reservada
-│   ├── models/                       # Modelos globales compartidos entre features
+│   │   │   ├── data/catalog_repository.dart # Consulta y adaptación del catálogo
+│   │   │   ├── domain/catalog_item.dart     # Modelo de UI del catálogo
+│   │   │   └── presentation/                # Pantalla, provider y tarjeta de material
+│   │   ├── home/
+│   │   │   ├── domain/material_card_data.dart
+│   │   │   └── presentation/                # Home, provider y widgets de cursos/materiales
+│   │   └── profile/
+│   │       ├── domain/profile_models.dart
+│   │       └── presentation/                # Perfil, provider, extensiones y widgets
+│   ├── models/                               # Modelos globales Auth/Catálogo
 │   │   ├── user_model.dart
-│   │   ├── career_model.dart
-│   │   ├── subject_model.dart
-│   │   ├── professor_model.dart
-│   │   └── university_model.dart
+│   │   ├── university_model.dart             # Modelo base de catálogo (#64, avance heredado)
+│   │   ├── career_model.dart                 # Modelo base de catálogo (#64, avance heredado)
+│   │   ├── subject_model.dart                # Modelo base de catálogo (#64, avance heredado)
+│   │   ├── professor_model.dart              # Modelo base de catálogo (#64, avance heredado)
+│   │   └── models.dart                       # Barrel export
 │   ├── providers/
-│   │   └── theme_mode_provider.dart  # Riverpod: modo claro/oscuro/sistema
-│   ├── shared/                       # Utilidades transversales (pendiente)
-│   └── main.dart                     # Punto de entrada, router GoRouter y HomeScreen
-├── test/                             # Tests del proyecto
+│   │   └── theme_mode_provider.dart          # Estado global del tema con Riverpod
+│   └── main.dart                              # Entrada, router y configuración MaterialApp
+├── test/                                     # Tests unitarios y de widgets
 │   ├── core/errors/api_exception_test.dart
-│   ├── register_navigation_test.dart # Registro exitoso navega al Home
-│   ├── responsive_auth_test.dart
-│   └── widget_test.dart
-├── pubspec.yaml                      # Dependencias (Riverpod, GoRouter, Dio, etc.)
-├── pubspec.lock                      # Versiones resueltas
-└── analysis_options.yaml             # Reglas del linter
+│   ├── core/theme/app_theme_test.dart
+│   ├── core/widgets/                         # Tests de componentes base y estados
+│   ├── features/auth/data/mock_auth_repository_test.dart
+│   ├── features/catalog/                     # Tests de repositorio y pantalla
+│   ├── features/profile/presentation/        # Tests de pantalla de perfil
+│   ├── screens/home_screen_test.dart
+│   ├── register_navigation_test.dart         # Registro exitoso navega a Home
+│   ├── responsive_auth_test.dart             # Login/Registro en portrait y landscape
+│   └── widget_test.dart                      # Flujo visual de autenticación
+├── pubspec.yaml                              # Dependencias Flutter/Dio/Riverpod/GoRouter
+├── pubspec.lock                              # Versiones resueltas
+└── analysis_options.yaml                     # Reglas del analizador
 ```
 
 ## Responsabilidad por capa
 
 | Carpeta | Responsabilidad |
-|---------|-----------------|
-| `android/` | Proyecto Android nativo generado por Flutter. Aquí se configuran permisos, íconos, nombre de app y firma. |
-| `ios/` | Proyecto iOS nativo generado por Flutter. Contiene configuración de Xcode, assets y launch screen. |
-| `lib/app/` | Configuración global de la app (por ejemplo, inicialización de providers o servicios). Actualmente reservado. |
-| `lib/core/` | Código transversal que no pertenece a una feature específica: tema, errores, red, validaciones y widgets base. |
-| `lib/core/config/` | Configuración del API Gateway (#39): `API_GATEWAY_URL` o selección automática (`10.0.2.2` en emulador Android, `localhost` en el resto). |
-| `lib/core/errors/` | Excepción centralizada `ApiException` con `fromDioException` (#40) más helpers de mensajes para la UI. |
-| `lib/core/network/` | Cliente Dio (`ApiClient`), interceptor unificado de errores y helper `ApiResponseHandler` (#38, #40). |
-| `lib/core/theme/` | Paleta de colores UCT y temas claro/oscuro de Material 3. |
-| `lib/core/validation/` | Validadores reutilizables para formularios (email institucional, contraseñas, etc.). |
-| `lib/core/widgets/` | Widgets genéricos usados en varias pantallas: botones, campos de texto, scaffold de auth, etc. |
-| `lib/features/` | Módulos organizados por funcionalidad. Cada feature tiene sus propias capas `data`, `domain` y `presentation`. |
-| `lib/features/auth/` | Login, registro, logout y estado de autenticación con Riverpod. |
-| `lib/models/` | Modelos globales compartidos entre varias features (usuario, carrera, asignatura, etc.). |
-| `lib/providers/` | Providers globales de Riverpod que no pertenecen a una feature específica, como el modo de tema. |
-| `lib/shared/` | Utilidades transversales como extensiones o helpers. Actualmente reservado. |
-| `lib/main.dart` | Punto de entrada de la app, configuración del router (`GoRouter`) y pantalla de inicio. |
-| `test/` | Tests unitarios y de widget del proyecto. |
+|---|---|
+| `android/` | Integración nativa Android: Gradle, manifest, permisos y configuración de la aplicación. |
+| `ios/` | Integración nativa iOS: Xcode, assets, launch screen y configuración de Runner. |
+| `lib/core/` | Infraestructura compartida: red, errores, tema, validación y widgets base. |
+| `lib/core/config/` | Resolución de URLs. `ApiConfig` usa `API_GATEWAY_URL`/`CATALOG_SERVICE_URL`, `10.0.2.2` en emulador Android y `localhost` en otras plataformas locales. |
+| `lib/core/network/` | Cliente Dio, interceptor de errores y representación de estados asíncronos. |
+| `lib/core/theme/` | Tema Material 3, colores institucionales y consistencia visual. |
+| `lib/core/validation/` | Reglas de validación de nombre, correo institucional, contraseñas y confirmación. |
+| `lib/core/widgets/` | Componentes compartidos para formularios, navegación, estados loading/error/empty y tarjetas. |
+| `lib/features/auth/` | Login, registro y estado mock de autenticación con Riverpod. La integración real queda pendiente en #80. |
+| `lib/features/catalog/` | Consulta del catálogo, adaptación de respuestas, búsqueda y presentación de materiales. |
+| `lib/features/home/` | Pantalla principal, cursos, materiales y navegación hacia otras secciones. |
+| `lib/features/profile/` | Perfil, edición visual, cursos, insignias y grilla de materiales. |
+| `lib/models/` | Modelos globales de usuario y entidades académicas base. |
+| `lib/providers/` | Providers globales que no pertenecen a una feature concreta. |
+| `test/` | Pruebas unitarias, de widgets, responsive e integración de providers/pantallas. |
 
-## Notas
+## Pendiente identificado
 
-- La app sigue una arquitectura por capas dentro de cada `feature`: `data` (fuentes de datos), `domain` (lógica de negocio) y `presentation` (UI).
-- `core/` centraliza la infraestructura para evitar duplicación entre features.
-- Los tests actuales cubren el mapeo de errores de red y la adaptación responsive de las pantallas de autenticación.
+- #80: implementar y validar el consumo real de Auth cuando el API esté
+  disponible. Mientras tanto, el flujo mock es funcional.

@@ -1,58 +1,51 @@
+import 'dart:async';
+
 import 'package:apuntesuct_mobile/core/widgets/widgets.dart';
+import 'package:apuntesuct_mobile/features/catalog/domain/catalog_item.dart';
+import 'package:apuntesuct_mobile/features/catalog/presentation/providers/catalog_provider.dart';
+import 'package:apuntesuct_mobile/features/catalog/presentation/widgets/material_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../widgets/material_card.dart';
-
-class CatalogScreen extends StatefulWidget {
+class CatalogScreen extends ConsumerStatefulWidget {
   const CatalogScreen({super.key});
 
   @override
-  State<CatalogScreen> createState() => _CatalogScreenState();
+  ConsumerState<CatalogScreen> createState() => _CatalogScreenState();
 }
 
-class _CatalogScreenState extends State<CatalogScreen> {
+class _CatalogScreenState extends ConsumerState<CatalogScreen> {
   final TextEditingController _searchController = TextEditingController();
-
-  final List<Map<String, String>> _allMaterials = [
-    {
-      'title': 'Cálculo Diferencial e Integral',
-      'author': 'James Stewart',
-      'subject': 'Matemáticas',
-    },
-    {
-      'title': 'Álgebra Lineal y sus Aplicaciones',
-      'author': 'David C. Lay',
-      'subject': 'Álgebra',
-    },
-    {
-      'title': 'Estructuras de Datos y Algoritmos',
-      'author': 'Mark Allen Weiss',
-      'subject': 'Informática',
-    },
-    {
-      'title': 'Física Universitaria Vol. 1',
-      'author': 'Sears y Zemansky',
-      'subject': 'Física',
-    },
-  ];
+  Timer? _debounceTimer;
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
+  void _onSearchChanged(String value) {
+    setState(() {});
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      ref.read(catalogSearchQueryProvider.notifier).setQuery(value.trim());
+    });
+  }
+
+  void _clearSearch() {
+    _debounceTimer?.cancel();
+    setState(() {
+      _searchController.clear();
+    });
+    ref.read(catalogSearchQueryProvider.notifier).clear();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final query = _searchController.text.toLowerCase().trim();
-    final filteredMaterials = _allMaterials.where((item) {
-      final title = item['title']!.toLowerCase();
-      final author = item['author']!.toLowerCase();
-      final subject = item['subject']!.toLowerCase();
-      return title.contains(query) ||
-          author.contains(query) ||
-          subject.contains(query);
-    }).toList();
+    final catalogAsync = ref.watch(catalogListProvider);
+    final activeQuery = ref.watch(catalogSearchQueryProvider);
+    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -65,40 +58,85 @@ class _CatalogScreenState extends State<CatalogScreen> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: SearchBar(
               controller: _searchController,
-              hintText: 'Buscar apuntes, libros, ramos...',
+              hintText: 'Buscar asignaturas, carreras...',
               leading: const Icon(Icons.search),
               trailing: [
                 if (_searchController.text.isNotEmpty)
                   IconButton(
                     icon: const Icon(Icons.clear),
-                    onPressed: () {
-                      setState(() {
-                        _searchController.clear();
-                      });
-                    },
+                    onPressed: _clearSearch,
                   ),
               ],
-              onChanged: (_) => setState(() {}),
+              onChanged: _onSearchChanged,
             ),
           ),
           Expanded(
-            child: filteredMaterials.isEmpty
-                ? const EmptyState(
-                    title: 'No se encontraron materiales',
-                    subtitle: 'Prueba buscando con otro término o revisa la ortografía.',
-                  )
-                : ListView.builder(
-                    itemCount: filteredMaterials.length,
+            child: RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(catalogListProvider);
+                try {
+                  await ref.read(catalogListProvider.future);
+                } catch (_) {}
+              },
+              child: catalogAsync.when(
+                loading: () =>
+                    const LoadingState(message: 'Cargando catálogo...'),
+                error: (error, _) => Center(
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: ErrorState(
+                      message: 'Error al cargar el catálogo. Por favor intenta nuevamente.',
+                      onRetry: () => ref.invalidate(catalogListProvider),
+                    ),
+                  ),
+                ),
+                data: (List<CatalogItem> materials) {
+                  if (materials.isEmpty) {
+                    final isFiltering = activeQuery.isNotEmpty;
+                    return Center(
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: EmptyState(
+                          title: isFiltering
+                              ? 'Sin resultados para "$activeQuery"'
+                              : 'No se encontraron materiales',
+                          subtitle: isFiltering
+                              ? 'Intenta con otro término o revisa la ortografía.'
+                              : 'Por el momento no hay ramos cargados en el sistema.',
+                        ),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: materials.length + 1,
                     itemBuilder: (context, index) {
-                      final item = filteredMaterials[index];
+                      if (index == 0) {
+                        return Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 6),
+                          child: Text(
+                            '${materials.length} ${materials.length == 1 ? 'resultado encontrado' : 'resultados encontrados'}',
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: theme.colorScheme.outline,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      }
+
+                      final item = materials[index - 1];
                       return MaterialCard(
-                        title: item['title']!,
-                        author: item['author']!,
-                        subject: item['subject']!,
+                        title: item.title,
+                        author: item.author,
+                        subject: item.subject,
                         onTap: null,
                       );
                     },
-                  ),
+                  );
+                },
+              ),
+            ),
           ),
         ],
       ),
