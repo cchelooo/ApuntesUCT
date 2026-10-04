@@ -20,6 +20,41 @@ src/
 └── infrastructure/ # Prisma, configuración, servicios externos
 ```
 
+## Endpoints
+
+Prefijo `api/v1`, todas las rutas cuelgan de `/catalog`:
+
+| Método | Ruta | Descripción |
+| --- | --- | --- |
+| `GET` | `/catalog` | Árbol jerárquico del catálogo (universidades → carreras → asignaturas → profesores) |
+| `GET` | `/catalog/filter` | Filtrado jerárquico en 6 niveles: `universityId`, `careerId`, `subjectId`, `professorId`, `year`, `type` |
+| `POST` | `/catalog/universities` | Crear universidad |
+| `DELETE` | `/catalog/universities/:id` | Eliminar universidad en cascada |
+| `POST` | `/catalog/careers` | Crear carrera |
+| `DELETE` | `/catalog/careers/:id` | Eliminar carrera en cascada |
+| `POST` | `/catalog/professors` | Crear profesor (opcionalmente vinculado con `subjectIds`) |
+| `DELETE` | `/catalog/professors/:id` | Eliminar profesor |
+| `POST` | `/catalog/subjects` | Crear asignatura |
+| `DELETE` | `/catalog/subjects/:id` | Eliminar asignatura |
+
+El filtrado exige una secuencia jerárquica válida: cada nivel requiere el anterior
+(`year` exige `professorId` y `type` exige `year`). Errores: `400` por secuencia
+inválida o `type` fuera del enum, `404` si el padre no existe y `409` por
+código o correo duplicados.
+
+### Frontera con Material Service
+
+`Resource` es una **relación de la asignatura dentro del dominio de Catalog**:
+guarda los metadatos (`title`, `description`, `fileUrl`, `year`, `type`) que
+permiten filtrar el catálogo.
+
+Los filtros `year` y `type` se resuelven localmente: la respuesta **sigue siendo
+una lista de asignaturas** y solo incluye aquellas que tienen al menos un recurso
+activo coincidente. Catalog **no devuelve el payload de los recursos**, porque los
+archivos, las versiones y las descargas pertenecen a **Material Service**, que aún
+no está implementado. Por eso un `type` fuera del enum se rechaza con `400` en
+lugar de devolver silenciosamente un arreglo vacío.
+
 ## Base de Datos
 
 Este servicio utiliza **Prisma ORM** junto con PostgreSQL para la gestión del modelo de catálogo.

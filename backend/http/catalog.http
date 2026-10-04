@@ -102,7 +102,15 @@ Content-Type: {{contentType}}
 
 ### 1.3f Error: 'type' sin 'year' (Violación de secuencia)
 # Esperado: 400 Bad Request
-GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&type=APUNTE
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&type=EXAM
+Content-Type: {{contentType}}
+
+###
+
+### 1.3h Error: 'type' fuera del enum ResourceType
+# Valores válidos: SUMMARY, EXAM, GUIDE, CLASS_NOTES, OTHER
+# Esperado: 400 Bad Request
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year=2026&type=APUNTE
 Content-Type: {{contentType}}
 
 ###
@@ -114,17 +122,29 @@ Content-Type: {{contentType}}
 
 ###
 
-### 1.4a Nivel No Implementado: Secuencia completa hasta 'year' (Nivel 5)
-# Esperado: 501 Not Implemented
+### 1.4a Nivel 5: Secuencia completa hasta 'year'
+# Filtra asignaturas que tienen al menos un Resource activo del año indicado.
+# Esperado: 200 OK
 GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year=2026
 Content-Type: {{contentType}}
 
 ###
 
-### 1.4b Nivel No Implementado: Secuencia completa previa incluyendo 'year' y 'type' (Nivel 6)
-# Esperado: 501 Not Implemented
-GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year=2026&type=APUNTE
+### 1.4b Nivel 6: Secuencia completa incluyendo 'year' y 'type'
+# Además del año, el recurso debe coincidir con el tipo.
+# Esperado: 200 OK
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year=2026&type=EXAM
 Content-Type: {{contentType}}
+
+###
+
+### 1.4c Nivel 6: 'type' sin coincidencias (no hay recursos SUMMARY)
+# Demuestra que el filtro discrimina por tipo en lugar de devolver todo sin filtrar.
+# Esperado: 200 OK con []
+GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year=2026&type=SUMMARY
+Content-Type: {{contentType}}
+
+###
 
 
 ###############################################
@@ -198,3 +218,139 @@ Content-Type: {{contentType}}
 # Esperado: 404 Not Found
 DELETE {{baseUrl}}/catalog/subjects/{{nonExistentUuid}}
 Content-Type: {{contentType}}
+
+###############################################
+# 3. GESTIÓN DEL CATÁLOGO RESTAURADOR (OPERACIONES CRUD)
+#    Payload inválido/incompleto y eliminación en cascada.
+###############################################
+
+### 3.1 Crear universidad con payload inválido/incompleto
+# Esperado: 400 Bad Request
+POST {{baseUrl}}/catalog/universities
+Content-Type: {{contentType}}
+
+{
+  "name": "Universidad Sin Codigo"
+}
+
+###
+
+### 3.2 Crear universidad válida
+# Esperado: 201 Created
+# Guarda el ID para los casos siguientes
+POST {{baseUrl}}/catalog/universities
+Content-Type: {{contentType}}
+
+{
+  "name": "Universidad de Prueba HTTP",
+  "code": "HTTP-221",
+  "active": true
+}
+
+###
+
+### 3.3 Crear universidad duplicada (Mismo código)
+# Esperado: 409 Conflict
+POST {{baseUrl}}/catalog/universities
+Content-Type: {{contentType}}
+
+{
+  "name": "Universidad Duplicada",
+  "code": "HTTP-221"
+}
+
+###
+
+### 3.4 Crear carrera válida en la universidad creada en 3.2
+# Esperado: 201 Created
+POST {{baseUrl}}/catalog/careers
+Content-Type: {{contentType}}
+
+{
+  "universityId": "{{createUniversity.response.body.id}}",
+  "name": "Carrera de Prueba HTTP",
+  "code": "HTTP-C221",
+  "active": true
+}
+
+###
+
+### 3.5 Crear carrera con universidad inexistente
+# Esperado: 404 Not Found
+POST {{baseUrl}}/catalog/careers
+Content-Type: {{contentType}}
+
+{
+  "universityId": "{{nonExistentUuid}}",
+  "name": "Carrera Huérfana",
+  "code": "HUE-221"
+}
+
+###
+
+### 3.6 Crear profesor válido vinculado a una asignatura
+# Esperado: 201 Created
+POST {{baseUrl}}/catalog/professors
+Content-Type: {{contentType}}
+
+{
+  "name": "Profesor de Prueba HTTP",
+  "email": "profesor.http221@uct.cl",
+  "subjectIds": ["{{subjectId}}"]
+}
+
+###
+
+### 3.7 Crear profesor con email duplicado
+# Esperado: 409 Conflict
+POST {{baseUrl}}/catalog/professors
+Content-Type: {{contentType}}
+
+{
+  "name": "Profesor Duplicado",
+  "email": "profesor.http221@uct.cl"
+}
+
+###
+
+### 3.8 Crear profesor con asignatura inexistente
+# Esperado: 404 Not Found
+POST {{baseUrl}}/catalog/professors
+Content-Type: {{contentType}}
+
+{
+  "name": "Profesor con Asignatura Inexistente",
+  "email": "profesor.otro221@uct.cl",
+  "subjectIds": ["{{nonExistentUuid}}"]
+}
+
+###
+
+### 3.9 Eliminar profesor válido
+# Esperado: 200 OK
+DELETE {{baseUrl}}/catalog/professors/{{createProfessor.response.body.id}}
+Content-Type: {{contentType}}
+
+###
+
+### 3.10 Eliminar profesor inexistente
+# Esperado: 404 Not Found
+DELETE {{baseUrl}}/catalog/professors/{{nonExistentUuid}}
+Content-Type: {{contentType}}
+
+###
+
+### 3.11 Eliminar universidad en cascada
+# Elimina también la carrera creada en 3.4 y sus asignaturas/recursos.
+# Esperado: 200 OK
+DELETE {{baseUrl}}/catalog/universities/{{createUniversity.response.body.id}}
+Content-Type: {{contentType}}
+
+###
+
+### 3.12 Verificar que la carrera fue eliminada en cascada
+# Esperado: 404 Not Found
+DELETE {{baseUrl}}/catalog/careers/{{createCareer.response.body.id}}
+Content-Type: {{contentType}}
+
+###
