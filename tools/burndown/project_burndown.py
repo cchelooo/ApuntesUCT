@@ -311,7 +311,7 @@ def write_snapshot_rows(csv_path: Path, rows: list[dict]) -> None:
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     rows.sort(key=lambda row: (row["snapshot_date"], row["scope"], row["equipo"], row["key"]))
     with csv_path.open("w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=CSV_FIELDS)
+        writer = csv.DictWriter(file, fieldnames=CSV_FIELDS, lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
 
@@ -575,6 +575,7 @@ def render_chart(
   <text x="24" y="{top + plot_height / 2}" transform="rotate(-90 24,{top + plot_height / 2})" text-anchor="middle" class="axis">Horas</text>
 </svg>
 """
+    svg = "\n".join(line.rstrip() for line in svg.splitlines()) + "\n"
     output_path.write_text(svg, encoding="utf-8")
 
 
