@@ -3,6 +3,7 @@
   "references": [
     { "path": "./api-gateway" },
     { "path": "./auth-service" },
-    { "path": "./catalog-service" }
+    { "path": "./catalog-service" },
+    { "path": "./material-service" }
   ]
 }
