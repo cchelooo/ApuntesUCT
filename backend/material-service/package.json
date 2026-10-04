@@ -1,7 +1,7 @@
 {
-  "name": "search-service",
+  "name": "material-service",
   "version": "0.0.1",
-  "description": "Microservicio de búsqueda y consulta desacoplada para ApuntesUCT",
+  "description": "Microservicio de materiales acad\u00e9micos.",
   "author": "INT2 - ApuntesUCT",
   "private": true,
   "license": "UNLICENSED",
@@ -14,12 +14,11 @@
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "lint:fix": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "jest --passWithNoTests",
+    "test": "jest",
     "test:watch": "jest --watch",
-    "test:cov": "jest --coverage --passWithNoTests",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:ci": "jest --ci --runInBand --passWithNoTests",
-    "test:e2e": "echo \"Pruebas E2E planificadas para Semana 4\""
+    "test:cov": "jest --coverage",
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:ci": "jest --ci --runInBand"
   },
   "dependencies": {
     "@nestjs/common": "11.2.3",
@@ -27,7 +26,6 @@
     "@nestjs/core": "11.2.3",
     "@nestjs/platform-express": "11.2.3",
     "@nestjs/swagger": "11.4.7",
-    "@nestjs/terminus": "^11.0.0",
     "class-transformer": "0.5.1",
     "class-validator": "0.15.1",
     "reflect-metadata": "0.2.2",

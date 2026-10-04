@@ -1,7 +1,6 @@
 import type { RawCatalogSubject } from './rawCatalogSubject';
 
-const baseUrl =
-  import.meta.env.VITE_CATALOG_API_URL ?? 'http://localhost:3002/api/v1';
+const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1';
 export interface CatalogFilters {
   universityId?: string;
   careerId?: string;
