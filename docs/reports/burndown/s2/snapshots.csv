@@ -1,0 +1,13 @@
+snapshot_date,sprint,scope,key,name,equipo,items,horas_asignadas,horas_usadas,horas_restantes,horas_excedidas
+2026-10-03,S2,Equipo,INT2,INT2,INT2,50,120,6.5,112.5,0
+2026-10-03,S2,Equipo,INT4,INT4,INT4,32,80,5.5,74.5,0
+2026-10-03,S2,Integrante,AilynMelillan,Ailyn Melillan,INT2,9,20,1.5,18.5,0
+2026-10-03,S2,Integrante,David7985,David Villegas,INT2,9,20,0,20,0
+2026-10-03,S2,Integrante,KennyaAle,Martina Iturrieta,INT2,8,20,1.5,18.5,0
+2026-10-03,S2,Integrante,alara2024uct,Antonio Lara,INT2,8,20,3,16,0
+2026-10-03,S2,Integrante,gabrielgutierrez1,Gabriel Gutierrez,INT2,8,20,0,20,0
+2026-10-03,S2,Integrante,rrodriguez2025,Raul Rodriguez,INT2,8,20,0.5,19.5,0
+2026-10-03,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,0,20,0
+2026-10-03,S2,Integrante,Yaninna137,Yaninna Alvarez,INT4,8,20,4.5,15.5,0
+2026-10-03,S2,Integrante,cchelooo,Marcelo Santana,INT4,8,20,1,19,0
+2026-10-03,S2,Integrante,eduardoscrs,Eduardo Escares,INT4,8,20,0,20,0

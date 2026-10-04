@@ -20,18 +20,25 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Iterable
+from zoneinfo import ZoneInfo
 
 
 PROJECT_OWNER = "cchelooo"
 PROJECT_NUMBER = 2
-DEFAULT_SPRINT = "S1"
+DEFAULT_SPRINT = "S2"
 CHART_BACKUP_DIR = "charts_backup_yesterday"
 TEAM_NAMES = ("INT2", "INT4")
-TEAM_WINDOWS = {
-    "INT2": ("2026-09-02", "2026-09-30"),
-    "INT4": ("2026-09-03", "2026-10-01"),
+SPRINT_WINDOWS = {
+    "S1": {
+        "INT2": ("2026-09-02", "2026-09-30"),
+        "INT4": ("2026-09-03", "2026-10-01"),
+    },
+    "S2": {
+        "INT2": ("2026-09-30", "2026-10-28"),
+        "INT4": ("2026-10-01", "2026-10-29"),
+    },
 }
-WORK_STARTED_ON = "2026-09-04"
+WORK_STARTED_ON = {"S1": "2026-09-04"}
 
 MEMBERS = {
     "gabrielgutierrez1": {"name": "Gabriel Gutierrez", "team": "INT2"},
@@ -146,7 +153,13 @@ def fetch_project(owner: str, project_number: int, limit: int) -> dict:
         "json",
     ]
     result = subprocess.run(command, check=True, capture_output=True, text=True)
-    return json.loads(result.stdout)
+    payload = json.loads(result.stdout)
+    if payload.get("totalCount", 0) > len(payload.get("items", [])):
+        raise SystemExit(
+            "La captura del Project está incompleta. Aumenta --limit "
+            "para incluir todas las tareas antes de generar el burndown."
+        )
+    return payload
 
 
 def assignee_logins(item: dict) -> list[str]:
@@ -384,7 +397,7 @@ def chart_window(
 ) -> tuple[date, date]:
     snapshot_dates = [parse_date(row["snapshot_date"]) for row in rows]
     team = chart_team(rows)
-    configured_start, configured_end = configured_team_window(team)
+    configured_start, configured_end = configured_team_window(team, rows[0]["sprint"])
 
     first_date = parse_date(start_date) if start_date else configured_start
     last_date = parse_date(end_date) if end_date else configured_end
@@ -407,8 +420,8 @@ def chart_team(rows: list[dict]) -> str:
     return latest["key"] if latest["scope"] == "Equipo" else latest["equipo"]
 
 
-def configured_team_window(team: str) -> tuple[date | None, date | None]:
-    window = TEAM_WINDOWS.get(team)
+def configured_team_window(team: str, sprint: str) -> tuple[date | None, date | None]:
+    window = SPRINT_WINDOWS.get(sprint, {}).get(team)
     if not window:
         return None, None
     return parse_date(window[0]), parse_date(window[1])
@@ -613,7 +626,11 @@ def write_summary(
         "",
         f"Primer snapshot guardado: {first_snapshot}.",
         f"Ultimo snapshot: {latest_date}.",
-        f"Trabajo efectivo informado desde: {WORK_STARTED_ON}.",
+        (
+            f"Trabajo efectivo informado desde: {WORK_STARTED_ON[sprint]}."
+            if sprint in WORK_STARTED_ON
+            else "No se reconstruyen horas de dias sin snapshot."
+        ),
         "",
         "## Ventanas del sprint",
         "",
@@ -622,7 +639,7 @@ def write_summary(
     ]
 
     for team in TEAM_NAMES:
-        start, end = configured_team_window(team)
+        start, end = configured_team_window(team, sprint)
         if start is None or end is None:
             continue
         lines.append(f"| {team} | {start.isoformat()} | {end.isoformat()} |")
@@ -712,7 +729,7 @@ def command_capture(args: argparse.Namespace) -> None:
     output_dir = Path(args.output_dir) if args.output_dir else output_dir_for_sprint(args.sprint)
     csv_path = output_dir / "snapshots.csv"
     payload = fetch_project(args.owner, args.project_number, args.limit)
-    snapshot_date = args.date or date.today().isoformat()
+    snapshot_date = args.date or datetime.now(ZoneInfo("America/Santiago")).date().isoformat()
     rows = build_snapshot_rows(payload, args.sprint, snapshot_date)
     upsert_snapshot(csv_path, rows)
     print(f"Snapshot guardado en {csv_path}")
@@ -731,7 +748,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     def add_common(subparser: argparse.ArgumentParser) -> None:
-        subparser.add_argument("--sprint", default=DEFAULT_SPRINT)
+        subparser.add_argument("--sprint", default=DEFAULT_SPRINT, choices=tuple(SPRINT_WINDOWS))
         subparser.add_argument("--output-dir")
         subparser.add_argument("--start-date")
         subparser.add_argument("--end-date")
@@ -740,7 +757,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_common(capture)
     capture.add_argument("--owner", default=PROJECT_OWNER)
     capture.add_argument("--project-number", type=int, default=PROJECT_NUMBER)
-    capture.add_argument("--limit", type=int, default=200)
+    capture.add_argument("--limit", type=int, default=1000)
     capture.add_argument("--date")
     capture.set_defaults(func=command_capture)
 
@@ -752,7 +769,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_common(all_command)
     all_command.add_argument("--owner", default=PROJECT_OWNER)
     all_command.add_argument("--project-number", type=int, default=PROJECT_NUMBER)
-    all_command.add_argument("--limit", type=int, default=200)
+    all_command.add_argument("--limit", type=int, default=1000)
     all_command.add_argument("--date")
 
     def run_all(args: argparse.Namespace) -> None:
