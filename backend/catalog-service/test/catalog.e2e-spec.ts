@@ -72,9 +72,10 @@ describe('Catalog Service - Endpoints HTTP (E2E)', () => {
         .expect(HttpStatus.BAD_REQUEST);
     });
 
-    it('debe retornar 501 Not Implemented al solicitar el filtro year (Nivel 5) sobre jerarquía válida', async () => {
-      // Petición con secuencia jerárquica completa + nivel no implementado (year)
-      await request(app.getHttpServer())
+    it('debe retornar 200 OK al solicitar el filtro year (Nivel 5) sobre jerarquía válida', async () => {
+      // Secuencia jerárquica completa + year: se resuelve contra Resource y la
+      // respuesta sigue siendo una lista de asignaturas.
+      const response = await request(app.getHttpServer())
         .get('/api/v1/catalog/filter')
         .query({
           universityId: validUUIDs.universityId,
@@ -83,7 +84,71 @@ describe('Catalog Service - Endpoints HTTP (E2E)', () => {
           professorId: validUUIDs.professorId,
           year: 2026,
         })
-        .expect(HttpStatus.NOT_IMPLEMENTED); // Aserción estricta de estado 501 exigida por el revisor
+        .expect(HttpStatus.OK);
+
+      expect(Array.isArray(response.body)).toBe(true);
     });
+
+    it('debe retornar 200 OK al solicitar los filtros year y type (Niveles 5 y 6)', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/api/v1/catalog/filter')
+        .query({
+          universityId: validUUIDs.universityId,
+          careerId: validUUIDs.careerId,
+          subjectId: validUUIDs.subjectId,
+          professorId: validUUIDs.professorId,
+          year: 2026,
+          type: 'EXAM',
+        })
+        .expect(HttpStatus.OK);
+
+      expect(Array.isArray(response.body)).toBe(true);
+    });
+
+    it('debe retornar 400 Bad Request si type no pertenece al enum ResourceType', async () => {
+      await request(app.getHttpServer())
+        .get('/api/v1/catalog/filter')
+        .query({
+          universityId: validUUIDs.universityId,
+          careerId: validUUIDs.careerId,
+          subjectId: validUUIDs.subjectId,
+          professorId: validUUIDs.professorId,
+          year: 2026,
+          type: 'APUNTE',
+        })
+        .expect(HttpStatus.BAD_REQUEST);
+    });
+  });
+
+  // ==========================================
+  // 3. GESTIÓN DEL CATÁLOGO
+  // ==========================================
+  describe('POST /api/v1/catalog/universities', () => {
+    it('debe retornar 404 Not Found si la carrera apunta a una universidad inexistente', async () => {
+      await request(app.getHttpServer())
+        .post('/api/v1/catalog/careers')
+        .send({
+          universityId: validUUIDs.universityId,
+          name: 'Carrera huérfana',
+          code: 'HUE-001',
+        })
+        .expect(HttpStatus.NOT_FOUND);
+    });
+  });
+
+  describe('DELETE /api/v1/catalog/:recurso/:id', () => {
+    it.each([
+      ['universities', 'Universidad'],
+      ['careers', 'Carrera'],
+      ['professors', 'Profesor'],
+      ['subjects', 'Asignatura'],
+    ])(
+      'debe retornar 404 Not Found al eliminar %s inexistente',
+      async (recurso: string) => {
+        await request(app.getHttpServer())
+          .delete(`/api/v1/catalog/${recurso}/${validUUIDs.universityId}`)
+          .expect(HttpStatus.NOT_FOUND);
+      },
+    );
   });
 });
