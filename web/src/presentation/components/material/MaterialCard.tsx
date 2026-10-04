@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
 import type { MaterialListItem } from '../../../domain/material/materialListItem';
- 
+
 interface MaterialCardProps {
   material: MaterialListItem;
 }
- 
+
 const TYPE_LABELS: Record<string, string> = {
   SUMMARY: 'Resumen',
   EXAM: 'Prueba',
@@ -12,14 +12,14 @@ const TYPE_LABELS: Record<string, string> = {
   CLASS_NOTES: 'Apuntes de clase',
   OTHER: 'Otro',
 };
- 
+
 const EMPTY_VALUE = 'Por definir';
- 
+
 export function formatMaterialType(type: string | null): string {
   if (!type) return EMPTY_VALUE;
   return TYPE_LABELS[type] ?? type;
 }
- 
+
 function DocumentIcon() {
   return (
     <svg
@@ -36,10 +36,10 @@ function DocumentIcon() {
     </svg>
   );
 }
- 
+
 export function MaterialCard({ material }: MaterialCardProps) {
   const { id, title, subjectName, professorName, year, type } = material;
- 
+
   return (
     <article className="rounded-sm border border-catalog-line bg-catalog-paper transition-colors focus-within:ring-2 focus-within:ring-catalog-maroon hover:bg-catalog-paperMuted">
       <Link
@@ -47,12 +47,12 @@ export function MaterialCard({ material }: MaterialCardProps) {
         className="flex items-start gap-4 p-4 focus:outline-none"
       >
         <DocumentIcon />
- 
+
         <div className="min-w-0 flex-1">
           <h3 className="line-clamp-2 font-display text-lg leading-snug text-catalog-ink">
             {title}
           </h3>
- 
+
           <dl className="mt-2 flex flex-col gap-1 text-sm">
             <div className="flex gap-2">
               <dt className="sr-only">Asignatura</dt>
@@ -76,7 +76,7 @@ export function MaterialCard({ material }: MaterialCardProps) {
             </div>
           </dl>
         </div>
- 
+
         <dl className="flex shrink-0 flex-col items-end gap-1 text-right text-sm">
           <div>
             <dt className="sr-only">Tipo de material</dt>
