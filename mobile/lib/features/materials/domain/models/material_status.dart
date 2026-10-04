@@ -11,6 +11,14 @@ enum MaterialStatus {
 
   final String code;
 
+  String get label => switch (this) {
+    pendingReview => 'En revisión',
+    approved => 'Aprobado',
+    rejected => 'Rechazado',
+    withdrawn => 'Retirado',
+    unknown => 'Sin estado',
+  };
+
   /// Acepta las etiquetas de los fixtures visuales existentes. Un valor
   /// ausente o desconocido nunca se interpreta como material aprobado.
   static MaterialStatus fromJson(Object? value) {
