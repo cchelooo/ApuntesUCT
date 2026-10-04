@@ -5,7 +5,8 @@
   "workspaces": [
     "./api-gateway",
     "./auth-service",
-    "./catalog-service"
+    "./catalog-service",
+    "./material-service"
   ],
   "scripts": {
     "prisma:generate": "npm run prisma:generate --workspaces --if-present",
@@ -19,7 +20,8 @@
     "export:postman": "node scripts/export-postman-collection.cjs && prettier --write \"../docs/api/*.json\"",
     "format": "prettier --write \"./**/*.ts\"",
     "test:cov": "npm run prisma:generate && npm run test:cov --workspaces --",
-    "test:ci": "npm run prisma:generate && npm run test:ci --workspaces --"
+    "test:ci": "npm run prisma:generate && npm run test:ci --workspaces --",
+    "lint:material": "npm run lint --workspace=material-service"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
