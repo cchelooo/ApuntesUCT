@@ -6,6 +6,7 @@
     "./api-gateway",
     "./auth-service",
     "./catalog-service",
+    "./search-service",
     "./material-service"
   ],
   "scripts": {
@@ -17,11 +18,11 @@
     "lint:gateway": "npm run lint --workspace=api-gateway",
     "lint:auth": "npm run lint --workspace=auth-service",
     "lint:catalog": "npm run lint --workspace=catalog-service",
+    "lint:material": "npm run lint --workspace=material-service",
     "export:postman": "node scripts/export-postman-collection.cjs && prettier --write \"../docs/api/*.json\"",
     "format": "prettier --write \"./**/*.ts\"",
     "test:cov": "npm run prisma:generate && npm run test:cov --workspaces --",
-    "test:ci": "npm run prisma:generate && npm run test:ci --workspaces --",
-    "lint:material": "npm run lint --workspace=material-service"
+    "test:ci": "npm run prisma:generate && npm run test:ci --workspaces --"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
