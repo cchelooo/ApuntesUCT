@@ -108,7 +108,6 @@ export const AcademicSelectors = ({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Select
-          id="university-select"
           label="Universidad"
           placeholder="Selecciona una universidad..."
           value={value.universityId}
@@ -121,7 +120,6 @@ export const AcademicSelectors = ({
         />
 
         <Select
-          id="career-select"
           label="Carrera"
           placeholder={
             !value.universityId
@@ -138,7 +136,6 @@ export const AcademicSelectors = ({
         />
 
         <Select
-          id="subject-select"
           label="Asignatura"
           placeholder={
             !value.careerId
@@ -155,7 +152,6 @@ export const AcademicSelectors = ({
         />
 
         <Select
-          id="professor-select"
           label="Profesor"
           placeholder={
             !value.subjectId
