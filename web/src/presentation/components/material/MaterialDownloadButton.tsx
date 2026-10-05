@@ -1,4 +1,7 @@
+import { useState } from 'react';
 import { Button } from '../Button';
+import { Alert } from '../Alert';
+import { mapMaterialError } from '../../../infrastructure/material/materialErrorHandler';
 
 interface MaterialDownloadButtonProps {
   url?: string | null;
@@ -20,16 +23,67 @@ function DownloadIcon() {
 }
 
 export function MaterialDownloadButton({ url }: MaterialDownloadButtonProps) {
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!url) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        setError(mapMaterialError({ status: response.status }));
+        return;
+      }
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      
+      // Try to extract filename from Content-Disposition header if available
+      const disposition = response.headers.get('Content-Disposition');
+      let filename = 'material';
+      if (disposition && disposition.indexOf('attachment') !== -1) {
+        const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+        const matches = filenameRegex.exec(disposition);
+        if (matches != null && matches[1]) { 
+          filename = matches[1].replace(/['"]/g, '');
+        }
+      }
+      
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      setError(mapMaterialError({ isNetworkError: true }));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (url) {
     return (
-      <a
-        href={url}
-        download
-        className="inline-flex w-full items-center justify-center rounded-md bg-catalog-maroon px-4 py-2 text-base font-medium text-white transition-colors hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-catalog-maroon focus:ring-offset-2"
-      >
-        <DownloadIcon />
-        Descargar material
-      </a>
+      <div className="flex flex-col gap-2">
+        {error && (
+          <Alert variant="error" message={error} />
+        )}
+        <Button
+          type="button"
+          onClick={handleDownload}
+          disabled={isLoading}
+          className="w-full"
+        >
+          <DownloadIcon />
+          {isLoading ? 'Descargando...' : 'Descargar material'}
+        </Button>
+      </div>
     );
   }
 
