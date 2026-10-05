@@ -1,8 +1,9 @@
-import { PrismaModule } from './infrastructure/prisma/prisma.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { PrismaModule } from './infrastructure/prisma/prisma.module';
 import configuration from './infrastructure/config/configuration';
 import { HealthModule } from './presentation/health/health.module';
+import { MaterialController } from './presentation/controllers/material.controller';
 
 @Module({
   imports: [
@@ -10,5 +11,6 @@ import { HealthModule } from './presentation/health/health.module';
     PrismaModule,
     HealthModule,
   ],
+  controllers: [MaterialController],
 })
 export class AppModule {}
