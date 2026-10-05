@@ -15,7 +15,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 const EMPTY_VALUE = 'Por definir';
 
-export function formatMaterialType(type: string | null): string {
+function formatMaterialType(type: string | null): string {
   if (!type) return EMPTY_VALUE;
   return TYPE_LABELS[type] ?? type;
 }
@@ -44,7 +44,7 @@ export function MaterialCard({ material }: MaterialCardProps) {
     <article className="rounded-sm border border-catalog-line bg-catalog-paper transition-colors focus-within:ring-2 focus-within:ring-catalog-maroon hover:bg-catalog-paperMuted">
       <Link
         to={`/material/${id}`}
-        className="flex items-start gap-4 p-4 focus:outline-none"
+        className="flex flex-wrap items-start gap-x-4 gap-y-3 p-4 focus:outline-none sm:flex-nowrap"
       >
         <DocumentIcon />
 
@@ -76,8 +76,7 @@ export function MaterialCard({ material }: MaterialCardProps) {
             </div>
           </dl>
         </div>
-
-        <dl className="flex shrink-0 flex-col items-end gap-1 text-right text-sm">
+        <dl className="flex w-full flex-row flex-wrap items-center gap-x-3 gap-y-1 pl-10 text-sm sm:w-auto sm:shrink-0 sm:flex-col sm:items-end sm:pl-0 sm:text-right">
           <div>
             <dt className="sr-only">Tipo de material</dt>
             <dd className="rounded-sm border border-catalog-line bg-catalog-paperMuted px-2 py-0.5 text-xs font-medium text-catalog-maroon">
