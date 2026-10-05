@@ -98,12 +98,14 @@ $env:PORT=3002
 npm run start:dev
 ```
 
-5. Material Service (sin dependencias externas en esta etapa):
+5. Material Service (requiere `db-material` de Docker Compose):
 
 ```bash
 cd backend
 npm ci
 [ ! -f material-service/.env ] && cp material-service/.env.example material-service/.env
+npm run prisma:generate --workspace=material-service
+npm run prisma:deploy --workspace=material-service
 npm run start:dev --workspace=material-service
 ```
 
