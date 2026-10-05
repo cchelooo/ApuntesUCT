@@ -58,12 +58,16 @@ class MaterialDetailScreen extends StatelessWidget {
                   ),
                 ),
                 Chip(
-                  label: Text('${summary.academicYear}'),
+                  label: Text(summary.academicYear?.toString() ?? 'Sin año'),
                   padding: EdgeInsets.zero,
                   visualDensity: VisualDensity.compact,
                 ),
                 Chip(
-                  label: Text(summary.materialType.toUpperCase()),
+                  label: Text(
+                    summary.materialType.isEmpty
+                        ? 'SIN TIPO'
+                        : summary.materialType.toUpperCase(),
+                  ),
                   padding: EdgeInsets.zero,
                   visualDensity: VisualDensity.compact,
                 ),
