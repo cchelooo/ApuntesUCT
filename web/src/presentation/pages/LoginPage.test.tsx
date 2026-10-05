@@ -15,16 +15,14 @@ describe('LoginPage', () => {
         <MemoryRouter>
           <LoginPage />
         </MemoryRouter>
-      </QueryClientProvider>,
+      </QueryClientProvider>
     );
 
-    expect(
-      screen.getByRole('heading', { name: 'Ingresar' }),
-    ).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Ingresar' })).toBeTruthy();
     expect(screen.getByLabelText('Correo electrónico')).toBeTruthy();
     expect(screen.getByLabelText('Contraseña')).toBeTruthy();
     expect(
-      screen.getByRole('button', { name: 'Continuar con Google' }),
+      screen.getByRole('button', { name: 'Continuar con Google' })
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Ingresar' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Registrarse' })).toBeTruthy();

@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/material-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MaterialStatus {
+  PENDING_REVIEW
+  PUBLISHED
+  REJECTED
+  WITHDRAWN
+}
+
+model MaterialType {
+  id        String     @id @default(uuid()) @db.Uuid
+  name      String     @unique
+  active    Boolean    @default(true)
+  materials Material[]
+
+  @@map("material_types")
+}
+
+model Material {
+  id                 String            @id @default(uuid()) @db.Uuid
+  // Logical references owned by Auth and Catalog; deliberately no relations.
+  uploaderId         String            @map("uploader_id") @db.Uuid
+  academicOfferingId String?           @map("academic_offering_id")
+  universityId       String?           @map("university_id")
+  careerId           String?           @map("career_id")
+  subjectId          String            @map("subject_id")
+  professorId        String?           @map("professor_id")
+  materialTypeId     String            @map("material_type_id") @db.Uuid
+  materialType       MaterialType      @relation(fields: [materialTypeId], references: [id], onDelete: Restrict)
+  title              String
+  description        String?
+  academicYear       Int               @map("academic_year")
+  status             MaterialStatus    @default(PENDING_REVIEW)
+  verified           Boolean           @default(false)
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+  versions           MaterialVersion[]
+
+  @@index([uploaderId])
+  @@index([subjectId, status])
+  @@index([professorId])
+  @@index([materialTypeId])
+  @@map("materials")
+}
+
+model MaterialVersion {
+  id               String   @id @default(uuid()) @db.Uuid
+  materialId       String   @map("material_id") @db.Uuid
+  material         Material @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  versionNumber    Int      @map("version_number")
+  storageKey       String   @map("storage_key")
+  originalFilename String   @map("original_filename")
+  mimeType         String   @map("mime_type")
+  fileSize         BigInt   @map("file_size")
+  checksum         String
+  // Logical reference to Auth; no cross-service foreign key.
+  createdBy        String   @map("created_by") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@unique([materialId, versionNumber])
+  @@map("material_versions")
+}

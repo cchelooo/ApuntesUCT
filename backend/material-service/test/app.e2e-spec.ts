@@ -1,6 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
+import { PrismaService } from '../src/infrastructure/prisma/prisma.service';
 import { AppModule } from '../src/app.module';
 import { setupApp } from '../src/setup-app';
 
@@ -10,7 +11,10 @@ describe('Material Service (HTTP)', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(PrismaService)
+      .useValue({ onModuleInit: jest.fn(), onModuleDestroy: jest.fn() })
+      .compile();
     app = moduleRef.createNestApplication();
     setupApp(app);
     await app.init();
