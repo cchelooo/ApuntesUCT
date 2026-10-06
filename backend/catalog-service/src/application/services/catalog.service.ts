@@ -58,7 +58,9 @@ export class CatalogService {
   }
 
   async filterCatalog(filters: FilterCatalogDto) {
-    // 1. Validaciones de la secuencia jerárquica (Niveles 1 al 4)
+    // Catalog solo modela la jerarquía hasta Profesor. Los metadatos de los
+    // materiales (año, tipo) pertenecen a Material Service y la búsqueda por
+    // año/tipo corresponde a Search Service: aquí no se consultan.
     if (filters.careerId && !filters.universityId) {
       throw new BadRequestException(
         'Secuencia inválida: Para filtrar por Carrera (careerId) debe especificar Universidad (universityId).',
@@ -77,25 +79,6 @@ export class CatalogService {
       );
     }
 
-    // 2. Validaciones de la secuencia jerárquica (Niveles 5 y 6)
-    if (filters.year !== undefined && !filters.professorId) {
-      throw new BadRequestException(
-        'Secuencia inválida: Para filtrar por Año (year) debe especificar Profesor (professorId).',
-      );
-    }
-
-    if (filters.type !== undefined && filters.year === undefined) {
-      throw new BadRequestException(
-        'Secuencia inválida: Para filtrar por Tipo (type) debe especificar Año (year).',
-      );
-    }
-
-    // 3. Los niveles 5 y 6 (year, type) se resuelven contra Resource, que es
-    // una relación de la asignatura dentro del dominio de Catalog. Catalog
-    // solo decide qué asignaturas tienen recursos coincidentes: no devuelve el
-    // payload de los recursos, porque archivos, versiones y descargas son
-    // territorio de Material Service.
-    // 4. Consulta en BD para niveles válidos (1 al 6) utilizando tipos estrictos de Prisma
     const whereCondition: Prisma.SubjectWhereInput = {};
 
     if (filters.universityId) {
@@ -118,19 +101,6 @@ export class CatalogService {
       };
     }
 
-    // Nivel 5 y 6: la asignatura debe tener al menos un recurso activo que
-    // coincida con el año y, si viene, con el tipo. professorId ya se aplicó
-    // sobre `professors`, de modo que ambos criterios son independientes.
-    if (filters.year !== undefined) {
-      whereCondition.resources = {
-        some: {
-          active: true,
-          year: filters.year,
-          ...(filters.type !== undefined ? { type: filters.type } : {}),
-        },
-      };
-    }
-
     return this.prisma.subject.findMany({
       where: whereCondition,
       include: {
@@ -141,6 +111,51 @@ export class CatalogService {
         },
         professors: true,
       },
+    });
+  }
+
+  // =========================================================================
+  // LISTADOS PARA LOS SELECTORES ACADÉMICOS
+  //
+  // Cada listado devuelve solo entidades activas y permite filtrar por su
+  // padre inmediato, que es lo que consumen los selectores en cascada del
+  // frontend (universidad -> carrera -> asignatura -> profesor).
+  // =========================================================================
+
+  listUniversities() {
+    return this.prisma.university.findMany({
+      where: { active: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  listCareers(universityId?: string) {
+    return this.prisma.career.findMany({
+      where: {
+        active: true,
+        ...(universityId ? { universityId } : {}),
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  listSubjects(careerId?: string) {
+    return this.prisma.subject.findMany({
+      where: {
+        active: true,
+        ...(careerId ? { careerId } : {}),
+      },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  listProfessors(subjectId?: string) {
+    return this.prisma.professor.findMany({
+      where: {
+        active: true,
+        ...(subjectId ? { subjects: { some: { id: subjectId } } } : {}),
+      },
+      orderBy: { name: 'asc' },
     });
   }
 

@@ -2,11 +2,19 @@ import { Controller, Get, Post, Delete, Param, Body, Query } from '@nestjs/commo
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CatalogService } from '../../application/services/catalog.service';
 import { FilterCatalogDto } from '../../application/dtos/filter-catalog.dto';
-import { UniversityResponseDto } from '../../application/dtos/catalog-response.dto';
+import {
+  CareerResponseDto,
+  ProfessorResponseDto,
+  SubjectResponseDto,
+  UniversityResponseDto,
+} from '../../application/dtos/catalog-response.dto';
 import { CreateSubjectDto } from '../../application/dtos/create-subject.dto';
 import { CreateUniversityDto } from '../../application/dtos/create-university.dto';
 import { CreateCareerDto } from '../../application/dtos/create-career.dto';
 import { CreateProfessorDto } from '../../application/dtos/create-professor.dto';
+import { ListCareersQueryDto } from '../../application/dtos/list-careers-query.dto';
+import { ListSubjectsQueryDto } from '../../application/dtos/list-subjects-query.dto';
+import { ListProfessorsQueryDto } from '../../application/dtos/list-professors-query.dto';
 
 @ApiTags('Catalog')
 @Controller('catalog')
@@ -44,20 +52,13 @@ export class CatalogController {
     2. **Carrera** (\`careerId\`) [requiere \`universityId\`]
     3. **Asignatura** (\`subjectId\`) [requiere \`careerId\`]
     4. **Profesor** (\`professorId\`) [requiere \`subjectId\`]
-    5. **Año** (\`year\`) [requiere \`professorId\`]
-    6. **Tipo** (\`type\`) [requiere \`year\`]
 
-    ### Estado de los Filtros de Año y Tipo:
-    Los niveles de **Año** (\`year\`) y **Tipo** (\`type\`) se resuelven contra
-    **Resource**, que es una relación de la asignatura dentro del dominio de
-    Catalog. La respuesta sigue siendo una lista de **Asignaturas**: la asignatura
-    solo se incluye si tiene al menos un recurso activo que coincida con el año y,
-    cuando se envía, con el tipo.
-
-    Catalog **no** devuelve el payload de los recursos. Los archivos, las
-    versiones y las descargas pertenecen a **Material Service**, que aún no está
-    implementado. Por lo tanto, usar \`year\` o \`type\` con un valor fuera del
-    enum \`ResourceType\` devuelve **400 Bad Request** en lugar de un arreglo vacío.
+    ### Alcance del Dominio:
+    Catalog solo modela la jerarquía hasta **Profesor**. El filtrado por **Año**
+    (\`year\`) y **Tipo** (\`type\`) **no** forma parte de este contrato: los
+    metadatos de los materiales pertenecen a **Material Service** y la búsqueda
+    por año/tipo corresponde a **Search Service**. Cualquier parámetro ajeno a los
+    cuatro niveles anteriores se ignora.
     `,
   })
   @ApiResponse({
@@ -68,10 +69,83 @@ export class CatalogController {
   @ApiResponse({
     status: 400,
     description:
-      'Error si se rompe la secuencia obligatoria de filtrado o si `type` no pertenece al enum ResourceType.',
+      'Error si se rompe la secuencia obligatoria de filtrado (niveles 1 al 4).',
   })
   async filterCatalog(@Query() filters: FilterCatalogDto) {
     return this.catalogService.filterCatalog(filters);
+  }
+
+  // =========================================================================
+  // ENDPOINTS DE LISTADO PARA LOS SELECTORES ACADÉMICOS
+  // =========================================================================
+
+  @Get('universities')
+  @ApiOperation({
+    summary: 'Listar universidades activas',
+    description:
+      'Devuelve las universidades activas ordenadas por nombre. Alimenta el selector de universidades del frontend.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Listado de universidades activas.',
+    type: [UniversityResponseDto],
+  })
+  async listUniversities(): Promise<UniversityResponseDto[]> {
+    return this.catalogService.listUniversities();
+  }
+
+  @Get('careers')
+  @ApiOperation({
+    summary: 'Listar carreras activas',
+    description:
+      'Devuelve las carreras activas ordenadas por nombre. Permite acotar el resultado a una universidad con `universityId`.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Listado de carreras activas.',
+    type: [CareerResponseDto],
+  })
+  @ApiResponse({ status: 400, description: '`universityId` no es un UUID válido.' })
+  async listCareers(
+    @Query() query: ListCareersQueryDto,
+  ): Promise<CareerResponseDto[]> {
+    return this.catalogService.listCareers(query.universityId);
+  }
+
+  @Get('subjects')
+  @ApiOperation({
+    summary: 'Listar asignaturas activas',
+    description:
+      'Devuelve las asignaturas activas ordenadas por nombre. Permite acotar el resultado a una carrera con `careerId`.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Listado de asignaturas activas.',
+    type: [SubjectResponseDto],
+  })
+  @ApiResponse({ status: 400, description: '`careerId` no es un UUID válido.' })
+  async listSubjects(
+    @Query() query: ListSubjectsQueryDto,
+  ): Promise<SubjectResponseDto[]> {
+    return this.catalogService.listSubjects(query.careerId);
+  }
+
+  @Get('professors')
+  @ApiOperation({
+    summary: 'Listar profesores activos',
+    description:
+      'Devuelve los profesores activos ordenados por nombre. Permite acotar el resultado a quienes dictan una asignatura con `subjectId`.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Listado de profesores activos.',
+    type: [ProfessorResponseDto],
+  })
+  @ApiResponse({ status: 400, description: '`subjectId` no es un UUID válido.' })
+  async listProfessors(
+    @Query() query: ListProfessorsQueryDto,
+  ): Promise<ProfessorResponseDto[]> {
+    return this.catalogService.listProfessors(query.subjectId);
   }
 
   // =========================================================================

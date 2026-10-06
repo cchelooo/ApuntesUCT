@@ -1,46 +1,36 @@
-import {
-  IsOptional,
-  IsUUID,
-  IsInt,
-  IsEnum,
-  Min,
-  Max,
-} from 'class-validator';
-import { Type } from 'class-transformer';
-import { ResourceType } from '@prisma/client';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsUUID } from 'class-validator';
 
 export class FilterCatalogDto {
+  @ApiPropertyOptional({
+    description: 'Nivel 1. Universidad. Sin requisito previo.',
+    format: 'uuid',
+  })
   @IsUUID()
   @IsOptional()
   universityId?: string;
 
+  @ApiPropertyOptional({
+    description: 'Nivel 2. Carrera. Requiere universityId.',
+    format: 'uuid',
+  })
   @IsUUID()
   @IsOptional()
   careerId?: string;
 
+  @ApiPropertyOptional({
+    description: 'Nivel 3. Asignatura. Requiere careerId.',
+    format: 'uuid',
+  })
   @IsUUID()
   @IsOptional()
   subjectId?: string;
 
+  @ApiPropertyOptional({
+    description: 'Nivel 4. Profesor. Requiere subjectId.',
+    format: 'uuid',
+  })
   @IsUUID()
   @IsOptional()
   professorId?: string;
-
-  @Type(() => Number)
-  @IsInt()
-  @Min(2000)
-  @Max(2100)
-  @IsOptional()
-  year?: number;
-
-  /**
- * Debe coincidir con el enum `ResourceType` de la base de datos: un valor
- * fuera del enum nunca podría encontrar recursos, así que se rechaza con 400
- * en lugar de devolver silenciosamente un arreglo vacío.
- */
-@IsEnum(ResourceType, {
-  message: `type debe ser uno de: ${Object.values(ResourceType).join(', ')}`,
-})
-@IsOptional()
-type?: ResourceType;
 }
