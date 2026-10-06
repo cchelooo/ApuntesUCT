@@ -9,5 +9,7 @@ abstract class MaterialsRepository {
     int pageSize = 10,
   });
 
+  Future<List<String>> getAvailableSubjects();
+
   Future<MaterialDetail> getMaterialDetail(String id);
 }

@@ -4,6 +4,16 @@ import 'package:apuntesuct_mobile/features/materials/domain/models/material_summ
 import 'package:apuntesuct_mobile/features/materials/domain/repositories/materials_repository.dart';
 
 class MockMaterialsRepository implements MaterialsRepository {
+  final List<MaterialSummary> _dataset;
+  final Duration delay;
+
+  MockMaterialsRepository({
+    List<MaterialSummary>? customDataset,
+    this.delay = Duration.zero,
+  }) : _dataset =
+           customDataset ??
+           List<MaterialSummary>.from(MaterialFixtures.sampleSummaries);
+
   @override
   Future<List<MaterialSummary>> getMaterials({
     String? query,
@@ -11,9 +21,11 @@ class MockMaterialsRepository implements MaterialsRepository {
     int page = 1,
     int pageSize = 10,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 150));
+    if (delay > Duration.zero) {
+      await Future.delayed(delay);
+    }
 
-    var results = List<MaterialSummary>.from(MaterialFixtures.sampleSummaries);
+    var results = List<MaterialSummary>.from(_dataset);
 
     if (query != null && query.trim().isNotEmpty) {
       final q = query.toLowerCase().trim();
@@ -43,8 +55,20 @@ class MockMaterialsRepository implements MaterialsRepository {
   }
 
   @override
+  Future<List<String>> getAvailableSubjects() async {
+    if (delay > Duration.zero) {
+      await Future.delayed(delay);
+    }
+    final subjects = _dataset.map((m) => m.subjectName).toSet().toList();
+    subjects.sort();
+    return subjects;
+  }
+
+  @override
   Future<MaterialDetail> getMaterialDetail(String id) async {
-    await Future.delayed(const Duration(milliseconds: 100));
+    if (delay > Duration.zero) {
+      await Future.delayed(delay);
+    }
     return MaterialFixtures.sampleDetail1;
   }
 }

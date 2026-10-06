@@ -7,61 +7,146 @@ final materialsRepositoryProvider = Provider<MaterialsRepository>((ref) {
   return MockMaterialsRepository();
 });
 
-class DiscoveryFilterState {
+final availableSubjectsProvider = FutureProvider.autoDispose<List<String>>((
+  ref,
+) async {
+  final repository = ref.watch(materialsRepositoryProvider);
+  return repository.getAvailableSubjects();
+});
+
+class DiscoveryMaterialsState {
+  final List<MaterialSummary> items;
+  final bool isLoading;
+  final bool isLoadingMore;
+  final bool hasMore;
+  final int page;
   final String query;
   final String? selectedSubject;
+  final String? errorMessage;
 
-  const DiscoveryFilterState({this.query = '', this.selectedSubject});
+  const DiscoveryMaterialsState({
+    this.items = const [],
+    this.isLoading = false,
+    this.isLoadingMore = false,
+    this.hasMore = true,
+    this.page = 1,
+    this.query = '',
+    this.selectedSubject,
+    this.errorMessage,
+  });
 
-  DiscoveryFilterState copyWith({
+  bool get isSearchActive => query.trim().isNotEmpty || selectedSubject != null;
+
+  DiscoveryMaterialsState copyWith({
+    List<MaterialSummary>? items,
+    bool? isLoading,
+    bool? isLoadingMore,
+    bool? hasMore,
+    int? page,
     String? query,
     String? selectedSubject,
     bool clearSubject = false,
+    String? errorMessage,
   }) {
-    return DiscoveryFilterState(
+    return DiscoveryMaterialsState(
+      items: items ?? this.items,
+      isLoading: isLoading ?? this.isLoading,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      hasMore: hasMore ?? this.hasMore,
+      page: page ?? this.page,
       query: query ?? this.query,
       selectedSubject: clearSubject
           ? null
           : (selectedSubject ?? this.selectedSubject),
+      errorMessage: errorMessage,
     );
   }
 }
 
-class DiscoveryFilterNotifier extends Notifier<DiscoveryFilterState> {
+class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
+  static const int pageSize = 5;
+
   @override
-  DiscoveryFilterState build() {
-    return const DiscoveryFilterState();
+  DiscoveryMaterialsState build() {
+    state = const DiscoveryMaterialsState(isLoading: true);
+    _loadInitial();
+    return state;
   }
 
-  void setQuery(String query) {
-    state = state.copyWith(query: query);
+  Future<void> _loadInitial() async {
+    final repo = ref.read(materialsRepositoryProvider);
+    try {
+      final results = await repo.getMaterials(
+        query: state.query,
+        subject: state.selectedSubject,
+        page: 1,
+        pageSize: pageSize,
+      );
+      state = state.copyWith(
+        items: results,
+        isLoading: false,
+        page: 1,
+        hasMore: results.length >= pageSize,
+        errorMessage: null,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: 'Error al cargar materiales disponibles.',
+      );
+    }
   }
 
-  void setSubject(String? subject) {
-    state = DiscoveryFilterState(query: state.query, selectedSubject: subject);
+  Future<void> setQuery(String newQuery) async {
+    final clean = newQuery.trim();
+    if (state.query == clean) return;
+    state = state.copyWith(query: clean, isLoading: true, page: 1);
+    await _loadInitial();
   }
 
-  void clearSubject() {
-    state = DiscoveryFilterState(query: state.query, selectedSubject: null);
+  Future<void> setSubject(String? subject) async {
+    state = state.copyWith(
+      selectedSubject: subject,
+      clearSubject: subject == null,
+      isLoading: true,
+      page: 1,
+    );
+    await _loadInitial();
   }
 
-  void reset() {
-    state = const DiscoveryFilterState();
+  Future<void> refresh() async {
+    state = state.copyWith(isLoading: true, page: 1);
+    await _loadInitial();
+  }
+
+  Future<void> loadNextPage() async {
+    if (state.isLoading || state.isLoadingMore || !state.hasMore) return;
+
+    state = state.copyWith(isLoadingMore: true);
+    final nextPage = state.page + 1;
+    final repo = ref.read(materialsRepositoryProvider);
+
+    try {
+      final nextItems = await repo.getMaterials(
+        query: state.query,
+        subject: state.selectedSubject,
+        page: nextPage,
+        pageSize: pageSize,
+      );
+
+      state = state.copyWith(
+        items: [...state.items, ...nextItems],
+        page: nextPage,
+        hasMore: nextItems.length >= pageSize,
+        isLoadingMore: false,
+      );
+    } catch (_) {
+      state = state.copyWith(isLoadingMore: false);
+    }
   }
 }
 
-final discoveryFilterProvider =
-    NotifierProvider<DiscoveryFilterNotifier, DiscoveryFilterState>(() {
-      return DiscoveryFilterNotifier();
-    });
-
-final paginatedMaterialsProvider =
-    FutureProvider.autoDispose<List<MaterialSummary>>((ref) async {
-      final repository = ref.watch(materialsRepositoryProvider);
-      final filters = ref.watch(discoveryFilterProvider);
-
-      return repository.getMaterials(
-        query: filters.query,
-        subject: filters.selectedSubject,
-      );
+final discoveryMaterialsProvider =
+    NotifierProvider<DiscoveryMaterialsNotifier, DiscoveryMaterialsState>(() {
+      return DiscoveryMaterialsNotifier();
     });
