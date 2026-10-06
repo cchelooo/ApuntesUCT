@@ -40,7 +40,7 @@ Por lo tanto, **no es correcto afirmar que toda la comunicación actual pasa por
   - Auth Service: `http://localhost:3001/api/docs` · JSON `/api/docs-json`
   - Catalog Service: `http://localhost:3002/api/docs` · JSON `/api/docs-json`
   - Material Service: `http://localhost:3003/api/docs` · JSON `/api/docs-json`
-  - Search Service: `http://localhost:3005/api/docs` (sin spec JSON)
+  - Search Service: `http://localhost:3005/api/docs` · JSON `/api/docs-json`
 
 ---
 
@@ -94,7 +94,7 @@ servicio incompleto. Con los servicios levantados:
 | Petición | Respuesta | Motivo |
 |---|---|---|
 | `GET /api/v1/search?q=datos` | `200` con `results: []` | El endpoint existe pero la búsqueda desacoplada es un stub |
-| `GET /api/v1/materials` | `404` | material-service no expone todavía rutas de materiales |
+| `GET /api/v1/materials` | `200` con `items: []` | El listado paginado está implementado (#318); la base no tiene datos |
 | `GET /api/v1/materials` con el servicio parado | `502` | Destino inalcanzable |
 
 ---
@@ -300,7 +300,7 @@ Devuelve la jerarquía **Universidad → Carreras → Asignaturas** (universidad
 | Paginación `page`/`limit` (`items`/`total`) | **Propuesta** | **No implementada** en los endpoints actuales de catálogo; si se requiere, debe proponerse y aprobarse el contrato |
 | `year`/`type` en `/catalog/filter` | Pendiente | `501` solo si la secuencia es válida; depende del módulo de Recursos |
 | Proxy Gateway → `/catalog` | Enrutado, no usado por Mobile | El gateway enruta `/api/v1/catalog`, pero Mobile sigue consultando el catálogo directo en `:3002` por decisión propia (sección 1.2) |
-| Endpoints de Material | **Pendiente** | La ruta `/api/v1/materials` está enrutada (#222) y `material-service` existe (#311), pero aún no expone rutas de materiales: responde `404` con el servicio arriba |
+| Endpoints de Material | **Parcial** | `/api/v1/materials` está enrutada (#222) y `material-service` (#311) ya expone el listado paginado (#318, `200` con `items: []`); el detalle, la subida real y el preview siguen pendientes |
 | Búsqueda en `/api/v1/search` | **Pendiente** | La ruta está enrutada (#222) y `search-service` existe (#305), pero `GET /api/v1/search?q=` devuelve un stub con `results: []` y `total: 0` |
 | Proxy Gateway → `/quality` | **Pendiente** | El gateway no enruta `/api/v1/quality` y el servicio sigue siendo un placeholder |
 

@@ -86,11 +86,13 @@ El Compose actual levanta infraestructura; los procesos Nest se ejecutan en el
 host. Si se despliegan en contenedores, configura `AUTH_SERVICE_URL` con el nombre
 DNS y puerto interno de Auth, sin añadir `/api/v1`.
 
-`AUTH_DOCS_URL` y `CATALOG_DOCS_URL` configuran los enlaces del índice
-`/api/docs`. Sus valores de ejemplo son `http://localhost:3001/api/docs` y
-`http://localhost:3002/api/docs`, respectivamente; deben ser accesibles desde
-el navegador. Si ya tienes un `.env`, agrega estas variables si necesitas
-personalizar los enlaces: modificar `.env.example` no actualiza tu `.env`.
+`AUTH_DOCS_URL`, `CATALOG_DOCS_URL`, `MATERIAL_DOCS_URL` y `SEARCH_DOCS_URL`
+configuran los enlaces del índice `/api/docs`. Sus valores de ejemplo son
+`http://localhost:3001/api/docs`, `http://localhost:3002/api/docs`,
+`http://localhost:3003/api/docs` y `http://localhost:3005/api/docs`,
+respectivamente; deben ser accesibles desde el navegador. Si ya tienes un `.env`,
+agrega estas variables si necesitas personalizar los enlaces: modificar
+`.env.example` no actualiza tu `.env`.
 
 ### Verificación automática
 
@@ -125,12 +127,12 @@ Gateway responde `502` con un mensaje propio de cada servicio
 un fallo se puede atribuir sin ambigüedad.
 
 > **Estado de los servicios.** Ambos están integrados en `main` (`material-service`
-> en #311 y `search-service` en #305) y arrancan real, pero su alcance es
-> distinto al de la ruta que el Gateway expone:
+> en #311 más el listado de #318, y `search-service` en #305) y arrancan real. Lo
+> que responde cada ruta hoy con el servicio arriba:
 >
 > | Ruta del Gateway | Qué responde hoy con el servicio arriba |
 > | --- | --- |
-> | `/api/v1/materials` | `404`, porque material-service todavía **no expone rutas de materiales**; solo `GET /api/v1/health` y su Swagger. El `502` del Gateway solo aparece si el servicio está caído. |
+> | `/api/v1/materials` | `200` con el listado paginado de materiales (`{ items, page, pageSize, total }`); vacío si la base no tiene datos. `POST /api/v1/materials` está declarado como stub. El `502` del Gateway solo aparece si el servicio está caído. |
 > | `/api/v1/search` | `200` con el stub `{ query, results: [], total: 0, message }` de `GET /api/v1/search?q=...`; la búsqueda desacoplada es trabajo en curso. |
 >
 > La ruta esperada sigue el contrato documentado en

@@ -63,15 +63,18 @@ seleccionar ambos archivos. Insomnia crea el environment y los request groups.
   de Recursos. La colección incluye una petición para comprobarlos.
 - **Rutas proxeadas**: el gateway enruta `/api/v1/auth`, `/api/v1/catalog`,
   `/api/v1/materials` y `/api/v1/search` con middleware, así que no aparecen en
-  su OpenAPI y el generador las añade explícitamente. Responden `502` si el
-  servicio no responde. El gateway solo reescribe el health de Auth
-  (`/api/v1/auth/health` → `/api/v1/health` en Auth); los healthchecks de
-  Catalog, Material y Search están en sus puertos directos, sin equivalente vía
-  gateway. Sobre Material y Search conviene distinguir: con `search-service`
-  arriba, `GET /api/v1/search` responde `200` con `results: []` porque su
-  búsqueda sigue siendo un stub; con `material-service` arriba,
-  `/api/v1/materials` responde `404` porque aún no expone rutas de materiales.
-  El `502` del gateway solo corresponde al servicio caído.
+  su OpenAPI. El generador añade explícitamente las de Auth y Catalog (health,
+  login, catálogo y filtro): Material y Search todavía **no** están en la
+  colección, así que para probarlas hay que llamarlas por su cuenta contra el
+  gateway. Cualquiera de las rutas responde `502` si el servicio no responde. El
+  gateway solo reescribe el health de Auth (`/api/v1/auth/health` →
+  `/api/v1/health` en Auth); los healthchecks de Catalog, Material y Search están
+  en sus puertos directos, sin equivalente vía gateway. Sobre Material y Search
+  conviene distinguir: con `search-service` arriba, `GET /api/v1/search` responde
+  `200` con `results: []` porque su búsqueda sigue siendo un stub; con
+  `material-service` arriba, `GET /api/v1/materials` responde `200` con el
+  listado paginado (vacío si no hay datos). El `502` del gateway solo corresponde
+  al servicio caído.
 - **Parámetros del filtro**: todavía no están documentados en el OpenAPI del
   Catalog Service (a `FilterCatalogDto` le faltan los `@ApiProperty`), así que el
   generador los declara a mano. Al documentarlos en el DTO, la siguiente

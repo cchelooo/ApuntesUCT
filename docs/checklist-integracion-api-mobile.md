@@ -24,6 +24,8 @@ La aplicación Mobile no consume los microservicios directamente, sino a través
   - Gateway: `http://localhost:3000/api/docs`
   - Auth Service: `http://localhost:3001/api/docs` (JSON spec en `/api/docs-json`)
   - Catalog Service: `http://localhost:3002/api/docs` (JSON spec en `/api/docs-json`)
+  - Material Service: `http://localhost:3003/api/docs` (JSON spec en `/api/docs-json`)
+  - Search Service: `http://localhost:3005/api/docs` (JSON spec en `/api/docs-json`)
 
 ---
 
@@ -265,16 +267,18 @@ diferencia con la sección 5 es qué responden hoy con el servicio levantado.
   existe y responde `200`, pero la búsqueda desacoplada es trabajo en curso.
 - El healthcheck del servicio está en `http://localhost:3005/api/v1/health`.
 
-### Material Service — `/api/v1/materials` (enrutado, responde 404)
-- El servicio existe y expone `GET /api/v1/health` y su Swagger en
-  `http://localhost:3003/api/docs`, pero todavía **no expone rutas de
-  materiales**, así que `/api/v1/materials` responde `404` mientras esté arriba.
+### Material Service — `/api/v1/materials` (enrutado, listado implementado)
+- `GET /materials` — Listado paginado ya implementado (#318): devuelve
+  `{ "items": [], "page": 1, "pageSize": 20, "total": 0 }` con la base vacía.
+  Acepta `page` y `pageSize`; no hace búsqueda textual.
+- `POST /materials` — Subida multipart declarada como **stub** en el contrato del
+  servicio (máx. 15MB, PDF/Word/PPT, o `externalLink` para tipo `LINK`).
+- El healthcheck del servicio está en `http://localhost:3003/api/v1/health` y su
+  Swagger en `http://localhost:3003/api/docs`.
 - El `502` del Gateway (`Material Service no disponible`) solo aparece cuando el
-  servicio está caído, no cuando le faltan endpoints.
-- Contrato esperado cuando se implemente:
-  - `GET /materials` — Listado paginado de materiales con filtros.
+  servicio está caído.
+- Contrato pendiente cuando se implemente:
   - `GET /materials/:id` — Detalle del material y versiones.
-  - `POST /materials` — Subida multipart de documento (máx. 15MB, PDF/Word/PPT) o enlace externo a video.
   - `GET /materials/:id/preview` — URL / Stream para visor embebido.
 
 ### Quality Service — `/api/v1/quality` (no enrutado)
