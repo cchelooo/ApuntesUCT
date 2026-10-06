@@ -5,4 +5,5 @@ export * from './ProfilePage';
 export * from './CatalogPage';
 export * from './SearchPage';
 export * from './LibraryPage';
+export * from './MaterialDetailPage';
 export * from './NotFoundPage';

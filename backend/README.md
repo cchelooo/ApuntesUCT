@@ -11,19 +11,19 @@ Tecnologías: Node.js, TypeScript, NestJS, Prisma, PostgreSQL, MinIO.
 | api-gateway | 3000 | `http://localhost:3000` | Implementado |
 | auth-service | 3001 | `http://localhost:3001` | Implementado |
 | catalog-service | 3002 (*) | `http://localhost:3002` | Implementado (PR #139 integrado en main) |
-| material-service | 3003 (**) | `http://localhost:3003` | Pendiente (placeholder) |
+| material-service | 3003 | `http://localhost:3003` | Implementado |
 | quality-service | 3004 (**) | `http://localhost:3004` | Pendiente (placeholder) |
 | search-service | 3005 (**) | `http://localhost:3005` | Pendiente (placeholder) |
 
 (*) Puerto para ejecución local, no un valor predeterminado del servicio. El catálogo, tal como está en main, no levanta en 3002 por sí solo: su `.env.example` define `PORT=3001` (que coincide con auth-service) y `src/main.ts` usa `3000` cuando no existe `PORT` (que coincide con api-gateway). Ejecutarlo con `PORT=3002 npm run start:dev` evita ambos conflictos; esa variable tiene prioridad sobre el valor del `.env` durante esa ejecución.
 
-(**) Puertos propuestos/reservados para Material, Quality y Search. Todavía no hay servicios disponibles en esas direcciones.
+(**) Puertos propuestos/reservados para Quality y Search. Todavía no hay servicios disponibles en esas direcciones.
 
 Notas:
-- Los servicios implementados aplican el prefijo global `api/v1` y cada uno expone su healthcheck `GET /api/v1/health` (api-gateway, auth-service y catalog-service).
+- Los servicios implementados aplican el prefijo global `api/v1` y cada uno expone su healthcheck `GET /api/v1/health` (api-gateway, auth-service, catalog-service y material-service).
 - El api-gateway obtiene el puerto mediante `ConfigService` (`configService.get<number>('PORT') || 3000`), con `3000` como valor predeterminado. Expone `GET /api/v1/health` y un índice Swagger en `/api/docs`. Su módulo de proxy (`ProxyModule`) reenvía `/api/v1/auth` y sus subrutas a Auth (`AUTH_SERVICE_URL`, por defecto `http://127.0.0.1:3001`; timeout de 5 s; si Auth no responde devuelve `502` con `Auth Service no disponible`). El resto de microservicios no se enrutan por el gateway todavía. Ver `api-gateway/README.md`.
-- Documentación Swagger por servicio: API Gateway en `http://localhost:3000/api/docs/gateway` (spec JSON en `/api/docs/gateway-json`); Auth y Catalog en `http://localhost:<puerto>/api/docs` con spec JSON en `/api/docs-json` (puertos 3001 y 3002).
-- CORS: habilitado en api-gateway, auth-service y catalog-service (`app.enableCors()`). Sin restricción de orígenes en desarrollo: los servicios aceptan solicitudes cross-origin (front web y app mobile).
+- Documentación Swagger por servicio: API Gateway en `http://localhost:3000/api/docs/gateway` (spec JSON en `/api/docs/gateway-json`); Auth, Catalog y Material en `http://localhost:<puerto>/api/docs` con spec JSON en `/api/docs-json` (puertos 3001, 3002 y 3003).
+- CORS: habilitado en api-gateway, auth-service, catalog-service y material-service (`app.enableCors()`). Sin restricción de orígenes en desarrollo: los servicios aceptan solicitudes cross-origin (front web y app mobile).
 
 ## Puertos de bases de datos (docker-compose.yml)
 
@@ -98,16 +98,30 @@ $env:PORT=3002
 npm run start:dev
 ```
 
+5. Material Service (requiere `db-material` de Docker Compose):
+
+```bash
+cd backend
+npm ci
+[ ! -f material-service/.env ] && cp material-service/.env.example material-service/.env
+npm run prisma:generate --workspace=material-service
+npm run prisma:deploy --workspace=material-service
+npm run start:dev --workspace=material-service
+```
+
+Usa `3003` por defecto; `PORT` permite cambiarlo. Ver [Material Service](material-service/README.md) para compilación, arranque de producción y pruebas.
+
 ## Verificación
 
 La base de las rutas HTTP es `http://localhost:<puerto>/api/v1` y la documentación Swagger está en `http://localhost:<puerto>/api/docs` para cada servicio.
 
-Comprobar el healthcheck de los tres servicios implementados:
+Comprobar el healthcheck de los servicios implementados:
 
 ```bash
 curl http://localhost:3000/api/v1/health
 curl http://localhost:3001/api/v1/health
 curl http://localhost:3002/api/v1/health
+curl http://localhost:3003/api/v1/health
 ```
 
 Cada uno debe responder `200 OK` con `{"status":"ok",...}` mientras su servicio esté corriendo.
@@ -162,7 +176,7 @@ npm test
 ```
 
 `npm test` genera los clientes Prisma y ejecuta las pruebas de `api-gateway`,
-`auth-service` y `catalog-service`. No requiere PostgreSQL ni Docker en ejecución:
+`auth-service`, `catalog-service` y `material-service`. No requiere PostgreSQL ni Docker en ejecución:
 las pruebas unitarias simulan sus dependencias externas. La generación de Prisma
 puede necesitar descargar sus binarios en la primera instalación.
 
@@ -181,7 +195,7 @@ npm test -- --runInBand
 # Ejecución para CI, sin modo interactivo
 npm run test:ci
 
-# Cobertura de los tres servicios
+# Cobertura de los servicios
 npm run test:cov -- --runInBand
 
 # Un único servicio (generar antes los clientes Prisma)

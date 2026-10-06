@@ -5,7 +5,9 @@
   "workspaces": [
     "./api-gateway",
     "./auth-service",
-    "./catalog-service"
+    "./catalog-service",
+    "./search-service",
+    "./material-service"
   ],
   "scripts": {
     "prisma:generate": "npm run prisma:generate --workspaces --if-present",
@@ -16,6 +18,7 @@
     "lint:gateway": "npm run lint --workspace=api-gateway",
     "lint:auth": "npm run lint --workspace=auth-service",
     "lint:catalog": "npm run lint --workspace=catalog-service",
+    "lint:material": "npm run lint --workspace=material-service",
     "export:postman": "node scripts/export-postman-collection.cjs && prettier --write \"../docs/api/*.json\"",
     "format": "prettier --write \"./**/*.ts\"",
     "test:cov": "npm run prisma:generate && npm run test:cov --workspaces --",
