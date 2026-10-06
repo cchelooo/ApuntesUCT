@@ -1,6 +1,6 @@
 import type { Subject } from '../../../domain/catalog/subject';
 
-const TAB_COLORS = ['#7A1F2B', '#2F5C55', '#9C6B12', '#5B3A5C'];
+const TAB_COLORS = ['#0078BC', '#2F8F73', '#EAA83A', '#3DA5D9'];
 function colorForCareer(career: string): string {
   let hash = 0;
   for (let i = 0; i < career.length; i += 1) {
@@ -17,7 +17,7 @@ export function CatalogCard({ subject }: CatalogCardProps) {
   const tabColor = colorForCareer(subject.careerName);
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-sm border border-catalog-line bg-catalog-paper shadow-[2px_2px_0_0_rgba(27,36,48,0.12)] transition-transform duration-200 ease-out hover:-translate-y-0.5 hover:-rotate-1">
+    <article className="group flex h-full flex-col overflow-hidden rounded-xs border border-catalog-line bg-catalog-paper shadow-[2px_2px_0_0_rgba(27,36,48,0.12)] transition-transform duration-200 ease-out hover:-translate-y-0.5 hover:-rotate-1">
       <div
         className="px-4 py-1.5 font-mono text-xs tracking-wide text-white"
         style={{ backgroundColor: tabColor }}

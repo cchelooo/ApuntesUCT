@@ -24,7 +24,7 @@ function DocumentIcon() {
   return (
     <svg
       viewBox="0 0 20 20"
-      className="h-6 w-6 shrink-0 text-catalog-maroon"
+      className="h-6 w-6 shrink-0 text-catalog-primary"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.5"
@@ -41,10 +41,10 @@ export function MaterialCard({ material }: MaterialCardProps) {
   const { id, title, subjectName, professorName, year, type } = material;
 
   return (
-    <article className="rounded-sm border border-catalog-line bg-catalog-paper transition-colors focus-within:ring-2 focus-within:ring-catalog-maroon hover:bg-catalog-paperMuted">
+    <article className="rounded-xs border border-catalog-line bg-catalog-paper transition-colors focus-within:ring-2 focus-within:ring-catalog-primary hover:bg-catalog-paperMuted">
       <Link
         to={`/material/${id}`}
-        className="flex flex-wrap items-start gap-x-4 gap-y-3 p-4 focus:outline-none sm:flex-nowrap"
+        className="flex flex-wrap items-start gap-x-4 gap-y-3 p-4 focus:outline-hidden sm:flex-nowrap"
       >
         <DocumentIcon />
 
@@ -79,7 +79,7 @@ export function MaterialCard({ material }: MaterialCardProps) {
         <dl className="flex w-full flex-row flex-wrap items-center gap-x-3 gap-y-1 pl-10 text-sm sm:w-auto sm:shrink-0 sm:flex-col sm:items-end sm:pl-0 sm:text-right">
           <div>
             <dt className="sr-only">Tipo de material</dt>
-            <dd className="rounded-sm border border-catalog-line bg-catalog-paperMuted px-2 py-0.5 text-xs font-medium text-catalog-maroon">
+            <dd className="rounded-xs border border-catalog-line bg-catalog-paperMuted px-2 py-0.5 text-xs font-medium text-catalog-primary">
               {formatMaterialType(type)}
             </dd>
           </div>

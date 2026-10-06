@@ -57,11 +57,22 @@ Detener las dependencias:
 docker compose down
 ```
 
+Instalar una sola vez desde la raíz del workspace (se usa `backend/package-lock.json`):
+
+```bash
+cd backend
+npm ci
+npm run prisma:generate
+```
+
+Los comandos siguientes parten de la raíz del repositorio en terminales separadas.
+Los clientes de Prisma de auth, catálogo y materiales se generan por separado;
+no comparten el cliente predeterminado de `@prisma/client`.
+
 2. API Gateway (no requiere base de datos):
 
 ```bash
 cd backend/api-gateway
-npm install
 npm run start:dev
 ```
 
@@ -69,7 +80,6 @@ npm run start:dev
 
 ```bash
 cd backend/auth-service
-npm install
 [ ! -f .env ] && cp .env.example .env   # solo si .env no existe aún
 npm run prisma:generate
 npm run start:dev
@@ -81,7 +91,6 @@ Asegurarse de que `DATABASE_URL` del `.env` coincida con el PostgreSQL local (de
 
 ```bash
 cd backend/catalog-service
-npm install
 [ ! -f .env ] && cp .env.example .env   # solo si .env no existe aún
 npm run prisma:generate
 PORT=3002 npm run start:dev
@@ -91,7 +100,6 @@ Alternativa en Windows PowerShell (con preparación de `.env` y Prisma):
 
 ```powershell
 cd backend/catalog-service
-npm install
 if (-Not (Test-Path .env)) { Copy-Item .env.example .env }
 npm run prisma:generate
 $env:PORT=3002

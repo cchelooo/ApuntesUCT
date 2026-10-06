@@ -30,7 +30,9 @@ describe('API Gateway - Integration & Proxying Tests (E2E)', () => {
           lastCapturedRequest = {
             url: req.url,
             headers: req.headers,
-            body: rawBody ? (JSON.parse(rawBody) as Record<string, unknown>) : null,
+            body: rawBody
+              ? (JSON.parse(rawBody) as Record<string, unknown>)
+              : null,
           };
 
           // Responder 200 OK con el payload capturado o simulado
@@ -81,7 +83,9 @@ describe('API Gateway - Integration & Proxying Tests (E2E)', () => {
       await app.close();
     }
     if (mockDownstreamServer) {
-      await new Promise<void>((resolve) => mockDownstreamServer.close(() => resolve()));
+      await new Promise<void>((resolve) =>
+        mockDownstreamServer.close(() => resolve()),
+      );
     }
   });
 
@@ -138,8 +142,12 @@ describe('API Gateway - Integration & Proxying Tests (E2E)', () => {
 
       // Validación del reenvío capturado en el servidor mock
       expect(lastCapturedRequest.body).toEqual(loginPayload);
-      expect(lastCapturedRequest.headers?.['authorization']).toBe(`Bearer ${mockValidToken}`);
-      expect(lastCapturedRequest.headers?.['x-custom-header']).toBe('test-value');
+      expect(lastCapturedRequest.headers?.['authorization']).toBe(
+        `Bearer ${mockValidToken}`,
+      );
+      expect(lastCapturedRequest.headers?.['x-custom-header']).toBe(
+        'test-value',
+      );
     });
 
     it('GET /api/v1/catalog/filter - debe preservar los Query Parameters en el reenvío', async () => {
@@ -154,8 +162,13 @@ describe('API Gateway - Integration & Proxying Tests (E2E)', () => {
         .set('Authorization', `Bearer ${mockValidToken}`)
         .expect(HttpStatus.OK);
 
-      expect(lastCapturedRequest.url).toContain('universityId=a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11');
-      expect(lastCapturedRequest.url).toContain('careerId=b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22');
+      expect(lastCapturedRequest.url).toMatch(/^\/api\/v1\/catalog\/filter\?/);
+      expect(lastCapturedRequest.url).toContain(
+        'universityId=a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      );
+      expect(lastCapturedRequest.url).toContain(
+        'careerId=b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
+      );
     });
 
     it('POST /api/v1/catalog/subjects - debe autenticar y reenviar la creación de asignatura al catalog-service', async () => {
@@ -173,7 +186,9 @@ describe('API Gateway - Integration & Proxying Tests (E2E)', () => {
 
       expect(response.body).toBeDefined();
       expect(lastCapturedRequest.body).toEqual(newSubjectPayload);
-      expect(lastCapturedRequest.headers?.['authorization']).toBe(`Bearer ${mockValidToken}`);
+      expect(lastCapturedRequest.headers?.['authorization']).toBe(
+        `Bearer ${mockValidToken}`,
+      );
     });
 
     it('DELETE /api/v1/catalog/subjects/:id - debe autenticar y reenviar la eliminación de asignatura al catalog-service', async () => {
@@ -185,7 +200,9 @@ describe('API Gateway - Integration & Proxying Tests (E2E)', () => {
         .expect(HttpStatus.OK);
 
       expect(lastCapturedRequest.url).toContain(`/subjects/${subjectId}`);
-      expect(lastCapturedRequest.headers?.['authorization']).toBe(`Bearer ${mockValidToken}`);
+      expect(lastCapturedRequest.headers?.['authorization']).toBe(
+        `Bearer ${mockValidToken}`,
+      );
     });
   });
 

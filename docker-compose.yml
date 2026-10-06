@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db-auth:
     image: postgres:17-alpine

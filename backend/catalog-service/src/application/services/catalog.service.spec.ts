@@ -9,7 +9,10 @@ describe('CatalogService', () => {
   let prismaService: jest.Mocked<PrismaService>;
 
   const mockPrismaService = {
+    career: { findUnique: jest.fn() },
+    professor: { findMany: jest.fn() },
     subject: {
+      create: jest.fn(),
       findMany: jest.fn(),
     },
     university: {
@@ -36,6 +39,20 @@ describe('CatalogService', () => {
 
   it('debe estar definido', () => {
     expect(service).toBeDefined();
+  });
+
+  it('conserva descripción y estado al crear una asignatura', async () => {
+    mockPrismaService.career.findUnique.mockResolvedValue({ id: 'c1' });
+    const data = {
+      careerId: 'c1',
+      name: 'Curso',
+      code: 'C1',
+      semester: 1,
+      description: 'Descripción',
+      active: false,
+    };
+    await service.createSubject(data);
+    expect(mockPrismaService.subject.create).toHaveBeenCalledWith({ data });
   });
 
   describe('getCatalogTree', () => {
@@ -95,6 +112,7 @@ describe('CatalogService', () => {
               createdAt: true,
               updatedAt: true,
               subjects: {
+                where: { active: true },
                 select: {
                   id: true,
                   name: true,
@@ -214,14 +232,17 @@ describe('CatalogService', () => {
       const result = await service.filterCatalog({});
 
       expect(prismaService.subject.findMany).toHaveBeenCalledWith({
-        where: {},
+        where: {
+          active: true,
+          career: { active: true, university: { active: true } },
+        },
         include: {
           career: {
             include: {
               university: true,
             },
           },
-          professors: true,
+          professors: { where: { active: true } },
         },
       });
       expect(result).toEqual(mockResult);
@@ -242,11 +263,16 @@ describe('CatalogService', () => {
 
       expect(prismaService.subject.findMany).toHaveBeenCalledWith({
         where: {
-          career: { universityId: 'univ-123' },
+          active: true,
+          career: {
+            universityId: 'univ-123',
+            active: true,
+            university: { active: true },
+          },
           careerId: 'career-123',
           id: 'subj-123',
           professors: {
-            some: { id: 'prof-123' },
+            some: { id: 'prof-123', active: true },
           },
         },
         include: {
@@ -255,7 +281,7 @@ describe('CatalogService', () => {
               university: true,
             },
           },
-          professors: true,
+          professors: { where: { active: true } },
         },
       });
       expect(result).toEqual(mockResult);

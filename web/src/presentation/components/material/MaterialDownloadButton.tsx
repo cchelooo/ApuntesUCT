@@ -25,7 +25,7 @@ export function MaterialDownloadButton({ url }: MaterialDownloadButtonProps) {
       <a
         href={url}
         download
-        className="inline-flex w-full items-center justify-center rounded-md bg-catalog-maroon px-4 py-2 text-base font-medium text-white transition-colors hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-catalog-maroon focus:ring-offset-2"
+        className="inline-flex w-full items-center justify-center rounded-md bg-catalog-primary px-4 py-2 text-base font-medium text-white transition-colors hover:opacity-90 focus:outline-hidden focus:ring-2 focus:ring-catalog-primary focus:ring-offset-2"
       >
         <DownloadIcon />
         Descargar material

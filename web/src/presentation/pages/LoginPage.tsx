@@ -20,13 +20,16 @@ export function LoginPage() {
       let response: Response;
 
       try {
-        response = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(credentials),
-        });
+        response = await fetch(
+          `${import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1'}/auth/login`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(credentials),
+          }
+        );
       } catch {
         throw new Error(
           'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo nuevamente.'
@@ -88,14 +91,14 @@ export function LoginPage() {
   return (
     <div className="min-h-screen w-full flex">
       {/* Panel Izquierdo (Oculto en móviles, visible en pantallas lg) */}
-      <div className="hidden lg:flex lg:w-1/2 bg-slate-900 text-white p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-uct-navy text-white p-12 flex-col justify-between relative overflow-hidden">
         {/* Fondo con degradado sutil */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/40 to-slate-900 z-0"></div>
+        <div className="absolute inset-0 bg-linear-to-br from-uct-blueDark/40 to-uct-navy z-0"></div>
 
         <div className="relative z-10">
           {/* Logo (Placeholder temporal) */}
           <div className="flex items-center gap-2 font-bold text-xl mb-16">
-            <div className="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center">
+            <div className="w-8 h-8 bg-uct-blue rounded-md flex items-center justify-center">
               📄
             </div>
             ApuntesUCT
@@ -116,7 +119,7 @@ export function LoginPage() {
               Hardware gracias a ApuntesUCT."
             </p>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center font-bold shadow-inner">
+              <div className="w-10 h-10 bg-uct-sky rounded-full flex items-center justify-center font-bold shadow-inner">
                 FP
               </div>
               <div>
@@ -158,7 +161,7 @@ export function LoginPage() {
             {/* Botón de Google */}
             <Button
               variant="secondary"
-              className="w-full bg-white border border-gray-300 shadow-sm flex gap-2 items-center justify-center hover:bg-gray-50"
+              className="w-full bg-white border border-gray-300 shadow-xs flex gap-2 items-center justify-center hover:bg-gray-50"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
@@ -224,7 +227,7 @@ export function LoginPage() {
                 <div className="flex justify-end">
                   <a
                     href="#"
-                    className="text-xs text-blue-600 hover:text-blue-500 font-medium transition-colors"
+                    className="text-xs text-uct-blue hover:text-uct-sky font-medium transition-colors"
                   >
                     Olvidé mi contraseña
                   </a>
@@ -247,7 +250,7 @@ export function LoginPage() {
             ¿No tienes cuenta?{' '}
             <Link
               to="/register"
-              className="font-semibold text-blue-600 hover:text-blue-500 transition-colors"
+              className="font-semibold text-uct-blue hover:text-uct-sky transition-colors"
             >
               Registrarse
             </Link>

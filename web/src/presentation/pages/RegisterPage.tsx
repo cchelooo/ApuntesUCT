@@ -6,12 +6,12 @@ export function RegisterPage() {
   return (
     <div className="min-h-screen flex lg:h-screen">
       {/* Panel Izquierdo */}
-      <div className="hidden lg:flex lg:w-1/2 bg-slate-900 text-white p-12 flex-col justify-between relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/40 to-slate-900 z-0"></div>
+      <div className="hidden lg:flex lg:w-1/2 bg-uct-navy text-white p-12 flex-col justify-between relative overflow-hidden">
+        <div className="absolute inset-0 bg-linear-to-br from-uct-blueDark/40 to-uct-navy z-0"></div>
 
         <div className="relative z-10">
           <div className="flex items-center gap-2 font-bold text-xl mb-16">
-            <div className="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center">
+            <div className="w-8 h-8 bg-uct-blue rounded-md flex items-center justify-center">
               📄
             </div>
             ApuntesUCT
@@ -31,7 +31,7 @@ export function RegisterPage() {
               Hardware gracias a ApuntesUCT."
             </p>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center font-bold shadow-inner">
+              <div className="w-10 h-10 bg-uct-sky rounded-full flex items-center justify-center font-bold shadow-inner">
                 FP
               </div>
               <div>
@@ -74,7 +74,7 @@ export function RegisterPage() {
             {/* Botón de Google */}
             <Button
               variant="secondary"
-              className="w-full bg-white border border-gray-300 shadow-sm flex gap-2 items-center justify-center hover:bg-gray-50"
+              className="w-full bg-white border border-gray-300 shadow-xs flex gap-2 items-center justify-center hover:bg-gray-50"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
@@ -123,7 +123,7 @@ export function RegisterPage() {
                 placeholder="v.torres@uct.cl"
                 type="email"
                 helperText={
-                  <span className="flex items-center gap-1 text-blue-500 mt-1">
+                  <span className="flex items-center gap-1 text-uct-sky mt-1">
                     Te recomendamos usar tu correo institucional UCT
                   </span>
                 }
@@ -146,7 +146,7 @@ export function RegisterPage() {
                 <select
                   id="career"
                   defaultValue=""
-                  className="block w-full rounded-md border border-gray-300 text-sm transition-colors px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
+                  className="block w-full rounded-md border border-gray-300 text-sm transition-colors px-3 py-2 outline-hidden focus:ring-2 focus:ring-uct-sky focus:border-uct-sky text-gray-900 bg-white"
                 >
                   <option value="" disabled>
                     Selecciona tu carrera
@@ -171,7 +171,7 @@ export function RegisterPage() {
               ¿Ya tienes cuenta?{' '}
               <Link
                 to="/login"
-                className="font-semibold text-blue-600 hover:text-blue-500 transition-colors"
+                className="font-semibold text-uct-blue hover:text-uct-sky transition-colors"
               >
                 Ingresar
               </Link>
