@@ -10,6 +10,10 @@ describe('CatalogController', () => {
   const mockCatalogService = {
     getCatalogTree: jest.fn(),
     filterCatalog: jest.fn(),
+    listUniversities: jest.fn(),
+    listCareers: jest.fn(),
+    listSubjects: jest.fn(),
+    listProfessors: jest.fn(),
     createUniversity: jest.fn(),
     deleteUniversity: jest.fn(),
     createCareer: jest.fn(),
@@ -79,6 +83,82 @@ describe('CatalogController', () => {
 
       expect(service.filterCatalog).toHaveBeenCalledWith(filters);
       expect(result).toEqual(mockResult);
+    });
+  });
+
+  // =========================================================================
+  // LISTADOS PARA LOS SELECTORES ACADÉMICOS
+  // =========================================================================
+
+  describe('GET /catalog/universities', () => {
+    it('debe delegar en catalogService.listUniversities', async () => {
+      const mockResult = [{ id: 'univ-1', name: 'UCT' }];
+      mockCatalogService.listUniversities.mockResolvedValue(mockResult);
+
+      const result = await controller.listUniversities();
+
+      expect(service.listUniversities).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(mockResult);
+    });
+  });
+
+  describe('GET /catalog/careers', () => {
+    it('debe delegar en catalogService.listCareers con el universityId recibido', async () => {
+      const mockResult = [{ id: 'career-1', name: 'Informática' }];
+      mockCatalogService.listCareers.mockResolvedValue(mockResult);
+
+      const result = await controller.listCareers({ universityId: 'univ-1' });
+
+      expect(service.listCareers).toHaveBeenCalledWith('univ-1');
+      expect(result).toEqual(mockResult);
+    });
+
+    it('debe delegar sin filtro cuando no se recibe universityId', async () => {
+      mockCatalogService.listCareers.mockResolvedValue([]);
+
+      await controller.listCareers({});
+
+      expect(service.listCareers).toHaveBeenCalledWith(undefined);
+    });
+  });
+
+  describe('GET /catalog/subjects', () => {
+    it('debe delegar en catalogService.listSubjects con el careerId recibido', async () => {
+      const mockResult = [{ id: 'subj-1', name: 'Programación' }];
+      mockCatalogService.listSubjects.mockResolvedValue(mockResult);
+
+      const result = await controller.listSubjects({ careerId: 'career-1' });
+
+      expect(service.listSubjects).toHaveBeenCalledWith('career-1');
+      expect(result).toEqual(mockResult);
+    });
+
+    it('debe delegar sin filtro cuando no se recibe careerId', async () => {
+      mockCatalogService.listSubjects.mockResolvedValue([]);
+
+      await controller.listSubjects({});
+
+      expect(service.listSubjects).toHaveBeenCalledWith(undefined);
+    });
+  });
+
+  describe('GET /catalog/professors', () => {
+    it('debe delegar en catalogService.listProfessors con el subjectId recibido', async () => {
+      const mockResult = [{ id: 'prof-1', name: 'Ana Pérez' }];
+      mockCatalogService.listProfessors.mockResolvedValue(mockResult);
+
+      const result = await controller.listProfessors({ subjectId: 'subj-1' });
+
+      expect(service.listProfessors).toHaveBeenCalledWith('subj-1');
+      expect(result).toEqual(mockResult);
+    });
+
+    it('debe delegar sin filtro cuando no se recibe subjectId', async () => {
+      mockCatalogService.listProfessors.mockResolvedValue([]);
+
+      await controller.listProfessors({});
+
+      expect(service.listProfessors).toHaveBeenCalledWith(undefined);
     });
   });
 

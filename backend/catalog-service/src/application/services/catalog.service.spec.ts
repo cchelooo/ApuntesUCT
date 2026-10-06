@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Prisma, ResourceType } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { FilterCatalogDto } from '../dtos/filter-catalog.dto';
 import { CatalogService } from './catalog.service';
@@ -23,11 +23,13 @@ describe('CatalogService', () => {
       delete: jest.fn(),
     },
     career: {
+      findMany: jest.fn(),
       findUnique: jest.fn(),
       create: jest.fn(),
       delete: jest.fn(),
     },
     professor: {
+      findMany: jest.fn(),
       create: jest.fn(),
       findUnique: jest.fn(),
       delete: jest.fn(),
@@ -130,7 +132,7 @@ describe('CatalogService', () => {
     });
   });
 
-  describe('filterCatalog - Validaciones de la secuencia jerárquica (6 Niveles)', () => {
+  describe('filterCatalog - Validaciones de la secuencia jerárquica (4 Niveles)', () => {
     it('debe lanzar BadRequestException si se especifica careerId sin universityId', async () => {
       const filters: FilterCatalogDto = { careerId: 'career-123' };
 
@@ -171,129 +173,22 @@ describe('CatalogService', () => {
       );
     });
 
-    it('debe lanzar BadRequestException si se especifica year sin professorId', async () => {
-      const filters: FilterCatalogDto = {
-        universityId: 'univ-123',
-        careerId: 'career-123',
-        subjectId: 'subj-123',
-        year: 2026,
-      };
-
-      await expect(service.filterCatalog(filters)).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.filterCatalog(filters)).rejects.toThrow(
-        'Secuencia inválida: Para filtrar por Año (year) debe especificar Profesor (professorId).',
-      );
-    });
-
-    it('debe lanzar BadRequestException si se especifica type sin year', async () => {
-      const filters: FilterCatalogDto = {
-        universityId: 'univ-123',
-        careerId: 'career-123',
-        subjectId: 'subj-123',
-        professorId: 'prof-123',
-        type: 'Examen',
-      };
-
-      await expect(service.filterCatalog(filters)).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.filterCatalog(filters)).rejects.toThrow(
-        'Secuencia inválida: Para filtrar por Tipo (type) debe especificar Año (year).',
-      );
-    });
-
-    it('debe filtrar por año contra los recursos activos de la asignatura', async () => {
-      const filters: FilterCatalogDto = {
-        universityId: 'univ-123',
-        careerId: 'career-123',
-        subjectId: 'subj-123',
-        professorId: 'prof-123',
-        year: 2026,
-      };
-
-      const mockResult = [{ id: 'subj-123', name: 'Arquitectura de Software' }];
-      mockPrismaService.subject.findMany.mockResolvedValue(mockResult);
-
-      const result = await service.filterCatalog(filters);
-
-      expect(mockPrismaService.subject.findMany).toHaveBeenCalledWith({
-        where: {
-          career: { universityId: 'univ-123' },
-          careerId: 'career-123',
-          id: 'subj-123',
-          professors: { some: { id: 'prof-123' } },
-          resources: {
-            some: { active: true, year: 2026 },
-          },
-        },
-        include: {
-          career: { include: { university: true } },
-          professors: true,
-        },
-      });
-      expect(result).toEqual(mockResult);
-    });
-
-    it('debe filtrar por año y tipo exigiendo además el tipo en el recurso', async () => {
-      const filters: FilterCatalogDto = {
-        universityId: 'univ-123',
-        careerId: 'career-123',
-        subjectId: 'subj-123',
-        professorId: 'prof-123',
-        year: 2026,
-        type: ResourceType.EXAM,
-      };
-
+    it('ignora year/type de clientes heredados: no filtra contra Resource', async () => {
       mockPrismaService.subject.findMany.mockResolvedValue([]);
 
-      await service.filterCatalog(filters);
-
-      expect(mockPrismaService.subject.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            resources: {
-              some: { active: true, year: 2026, type: ResourceType.EXAM },
-            },
-          }),
-        }),
-      );
-    });
-
-    it('no debe filtrar por recursos cuando no se envía año', async () => {
-      mockPrismaService.subject.findMany.mockResolvedValue([]);
-
-      await service.filterCatalog({
+      const legacyFilters = {
         universityId: 'univ-123',
         careerId: 'career-123',
         subjectId: 'subj-123',
         professorId: 'prof-123',
-      });
+        year: 2026,
+        type: 'EXAM',
+      } as unknown as FilterCatalogDto;
+
+      await service.filterCatalog(legacyFilters);
 
       const call = mockPrismaService.subject.findMany.mock.calls[0][0];
       expect(call.where).not.toHaveProperty('resources');
-    });
-
-    it('no debe devolver el payload de los recursos: la respuesta sigue siendo de asignaturas', async () => {
-      mockPrismaService.subject.findMany.mockResolvedValue([]);
-
-      await service.filterCatalog({
-        universityId: 'univ-123',
-        careerId: 'career-123',
-        subjectId: 'subj-123',
-        professorId: 'prof-123',
-        year: 2026,
-      });
-
-      expect(mockPrismaService.subject.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          include: {
-            career: { include: { university: true } },
-            professors: true,
-          },
-        }),
-      );
     });
   });
 
@@ -350,6 +245,93 @@ describe('CatalogService', () => {
         },
       });
       expect(result).toEqual(mockResult);
+    });
+  });
+
+  // =========================================================================
+  // LISTADOS PARA LOS SELECTORES ACADÉMICOS
+  // =========================================================================
+
+  describe('Listados para selectores académicos', () => {
+    it('listUniversities debe consultar solo universidades activas ordenadas por nombre', async () => {
+      const mockResult = [{ id: 'univ-1', name: 'UCT' }];
+      mockPrismaService.university.findMany.mockResolvedValue(
+        mockResult as never,
+      );
+
+      const result = await service.listUniversities();
+
+      expect(mockPrismaService.university.findMany).toHaveBeenCalledWith({
+        where: { active: true },
+        orderBy: { name: 'asc' },
+      });
+      expect(result).toEqual(mockResult);
+    });
+
+    it('listCareers debe filtrar por universidad cuando se indica universityId', async () => {
+      mockPrismaService.career.findMany.mockResolvedValue([]);
+
+      await service.listCareers('univ-1');
+
+      expect(mockPrismaService.career.findMany).toHaveBeenCalledWith({
+        where: { active: true, universityId: 'univ-1' },
+        orderBy: { name: 'asc' },
+      });
+    });
+
+    it('listCareers debe listar todas las carreras activas sin universityId', async () => {
+      mockPrismaService.career.findMany.mockResolvedValue([]);
+
+      await service.listCareers();
+
+      expect(mockPrismaService.career.findMany).toHaveBeenCalledWith({
+        where: { active: true },
+        orderBy: { name: 'asc' },
+      });
+    });
+
+    it('listSubjects debe filtrar por carrera cuando se indica careerId', async () => {
+      mockPrismaService.subject.findMany.mockResolvedValue([]);
+
+      await service.listSubjects('career-1');
+
+      expect(mockPrismaService.subject.findMany).toHaveBeenCalledWith({
+        where: { active: true, careerId: 'career-1' },
+        orderBy: { name: 'asc' },
+      });
+    });
+
+    it('listSubjects debe listar todas las asignaturas activas sin careerId', async () => {
+      mockPrismaService.subject.findMany.mockResolvedValue([]);
+
+      await service.listSubjects();
+
+      expect(mockPrismaService.subject.findMany).toHaveBeenCalledWith({
+        where: { active: true },
+        orderBy: { name: 'asc' },
+      });
+    });
+
+    it('listProfessors debe filtrar por asignatura cuando se indica subjectId', async () => {
+      mockPrismaService.professor.findMany.mockResolvedValue([]);
+
+      await service.listProfessors('subj-1');
+
+      expect(mockPrismaService.professor.findMany).toHaveBeenCalledWith({
+        where: { active: true, subjects: { some: { id: 'subj-1' } } },
+        orderBy: { name: 'asc' },
+      });
+    });
+
+    it('listProfessors debe listar todos los profesores activos sin subjectId', async () => {
+      mockPrismaService.professor.findMany.mockResolvedValue([]);
+
+      await service.listProfessors();
+
+      expect(mockPrismaService.professor.findMany).toHaveBeenCalledWith({
+        where: { active: true },
+        orderBy: { name: 'asc' },
+      });
     });
   });
 
