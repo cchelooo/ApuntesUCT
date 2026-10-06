@@ -177,10 +177,8 @@ Devuelve la jerarquía **Universidad → Carreras → Asignaturas** (universidad
 | `careerId` | UUID | Nivel 2. Requiere `universityId` |
 | `subjectId` | UUID | Nivel 3. Requiere `careerId` |
 | `professorId` | UUID | Nivel 4. Requiere `subjectId` |
-| `year` | entero `2000–2100` | Nivel 5. Requiere `professorId` · § 501 |
-| `type` | string | Nivel 6. Requiere `year` · § 501 |
 
-**Orden obligatorio de niveles:** el filtrado es jerárquico; especificar un nivel sin su anterior devuelve `400`.
+**Orden obligatorio de niveles:** el filtrado es jerárquico y de **4 niveles**; especificar un nivel sin su anterior devuelve `400`. `year` y `type` **no** forman parte del contrato de Catalog: los metadatos de materiales son de Material Service y la búsqueda por año/tipo corresponde a Search Service.
 
 ```json
 {
@@ -191,16 +189,6 @@ Devuelve la jerarquía **Universidad → Carreras → Asignaturas** (universidad
 ```
 
 **Relaciones incluidas en cada asignatura devuelta:** `career` (con su `university`) y `professors`.
-
-**`year`/`type` → `501 Not Implemented` solo si pasan las validaciones previas:** un parámetro mal formado (p. ej., `year` fuera de `2000–2100`) responde `400`, y una secuencia jerárquica incompleta (p. ej., `year` sin `professorId`) también responde `400`. Recién cuando el formato y la secuencia son válidos, solicitar año o tipo produce `501` (depende del módulo de Recursos, pendiente de integración):
-
-```json
-{
-  "statusCode": 501,
-  "message": "Los filtros por Año y Tipo requieren el módulo de Recursos (Resource), el cual está pendiente de integración en la base de datos.",
-  "error": "Not Implemented"
-}
-```
 
 **Ejemplo de respuesta `200` (con filtros de niveles 1–4):** asignatura con sus relaciones `career`, `career.university` y `professors`.
 
@@ -252,6 +240,19 @@ Devuelve la jerarquía **Universidad → Carreras → Asignaturas** (universidad
 
 **Estado:** código implementado en `main`, compila. **HTTP no verificado** (requiere la base de datos del catálogo).
 
+### 3.6 Listados para selectores académicos (directo a `:3002`, #221)
+
+Cuatro endpoints devuelven únicamente entidades **activas** ordenadas por nombre, con el filtro por padre como parámetro **opcional**. Alimentan los dropdowns en cascada (universidad → carrera → asignatura → profesor) sin descargar el árbol completo:
+
+| Método | Endpoint | Query opcional | Devuelve |
+|---|---|---|---|
+| `GET` | `/api/v1/catalog/universities` | — | Universidades activas |
+| `GET` | `/api/v1/catalog/careers` | `universityId` | Carreras activas (de esa universidad) |
+| `GET` | `/api/v1/catalog/subjects` | `careerId` | Asignaturas activas (de esa carrera) |
+| `GET` | `/api/v1/catalog/professors` | `subjectId` | Profesores activos (de esa asignatura) |
+
+Todos responden `200` con un arreglo JSON y `400` si el UUID del filtro es inválido.
+
 ---
 
 ## 4. Pendiente vs. Propuesta (no disponible hoy)
@@ -264,7 +265,7 @@ Devuelve la jerarquía **Universidad → Carreras → Asignaturas** (universidad
 | Recuperación de contraseña | **Pendiente/Propuesta** | Endpoints aún por definir |
 | Autenticación real (JWT firmado y autorización) | **Pendiente** | El login actual es mock (sección 3.3); el esquema final es JWT Bearer |
 | Paginación `page`/`limit` (`items`/`total`) | **Propuesta** | **No implementada** en los endpoints actuales de catálogo; si se requiere, debe proponerse y aprobarse el contrato |
-| `year`/`type` en `/catalog/filter` | Pendiente | `501` solo si la secuencia es válida; depende del módulo de Recursos |
+| `year`/`type` fuera de Catalog | **Resuelto (#221)** | No forman parte del contrato de Catalog: son de Material Service y la búsqueda por año/tipo de Search Service |
 | Proxy Gateway → `/catalog` | Pendiente | Hoy Mobile consulta el catálogo directo en `:3002` (sección 1.2) |
 
 ---
@@ -381,7 +382,7 @@ curl "http://localhost:3002/api/v1/catalog/filter?universityId=<uuid>&careerId=<
 | Gateway en vivo: `GET /api/v1/auth/health` (auth caído) | ✅ `502` `{"statusCode":502,"message":"Auth Service no disponible"}` — verifica el proxy y su formato de error |
 | Gateway en vivo: `POST /api/v1/auth/login` (auth caído) | ✅ `502` `{"statusCode":502,"message":"Auth Service no disponible"}` |
 | Gateway en vivo: spec JSON `GET /api/docs/gateway-json` | ✅ `200` `application/json` |
-| `POST /auth/login` → `200`, catálogo `/catalog` y `/catalog/filter` → `200/400/501`, salud de Auth → `200` | ⛔ **No verificado en vivo.** Requiere postgres (auth-db / catalog-db), no disponible en el entorno de elaboración. Los endpoints existen en `main`, compilan y quedan descritos desde su código. |
+| `POST /auth/login` → `200`, catálogo `/catalog` y `/catalog/filter` → `200/400`, salud de Auth → `200` | ⛔ **No verificado en vivo.** Requiere postgres (auth-db / catalog-db), no disponible en el entorno de elaboración. Los endpoints existen en `main`, compilan y quedan descritos desde su código. |
 
 ---
 

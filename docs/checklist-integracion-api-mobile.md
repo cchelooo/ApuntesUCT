@@ -163,8 +163,6 @@ Microservicio encargado de la estructura académica: Universidades, Carreras, As
   - `careerId` (UUID, opcional — requiere `universityId`)
   - `subjectId` (UUID, opcional — requiere `careerId`)
   - `professorId` (UUID, opcional — requiere `subjectId`)
-  - `year` (Int `2000-2100`, opcional — requiere `professorId`, actualmente *501 Not Implemented*)
-  - `type` (String, opcional — requiere `year`, actualmente *501 Not Implemented*)
 - **Comportamiento**:
   - Sin parámetros: Devuelve todas las asignaturas.
   - Con filtros válidos: Devuelve asignaturas coincidentes con sus relaciones (`career`, `university`, `professors`).
@@ -199,18 +197,18 @@ Microservicio encargado de la estructura académica: Universidades, Carreras, As
 
 ---
 
-### 3.2. Endpoints REST Individuales Requeridos para Selectores en Mobile
+### 3.2. Endpoints REST Individuales para Selectores en Mobile
 
-Para poblar dinámicamente los dropdowns en los filtros de búsqueda y el formulario de subida de material sin transferir árboles jerárquicos pesados, Mobile requiere (o solicita formalmente a INT2) los siguientes endpoints independientes:
+Para poblar dinámicamente los dropdowns en los filtros de búsqueda y el formulario de subida de material sin transferir árboles jerárquicos pesados, el Catalog Service expone los siguientes endpoints independientes (#221). Devuelven únicamente entidades **activas** ordenadas por nombre:
 
-| Método | Endpoint Requerido | Query / Params | Respuesta esperada | Modelo Mobile |
+| Método | Endpoint | Query / Params | Respuesta esperada | Modelo Mobile |
 |---|---|---|---|---|
 | **GET** | `/catalog/universities` | — | `UniversityModel[]` | `UniversityModel` |
 | **GET** | `/catalog/careers` | `?universityId=<uuid>` | `CareerModel[]` filtrado por universidad | `CareerModel` |
 | **GET** | `/catalog/subjects` | `?careerId=<uuid>` | `SubjectModel[]` filtrado por carrera | `SubjectModel` |
 | **GET** | `/catalog/professors` | `?subjectId=<uuid>` | `ProfessorModel[]` asociados a la asignatura | `ProfessorModel` |
 
-> 💡 **Estrategia de compatibilidad provisional**: Mientras Backend no exponga las rutas REST individuales arriba listadas, Mobile puede consumir `GET /catalog/filter` y extraer en memoria las listas únicas de Universidades, Carreras y Profesores a partir del árbol de asignaturas devuelto.
+> 💡 El filtro por el padre (`universityId`, `careerId`, `subjectId`) es **opcional**: sin él, el listado devuelve todas las entidades activas de ese nivel.
 
 ---
 
@@ -224,10 +222,10 @@ Para poblar dinámicamente los dropdowns en los filtros de búsqueda y el formul
 | **Auth** | POST | `/api/v1/auth/logout` | ⏳ Pendiente |  Limpieza local implementada | **P2 (Media)** |
 | **Auth** | POST | `/api/v1/auth/refresh` | ⏳ Pendiente |  Interceptor preparado | **P2 (Media)** |
 | **Catalog**| GET | `/api/v1/catalog/filter` |  Implementado (#71, #97) |  Consumo en Catálogo | **P0 (Crítica)** |
-| **Catalog**| GET | `/api/v1/catalog/universities` | ⏳ Solicitado (usar `/filter` alternativo)|  Modelo Dart definido | **P1 (Alta)** |
-| **Catalog**| GET | `/api/v1/catalog/careers` | ⏳ Solicitado (usar `/filter` alternativo)|  Modelo Dart definido | **P1 (Alta)** |
-| **Catalog**| GET | `/api/v1/catalog/subjects` | ⏳ Solicitado (usar `/filter` alternativo)|  Modelo Dart definido | **P1 (Alta)** |
-| **Catalog**| GET | `/api/v1/catalog/professors`| ⏳ Solicitado (usar `/filter` alternativo)|  Modelo Dart definido | **P1 (Alta)** |
+| **Catalog**| GET | `/api/v1/catalog/universities` |  Implementado (#221) |  Modelo Dart definido | **P1 (Alta)** |
+| **Catalog**| GET | `/api/v1/catalog/careers` |  Implementado (#221) |  Modelo Dart definido | **P1 (Alta)** |
+| **Catalog**| GET | `/api/v1/catalog/subjects` |  Implementado (#221) |  Modelo Dart definido | **P1 (Alta)** |
+| **Catalog**| GET | `/api/v1/catalog/professors`|  Implementado (#221) |  Modelo Dart definido | **P1 (Alta)** |
 
 ---
 

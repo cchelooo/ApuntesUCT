@@ -65,20 +65,6 @@ Content-Type: {{contentType}}
 
 ###
 
-### 1.3b1 Error: Año con formato no numérico/inválido
-# Esperado: 400 Bad Request
-GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year=invalid_year
-Content-Type: {{contentType}}
-
-###
-
-### 1.3b2 Error: Año fuera de rango permitido (e.g., year=1800)
-# Esperado: 400 Bad Request
-GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year=1800
-Content-Type: {{contentType}}
-
-###
-
 ### 1.3c Error: Salto de jerarquía (Asignatura sin Carrera)
 # Esperado: 400 Bad Request
 GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&subjectId={{subjectId}}
@@ -93,23 +79,10 @@ Content-Type: {{contentType}}
 
 ###
 
-### 1.3e Error: 'year' sin 'professorId' (Violación de secuencia)
-# Esperado: 400 Bad Request
-GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&year=2026
-Content-Type: {{contentType}}
-
-###
-
-### 1.3f Error: 'type' sin 'year' (Violación de secuencia)
-# Esperado: 400 Bad Request
-GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&type=EXAM
-Content-Type: {{contentType}}
-
-###
-
-### 1.3h Error: 'type' fuera del enum ResourceType
-# Valores válidos: SUMMARY, EXAM, GUIDE, CLASS_NOTES, OTHER
-# Esperado: 400 Bad Request
+### 1.3h Alcance del dominio: 'year'/'type' se ignoran (ya no son de Catalog)
+# Catalog ya NO acepta year/type: pertenecen a Material/Search. Con `whitelist`
+# estos parámetros se descartan, por lo que la petición responde 200 (no 400).
+# Esperado: 200 OK ignorando year/type
 GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year=2026&type=APUNTE
 Content-Type: {{contentType}}
 
@@ -122,26 +95,47 @@ Content-Type: {{contentType}}
 
 ###
 
-### 1.4a Nivel 5: Secuencia completa hasta 'year'
-# Filtra asignaturas que tienen al menos un Resource activo del año indicado.
-# Esperado: 200 OK
-GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year=2026
+### 1.4a Listar universidades activas (selector académico)
+# Esperado: 200 OK - Arreglo de universidades activas ordenadas por nombre
+GET {{baseUrl}}/catalog/universities
 Content-Type: {{contentType}}
 
 ###
 
-### 1.4b Nivel 6: Secuencia completa incluyendo 'year' y 'type'
-# Además del año, el recurso debe coincidir con el tipo.
-# Esperado: 200 OK
+### 1.4b Listar carreras activas (todas)
+# Esperado: 200 OK - Arreglo de carreras activas ordenadas por nombre
+GET {{baseUrl}}/catalog/careers
+Content-Type: {{contentType}}
+
+###
+
+### 1.4c Listar carreras de una universidad
+# Esperado: 200 OK - Arreglo de carreras activas de la universidad indicada
+GET {{baseUrl}}/catalog/careers?universityId={{universityId}}
+Content-Type: {{contentType}}
+
+###
+
+### 1.4d Listar asignaturas activas de una carrera
+# Esperado: 200 OK - Arreglo de asignaturas activas de la carrera indicada
+GET {{baseUrl}}/catalog/subjects?careerId={{careerId}}
+Content-Type: {{contentType}}
+
+###
+
+### 1.4e Listar profesores activos de una asignatura
+# Esperado: 200 OK - Arreglo de profesores activos que dictan la asignatura indicada
+GET {{baseUrl}}/catalog/professors?subjectId={{subjectId}}
+Content-Type: {{contentType}}
+
+###
+
+### 1.5 Alcance del dominio: 'year'/'type' ya no pertenecen a Catalog
+# Catalog solo modela la jerarquía universidad -> carrera -> asignatura -> profesor.
+# Los metadatos de materiales (year/type) son de Material Service y la búsqueda
+# por año/tipo corresponde a Search Service. Al enviarlos se ignoran (whitelist).
+# Esperado: 200 OK (parámetros desconocidos descartados)
 GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year=2026&type=EXAM
-Content-Type: {{contentType}}
-
-###
-
-### 1.4c Nivel 6: 'type' sin coincidencias (no hay recursos SUMMARY)
-# Demuestra que el filtro discrimina por tipo en lugar de devolver todo sin filtrar.
-# Esperado: 200 OK con []
-GET {{baseUrl}}/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}&year=2026&type=SUMMARY
 Content-Type: {{contentType}}
 
 ###
