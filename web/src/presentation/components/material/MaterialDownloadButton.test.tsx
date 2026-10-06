@@ -40,10 +40,22 @@ describe('MaterialDownloadButton', () => {
     ).toBeTruthy();
   });
 
-  it('Debe mostrar alerta de conexión cuando fetch lanza TypeError', async () => {
+  it('Debe mostrar alerta de conexión cuando falla la red y permitir reintento exitoso', async () => {
+    // Primer intento: Falla la red
     vi.mocked(window.fetch).mockRejectedValueOnce(
       new TypeError('Failed to fetch')
     );
+    // Segundo intento: Éxito
+    vi.mocked(window.fetch).mockResolvedValueOnce({
+      ok: true,
+      blob: () =>
+        Promise.resolve(
+          new Blob(['dummy content'], { type: 'application/pdf' })
+        ),
+      headers: new Headers({
+        'Content-Disposition': 'attachment; filename="archivo-prueba.pdf"',
+      }),
+    } as unknown as Response);
 
     render(<MaterialDownloadButton url="http://mock-url" />);
 
@@ -60,9 +72,28 @@ describe('MaterialDownloadButton', () => {
     });
 
     // El botón debe permitir reintentar
-    expect(
-      screen.getByRole('button', { name: /Reintentar descarga/i })
-    ).toBeTruthy();
+    const retryButton = screen.getByRole('button', {
+      name: /Reintentar descarga/i,
+    });
+    expect(retryButton).toBeTruthy();
+
+    // Simular clic nuevamente
+    fireEvent.click(retryButton);
+
+    // La alerta debe desaparecer (ya no está en el documento)
+    await waitFor(() => {
+      expect(
+        screen.queryByText(
+          'Error de conexión. Por favor, verifica tu conexión a internet e intenta nuevamente.'
+        )
+      ).toBeNull();
+    });
+
+    // Se debe haber llamado a fetch 2 veces en total
+    expect(window.fetch).toHaveBeenCalledTimes(2);
+
+    // La descarga se completa con éxito (se crea la URL para el blob)
+    expect(window.URL.createObjectURL).toHaveBeenCalled();
   });
 
   it('No debe mostrar error de conexión si ocurre un error genérico (ej. Blob fail)', async () => {

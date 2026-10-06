@@ -30,12 +30,8 @@ export function mapMaterialError(error: unknown): string {
   };
 
   if (isMaterialApiError(error)) {
-    // Distinguir explícitamente fallos de red reales
-    // fetch lanza TypeError cuando falla la red ('Failed to fetch' u otros)
-    if (
-      error.isNetworkError ||
-      (error instanceof TypeError && error.message.includes('fetch'))
-    ) {
+    // Distinguir explícitamente fallos de red reales (marcados previamente en el catch del fetch)
+    if (error.isNetworkError) {
       return 'Error de conexión. Por favor, verifica tu conexión a internet e intenta nuevamente.';
     }
 

@@ -33,7 +33,17 @@ export function MaterialDownloadButton({ url }: MaterialDownloadButtonProps) {
     setError(null);
 
     try {
-      const response = await fetch(url);
+      let response: Response;
+      try {
+        response = await fetch(url);
+      } catch (err: unknown) {
+        const networkError = new Error(
+          err instanceof Error ? err.message : 'Error de red'
+        );
+        (networkError as Error & { isNetworkError?: boolean }).isNetworkError =
+          true;
+        throw networkError;
+      }
 
       if (!response.ok) {
         setError(mapMaterialError({ status: response.status }));
