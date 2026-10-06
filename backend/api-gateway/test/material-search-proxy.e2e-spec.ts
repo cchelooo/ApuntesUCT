@@ -82,6 +82,11 @@ describe('Gateway → Material y Search (HTTP)', () => {
       upstreams.set(service.label, upstream);
       origins.set(service.urlKey, upstream.origin);
     }
+    // Auth no participa en este spec, pero el AppModule sí monta su proxy con el
+    // origen por defecto (3001). Apuntarlo a un puerto cerrado evita que la prueba
+    // dependa de que no haya nada escuchando en 3001: si Auth estuviera levantado,
+    // la petición llegaría a un servicio real en vez de fallar con 502.
+    origins.set('AUTH_SERVICE_URL', `http://127.0.0.1:${await getClosedPort()}`);
 
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(ConfigService)
@@ -184,7 +189,8 @@ describe('Gateway → Material y Search (HTTP)', () => {
       .expect(200);
     expect(health.body.service).toBe('API Gateway');
     await request(gateway.getHttpServer()).get('/health').expect(200);
-    // Auth no tiene origen configurado en este test: debe responder 502 suyo, no de Material/Search.
+    // Auth apunta a un puerto cerrado (definido en beforeEach): debe responder su
+    // propio 502, no uno de Material/Search.
     await request(gateway.getHttpServer())
       .get('/api/v1/auth/login')
       .expect(502)

@@ -47,11 +47,10 @@ function renderDocsIndex(services: DocsService[]): string {
         <tbody>${rows}</tbody>
       </table>
       <p>Quality Service todavía no está enrutado por el gateway. Material y Search sí lo
-      están y sus servicios existen, pero su alcance es menor que el de la ruta
-      proxeada: <code>/api/v1/search</code> responde <code>200</code> con resultados vacíos
-      porque la búsqueda sigue siendo un stub, y <code>/api/v1/materials</code> responde
-      <code>404</code> porque material-service todavía no expone rutas de materiales. El
-      <code>502</code> del gateway corresponde al servicio caído, no al endpoint pendiente.</p>
+      están y responden con su implementación actual: <code>/api/v1/materials</code> devuelve el listado paginado de materiales
+      (vacío si no hay datos), y <code>/api/v1/search</code> responde <code>200</code> con resultados vacíos
+      porque la búsqueda sigue siendo un stub. El <code>502</code> del gateway corresponde al
+      servicio caído, no al endpoint pendiente.</p>
     </main>
   </body>
 </html>`;

@@ -83,10 +83,11 @@ describe('API Gateway (e2e)', () => {
         expect(res.text).toContain('http://localhost:3003/api/docs');
         expect(res.text).toContain('http://localhost:3005/api/docs');
         expect(res.text).toContain('Quality Service todavía no está enrutado');
-        // El 502 se describe como "servicio caído", no como servicios inexistentes.
-        expect(res.text).toContain('material-service todavía no expone rutas');
+        // El listado de Material ya está implementado (#318); Search sigue siendo stub.
+        expect(res.text).toContain('devuelve el listado paginado de materiales');
         expect(res.text).toContain('la búsqueda sigue siendo un stub');
         expect(res.text).toContain('servicio caído');
+        expect(res.text).not.toContain('todavía no expone rutas de materiales');
         expect(res.text).not.toContain('responden 502 hasta que exista');
       });
   });
