@@ -1,0 +1,16 @@
+{
+  "completeReference": {
+    "id": "00000000-0000-4000-8000-000000000003",
+    "name": "Estructuras de Datos"
+  },
+  "minimalReference": {
+    "id": "00000000-0000-4000-8000-000000000004"
+  },
+  "invalidReference": {
+    "id": "   ",
+    "name": "Cálculo I"
+  },
+  "pendingReview": "PENDING_REVIEW",
+  "legacyApproved": "aprobado",
+  "unknownStatus": "FUTURE_STATUS"
+}

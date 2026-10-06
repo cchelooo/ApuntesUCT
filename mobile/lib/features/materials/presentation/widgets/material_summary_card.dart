@@ -1,5 +1,6 @@
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
+import 'package:apuntesuct_mobile/features/materials/domain/models/material_status.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_detail_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -17,7 +18,10 @@ class MaterialSummaryCard extends StatelessWidget {
             summary: material,
             downloadUrl: '',
             fileSizeBytes: 0,
-            tags: [material.subjectName, material.materialType],
+            tags: [
+              material.subjectName,
+              material.materialType,
+            ].where((tag) => tag.trim().isNotEmpty).toList(),
           ),
         ),
       ),
@@ -66,7 +70,9 @@ class MaterialSummaryCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              material.materialType.toUpperCase(),
+                              material.materialType.isEmpty
+                                  ? 'SIN TIPO'
+                                  : material.materialType.toUpperCase(),
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: colorScheme.onPrimaryContainer,
                                 fontWeight: FontWeight.bold,
@@ -88,7 +94,7 @@ class MaterialSummaryCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            '${material.academicYear}',
+                            material.academicYear?.toString() ?? 'Sin año',
                             style: theme.textTheme.labelSmall?.copyWith(
                               color: colorScheme.onSurfaceVariant,
                               fontSize: 10,
@@ -105,15 +111,15 @@ class MaterialSummaryCard extends StatelessWidget {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: material.status.toLowerCase() == 'aprobado'
+                      color: material.reviewStatus == MaterialStatus.approved
                           ? Colors.green.withValues(alpha: 0.15)
                           : Colors.amber.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      material.status.toUpperCase(),
+                      material.reviewStatus.label.toUpperCase(),
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: material.status.toLowerCase() == 'aprobado'
+                        color: material.reviewStatus == MaterialStatus.approved
                             ? Colors.green.shade800
                             : Colors.amber.shade900,
                         fontWeight: FontWeight.bold,

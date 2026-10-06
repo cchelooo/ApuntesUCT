@@ -54,21 +54,6 @@ describe('API Gateway (e2e)', () => {
       });
   });
 
-  it('/api/docs (GET) lista Material y Search y aclara que aún no existen (#222)', () => {
-    return request(app.getHttpServer())
-      .get('/api/docs')
-      .expect(200)
-      .expect('Content-Type', /text\/html/)
-      .expect((res) => {
-        expect(res.text).toContain('Material Service');
-        expect(res.text).toContain('Search Service');
-        expect(res.text).toContain('http://localhost:3003/api/docs');
-        expect(res.text).toContain('http://localhost:3005/api/docs');
-        expect(res.text).toContain('Quality Service todavía no está enrutado');
-        expect(res.text).toContain('502');
-      });
-  });
-
   it('/api/docs/gateway (GET) expone el Swagger del gateway', () => {
     return request(app.getHttpServer())
       .get('/api/docs/gateway')
@@ -93,8 +78,6 @@ describe('API Gateway (e2e)', () => {
   it('/api/docs (GET) respeta las URLs configuradas por entorno', async () => {
     process.env.AUTH_DOCS_URL = 'http://doc-auth.internal/api/docs';
     process.env.CATALOG_DOCS_URL = 'http://doc-catalog.internal/api/docs';
-    process.env.MATERIAL_DOCS_URL = 'http://doc-material.internal/api/docs';
-    process.env.SEARCH_DOCS_URL = 'http://doc-search.internal/api/docs';
 
     const configuredModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -110,18 +93,12 @@ describe('API Gateway (e2e)', () => {
         .expect(200);
       expect(res.text).toContain('http://doc-auth.internal/api/docs');
       expect(res.text).toContain('http://doc-catalog.internal/api/docs');
-      expect(res.text).toContain('http://doc-material.internal/api/docs');
-      expect(res.text).toContain('http://doc-search.internal/api/docs');
       expect(res.text).not.toContain('http://localhost:3001/api/docs');
       expect(res.text).not.toContain('http://localhost:3002/api/docs');
-      expect(res.text).not.toContain('http://localhost:3003/api/docs');
-      expect(res.text).not.toContain('http://localhost:3005/api/docs');
     } finally {
       await configuredApp.close();
       delete process.env.AUTH_DOCS_URL;
       delete process.env.CATALOG_DOCS_URL;
-      delete process.env.MATERIAL_DOCS_URL;
-      delete process.env.SEARCH_DOCS_URL;
     }
   });
 

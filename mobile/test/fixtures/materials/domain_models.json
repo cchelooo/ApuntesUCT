@@ -1,0 +1,40 @@
+{
+  "summary": {
+    "id": "00000000-0000-4000-8000-000000000101",
+    "title": "Guía de árboles y grafos",
+    "description": "Ejercicios para el primer certamen.",
+    "uploaderId": "00000000-0000-4000-8000-000000000010",
+    "authorName": "Marcelo Santana",
+    "universityId": "00000000-0000-4000-8000-000000000001",
+    "universityName": "Universidad Católica de Temuco",
+    "careerId": "00000000-0000-4000-8000-000000000002",
+    "careerName": "Ingeniería Civil Informática",
+    "subjectId": "00000000-0000-4000-8000-000000000003",
+    "subjectName": "Estructuras de Datos",
+    "professorId": "00000000-0000-4000-8000-000000000004",
+    "professor": "Dr. Roberto Muñoz",
+    "academicYear": 2026,
+    "materialType": "guia",
+    "fileType": "pdf",
+    "status": "PENDING_REVIEW",
+    "downloadCount": 0,
+    "rating": 0,
+    "createdAt": "2026-10-04T12:00:00.000Z"
+  },
+  "minimalSummary": {"id": "material-minimo", "title": "Material sin datos opcionales"},
+  "invalidSummary": {"id": "   ", "title": "ID inválido"},
+  "version": {
+    "id": "00000000-0000-4000-8000-000000000201",
+    "materialId": "00000000-0000-4000-8000-000000000101",
+    "versionNumber": 1,
+    "originalFileName": "arboles-y-grafos.pdf",
+    "mimeType": "application/pdf",
+    "fileSizeBytes": 1024,
+    "storageKey": "materials/101/v1.pdf",
+    "checksum": "checksum-local-de-ejemplo",
+    "createdBy": "00000000-0000-4000-8000-000000000010",
+    "createdAt": "2026-10-04T12:00:00.000Z"
+  },
+  "minimalVersion": {"id": "version-minima", "materialId": "material-minimo", "versionNumber": 1},
+  "invalidVersion": {"id": "version-invalida", "materialId": "material-minimo", "versionNumber": 0}
+}

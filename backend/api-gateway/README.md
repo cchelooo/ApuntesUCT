@@ -106,50 +106,6 @@ Las pruebas del proxy abren servidores HTTP locales: comprueban métodos, rutas,
 JSON, query, Authorization, cookies, errores y Auth caído. También llaman al módulo
 health real de Auth, sin iniciar Prisma ni requerir PostgreSQL.
 
-## Proxy hacia Material y Search (#222)
-
-El Gateway reenvía `/api/v1/materials` y `/api/v1/search` hacia sus servicios,
-sumándose a Auth y Catalog como punto único de entrada. Ambos proxies usan el
-mismo contrato verificado para Catalog: conservan método, query, cuerpo,
-`Authorization` y cookies, y usan `fixRequestBody` para reenviar los cuerpos que
-Nest ya procesó.
-
-| Ruta del Gateway | Origen por defecto | Variable de entorno | Puerto reservado |
-| --- | --- | --- | --- |
-| `/api/v1/materials` | `http://127.0.0.1:3003` | `MATERIAL_SERVICE_URL` | 3003 |
-| `/api/v1/search` | `http://127.0.0.1:3005` | `SEARCH_SERVICE_URL` | 3005 |
-
-Si el servicio no acepta la conexión o excede 5 segundos sin responder, el
-Gateway responde `502` con un mensaje propio de cada servicio
-(`Material Service no disponible` o `Search Service no disponible`), de modo que
-un fallo se puede atribuir sin ambigüedad.
-
-> **Estado de los servicios.** `material-service` y `search-service` siguen siendo
-> placeholders: no tienen `package.json`, código fuente ni arranque de Nest, y
-> tampoco están declarados como workspaces de `backend/package.json`. Por eso las
-> rutas ya están enrutadas y comprobadas, pero devuelven `502` hasta que se
-> implementen. La ruta esperada sigue el contrato documentado en
-> `docs/checklist-integracion-api-mobile.md` (`/api/v1/materials`).
-
-Si se despliega en contenedores, configura `MATERIAL_SERVICE_URL` y
-`SEARCH_SERVICE_URL` con el nombre DNS y el puerto interno de cada servicio, sin
-añadir `/api/v1`.
-
-### Verificación automática
-
-Desde `backend`:
-
-```bash
-npm run test:e2e --workspace=api-gateway -- --runInBand
-```
-
-Las pruebas de `test/material-search-proxy.e2e-spec.ts` levantan dos servidores
-HTTP locales y comprueban, para Material y Search: destino correcto de cada
-ruta, conservación de método, query, `Authorization`, cookies y cuerpos JSON,
-`PUT`/`PATCH`/`DELETE`, `502` con el mensaje propio cuando el servicio cae, que no
-se capturan rutas ajenas (`/api/v1/materials-other`) y que los puertos
-reservados se usan cuando no se definen las variables de entorno.
-
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>
