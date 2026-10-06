@@ -11,19 +11,21 @@ Tecnologías: Node.js, TypeScript, NestJS, Prisma, PostgreSQL, MinIO.
 | api-gateway | 3000 | `http://localhost:3000` | Implementado |
 | auth-service | 3001 | `http://localhost:3001` | Implementado |
 | catalog-service | 3002 (*) | `http://localhost:3002` | Implementado (PR #139 integrado en main) |
-| material-service | 3003 | `http://localhost:3003` | Implementado |
+| material-service | 3003 | `http://localhost:3003` | Implementado (PR #311 integrado en main) |
 | quality-service | 3004 (**) | `http://localhost:3004` | Pendiente (placeholder) |
-| search-service | 3005 (**) | `http://localhost:3005` | Pendiente (placeholder) |
+| search-service | 3005 | `http://localhost:3005` | Implementado (PR #305 integrado en main) |
 
 (*) Puerto para ejecución local, no un valor predeterminado del servicio. El catálogo, tal como está en main, no levanta en 3002 por sí solo: su `.env.example` define `PORT=3001` (que coincide con auth-service) y `src/main.ts` usa `3000` cuando no existe `PORT` (que coincide con api-gateway). Ejecutarlo con `PORT=3002 npm run start:dev` evita ambos conflictos; esa variable tiene prioridad sobre el valor del `.env` durante esa ejecución.
 
-(**) Puertos propuestos/reservados para Quality y Search. Todavía no hay servicios disponibles en esas direcciones.
+(**) Puerto propuesto/reservado para Quality. Todavía no hay un servicio disponible en esa dirección.
 
 Notas:
-- Los servicios implementados aplican el prefijo global `api/v1` y cada uno expone su healthcheck `GET /api/v1/health` (api-gateway, auth-service, catalog-service y material-service).
-- El api-gateway obtiene el puerto mediante `ConfigService` (`configService.get<number>('PORT') || 3000`), con `3000` como valor predeterminado. Expone `GET /api/v1/health` y un índice Swagger en `/api/docs`. Su módulo de proxy (`ProxyModule`) reenvía `/api/v1/auth` y sus subrutas a Auth (`AUTH_SERVICE_URL`, por defecto `http://127.0.0.1:3001`; timeout de 5 s; si Auth no responde devuelve `502` con `Auth Service no disponible`). El resto de microservicios no se enrutan por el gateway todavía. Ver `api-gateway/README.md`.
-- Documentación Swagger por servicio: API Gateway en `http://localhost:3000/api/docs/gateway` (spec JSON en `/api/docs/gateway-json`); Auth, Catalog y Material en `http://localhost:<puerto>/api/docs` con spec JSON en `/api/docs-json` (puertos 3001, 3002 y 3003).
-- CORS: habilitado en api-gateway, auth-service, catalog-service y material-service (`app.enableCors()`). Sin restricción de orígenes en desarrollo: los servicios aceptan solicitudes cross-origin (front web y app mobile).
+- Los servicios implementados aplican el prefijo global `api/v1` y cada uno expone su healthcheck `GET /api/v1/health` (api-gateway, auth-service, catalog-service, material-service y search-service).
+- El api-gateway obtiene el puerto mediante `ConfigService` (`configService.get<number>('PORT') || 3000`), con `3000` como valor predeterminado. Expone `GET /api/v1/health` y un índice Swagger en `/api/docs`. Su módulo de proxy (`ProxyModule`) reenvía `/api/v1/auth` a Auth (`AUTH_SERVICE_URL`, por defecto `http://127.0.0.1:3001`; con reescritura de `/api/v1/auth/health` a `/api/v1/health`), `/api/v1/catalog` a Catalog (`CATALOG_SERVICE_URL`, `http://127.0.0.1:3002`), `/api/v1/materials` a Material (`MATERIAL_SERVICE_URL`, `http://127.0.0.1:3003`) y `/api/v1/search` a Search (`SEARCH_SERVICE_URL`, `http://127.0.0.1:3005`), todas con timeout de 5 s y `502` con un mensaje propio de cada servicio cuando el destino no responde. Quality todavía no se enruta. Ver `api-gateway/README.md`.
+- Cobertura real de los destinos: Catalog expone el árbol y el filtrado en `/api/v1/catalog`, y Search atiende `GET /api/v1/search` (devuelve un stub con `results: []`; la búsqueda desacoplada es trabajo en curso). Material todavía **no expone rutas de materiales**, así que `/api/v1/materials` responde `404` mientras el servicio esté arriba y solo devuelve `502` cuando el servicio está caído.
+- Documentación Swagger por servicio: API Gateway en `http://localhost:3000/api/docs/gateway` (spec JSON en `/api/docs/gateway-json`); Auth, Catalog y Material en `http://localhost:<puerto>/api/docs` con spec JSON en `/api/docs-json` (puertos 3001, 3002 y 3003); Search en `http://localhost:3005/api/docs` sin spec JSON.
+- CORS: habilitado en api-gateway, auth-service, catalog-service y material-service (`app.enableCors()`). Search no llama a `enableCors()`, así que el acceso cross-origin a `:3005` directo está restringido; a través del gateway no aplica. Sin restricción de orígenes en desarrollo: los servicios aceptan solicitudes cross-origin (front web y app mobile).
+- Requisitos para levantarlos: material-service necesita su base `material_db` (`db_material`, puerto `5436`); search-service no usa base de datos.
 
 ## Puertos de bases de datos (docker-compose.yml)
 
@@ -270,7 +272,9 @@ constancia explícita para priorizar su cierre antes de producción.
 
 | Deuda | Descripción | Referencia |
 | --- | --- | --- |
-| El gateway enruta solo Auth | `/catalog`, `/material`, `/quality` y `/search` no pasan por el gateway; Mobile consulta el catálogo directo en `:3002` | `api-gateway/README.md` |
+| Rutas de Material y Search sin implementar | El gateway enruta `/api/v1/materials` y `/api/v1/search` a servicios ya integrados en main (#311 y #305), pero material-service aún no expone rutas de materiales y search responde un stub con `results: []`. Con ambos servicios arriba `/api/v1/materials` devuelve `404` y `/api/v1/search` devuelve `200` con resultados vacíos; el `502` del gateway solo aparece cuando el destino está caído | `api-gateway/README.md` |
+| El gateway no enruta Quality | `/api/v1/quality` no pasa por el gateway; el servicio es un placeholder sin implementación | `api-gateway/README.md` |
+| Health de Catalog no enrutado por el gateway | `/api/v1/catalog/health` devuelve `404` porque Catalog excluye `health` del prefijo global; su health real es `http://localhost:3002/health` | `catalog-service/src/main.ts` |
 | Registro por el gateway | `/api/v1/auth/register` devuelve `404` hasta que se implemente el endpoint | `api-gateway/README.md` |
 | Filtros `year` y `type` del catálogo | Devuelven `501 Not Implemented`; dependen del módulo de Recursos | `catalog-service` (Swagger `http://localhost:3002/api/docs`) |
 | Paginación del catálogo | Los endpoints no implementan `page`/`limit` (propuesto, no implementado) | `docs/mobile/integracion-api-mobile.md` |

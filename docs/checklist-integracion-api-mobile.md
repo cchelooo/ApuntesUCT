@@ -253,15 +253,33 @@ En caso de indisponibilidad de microservicios (por ejemplo si Auth Service está
 
 ---
 
-## 6. Endpoints Futuros (Sprint 2+ · Referencia)
+## 6. Endpoints en Rutas por Gateway (alcanzables pero aún sin implementar)
 
-### Material Service — `/api/v1/materials`
-- `GET /materials` — Listado paginado de materiales con filtros.
-- `GET /materials/:id` — Detalle del material y versiones.
-- `POST /materials` — Subida multipart de documento (máx. 15MB, PDF/Word/PPT) o enlace externo a video.
-- `GET /materials/:id/preview` — URL / Stream para visor embebido.
+Estas rutas **ya están enrutadas por el Gateway** (#222) y sus servicios están
+integrados en `main` (#311 y #305), así que Mobile puede llamar a `:3000`. La
+diferencia con la sección 5 es qué responden hoy con el servicio levantado.
 
-### Quality Service — `/api/v1/quality`
+### Search Service — `/api/v1/search` (enrutado, responde stub)
+- `GET /search?q=` — Búsqueda global. Hoy devuelve
+  `{ "query": ..., "results": [], "total": 0, "message": ... }`: el servicio
+  existe y responde `200`, pero la búsqueda desacoplada es trabajo en curso.
+- El healthcheck del servicio está en `http://localhost:3005/api/v1/health`.
+
+### Material Service — `/api/v1/materials` (enrutado, responde 404)
+- El servicio existe y expone `GET /api/v1/health` y su Swagger en
+  `http://localhost:3003/api/docs`, pero todavía **no expone rutas de
+  materiales**, así que `/api/v1/materials` responde `404` mientras esté arriba.
+- El `502` del Gateway (`Material Service no disponible`) solo aparece cuando el
+  servicio está caído, no cuando le faltan endpoints.
+- Contrato esperado cuando se implemente:
+  - `GET /materials` — Listado paginado de materiales con filtros.
+  - `GET /materials/:id` — Detalle del material y versiones.
+  - `POST /materials` — Subida multipart de documento (máx. 15MB, PDF/Word/PPT) o enlace externo a video.
+  - `GET /materials/:id/preview` — URL / Stream para visor embebido.
+
+### Quality Service — `/api/v1/quality` (no enrutado)
+El gateway **no** enruta `/api/v1/quality` y el servicio sigue siendo un
+placeholder sin implementación.
 - `POST /quality/ratings` — Calificación y reseña (1 a 5 estrellas).
 - `POST /quality/favorites` / `DELETE /quality/favorites/:id` — Guardar/quitar de favoritos.
 - `POST /quality/reports` — Reportar material con motivo obligatorio.

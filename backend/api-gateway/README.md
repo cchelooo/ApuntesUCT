@@ -106,6 +106,70 @@ Las pruebas del proxy abren servidores HTTP locales: comprueban métodos, rutas,
 JSON, query, Authorization, cookies, errores y Auth caído. También llaman al módulo
 health real de Auth, sin iniciar Prisma ni requerir PostgreSQL.
 
+## Proxy hacia Material y Search (#222)
+
+El Gateway reenvía `/api/v1/materials` y `/api/v1/search` hacia sus servicios,
+sumándose a Auth y Catalog como punto único de entrada. Ambos proxies usan el
+mismo contrato verificado para Catalog: conservan método, query, cuerpo,
+`Authorization` y cookies, y usan `fixRequestBody` para reenviar los cuerpos que
+Nest ya procesó.
+
+| Ruta del Gateway | Origen por defecto | Variable de entorno | Puerto reservado |
+| --- | --- | --- | --- |
+| `/api/v1/materials` | `http://127.0.0.1:3003` | `MATERIAL_SERVICE_URL` | 3003 |
+| `/api/v1/search` | `http://127.0.0.1:3005` | `SEARCH_SERVICE_URL` | 3005 |
+
+Si el servicio no acepta la conexión o excede 5 segundos sin responder, el
+Gateway responde `502` con un mensaje propio de cada servicio
+(`Material Service no disponible` o `Search Service no disponible`), de modo que
+un fallo se puede atribuir sin ambigüedad.
+
+> **Estado de los servicios.** Ambos están integrados en `main` (`material-service`
+> en #311 y `search-service` en #305) y arrancan real, pero su alcance es
+> distinto al de la ruta que el Gateway expone:
+>
+> | Ruta del Gateway | Qué responde hoy con el servicio arriba |
+> | --- | --- |
+> | `/api/v1/materials` | `404`, porque material-service todavía **no expone rutas de materiales**; solo `GET /api/v1/health` y su Swagger. El `502` del Gateway solo aparece si el servicio está caído. |
+> | `/api/v1/search` | `200` con el stub `{ query, results: [], total: 0, message }` de `GET /api/v1/search?q=...`; la búsqueda desacoplada es trabajo en curso. |
+>
+> La ruta esperada sigue el contrato documentado en
+> `docs/checklist-integracion-api-mobile.md` (`/api/v1/materials`).
+
+Para levantarlos desde `backend`:
+
+```bash
+docker compose up -d db-material          # material-service usa material_db
+cp material-service/.env.example material-service/.env
+npm run prisma:generate --workspace=material-service
+npm run prisma:deploy --workspace=material-service
+npm run start:dev --workspace=material-service   # :3003, requiere db-material
+
+npm run start:dev --workspace=search-service    # :3005, sin base de datos
+```
+
+`search-service` no llama a `enableCors()`, así que su `:3005` directo no acepta
+peticiones cross-origin; a través del Gateway no aplica.
+
+Si se despliega en contenedores, configura `MATERIAL_SERVICE_URL` y
+`SEARCH_SERVICE_URL` con el nombre DNS y el puerto interno de cada servicio, sin
+añadir `/api/v1`.
+
+### Verificación automática
+
+Desde `backend`:
+
+```bash
+npm run test:e2e --workspace=api-gateway -- --runInBand
+```
+
+Las pruebas de `test/material-search-proxy.e2e-spec.ts` levantan dos servidores
+HTTP locales y comprueban, para Material y Search: destino correcto de cada
+ruta, conservación de método, query, `Authorization`, cookies y cuerpos JSON,
+`PUT`/`PATCH`/`DELETE`, `502` con el mensaje propio cuando el servicio cae, que no
+se capturan rutas ajenas (`/api/v1/materials-other`) y que los puertos
+reservados se usan cuando no se definen las variables de entorno.
+
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>
