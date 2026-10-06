@@ -42,6 +42,7 @@ La compilación genera `dist/main.js`. También se puede ejecutar `npm run start
 
 | Endpoint | Propósito |
 | --- | --- |
+| `GET http://localhost:3003/api/v1/materials` | Listado paginado de materiales publicados |
 | `GET http://localhost:3003/api/v1/health` | Estado del proceso |
 | `GET http://localhost:3003/api/docs` | Swagger UI |
 | `GET http://localhost:3003/api/docs-json` | Especificación OpenAPI |
@@ -50,6 +51,79 @@ El healthcheck responde `200` con `status: "ok"`, `service: "material-service"`
 y `timestamp` en formato ISO. No comprueba dependencias externas.
 Las rutas de la API usan el prefijo `api/v1`; Swagger queda en `api/docs`.
 CORS está habilitado siguiendo los demás servicios del backend.
+
+## Listado paginado (#218)
+
+`GET /api/v1/materials?page=1&pageSize=20` es público y consulta la base de
+Material Service. Devuelve únicamente materiales `PUBLISHED`, ordenados por
+`createdAt DESC, id DESC` (el ID resuelve empates de fecha).
+
+| Parámetro | Predeterminado | Valores admitidos |
+| --- | --- | --- |
+| `page` | `1` | Entero decimal entre 1 y 2147483647 |
+| `pageSize` | `20` | Entero decimal entre 1 y 100 |
+
+El desplazamiento `(page - 1) * pageSize` no puede superar 2147483647.
+Parámetros vacíos, repetidos, fraccionarios, fuera de rango o desconocidos
+producen `400 Bad Request`. No acepta `q`, filtros académicos ni ordenamiento
+personalizado: la búsqueda corresponde a Search Service.
+
+Respuesta `200 OK`:
+
+```json
+{
+  "items": [
+    {
+      "id": "c0bc574d-41a6-4cb6-9b0f-d3c48b216441",
+      "title": "Apuntes de cálculo",
+      "description": null,
+      "uploaderId": "18b428c0-6879-4d34-9de8-df9a17438b28",
+      "academicOfferingId": null,
+      "universityId": null,
+      "careerId": null,
+      "subjectId": "calculo-1",
+      "professorId": null,
+      "materialTypeId": "73dfc2a6-7424-49a1-9449-c66b38cbe771",
+      "materialType": "CLASS_NOTES",
+      "academicYear": 2026,
+      "status": "PUBLISHED",
+      "verified": false,
+      "createdAt": "2026-10-01T12:00:00.000Z",
+      "updatedAt": "2026-10-01T12:00:00.000Z"
+    }
+  ],
+  "page": 1,
+  "pageSize": 20,
+  "total": 1
+}
+```
+
+Todos los campos del ejemplo están presentes; los campos opcionales del modelo
+se serializan como `null`. `materialType` contiene el nombre del tipo local.
+Las fechas se devuelven en ISO 8601 UTC. Las referencias a Auth y Catalog son
+IDs lógicos; este endpoint no resuelve nombres ni consulta otros servicios.
+No incluye versiones, claves de almacenamiento, URLs de descarga ni métricas
+inventadas. El contrato también está documentado en Swagger/OpenAPI.
+
+`total` cuenta todos los materiales publicados, no solo los de la página.
+Sin publicaciones responde `{ "items": [], "page": 1, "pageSize": 20, "total": 0 }`.
+Una página posterior a la última también responde `200` y conserva la página
+solicitada y el total real, con `items: []`.
+El cliente puede calcular `totalPages = ceil(total / pageSize)`.
+
+El listado y el conteo comparten una transacción de lectura `RepeatableRead`.
+Entre solicitudes independientes, nuevas publicaciones pueden desplazar las
+páginas, como es habitual en paginación por desplazamiento.
+
+Ejemplo directo al servicio:
+
+```bash
+curl 'http://localhost:3003/api/v1/materials?page=1&pageSize=20'
+```
+
+El proxy de `/api/v1/materials` en API Gateway corresponde a #222. Esta tarea
+expone el endpoint en el puerto de Material Service (`3003`). Hay ejemplos
+manuales en `backend/http/materials.http`.
 
 ## Estructura
 
@@ -98,8 +172,8 @@ aplicarla si ya está registrada. Para cambios posteriores en desarrollo:
 npm run prisma:migrate --workspace=material-service -- --name nombre_del_cambio
 ```
 
-Los archivos y la implementación de endpoints de materiales quedan para tareas
-posteriores. Este cambio no migra ni modifica el modelo legado `Resource` de Catalog.
+La carga y descarga de archivos y los demás endpoints de materiales quedan para
+tareas posteriores. El listado no modifica el modelo legado `Resource` de Catalog.
 
 ## Verificación
 
@@ -113,21 +187,33 @@ curl http://localhost:3003/api/v1/health
 ```
 
 Las pruebas HTTP verifican el prefijo, el healthcheck, Swagger UI y la ruta
-documentada en OpenAPI. Sustituyen el proveedor Prisma y no requieren base de datos.
+documentada en OpenAPI, además del contrato paginado, el cálculo del desplazamiento,
+el filtro de publicados, el orden estable, la serialización y los errores de consulta.
+Sustituyen el proveedor Prisma y no requieren base de datos; no verifican la
+ejecución de las consultas contra PostgreSQL.
 
-La prueba de integración requiere PostgreSQL y una cuenta con permiso para crear
+Las pruebas de integración requieren PostgreSQL y una cuenta con permiso para crear
 esquemas. Desde `backend/`, después de generar el cliente:
 
 ```bash
+npm run build --workspace=material-service
 MATERIAL_TEST_DATABASE_URL='postgresql://uct_admin:uct_password_123@localhost:5436/material_db' \
   npm run test:integration --workspace=material-service
 ```
 
-Crea un esquema temporal de nombre aleatorio y lo elimina al terminar. Comprueba
+Cada prueba crea un esquema temporal de nombre aleatorio y lo elimina al terminar.
+La prueba de persistencia comprueba
 la aplicación y reaplicación de la migración, la ausencia de diferencias frente
 al esquema Prisma, el estado inicial, el historial de dos versiones, el rechazo
 de versiones duplicadas o huérfanas y las claves foráneas exclusivamente locales.
-No modifica el esquema `public` ni los datos de la aplicación.
+La prueba `test/materials.integration.cjs` levanta la aplicación compilada con
+Prisma real en un puerto HTTP local temporal. Comprueba una base vacía, la
+exclusión de `PENDING_REVIEW`, `REJECTED` y `WITHDRAWN`, páginas consecutivas sin
+duplicados con empates de fecha, el total de publicados, la serialización de
+metadatos, páginas fuera de rango y errores `400`. También verifica que una base
+con solo materiales no publicados devuelva una página vacía y que el esquema
+temporal se elimine al finalizar.
+No modifican el esquema `public` ni los datos de la aplicación.
 
 El servicio participa en los comandos globales `build`, `lint`, `test`,
 `test:ci` y `test:cov` del backend mediante npm workspaces.
