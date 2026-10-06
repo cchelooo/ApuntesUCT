@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsEnum, IsNotEmpty, Matches } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsNotEmpty, Matches, IsUrl } from 'class-validator';
 
 export enum MaterialType {
   DOCUMENT = 'DOCUMENT',
@@ -19,7 +19,7 @@ export class CreateMaterialDto {
   title!: string;
 
   @ApiPropertyOptional({ 
-    description: 'OPCIONAL. Descripción o detalles adicionales del material.', 
+    description: 'OPCIONAL. Descripción o detalles adicionales.', 
     example: 'Ejercicios resueltos sobre valores y vectores propios.' 
   })
   @IsOptional()
@@ -27,7 +27,7 @@ export class CreateMaterialDto {
   description?: string;
 
   @ApiProperty({ 
-    description: 'OBLIGATORIO. Año académico de publicación (Formato YYYY de 4 dígitos).', 
+    description: 'OBLIGATORIO. Año académico de publicación (Formato YYYY).', 
     example: '2026' 
   })
   @IsString()
@@ -36,14 +36,14 @@ export class CreateMaterialDto {
 
   @ApiProperty({ 
     enum: MaterialType, 
-    description: 'OBLIGATORIO. Clasificación del material. Determina si se requiere archivo o enlace.', 
+    description: 'OBLIGATORIO. Clasificación del material. Determina las reglas de archivo/enlace.', 
     example: MaterialType.DOCUMENT 
   })
   @IsEnum(MaterialType)
   type!: MaterialType;
 
   @ApiProperty({ 
-    description: 'OBLIGATORIO. Identificador académico único de la asignatura asociada.', 
+    description: 'OBLIGATORIO. Identificador académico único de la asignatura.', 
     example: 'SUBJ-102' 
   })
   @IsString()
@@ -59,25 +59,25 @@ export class CreateMaterialDto {
   careerId?: string;
 
   @ApiPropertyOptional({ 
-    description: 'OPCIONAL. Nombre o ID del profesor de la asignatura.', 
-    example: 'Dr. Roberto Gómez' 
+    description: 'OPCIONAL. Identificador único (ID/UUID) del profesor asignado.', 
+    example: 'prof_88321' 
   })
   @IsOptional()
   @IsString()
-  professor?: string;
+  professorId?: string;
 
   @ApiPropertyOptional({ 
-    description: 'OPCIONAL / CONDICIONAL. Enlace web externo. Obligatorio si type es LINK o no se envía archivo.', 
+    description: 'CONDICIONAL. Enlace web externo válido (URL). Obligatorio si type es LINK. Opcional como respaldo si se envía archivo.', 
     example: 'https://drive.google.com/file/d/xyz/view' 
   })
   @IsOptional()
-  @IsString()
+  @IsUrl({}, { message: 'externalLink debe ser una URL válida (ej. https://...)' })
   externalLink?: string;
 
   @ApiPropertyOptional({ 
     type: 'string', 
     format: 'binary', 
-    description: 'OPCIONAL / CONDICIONAL. Archivo binary. Máx 15 MB (15,728,640 bytes). Permitidos: .pdf, .doc, .docx, .ppt, .pptx' 
+    description: 'CONDICIONAL. Archivo binario local. Obligatorio para DOCUMENT, PRESENTATION, EXAM y SUMMARY. No admitido si type es LINK.' 
   })
   @IsOptional()
   file?: any;

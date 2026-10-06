@@ -1,0 +1,19 @@
+@materialBaseUrl = http://localhost:3003/api/v1
+
+### Primera página (page=1, pageSize=20 por defecto)
+GET {{materialBaseUrl}}/materials
+
+### Segunda página
+GET {{materialBaseUrl}}/materials?page=2&pageSize=10
+
+### Página fuera de rango: 200, items vacío y total conservado
+GET {{materialBaseUrl}}/materials?page=100000&pageSize=20
+
+### Tamaño inválido: 400
+GET {{materialBaseUrl}}/materials?pageSize=101
+
+### Página inválida: 400
+GET {{materialBaseUrl}}/materials?page=0
+
+### Búsqueda no admitida: 400 (corresponde a Search Service)
+GET {{materialBaseUrl}}/materials?q=calculo

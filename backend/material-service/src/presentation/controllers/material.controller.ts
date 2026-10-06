@@ -10,23 +10,14 @@ import {
 } from '@nestjs/swagger';
 import { CreateMaterialDto, MaterialType } from '../dto/create-material.dto';
 import { ErrorResponseDto } from '../dto/error-response.dto';
+import { CreateMaterialResponseDto, MaterialStatus } from '../dto/material-response.dto';
 
-// Límite exacto de 15 MB en bytes: 15 * 1024 * 1024
-const MAX_FILE_SIZE_BYTES = 15728640;
-
-// Lista explícita de MIMEs permitidos
-const ALLOWED_MIME_TYPES = [
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-powerpoint',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-];
+const MAX_FILE_SIZE_BYTES = 15728640; // 15 MB
 
 @ApiTags('Materials')
 @Controller('materials')
 @ApiBearerAuth()
-@ApiExtraModels(ErrorResponseDto)
+@ApiExtraModels(ErrorResponseDto, CreateMaterialResponseDto)
 export class MaterialController {
 
   @Post()
@@ -36,22 +27,22 @@ export class MaterialController {
     summary: 'Subir y registrar un nuevo material o enlace académico',
     description: `
 **REGLAS Y CONTRATO DE NEGOCIO:**
-- **Atributos Derivados:** 'id', 'createdAt', 'fileSize' y 'fileUrl' son calculados internamente por el servidor tras procesar la petición.
-- **Relación Archivo / Enlace / Type:**
-  - Si **type** es 'LINK', el campo **externalLink** es obligatorio y el archivo se omite.
-  - Si **type** es 'DOCUMENT' o 'PRESENTATION', se debe enviar un **file**. Se permite adjuntar **externalLink** como espejo o referencia secundaria opcional.
-  - No se permite enviar una petición sin 'file' ni 'externalLink'.
+- **Estado Inicial:** Todo material creado inicia en estado \`PENDING_REVIEW\`.
+- **Identificadores Académicos:**
+  - \`subjectId\` (Obligatorio) y \`careerId\` (Opcional) vinculan el recurso al catálogo académico.
+  - \`professorId\` (Opcional) almacena el identificador único del docente.
+  - \`universityId\` se deriva automáticamente del contexto institucional/autenticación.
+- **Reglas de Archivo / Enlace por Tipo (\`type\`):**
+  - **LINK:** Requiere de manera obligatoria \`externalLink\` (validado como URL). No acepta archivo binario.
+  - **DOCUMENT, PRESENTATION, EXAM, SUMMARY:** Requieren obligatoriamente un **archivo local** (file). Se permite incluir \`externalLink\` como URL de respaldo secundaria.
 - **Límite de Archivo:** Máximo **15 MB (15,728,640 bytes)**.
-- **MIME Types Admitidos:**
-  - PDF: \`application/pdf\`
-  - Word: \`application/msword\`, \`application/vnd.openxmlformats-officedocument.wordprocessingml.document\`
-  - PowerPoint: \`application/vnd.ms-powerpoint\`, \`application/vnd.openxmlformats-officedocument.presentationml.presentation\`
+- **MIMEs Permitidos:** PDF (\`application/pdf\`), Word (\`.doc\`, \`.docx\`), PowerPoint (\`.ppt\`, \`.pptx\`).
 - **Autenticación:** Requiere header \`Authorization: Bearer <token>\`.
-- **Estado de Implementación:** *Respuesta simulada (Stub)* para validación de integración Frontend/Mobile.
+- **Estado de Implementación:** Respuesta simulada (Stub).
     `
   })
   @ApiBody({
-    description: 'Metadatos en campos de texto y archivo adjunto binario.',
+    description: 'Metadatos en formato multipart/form-data y archivo adjunto opcional/obligatorio según type.',
     schema: {
       type: 'object',
       properties: {
@@ -61,7 +52,7 @@ export class MaterialController {
         type: { type: 'string', enum: Object.values(MaterialType), example: MaterialType.DOCUMENT },
         subjectId: { type: 'string', example: 'SUBJ-102' },
         careerId: { type: 'string', example: 'CAREER-INF-01' },
-        professor: { type: 'string', example: 'Dr. Roberto Gómez' },
+        professorId: { type: 'string', example: 'prof_88321' },
         externalLink: { type: 'string', example: 'https://drive.google.com/file/d/xyz/view' },
         file: { type: 'string', format: 'binary', description: 'Archivo binario local (Máx 15MB)' },
       },
@@ -69,27 +60,27 @@ export class MaterialController {
     },
     examples: {
       conArchivoLocal: {
-        summary: 'Opción A: Subida de Archivo Local (PDF/Word/PPT)',
+        summary: 'Opción A: Documento/Examen/Resumen (Requiere Archivo)',
         value: {
           title: 'Apunte de Redes IPv4',
-          description: 'Documento PDF con subnetting y ejemplos',
+          description: 'Documento PDF con subnetting',
           year: '2026',
           type: MaterialType.DOCUMENT,
           subjectId: 'NET-201',
           careerId: 'INF-01',
-          professor: 'Ing. Carlos Pérez',
+          professorId: 'prof_102',
           file: '(binary)',
         },
       },
       conEnlaceExterno: {
-        summary: 'Opción B: Enlace Externo (Google Drive / YouTube / Web)',
+        summary: 'Opción B: Enlace Externo (Requiere URL válidamente formateada)',
         value: {
           title: 'Clase Grabada - Arquitectura Django',
-          description: 'Video explicativo en repositorio externo',
+          description: 'Video explicativo en Drive/YouTube',
           year: '2026',
           type: MaterialType.LINK,
           subjectId: 'SWE-301',
-          professor: 'Dra. María Torres',
+          professorId: 'prof_305',
           externalLink: 'https://drive.google.com/file/d/12345/view',
         },
       },
@@ -97,114 +88,43 @@ export class MaterialController {
   })
   @ApiResponse({
     status: 201,
-    description: 'Material registrado correctamente. (Respuesta Simulada / Stub)',
-    schema: {
-      type: 'object',
-      example: {
-        status: 'success',
-        isSimulatedResponse: true,
-        message: 'Material registrado exitosamente en el contrato del servicio.',
-        data: {
-          id: 'mat_987654321',
-          title: 'Guía Práctica de Álgebra Lineal',
-          description: 'Ejercicios resueltos sobre valores y vectores propios.',
-          year: '2026',
-          type: 'DOCUMENT',
-          subjectId: 'SUBJ-102',
-          careerId: 'CAREER-INF-01',
-          professor: 'Dr. Roberto Gómez',
-          fileUrl: 'https://storage.academico.cl/materials/2026/mat_987654321.pdf',
-          fileSize: 2048500,
-          mimeType: 'application/pdf',
-          externalLink: null,
-          createdAt: '2026-10-05T14:00:00.000Z',
-        },
-      },
-    },
+    description: 'Material registrado en estado PENDING_REVIEW (Respuesta Simulada / Stub).',
+    type: CreateMaterialResponseDto,
   })
   @ApiResponse({
     status: 400,
-    description: 'Bad Request - Metadatos inválidos, formato de year erróneo o ausencia de archivo y enlace.',
+    description: 'Bad Request - Error de validación en metadatos, formato de URL inválido o incumplimiento de regla file/link según el type.',
     type: ErrorResponseDto,
-    example: {
-      statusCode: 400,
-      error: 'Bad Request',
-      message: ['year debe ser un año válido de 4 dígitos (ej. 2026)', 'Debe proporcionar al menos un archivo local o un enlace externo.'],
-      timestamp: '2026-10-05T14:00:00.000Z',
-      path: '/api/v1/materials',
-    },
   })
   @ApiResponse({
     status: 401,
-    description: 'Unauthorized - Cabecera Authorization: Bearer <token> ausente o inválida.',
+    description: 'Unauthorized - Header Authorization: Bearer <token> ausente o inválido.',
     type: ErrorResponseDto,
-    example: {
-      statusCode: 401,
-      error: 'Unauthorized',
-      message: 'No se proporcionó un token de autenticación válido.',
-      timestamp: '2026-10-05T14:00:00.000Z',
-      path: '/api/v1/materials',
-    },
   })
   @ApiResponse({
     status: 404,
-    description: 'Not Found - La asignatura (subjectId) o carrera referenciada no existe.',
+    description: 'Not Found - La asignatura (subjectId) o carrera no existe.',
     type: ErrorResponseDto,
-    example: {
-      statusCode: 404,
-      error: 'Not Found',
-      message: 'La asignatura con ID SUBJ-102 no fue encontrada en el sistema.',
-      timestamp: '2026-10-05T14:00:00.000Z',
-      path: '/api/v1/materials',
-    },
   })
   @ApiResponse({
     status: 413,
-    description: 'Payload Too Large - El archivo supera el peso máximo de 15 MB (15,728,640 bytes).',
+    description: 'Payload Too Large - El archivo supera el tamaño máximo permitidos de 15 MB (15728640 bytes).',
     type: ErrorResponseDto,
-    example: {
-      statusCode: 413,
-      error: 'Payload Too Large',
-      message: 'El archivo excede el tamaño máximo permitido de 15 MB (15728640 bytes).',
-      timestamp: '2026-10-05T14:00:00.000Z',
-      path: '/api/v1/materials',
-    },
   })
   @ApiResponse({
     status: 415,
-    description: 'Unsupported Media Type - Tipo MIME no admitido.',
+    description: 'Unsupported Media Type - Formato de archivo no admitido.',
     type: ErrorResponseDto,
-    example: {
-      statusCode: 415,
-      error: 'Unsupported Media Type',
-      message: 'Tipo de archivo no admitido. Formatos válidos: PDF, Word (.doc, .docx) y PowerPoint (.ppt, .pptx).',
-      timestamp: '2026-10-05T14:00:00.000Z',
-      path: '/api/v1/materials',
-    },
   })
   @ApiResponse({
     status: 500,
-    description: 'Internal Server Error - Error no controlado en el servidor de materiales.',
+    description: 'Internal Server Error - Error no controlado.',
     type: ErrorResponseDto,
-    example: {
-      statusCode: 500,
-      error: 'Internal Server Error',
-      message: 'Ocurrió un error inesperado al procesar la solicitud.',
-      timestamp: '2026-10-05T14:00:00.000Z',
-      path: '/api/v1/materials',
-    },
   })
   @ApiResponse({
     status: 502,
-    description: 'Bad Gateway - Fallo de comunicación con el servicio de almacenamiento o base de datos.',
+    description: 'Bad Gateway - Indisponibilidad de servicios externos.',
     type: ErrorResponseDto,
-    example: {
-      statusCode: 502,
-      error: 'Bad Gateway',
-      message: 'No se pudo establecer conexión con el proveedor de almacenamiento persistente.',
-      timestamp: '2026-10-05T14:00:00.000Z',
-      path: '/api/v1/materials',
-    },
   })
   async createMaterial(
     @Body() dto: CreateMaterialDto,
@@ -227,16 +147,22 @@ export class MaterialController {
       })
     ) file?: Express.Multer.File,
   ) {
-    // Validaciones cruzadas de regla de negocio
-    if (!file && !dto.externalLink) {
-      throw new BadRequestException('Debe proporcionar al menos un archivo local o un enlace externo (externalLink).');
+    // Reglas cruzadas segun tipo de material
+    if (dto.type === MaterialType.LINK) {
+      if (!dto.externalLink) {
+        throw new BadRequestException('Para materiales de tipo LINK es obligatorio especificar externalLink (URL válida).');
+      }
+      if (file) {
+        throw new BadRequestException('Los materiales de tipo LINK no deben incluir un archivo adjunto.');
+      }
+    } else {
+      // DOCUMENT, PRESENTATION, EXAM, SUMMARY exigen archivo
+      if (!file) {
+        throw new BadRequestException(`Para el tipo de material '${dto.type}' es obligatorio adjuntar un archivo local.`);
+      }
     }
 
-    if (dto.type === MaterialType.LINK && !dto.externalLink) {
-      throw new BadRequestException('Para materiales de tipo LINK es obligatorio especificar externalLink.');
-    }
-
-    // Respuesta simulada (Stub) explícita
+    // Respuesta Simulada (Stub) alineada con CreateMaterialResponseDto
     return {
       status: 'success',
       isSimulatedResponse: true,
@@ -247,9 +173,11 @@ export class MaterialController {
         description: dto.description || null,
         year: dto.year,
         type: dto.type,
+        status: MaterialStatus.PENDING_REVIEW,
         subjectId: dto.subjectId,
         careerId: dto.careerId || null,
-        professor: dto.professor || null,
+        professorId: dto.professorId || null,
+        universityId: 'UNIV-UCT-01',
         fileUrl: file ? `https://storage.academico.cl/materials/${dto.year}/${file.originalname}` : null,
         fileSize: file ? file.size : null,
         mimeType: file ? file.mimetype : null,
