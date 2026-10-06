@@ -46,7 +46,12 @@ function renderDocsIndex(services: DocsService[]): string {
         </thead>
         <tbody>${rows}</tbody>
       </table>
-      <p>Servicios pendientes de implementación: material, quality y search.</p>
+      <p>Quality Service todavía no está enrutado por el gateway. Material y Search sí lo
+      están y sus servicios existen, pero su alcance es menor que el de la ruta
+      proxeada: <code>/api/v1/search</code> responde <code>200</code> con resultados vacíos
+      porque la búsqueda sigue siendo un stub, y <code>/api/v1/materials</code> responde
+      <code>404</code> porque material-service todavía no expone rutas de materiales. El
+      <code>502</code> del gateway corresponde al servicio caído, no al endpoint pendiente.</p>
     </main>
   </body>
 </html>`;
@@ -87,6 +92,22 @@ export function setupApiDocs(
       url: configService.get<string>(
         'CATALOG_DOCS_URL',
         'http://localhost:3002/api/docs',
+      ),
+    },
+    {
+      name: 'Material Service',
+      description: 'Materiales, metadatos, archivos, versiones y descargas.',
+      url: configService.get<string>(
+        'MATERIAL_DOCS_URL',
+        'http://localhost:3003/api/docs',
+      ),
+    },
+    {
+      name: 'Search Service',
+      description: 'Búsqueda, filtros, ordenamiento y posicionamiento.',
+      url: configService.get<string>(
+        'SEARCH_DOCS_URL',
+        'http://localhost:3005/api/docs',
       ),
     },
   ];
