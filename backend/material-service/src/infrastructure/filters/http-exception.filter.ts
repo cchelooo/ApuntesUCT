@@ -22,9 +22,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
     if (typeof exceptionResponse === 'string') {
       message = exceptionResponse;
     } else if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
-      const resObj = exceptionResponse as any;
-      message = resObj.message || message;
-      errorName = resObj.error || errorName;
+      const resObj = exceptionResponse as Record<string, unknown>;
+      if (typeof resObj.message === 'string' && resObj.message) {
+        message = resObj.message;
+      } else if (
+        Array.isArray(resObj.message) &&
+        resObj.message.every((item: unknown) => typeof item === 'string')
+      ) {
+        message = resObj.message;
+      }
+      if (typeof resObj.error === 'string' && resObj.error) {
+        errorName = resObj.error;
+      }
     }
 
     response.status(status).json({
