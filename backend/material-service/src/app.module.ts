@@ -4,6 +4,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import configuration from './infrastructure/config/configuration';
 import { HealthModule } from './presentation/health/health.module';
+import { MaterialController } from './presentation/controllers/material.controller';
 
 @Module({
   imports: [
@@ -12,5 +13,6 @@ import { HealthModule } from './presentation/health/health.module';
     HealthModule,
     MaterialsModule,
   ],
+  controllers: [MaterialController],
 })
 export class AppModule {}
