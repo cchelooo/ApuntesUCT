@@ -37,10 +37,10 @@ describe('materialErrorHandler', () => {
     );
   });
 
-  it('Debe distinguir un error de red real (Failed to fetch)', () => {
+  it('Debe devolver un error inesperado para un TypeError sin marcar (ej. Failed to fetch)', () => {
     const error = new TypeError('Failed to fetch');
     expect(mapMaterialError(error)).toBe(
-      'Error de conexión. Por favor, verifica tu conexión a internet e intenta nuevamente.'
+      'Ha ocurrido un error inesperado al procesar el material. Por favor, intenta de nuevo.'
     );
   });
 
