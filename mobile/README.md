@@ -190,9 +190,6 @@ flutter test --dart-define=RUN_GATEWAY_SMOKE=true \
   test/integration/gateway_live_test.dart
 ```
 
-La evidencia de #272, incluida la corrección de paginación de #307, está en
-[`docs/mobile/issue-272-avance.md`](../docs/mobile/issue-272-avance.md).
-
 ### Limpieza y mantenimiento del proyecto
 
 Si experimentas problemas con paquetes o artefactos de compilación obsoletos:

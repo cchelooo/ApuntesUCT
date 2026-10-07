@@ -8,8 +8,8 @@
 > `CATALOG_SERVICE_URL`. La conexión real y los errores 502 se verificaron contra
 > Gateway, Catalog, Material y PostgreSQL temporales. Búsqueda sigue con fixtures;
 > los providers HTTP de Material están preparados para su integración en pantallas.
-> Consultar [`mobile/README.md`](../../mobile/README.md#configuración-de-red-y-conexión-con-api-gateway)
-> y la [evidencia de #272](issue-272-avance.md). El resto de contratos y resultados
+> Consultar [`mobile/README.md`](../../mobile/README.md#configuración-de-red-y-conexión-con-api-gateway).
+> El resto de contratos y resultados
 > de Sprint 1 de esta guía conservan su carácter histórico, especialmente Auth;
 > no constituyen una revisión actual de todas las funcionalidades del Backend.
 
