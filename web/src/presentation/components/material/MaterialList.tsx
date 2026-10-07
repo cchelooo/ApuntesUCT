@@ -38,7 +38,7 @@ export function MaterialList({
     return (
       <div
         role="status"
-        className="rounded-sm border border-dashed border-catalog-line bg-catalog-paperMuted px-6 py-12 text-center"
+        className="rounded-xs border border-dashed border-catalog-line bg-catalog-paperMuted px-6 py-12 text-center"
       >
         <p className="font-display text-lg text-catalog-ink">{emptyTitle}</p>
         <p className="mx-auto mt-1 max-w-md text-sm text-catalog-ink/60">

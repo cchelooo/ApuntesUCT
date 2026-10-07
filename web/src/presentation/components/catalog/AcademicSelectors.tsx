@@ -103,7 +103,7 @@ export const AcademicSelectors = ({
         <h3 className="text-lg font-medium text-gray-800">
           Selección Académica
         </h3>
-        {isAnyLoading && <Spinner size="sm" className="text-blue-600" />}
+        {isAnyLoading && <Spinner size="sm" className="text-uct-blue" />}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -50,7 +50,7 @@ export function CatalogFilterSidebar() {
 
   return (
     <aside
-      className="w-full shrink-0 rounded-sm border border-catalog-line bg-catalog-paper lg:w-72"
+      className="w-full shrink-0 rounded-xs border border-catalog-line bg-catalog-paper lg:w-72"
       aria-label="Filtros del catálogo"
     >
       <div className="flex items-center justify-between border-b border-catalog-line px-4 py-3">
@@ -104,7 +104,7 @@ export function CatalogFilterSidebar() {
                         onChange={() =>
                           toggleInSet(setCheckedUniversities, university.id)
                         }
-                        className="h-4 w-4 rounded-sm border-catalog-line accent-catalog-maroon"
+                        className="h-4 w-4 rounded-xs border-catalog-line accent-catalog-primary"
                       />
                       <span>{university.name}</span>
                     </label>
@@ -119,7 +119,7 @@ export function CatalogFilterSidebar() {
                         }
                         aria-expanded={isOpen}
                         aria-controls={panelId}
-                        className="!rounded-sm !p-1 !text-catalog-ink/50 hover:!text-catalog-ink !bg-transparent"
+                        className="!rounded-xs !p-1 !text-catalog-ink/50 hover:!text-catalog-ink !bg-transparent"
                       >
                         <span className="sr-only">
                           {isOpen
@@ -157,7 +157,7 @@ export function CatalogFilterSidebar() {
                             onChange={() =>
                               toggleInSet(setCheckedCareers, career.id)
                             }
-                            className="h-4 w-4 rounded-sm border-catalog-line accent-catalog-maroon"
+                            className="h-4 w-4 rounded-xs border-catalog-line accent-catalog-primary"
                           />
                           <span>{career.name}</span>
                         </label>
@@ -187,7 +187,7 @@ export function CatalogFilterSidebar() {
                   onChange={() =>
                     toggleInSet(setCheckedProfessors, professor.id)
                   }
-                  className="h-4 w-4 rounded-sm border-catalog-line accent-catalog-maroon"
+                  className="h-4 w-4 rounded-xs border-catalog-line accent-catalog-primary"
                 />
                 <span>{professor.name}</span>
               </label>

@@ -22,7 +22,7 @@ export function MaterialUnavailable({ status }: MaterialUnavailableProps) {
   return (
     <div
       role="status"
-      className="rounded-sm border border-dashed border-catalog-line bg-catalog-paperMuted px-6 py-12 text-center"
+      className="rounded-xs border border-dashed border-catalog-line bg-catalog-paperMuted px-6 py-12 text-center"
     >
       <p className="font-display text-lg text-catalog-ink">{title}</p>
       <p className="mx-auto mt-1 max-w-md text-sm text-catalog-ink/60">
@@ -30,7 +30,7 @@ export function MaterialUnavailable({ status }: MaterialUnavailableProps) {
       </p>
       <Link
         to="/catalog"
-        className="mt-5 inline-block rounded-sm p-2 text-sm font-medium text-catalog-maroon underline underline-offset-2 focus:outline-none focus:ring-2 focus:ring-catalog-maroon"
+        className="mt-5 inline-block rounded-xs p-2 text-sm font-medium text-catalog-primary underline underline-offset-2 focus:outline-hidden focus:ring-2 focus:ring-catalog-primary"
       >
         Volver al catálogo
       </Link>
