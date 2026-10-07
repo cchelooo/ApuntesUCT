@@ -20,7 +20,7 @@ seleccionar ambos archivos. Insomnia crea el environment y los request groups.
 
 | Variable                                | Valor por defecto       | Uso                                                                                                                                                                                                                                                                   |
 | --------------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `gatewayUrl`                            | `http://localhost:3000` | API Gateway (proxy de `/api/v1/auth` y `/api/v1/catalog`)                                                                                                                                                                                                             |
+| `gatewayUrl`                            | `http://localhost:3000` | API Gateway (proxy de `/api/v1/auth`, `/api/v1/catalog`, `/api/v1/materials` y `/api/v1/search`)                                                                                                                                                                     |
 | `authUrl`                               | `http://localhost:3001` | Auth Service directo                                                                                                                                                                                                                                                  |
 | `catalogUrl`                            | `http://localhost:3002` | Catalog Service directo                                                                                                                                                                                                                                               |
 | `mockEmail`                             | `estudiante@alu.uct.cl` | Login mock: acepta cualquier correo válido                                                                                                                                                                                                                            |
@@ -60,19 +60,27 @@ seleccionar ambos archivos. Insomnia crea el environment y los request groups.
   (`/catalog/filter`) los incluye como peticiones de la colección.
 - **`professorId`**: `GET /api/v1/catalog` devuelve el árbol
   universidad → carrera → asignatura, **sin profesores**. Los UUID de profesor se
-  obtienen de `GET /api/v1/catalog/professors?subjectId=` o de
+obtienen de `GET /api/v1/catalog/professors?subjectId=` o de
   `GET /api/v1/catalog/filter` sin filtros, que responde las asignaturas con su
   array `professors`.
 - **Alcance del dominio**: Catalog solo modela la jerarquía hasta Profesor. Los
   metadatos de materiales (`year`, `type`) pertenecen a Material Service y la
   búsqueda por año/tipo corresponde a Search Service, así que no forman parte del
   contrato de Catalog (los parámetros ajenos se ignoran vía `whitelist`).
-- **Rutas proxeadas**: el gateway enruta `/api/v1/auth` y `/api/v1/catalog` con
-  middleware, así que no aparecen en su OpenAPI y el generador las añade
-  explícitamente. Responden `502` si el servicio no responde. El gateway solo
-  reescribe el health de Auth (`/api/v1/auth/health` → `/api/v1/health` en Auth);
-  el healthcheck de Catalog está en `{{catalogUrl}}/api/v1/health`, sin
-  equivalente vía gateway.
+- **Rutas proxeadas**: el gateway enruta `/api/v1/auth`, `/api/v1/catalog`,
+  `/api/v1/materials` y `/api/v1/search` con middleware, así que no aparecen en
+  su OpenAPI. El generador añade explícitamente las de Auth y Catalog (health,
+  login, catálogo, filtro y listados de selectores); Material y Search todavía
+  **no** están en la colección, así que para probarlas hay que llamarlas por su
+  cuenta contra el gateway. Cualquiera de las rutas responde `502` si el servicio
+  no responde. El gateway solo reescribe el health de Auth
+  (`/api/v1/auth/health` → `/api/v1/health` en Auth); los healthchecks de Catalog,
+  Material y Search están en sus puertos directos, sin equivalente vía gateway.
+  Sobre Material y Search conviene distinguir: con `search-service` arriba,
+  `GET /api/v1/search` responde `200` con `results: []` porque su búsqueda sigue
+  siendo un stub; con `material-service` arriba, `GET /api/v1/materials` responde
+  `200` con el listado paginado (vacío si no hay datos). El `502` del gateway solo
+  corresponde al servicio caído.
 - **Parámetros del filtro**: `FilterCatalogDto` documenta los cuatro niveles con
   `@ApiProperty`, así que la colección los toma directamente del OpenAPI.
 
