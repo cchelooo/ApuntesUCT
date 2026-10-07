@@ -26,7 +26,7 @@ Prefijo `api/v1`, todas las rutas cuelgan de `/catalog`:
 
 | Método | Ruta | Descripción |
 | --- | --- | --- |
-| `GET` | `/catalog` | Árbol jerárquico del catálogo (universidades → carreras → asignaturas → profesores) |
+| `GET` | `/catalog` | Árbol jerárquico del catálogo (universidades → carreras → asignaturas); no incluye profesores |
 | `GET` | `/catalog/universities` | Listado de universidades activas (selector académico) |
 | `GET` | `/catalog/careers` | Listado de carreras activas; acepta `universityId` |
 | `GET` | `/catalog/subjects` | Listado de asignaturas activas; acepta `careerId` |
@@ -49,8 +49,11 @@ cascada del frontend.
 
 El filtro (`/catalog/filter`) respeta una secuencia jerárquica de 4 niveles
 (`careerId` exige `universityId`, `subjectId` exige `careerId` y `professorId`
-exige `subjectId`). Errores: `400` por secuencia inválida, `404` si el padre no
-existe y `409` por conflicto (código o correo duplicado).
+exige `subjectId`). Devuelve `400` si la secuencia es inválida; no emite `404`
+ni `409`.
+
+Los endpoints de gestión (`POST`/`DELETE`) responden `404` cuando la entidad o su
+padre no existe, y `409` cuando el `code` o el `email` ya están registrados.
 
 ### Alcance del dominio (separación Catalog / Material / Search)
 
@@ -58,7 +61,10 @@ Catalog modela **únicamente la jerarquía universidad → carrera → asignatur
 profesor**. Los metadatos de los materiales (`year`, `type`) pertenecen a
 **Material Service** y la búsqueda por año/tipo corresponde a **Search Service**.
 Por lo tanto, `year` y `type` no forman parte del contrato de Catalog: sus
-endpoints no los aceptan ni los resuelven contra `Resource`.
+endpoints no los aceptan ni los resuelven contra `Resource`. Además, el
+`ValidationPipe` con `whitelist` **ignora** silenciosamente cualquier parámetro
+ajeno al DTO (incluidos `year`/`type` heredados de clientes antiguos) en lugar de
+rechazarlo, para no romper la compatibilidad.
 
 ## Base de Datos
 
