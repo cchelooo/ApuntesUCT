@@ -65,6 +65,7 @@ class DiscoveryMaterialsState {
 
 class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
   static const int pageSize = 5;
+  int _activeRequestId = 0;
 
   @override
   DiscoveryMaterialsState build() {
@@ -74,14 +75,22 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
   }
 
   Future<void> _loadInitial() async {
+    final requestId = ++_activeRequestId;
     final repo = ref.read(materialsRepositoryProvider);
+    final targetQuery = state.query;
+    final targetSubject = state.selectedSubject;
+
     try {
       final results = await repo.getMaterials(
-        query: state.query,
-        subject: state.selectedSubject,
+        query: targetQuery,
+        subject: targetSubject,
         page: 1,
         pageSize: pageSize,
       );
+
+      // Si se disparó otra búsqueda o filtro mientras esperaba, ignorar respuesta vieja
+      if (requestId != _activeRequestId) return;
+
       state = state.copyWith(
         items: results,
         isLoading: false,
@@ -90,6 +99,7 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
         errorMessage: null,
       );
     } catch (e) {
+      if (requestId != _activeRequestId) return;
       state = state.copyWith(
         isLoading: false,
         errorMessage: 'Error al cargar materiales disponibles.',
@@ -122,17 +132,23 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
   Future<void> loadNextPage() async {
     if (state.isLoading || state.isLoadingMore || !state.hasMore) return;
 
+    final requestId = _activeRequestId;
     state = state.copyWith(isLoadingMore: true);
     final nextPage = state.page + 1;
     final repo = ref.read(materialsRepositoryProvider);
+    final targetQuery = state.query;
+    final targetSubject = state.selectedSubject;
 
     try {
       final nextItems = await repo.getMaterials(
-        query: state.query,
-        subject: state.selectedSubject,
+        query: targetQuery,
+        subject: targetSubject,
         page: nextPage,
         pageSize: pageSize,
       );
+
+      // Si la búsqueda cambió mientras cargaba la siguiente página, descartar
+      if (requestId != _activeRequestId) return;
 
       state = state.copyWith(
         items: [...state.items, ...nextItems],
@@ -141,6 +157,7 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
         isLoadingMore: false,
       );
     } catch (_) {
+      if (requestId != _activeRequestId) return;
       state = state.copyWith(isLoadingMore: false);
     }
   }

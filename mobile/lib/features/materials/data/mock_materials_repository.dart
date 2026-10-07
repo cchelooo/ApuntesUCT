@@ -5,14 +5,25 @@ import 'package:apuntesuct_mobile/features/materials/domain/repositories/materia
 
 class MockMaterialsRepository implements MaterialsRepository {
   final List<MaterialSummary> _dataset;
+  final List<String> _subjectsCatalog;
   final Duration delay;
+
+  static const List<String> defaultAcademicSubjects = [
+    'Cálculo I',
+    'Estructuras de Datos',
+    'Álgebra Lineal',
+    'Física I',
+    'Bases de Datos',
+  ];
 
   MockMaterialsRepository({
     List<MaterialSummary>? customDataset,
+    List<String>? customSubjects,
     this.delay = Duration.zero,
   }) : _dataset =
            customDataset ??
-           List<MaterialSummary>.from(MaterialFixtures.sampleSummaries);
+           List<MaterialSummary>.from(MaterialFixtures.sampleSummaries),
+       _subjectsCatalog = customSubjects ?? defaultAcademicSubjects;
 
   @override
   Future<List<MaterialSummary>> getMaterials({
@@ -59,7 +70,8 @@ class MockMaterialsRepository implements MaterialsRepository {
     if (delay > Duration.zero) {
       await Future.delayed(delay);
     }
-    final subjects = _dataset.map((m) => m.subjectName).toSet().toList();
+    // Catálogo académico independiente
+    final subjects = List<String>.from(_subjectsCatalog);
     subjects.sort();
     return subjects;
   }

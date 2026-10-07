@@ -39,35 +39,32 @@ void main() {
         await tester.pumpWidget(buildScreen());
         await tester.pumpAndSettle();
 
-        // Escribir texto en el buscador
         await tester.enterText(find.byType(SearchBar), 'Cálculo');
-        await tester.pump(const Duration(milliseconds: 100)); // Menos de 300ms
+        await tester.pump(const Duration(milliseconds: 100));
 
-        // Presionar botón de limpiar (icono clear)
         expect(find.byIcon(Icons.clear), findsOneWidget);
         await tester.tap(find.byIcon(Icons.clear));
         await tester.pump();
 
-        // Avanzar el tiempo más allá del debounce original
         await tester.pump(const Duration(milliseconds: 350));
         await tester.pumpAndSettle();
 
-        // El campo debe estar vacío y listando todos los iniciales
         expect(find.text('Cálculo'), findsNothing);
         expect(find.byType(MaterialSummaryCard), findsNWidgets(2));
       },
     );
 
     testWidgets(
-      'Distingue entre catálogo global vacío y búsqueda sin coincidencias',
+      'Distingue entre catálogo sin materiales y búsqueda sin coincidencias manteniendo asignaturas',
       (WidgetTester tester) async {
-        // Caso 1: Catálogo totalmente vacío
+        // Catálogo académico con asignaturas existentes pero sin ningún material subido
         await tester.pumpWidget(
           buildScreen(
             overrides: [
               materialsRepositoryProvider.overrideWithValue(
                 MockMaterialsRepository(
                   customDataset: [],
+                  customSubjects: ['Cálculo I', 'Física I'],
                   delay: Duration.zero,
                 ),
               ),
@@ -79,7 +76,7 @@ void main() {
         expect(find.byType(EmptyState), findsOneWidget);
         expect(find.text('Catálogo de materiales vacío'), findsOneWidget);
 
-        // Caso 2: Catálogo con datos pero sin resultados para la búsqueda
+        // Caso con materiales pero búsqueda sin coincidencias
         await tester.pumpWidget(
           buildScreen(
             overrides: [
@@ -94,7 +91,6 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Búsqueda sin coincidencias
         await tester.enterText(find.byType(SearchBar), 'TextoInexistente123');
         await tester.pump(const Duration(milliseconds: 350));
         await tester.pumpAndSettle();
@@ -143,6 +139,39 @@ void main() {
 
       expect(state.items.length, 8);
       expect(state.hasMore, isFalse);
+    });
+
+    test('Respuestas desfasadas no reemplazan búsquedas nuevas (evita race conditions)', () async {
+      final container = ProviderContainer(
+        overrides: [
+          materialsRepositoryProvider.overrideWithValue(
+            MockMaterialsRepository(
+              customDataset: MaterialFixtures.sampleSummaries,
+              delay: Duration.zero,
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final notifier = container.read(discoveryMaterialsProvider.notifier);
+
+      // Se disparan dos búsquedas seguidas
+      final firstSearch = notifier.setQuery('Cálculo');
+      final secondSearch = notifier.setQuery('Estructuras');
+
+      await Future.wait([firstSearch, secondSearch]);
+
+      final state = container.read(discoveryMaterialsProvider);
+      expect(state.query, 'Estructuras');
+      expect(
+        state.items.every(
+          (item) =>
+              item.subjectName.contains('Estructuras') ||
+              item.title.contains('Estructuras'),
+        ),
+        isTrue,
+      );
     });
   });
 }
