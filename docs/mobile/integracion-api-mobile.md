@@ -2,6 +2,17 @@
 
 **INT2 → INT4 · Sprint 1** · Actualizado tras revisión de la entrega de INT4.
 
+> **Actualización de red de Sprint 2 (#272, 7 de octubre de 2026):** Catalog y
+> el listado básico de Material reutilizan `apiclientProvider`, con
+> `ApiConfig.gatewayBaseUrl` como única entrada HTTP. Mobile ya no lee
+> `CATALOG_SERVICE_URL`. La conexión real y los errores 502 se verificaron contra
+> Gateway, Catalog, Material y PostgreSQL temporales. Búsqueda sigue con fixtures;
+> los providers HTTP de Material están preparados para su integración en pantallas.
+> Consultar [`mobile/README.md`](../../mobile/README.md#configuración-de-red-y-conexión-con-api-gateway)
+> y la [evidencia de #272](issue-272-avance.md). El resto de contratos y resultados
+> de Sprint 1 de esta guía conservan su carácter histórico, especialmente Auth;
+> no constituyen una revisión actual de todas las funcionalidades del Backend.
+
 > **Referencia de documentación:** rama actualizada con `main` (merge de `origin/main`), toma como referencia el commit `7d80289` (merge PR #187, script de seeding).
 >
 > Convención de estados usada en todo el documento:
@@ -25,11 +36,18 @@ El **API Gateway** (puerto `3000`) es la entrada prevista para los servicios de 
 | Dispositivo físico (misma red) | `http://<IP-LAN-del-host>:3000/api/v1` | define vía `--dart-define` |
 | Prioridad máxima | `--dart-define=API_GATEWAY_URL=...` | sección 7 |
 
-### 1.2 Excepción: el catálogo NO pasa por el gateway
+### 1.2 Catalog y Material mediante el Gateway (#272)
 
-**Mobile NO consulta el catálogo a través de `:3000`.** La app usa `ApiConfig.catalogBaseUrl` (por defecto `http://10.0.2.2:3002/api/v1` en emulador Android y `http://localhost:3002/api/v1` en local), es decir, **consulta directamente el Catalog Service en `:3002`**. El gateway ya enruta `/api/v1/catalog` (y `/api/v1/materials` y `/api/v1/search`, ver sección 8), pero Mobile mantiene la conexión directa por una decisión previa de su implementación, no por una limitación del gateway. El código de `api_config.dart` ya está preparado para migrar a `:3000`.
+`catalogApiClientProvider` y `materialApiClientProvider` reutilizan el cliente
+central del Gateway. Las peticiones conservan `/api/v1/catalog` y
+`/api/v1/materials`, respectivamente, sin acceder a puertos internos desde Mobile.
 
-Por lo tanto, **no es correcto afirmar que toda la comunicación actual pasa por `:3000`**: solo la de auth/salud; el catálogo es la excepción documentada.
+`DioMaterialListingRepository` implementa `MaterialListingRepository` (la parte
+de lectura de `MaterialRepository`) y consume el contrato paginado disponible:
+`GET /materials?page=1&pageSize=10` → `{ items, page, pageSize, total }`.
+`PUBLISHED` se muestra como «Publicado». No envía búsqueda o filtros a Material.
+Las demás operaciones abstractas de `MaterialRepository` se implementan en sus
+tareas; no se agregaron métodos HTTP que fallen con `UnimplementedError`.
 
 ### 1.3 CORS y Swagger
 
@@ -299,7 +317,7 @@ Devuelve la jerarquía **Universidad → Carreras → Asignaturas** (universidad
 | Autenticación real (JWT firmado y autorización) | **Pendiente** | El login actual es mock (sección 3.3); el esquema final es JWT Bearer |
 | Paginación `page`/`limit` (`items`/`total`) | **Propuesta** | **No implementada** en los endpoints actuales de catálogo; si se requiere, debe proponerse y aprobarse el contrato |
 | `year`/`type` en `/catalog/filter` | Pendiente | `501` solo si la secuencia es válida; depende del módulo de Recursos |
-| Proxy Gateway → `/catalog` | Enrutado, no usado por Mobile | El gateway enruta `/api/v1/catalog`, pero Mobile sigue consultando el catálogo directo en `:3002` por decisión propia (sección 1.2) |
+| Proxy Gateway → `/catalog` | Usado por Mobile (#272) | `CatalogRepository` usa el cliente central del Gateway; no consulta `:3002` directamente (sección 1.2) |
 | Endpoints de Material | **Parcial** | `/api/v1/materials` está enrutada (#222) y `material-service` (#311) ya expone el listado paginado (#318, `200` con `items: []`); el detalle, la subida real y el preview siguen pendientes |
 | Búsqueda en `/api/v1/search` | **Pendiente** | La ruta está enrutada (#222) y `search-service` existe (#305), pero `GET /api/v1/search?q=` devuelve un stub con `results: []` y `total: 0` |
 | Proxy Gateway → `/quality` | **Pendiente** | El gateway no enruta `/api/v1/quality` y el servicio sigue siendo un placeholder |
@@ -318,7 +336,7 @@ Devuelve la jerarquía **Universidad → Carreras → Asignaturas** (universidad
 
 ### 6.1 Catálogo (conectado al backend)
 
-- `CatalogRepository.getCatalog()` consulta `GET /catalog` contra **`ApiConfig.catalogBaseUrl` (`:3002`)**, directo al servicio (no al gateway).
+- `CatalogRepository.getCatalog()` consulta `GET /catalog` mediante el cliente central, con **`ApiConfig.gatewayBaseUrl` (`:3000`)**. El Gateway reenvía la petición al servicio.
 - Transforma el árbol (Universidad → Carreras → Asignaturas) en una **lista plana** de `CatalogItem` (`id`, `title` = asignatura, `author` = universidad, `subject` = carrera, `description`).
 - La **búsqueda por texto ocurre en el cliente**: `getCatalog(search:)` filtra en memoria sobre `title`/`author`/`subject` (normaliza a minúsculas y compara con `contains`). Cada cambio del buscador dispara la consulta y el filtrado local.
 - **Estados de interfaz** (`CatalogScreen`, with Riverpod `FutureProvider`):
@@ -348,35 +366,31 @@ Detalles de la implementación actual de Mobile:
 
 ## 7. Configuración de Mobile (`--dart-define`)
 
-Ambas URLs son configurables en tiempo de compilación (ver `mobile/lib/core/config/api_config.dart`). Sin `--dart-define` se usan los valores por defecto según plataforma. **Los comandos se ejecutan desde `mobile/`.**
+La única URL base es configurable en tiempo de compilación (ver `mobile/lib/core/config/api_config.dart`). Sin `--dart-define` se usan los valores por defecto según plataforma. **Los comandos se ejecutan desde `mobile/`.**
 
 | Variable | Puerto por defecto | Rol |
 |---|---|---|
-| `API_GATEWAY_URL` | `:3000/api/v1` | Gateway (auth y salud) |
-| `CATALOG_SERVICE_URL` | `:3002/api/v1` | Catálogo directo (excepción, sección 1.2) |
+| `API_GATEWAY_URL` | `:3000/api/v1` | Cliente central: Auth, salud, Catalog y listado de Material |
 
 **Ejemplo — Android Emulator:**
 
 ```bash
 flutter run \
-  --dart-define=API_GATEWAY_URL=http://10.0.2.2:3000/api/v1 \
-  --dart-define=CATALOG_SERVICE_URL=http://10.0.2.2:3002/api/v1
+  --dart-define=API_GATEWAY_URL=http://10.0.2.2:3000/api/v1
 ```
 
 **Ejemplo — escritorio/local:**
 
 ```bash
 flutter run \
-  --dart-define=API_GATEWAY_URL=http://localhost:3000/api/v1 \
-  --dart-define=CATALOG_SERVICE_URL=http://localhost:3002/api/v1
+  --dart-define=API_GATEWAY_URL=http://localhost:3000/api/v1
 ```
 
 **Ejemplo — dispositivo físico (misma red, IP LAN del host, p. ej. `192.168.1.50`):**
 
 ```bash
 flutter run \
-  --dart-define=API_GATEWAY_URL=http://192.168.1.50:3000/api/v1 \
-  --dart-define=CATALOG_SERVICE_URL=http://192.168.1.50:3002/api/v1
+  --dart-define=API_GATEWAY_URL=http://192.168.1.50:3000/api/v1
 ```
 
 ---
