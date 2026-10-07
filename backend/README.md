@@ -284,7 +284,7 @@ constancia explícita para priorizar su cierre antes de producción.
 | El gateway no enruta Quality | `/api/v1/quality` no pasa por el gateway; el servicio es un placeholder sin implementación | `api-gateway/README.md` |
 | Health de Catalog no enrutado por el gateway | `/api/v1/catalog/health` devuelve `404` porque Catalog excluye `health` del prefijo global; su health real es `http://localhost:3002/health` | `catalog-service/src/main.ts` |
 | Registro por el gateway | `/api/v1/auth/register` devuelve `404` hasta que se implemente el endpoint | `api-gateway/README.md` |
-| Filtros `year` y `type` del catálogo | Devuelven `501 Not Implemented`; dependen del módulo de Recursos | `catalog-service` (Swagger `http://localhost:3002/api/docs`) |
+| Material y Search sin implementar | `/api/v1/materials` y `/api/v1/search` solo tienen proxy en el gateway; los servicios son placeholders, así que los archivos, versiones y descargas de `Resource` siguen sin gestionarse | `api-gateway/README.md` |
 | Paginación del catálogo | Los endpoints no implementan `page`/`limit` (propuesto, no implementado) | `docs/mobile/integracion-api-mobile.md` |
 | Autenticación en Mobile | El login ya consume el gateway mediante `DioAuthRepository`. `MockAuthRepository` queda para el modo demo (`--dart-define=AUTH_DEMO_MODE=true`) y como fallback de las operaciones que el backend aún no expone, como registro y logout | `mobile/lib/features/auth/data/` |
 | Swagger por servicio | Cada microservicio expone su propia especificación; no hay una spec unificada del ecosistema | índice `/api/docs` del gateway |

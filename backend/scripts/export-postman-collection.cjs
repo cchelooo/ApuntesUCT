@@ -52,13 +52,9 @@ const VARIABLES = [
   { key: 'careerId', value: '00000000-0000-4000-8000-000000000002' },
   { key: 'subjectId', value: '00000000-0000-4000-8000-000000000003' },
   { key: 'professorId', value: '00000000-0000-4000-8000-000000000004' },
-  { key: 'catalogYear', value: '2026' },
-  { key: 'catalogType', value: 'apunte' },
 ];
 
 const BODY_VARIABLES = { email: 'mockEmail', password: 'mockPassword' };
-
-const FILTER_NOT_IMPLEMENTED = ['year', 'type'];
 
 const CATALOG_FILTER_PARAMETERS = [
   {
@@ -80,16 +76,6 @@ const CATALOG_FILTER_PARAMETERS = [
     name: 'professorId',
     description: 'Nivel 4. Requiere subjectId.',
     variable: 'professorId',
-  },
-  {
-    name: 'year',
-    description: 'Entero entre 2000 y 2100. Responde 501 Not Implemented.',
-    variable: 'catalogYear',
-  },
-  {
-    name: 'type',
-    description: 'Tipo de material. Responde 501 Not Implemented.',
-    variable: 'catalogType',
   },
 ];
 
@@ -168,7 +154,6 @@ function buildQuery(parameters, apiPath) {
       key: parameter.name,
       value: `{{${parameter.variable}}}`,
       description: parameter.description,
-      disabled: FILTER_NOT_IMPLEMENTED.includes(parameter.name),
     }));
   }
   return parameters
@@ -182,7 +167,6 @@ function buildQuery(parameters, apiPath) {
         key: name,
         value: String(value),
         description: parameter.description ?? '',
-        disabled: FILTER_NOT_IMPLEMENTED.includes(name),
       };
     });
 }
@@ -317,29 +301,9 @@ function collectItems(service, document) {
             operation,
             name: 'Filtro jerárquico del catálogo',
             description:
-              `${operation.description ?? ''}\n\nOrden obligatorio: universityId → careerId → subjectId → professorId. Los tres primeros UUID salen de GET /api/v1/catalog; el professorId no viene en ese árbol: se obtiene de GET /api/v1/catalog/filter sin filtros, en el array professors de cada asignatura. Los parámetros year y type están desactivados porque responden 501 Not Implemented; usa la petición siguiente para comprobarlos.`.trim(),
+              `${operation.description ?? ''}\n\nOrden obligatorio (4 niveles): universityId → careerId → subjectId → professorId. Los tres primeros UUID salen de GET /api/v1/catalog o de los listados de selectores; el professorId no viene en ese árbol: se obtiene de GET /api/v1/catalog/professors o del arreglo professors de cada asignatura. year y type no forman parte del contrato de Catalog: pertenecen a Material/Search.`.trim(),
             query,
             status,
-            components,
-          }),
-        );
-        const implemented = query.filter(
-          (parameter) => !FILTER_NOT_IMPLEMENTED.includes(parameter.key),
-        );
-        const notImplemented = query
-          .filter((parameter) => FILTER_NOT_IMPLEMENTED.includes(parameter.key))
-          .map((parameter) => ({ ...parameter, disabled: false }));
-        items.push(
-          buildItem({
-            service,
-            method,
-            apiPath,
-            operation,
-            name: 'Filtro por año y tipo (501 Not Implemented)',
-            description:
-              'Requiere un prefijo jerárquico válido (400 si falta el orden) y responde 501 Not Implemented porque depende del módulo de Recursos.',
-            query: [...implemented, ...notImplemented],
-            status: '501',
             components,
           }),
         );
@@ -405,12 +369,11 @@ const GATEWAY_PROXIED = [
     apiPath: '/api/v1/catalog/filter',
     name: 'Filtro jerárquico a través del gateway',
     description:
-      'Misma ruta proxeada hacia Catalog, con el prefijo jerárquico completo (los tres primeros UUID de GET /api/v1/catalog y el professorId de GET /api/v1/catalog/filter sin filtros). year y type van desactivados porque responden 501 Not Implemented.',
+      'Misma ruta proxeada hacia Catalog, con el prefijo jerárquico de 4 niveles (los tres primeros UUID de GET /api/v1/catalog o de los listados de selectores y el professorId de GET /api/v1/catalog/professors). year y type no forman parte del contrato de Catalog: pertenecen a Material/Search.',
     query: CATALOG_FILTER_PARAMETERS.map((parameter) => ({
       key: parameter.name,
       value: `{{${parameter.variable}}}`,
       description: parameter.description,
-      disabled: FILTER_NOT_IMPLEMENTED.includes(parameter.name),
     })),
     status: '200',
     bearer: true,
