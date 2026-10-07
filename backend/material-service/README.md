@@ -217,3 +217,47 @@ No modifican el esquema `public` ni los datos de la aplicación.
 
 El servicio participa en los comandos globales `build`, `lint`, `test`,
 `test:ci` y `test:cov` del backend mediante npm workspaces.
+
+
+## Relación del contrato de creación con los tipos persistidos
+
+`POST /api/v1/materials` sigue siendo un contrato simulado: no persiste materiales,
+no busca tipos en la base y no devuelve un `materialTypeId` inventado.
+Su respuesta inicial documenta únicamente `PENDING_REVIEW`.
+
+Al implementar la persistencia, el servidor resolverá el código público `type`
+por coincidencia exacta con el nombre único de un registro activo de `MaterialType`:
+
+| `type` del POST | `MaterialType.name` a resolver |
+| --- | --- |
+| `DOCUMENT` | `DOCUMENT` |
+| `PRESENTATION` | `PRESENTATION` |
+| `LINK` | `LINK` |
+| `EXAM` | `EXAM` |
+| `SUMMARY` | `SUMMARY` |
+
+El ID de ese registro será `Material.materialTypeId`. El listado existente
+`GET /api/v1/materials` expone ese ID como `materialTypeId` y su nombre como
+`materialType`. No se confunden códigos con UUIDs. Los registros deberán existir
+al habilitar la creación real; un tipo inexistente o inactivo deberá rechazarse
+como metadato inválido. Esta corrección no agrega seeds ni consultas de persistencia.
+El enum de creación es un subconjunto admitido por el POST; el listado puede
+contener otros tipos ya persistidos, como `CLASS_NOTES`, sin modificar su contrato.
+
+Los MIME locales documentados son:
+
+- PDF: `application/pdf`.
+- Word .doc: `application/msword`.
+- Word .docx: `application/vnd.openxmlformats-officedocument.wordprocessingml.document`.
+- PowerPoint .ppt: `application/vnd.ms-powerpoint`.
+- PowerPoint .pptx: `application/vnd.openxmlformats-officedocument.presentationml.presentation`.
+
+### Validación del archivo del contrato simulado
+
+Se permiten hasta **15 728 640 bytes inclusive**. Multer limita la recepción y
+el validador vuelve a comprobar el tamaño. El MIME de la respuesta se obtiene
+del contenido: el nombre del archivo y su MIME declarado no determinan la aceptación.
+PDF, DOCX y PPTX usan la detección de Nest; DOC y PPT se identifican leyendo su
+contenedor CFB y los streams de Word/PowerPoint. Un archivo XLS, un contenedor
+dañado o texto renombrado a PDF se rechazan con `415`.
+Esto valida el formato, no sustituye análisis antimalware ni implementa almacenamiento.

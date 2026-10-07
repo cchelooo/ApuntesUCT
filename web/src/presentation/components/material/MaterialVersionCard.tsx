@@ -22,7 +22,7 @@ export function MaterialVersionCard({
   return (
     <aside
       aria-labelledby="material-version-title"
-      className="flex flex-col gap-5 rounded-sm border border-catalog-line bg-catalog-paper p-5"
+      className="flex flex-col gap-5 rounded-xs border border-catalog-line bg-catalog-paper p-5"
     >
       <div className="flex items-baseline justify-between gap-2">
         <h2
@@ -32,7 +32,7 @@ export function MaterialVersionCard({
           Versión actual
         </h2>
         <span
-          className="font-mono text-sm text-catalog-maroon"
+          className="font-mono text-sm text-catalog-primary"
           data-testid="material-version-number"
         >
           {version ? `v${version.number}` : 'v—'}

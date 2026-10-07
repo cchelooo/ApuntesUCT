@@ -20,6 +20,14 @@ const SERVICES = [
 
 async function startUpstream(label: string): Promise<Upstream> {
   const server = createServer((req, res) => {
+    if (req.url === '/api/v1/materials/transport-test/download') {
+      res.writeHead(200, {
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': 'attachment; filename="apuntes.pdf"',
+      });
+      res.end(Buffer.from([0, 255, 128, 13, 10, 42]));
+      return;
+    }
     let body = '';
     req.on('data', (chunk: Buffer) => {
       body += chunk.toString();
@@ -86,7 +94,10 @@ describe('Gateway → Material y Search (HTTP)', () => {
     // origen por defecto (3001). Apuntarlo a un puerto cerrado evita que la prueba
     // dependa de que no haya nada escuchando en 3001: si Auth estuviera levantado,
     // la petición llegaría a un servicio real en vez de fallar con 502.
-    origins.set('AUTH_SERVICE_URL', `http://127.0.0.1:${await getClosedPort()}`);
+    origins.set(
+      'AUTH_SERVICE_URL',
+      `http://127.0.0.1:${await getClosedPort()}`,
+    );
 
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(ConfigService)
@@ -106,6 +117,17 @@ describe('Gateway → Material y Search (HTTP)', () => {
       await closeUpstream(upstream.server);
     }
     upstreams.clear();
+  });
+
+  it('conserva bytes y headers de una descarga del upstream simulado', async () => {
+    const response = await request(gateway.getHttpServer())
+      .get('/api/v1/materials/transport-test/download')
+      .expect(200);
+    expect(response.headers['content-type']).toBe('application/octet-stream');
+    expect(response.headers['content-disposition']).toBe(
+      'attachment; filename="apuntes.pdf"',
+    );
+    expect(response.body).toEqual(Buffer.from([0, 255, 128, 13, 10, 42]));
   });
 
   it.each(SERVICES)(
@@ -136,16 +158,19 @@ describe('Gateway → Material y Search (HTTP)', () => {
     },
   );
 
-  it.each(SERVICES)('conserva cuerpos JSON en $label', async ({ path, label }) => {
-    const body = { titulo: 'Apuntes', semestre: 2 };
-    const res = await request(gateway.getHttpServer())
-      .post(`/api/v1/${path}`)
-      .send(body)
-      .expect(200);
-    expect(res.body.service).toBe(label);
-    expect(res.body.method).toBe('POST');
-    expect(res.body.body).toBe(JSON.stringify(body));
-  });
+  it.each(SERVICES)(
+    'conserva cuerpos JSON en $label',
+    async ({ path, label }) => {
+      const body = { titulo: 'Apuntes', semestre: 2 };
+      const res = await request(gateway.getHttpServer())
+        .post(`/api/v1/${path}`)
+        .send(body)
+        .expect(200);
+      expect(res.body.service).toBe(label);
+      expect(res.body.method).toBe('POST');
+      expect(res.body.body).toBe(JSON.stringify(body));
+    },
+  );
 
   it.each(SERVICES)(
     'conserva PUT, PATCH y DELETE en $label',
@@ -174,14 +199,11 @@ describe('Gateway → Material y Search (HTTP)', () => {
     },
   );
 
-  it.each(SERVICES)(
-    'no captura rutas ajenas a $label',
-    async ({ path }) => {
-      await request(gateway.getHttpServer())
-        .get(`/api/v1/${path}-other`)
-        .expect(404);
-    },
-  );
+  it.each(SERVICES)('no captura rutas ajenas a $label', async ({ path }) => {
+    await request(gateway.getHttpServer())
+      .get(`/api/v1/${path}-other`)
+      .expect(404);
+  });
 
   it('mantiene el health local y el proxy de Auth sin interferencia', async () => {
     const health = await request(gateway.getHttpServer())

@@ -10,17 +10,17 @@ Tecnologías: Node.js, TypeScript, NestJS, Prisma, PostgreSQL, MinIO.
 |---|---|---|---|
 | api-gateway | 3000 | `http://localhost:3000` | Implementado |
 | auth-service | 3001 | `http://localhost:3001` | Implementado |
-| catalog-service | 3002 (*) | `http://localhost:3002` | Implementado (PR #139 integrado en main) |
+| catalog-service | 3002 | `http://localhost:3002` | Implementado (PR #139 integrado en main) |
 | material-service | 3003 | `http://localhost:3003` | Implementado (PR #311 integrado en main) |
 | quality-service | 3004 (**) | `http://localhost:3004` | Pendiente (placeholder) |
 | search-service | 3005 | `http://localhost:3005` | Implementado (PR #305 integrado en main) |
 
-(*) Puerto para ejecución local, no un valor predeterminado del servicio. El catálogo, tal como está en main, no levanta en 3002 por sí solo: su `.env.example` define `PORT=3001` (que coincide con auth-service) y `src/main.ts` usa `3000` cuando no existe `PORT` (que coincide con api-gateway). Ejecutarlo con `PORT=3002 npm run start:dev` evita ambos conflictos; esa variable tiene prioridad sobre el valor del `.env` durante esa ejecución.
+Catalog utiliza `3002` por defecto en su arranque, configuración interna y `.env.example`. Si existe un `.env` antiguo con otro valor, actualizarlo a `PORT=3002` para evitar conflictos. La variable `PORT` del proceso tiene prioridad sobre el archivo `.env`.
 
 (**) Puerto propuesto/reservado para Quality. Todavía no hay un servicio disponible en esa dirección.
 
 Notas:
-- Los servicios implementados aplican el prefijo global `api/v1` y cada uno expone su healthcheck `GET /api/v1/health` (api-gateway, auth-service, catalog-service, material-service y search-service).
+- Los servicios implementados aplican el prefijo global `api/v1`. Gateway, Auth, Material y Search exponen `GET /api/v1/health`; Catalog excluye su health del prefijo y lo expone en `GET /health`.
 - El api-gateway obtiene el puerto mediante `ConfigService` (`configService.get<number>('PORT') || 3000`), con `3000` como valor predeterminado. Expone `GET /api/v1/health` y un índice Swagger en `/api/docs`. Su módulo de proxy (`ProxyModule`) reenvía `/api/v1/auth` a Auth (`AUTH_SERVICE_URL`, por defecto `http://127.0.0.1:3001`; con reescritura de `/api/v1/auth/health` a `/api/v1/health`), `/api/v1/catalog` a Catalog (`CATALOG_SERVICE_URL`, `http://127.0.0.1:3002`), `/api/v1/materials` a Material (`MATERIAL_SERVICE_URL`, `http://127.0.0.1:3003`) y `/api/v1/search` a Search (`SEARCH_SERVICE_URL`, `http://127.0.0.1:3005`), todas con timeout de 5 s y `502` con un mensaje propio de cada servicio cuando el destino no responde. Quality todavía no se enruta. Ver `api-gateway/README.md`.
 - Cobertura real de los destinos: Catalog expone el árbol y el filtrado en `/api/v1/catalog`; Material atiende `GET /api/v1/materials` con el listado paginado (`{ items, page, pageSize, total }`, vacío si la base no tiene datos) y `POST /api/v1/materials` como stub; y Search atiende `GET /api/v1/search` (devuelve un stub con `results: []`; la búsqueda desacoplada es trabajo en curso). El `502` del gateway corresponde al servicio caído.
 - Documentación Swagger por servicio: API Gateway en `http://localhost:3000/api/docs/gateway` (spec JSON en `/api/docs/gateway-json`); Auth, Catalog, Material y Search en `http://localhost:<puerto>/api/docs` con spec JSON en `/api/docs-json` (puertos 3001, 3002, 3003 y 3005).
@@ -59,11 +59,22 @@ Detener las dependencias:
 docker compose down
 ```
 
+Instalar una sola vez desde la raíz del workspace (se usa `backend/package-lock.json`):
+
+```bash
+cd backend
+npm ci
+npm run prisma:generate
+```
+
+Los comandos siguientes parten de la raíz del repositorio en terminales separadas.
+Los clientes de Prisma de auth, catálogo y materiales se generan por separado;
+no comparten el cliente predeterminado de `@prisma/client`.
+
 2. API Gateway (no requiere base de datos):
 
 ```bash
 cd backend/api-gateway
-npm install
 npm run start:dev
 ```
 
@@ -71,7 +82,6 @@ npm run start:dev
 
 ```bash
 cd backend/auth-service
-npm install
 [ ! -f .env ] && cp .env.example .env   # solo si .env no existe aún
 npm run prisma:generate
 npm run start:dev
@@ -83,7 +93,6 @@ Asegurarse de que `DATABASE_URL` del `.env` coincida con el PostgreSQL local (de
 
 ```bash
 cd backend/catalog-service
-npm install
 [ ! -f .env ] && cp .env.example .env   # solo si .env no existe aún
 npm run prisma:generate
 PORT=3002 npm run start:dev
@@ -93,7 +102,6 @@ Alternativa en Windows PowerShell (con preparación de `.env` y Prisma):
 
 ```powershell
 cd backend/catalog-service
-npm install
 if (-Not (Test-Path .env)) { Copy-Item .env.example .env }
 npm run prisma:generate
 $env:PORT=3002
@@ -122,7 +130,7 @@ Comprobar el healthcheck de los servicios implementados:
 ```bash
 curl http://localhost:3000/api/v1/health
 curl http://localhost:3001/api/v1/health
-curl http://localhost:3002/api/v1/health
+curl http://localhost:3002/health
 curl http://localhost:3003/api/v1/health
 ```
 

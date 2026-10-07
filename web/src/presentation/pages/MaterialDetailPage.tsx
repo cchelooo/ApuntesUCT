@@ -28,7 +28,7 @@ export function MaterialDetailPage({
         <nav aria-label="Ruta de navegación" className="text-sm">
           <Link
             to="/catalog"
-            className="rounded-sm p-1 text-catalog-ink/70 hover:text-catalog-ink focus:outline-none focus:ring-2 focus:ring-catalog-maroon"
+            className="rounded-xs p-1 text-catalog-ink/70 hover:text-catalog-ink focus:outline-hidden focus:ring-2 focus:ring-catalog-primary"
           >
             Catálogo
           </Link>

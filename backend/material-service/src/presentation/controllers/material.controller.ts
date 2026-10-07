@@ -1,14 +1,33 @@
-import { 
-  Controller, Post, Body, UploadedFile, UseInterceptors, 
-  ParseFilePipe, MaxFileSizeValidator, FileTypeValidator, 
-  PayloadTooLargeException, UnsupportedMediaTypeException, BadRequestException 
+import {
+  Controller,
+  Post,
+  Body,
+  UploadedFile,
+  UseInterceptors,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  PayloadTooLargeException,
+  UnsupportedMediaTypeException,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { 
-  ApiTags, ApiConsumes, ApiBearerAuth, ApiOperation, 
-  ApiResponse, ApiBody, ApiExtraModels 
+import {
+  ApiTags,
+  ApiConsumes,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiExtraModels,
 } from '@nestjs/swagger';
-import { CreateMaterialDto, MaterialType } from '../dto/create-material.dto';
+import {
+  CreateMaterialDto,
+  MaterialType,
+  MATERIAL_TYPE_DESCRIPTION,
+  MATERIAL_MIME_TYPES,
+  MATERIAL_FILE_DESCRIPTION,
+} from '../dto/create-material.dto';
+import { MaterialFileTypeValidator } from '../validators/material-file-type.validator';
 import { ErrorResponseDto } from '../dto/error-response.dto';
 import { CreateMaterialResponseDto, MaterialStatus } from '../dto/material-response.dto';
 
@@ -19,11 +38,14 @@ const MAX_FILE_SIZE_BYTES = 15728640; // 15 MB
 @ApiBearerAuth()
 @ApiExtraModels(ErrorResponseDto, CreateMaterialResponseDto)
 export class MaterialController {
-
   @Post()
-  @UseInterceptors(FileInterceptor('file'))
+  // Multer corta la recepción antes de cargar un archivo arbitrariamente grande.
+  // Sus límites y MaxFileSizeValidator son exclusivos: se permite exactamente 15 MB.
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE_BYTES + 1, files: 1 } }),
+  )
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Subir y registrar un nuevo material o enlace académico',
     description: `
 **REGLAS Y CONTRATO DE NEGOCIO:**
@@ -36,25 +58,35 @@ export class MaterialController {
   - **LINK:** Requiere de manera obligatoria \`externalLink\` (validado como URL). No acepta archivo binario.
   - **DOCUMENT, PRESENTATION, EXAM, SUMMARY:** Requieren obligatoriamente un **archivo local** (file). Se permite incluir \`externalLink\` como URL de respaldo secundaria.
 - **Límite de Archivo:** Máximo **15 MB (15,728,640 bytes)**.
-- **MIMEs Permitidos:** PDF (\`application/pdf\`), Word (\`.doc\`, \`.docx\`), PowerPoint (\`.ppt\`, \`.pptx\`).
+- **MIMEs Permitidos:** ${MATERIAL_MIME_TYPES.join(', ')}.
+- **Relación del tipo con persistencia/listado:** ${MATERIAL_TYPE_DESCRIPTION}
 - **Autenticación:** Requiere header \`Authorization: Bearer <token>\`.
 - **Estado de Implementación:** Respuesta simulada (Stub).
-    `
+    `,
   })
   @ApiBody({
-    description: 'Metadatos en formato multipart/form-data y archivo adjunto opcional/obligatorio según type.',
+    description:
+      'Metadatos en formato multipart/form-data y archivo adjunto opcional/obligatorio según type.',
     schema: {
       type: 'object',
       properties: {
         title: { type: 'string', example: 'Guía Práctica de Álgebra Lineal' },
-        description: { type: 'string', example: 'Ejercicios resueltos sobre valores y vectores propios.' },
+        description: {
+          type: 'string',
+          example: 'Ejercicios resueltos sobre valores y vectores propios.',
+        },
         year: { type: 'string', example: '2026' },
-        type: { type: 'string', enum: Object.values(MaterialType), example: MaterialType.DOCUMENT },
+        type: {
+          type: 'string',
+          enum: Object.values(MaterialType),
+          example: MaterialType.DOCUMENT,
+          description: MATERIAL_TYPE_DESCRIPTION,
+        },
         subjectId: { type: 'string', example: 'SUBJ-102' },
         careerId: { type: 'string', example: 'CAREER-INF-01' },
         professorId: { type: 'string', example: 'prof_88321' },
         externalLink: { type: 'string', example: 'https://drive.google.com/file/d/xyz/view' },
-        file: { type: 'string', format: 'binary', description: 'Archivo binario local (Máx 15MB)' },
+        file: { type: 'string', format: 'binary', description: MATERIAL_FILE_DESCRIPTION },
       },
       required: ['title', 'year', 'type', 'subjectId'],
     },
@@ -93,7 +125,8 @@ export class MaterialController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Bad Request - Error de validación en metadatos, formato de URL inválido o incumplimiento de regla file/link según el type.',
+    description:
+      'Bad Request - Error de validación en metadatos, formato de URL inválido o incumplimiento de regla file/link según el type.',
     type: ErrorResponseDto,
   })
   @ApiResponse({
@@ -108,7 +141,8 @@ export class MaterialController {
   })
   @ApiResponse({
     status: 413,
-    description: 'Payload Too Large - El archivo supera el tamaño máximo permitidos de 15 MB (15728640 bytes).',
+    description:
+      'Payload Too Large - El archivo supera el tamaño máximo permitidos de 15 MB (15728640 bytes).',
     type: ErrorResponseDto,
   })
   @ApiResponse({
@@ -132,33 +166,44 @@ export class MaterialController {
       new ParseFilePipe({
         fileIsRequired: false,
         validators: [
-          new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE_BYTES }),
-          new FileTypeValidator({ fileType: /(pdf|msword|wordprocessingml\.document|ms-powerpoint|presentationml\.presentation)$/i }),
+          new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE_BYTES + 1 }),
+          new MaterialFileTypeValidator(),
         ],
         exceptionFactory: (error) => {
           if (error.includes('expected size')) {
-            return new PayloadTooLargeException(`El archivo excede el tamaño máximo permitido de 15 MB (${MAX_FILE_SIZE_BYTES} bytes).`);
+            return new PayloadTooLargeException(
+              `El archivo excede el tamaño máximo permitido de 15 MB (${MAX_FILE_SIZE_BYTES} bytes).`,
+            );
           }
           if (error.includes('expected type')) {
-            return new UnsupportedMediaTypeException('Tipo de archivo no admitido. Formatos válidos: PDF, Word (.doc, .docx) y PowerPoint (.ppt, .pptx).');
+            return new UnsupportedMediaTypeException(
+              'Tipo de archivo no admitido. Formatos válidos: PDF, Word (.doc, .docx) y PowerPoint (.ppt, .pptx).',
+            );
           }
           return new BadRequestException(error);
         },
-      })
-    ) file?: Express.Multer.File,
+      }),
+    )
+    file?: Express.Multer.File,
   ) {
     // Reglas cruzadas segun tipo de material
     if (dto.type === MaterialType.LINK) {
       if (!dto.externalLink) {
-        throw new BadRequestException('Para materiales de tipo LINK es obligatorio especificar externalLink (URL válida).');
+        throw new BadRequestException(
+          'Para materiales de tipo LINK es obligatorio especificar externalLink (URL válida).',
+        );
       }
       if (file) {
-        throw new BadRequestException('Los materiales de tipo LINK no deben incluir un archivo adjunto.');
+        throw new BadRequestException(
+          'Los materiales de tipo LINK no deben incluir un archivo adjunto.',
+        );
       }
     } else {
       // DOCUMENT, PRESENTATION, EXAM, SUMMARY exigen archivo
       if (!file) {
-        throw new BadRequestException(`Para el tipo de material '${dto.type}' es obligatorio adjuntar un archivo local.`);
+        throw new BadRequestException(
+          `Para el tipo de material '${dto.type}' es obligatorio adjuntar un archivo local.`,
+        );
       }
     }
 
@@ -178,7 +223,9 @@ export class MaterialController {
         careerId: dto.careerId || null,
         professorId: dto.professorId || null,
         universityId: 'UNIV-UCT-01',
-        fileUrl: file ? `https://storage.academico.cl/materials/${dto.year}/${file.originalname}` : null,
+        fileUrl: file
+          ? `https://storage.academico.cl/materials/${dto.year}/${file.originalname}`
+          : null,
         fileSize: file ? file.size : null,
         mimeType: file ? file.mimetype : null,
         externalLink: dto.externalLink || null,

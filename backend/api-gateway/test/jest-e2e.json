@@ -22,6 +22,6 @@
     ]
   },
   "transformIgnorePatterns": [
-    "node_modules/(?!(@nestjs|http-proxy-middleware|httpxy|is-plain-obj)/)"
+    "node_modules/(?!(@nestjs|httpxy)/)"
   ]
 }

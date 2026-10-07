@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { createServer, Server } from 'node:http';
 import { AddressInfo } from 'node:net';
+import { gzipSync } from 'node:zlib';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { HealthModule } from '../../auth-service/src/presentation/health/health.module';
@@ -18,11 +19,18 @@ describe('Gateway → Auth (HTTP)', () => {
 
   beforeEach(async () => {
     upstream = createServer((req, res) => {
-      let body = '';
+      const chunks: Buffer[] = [];
       req.on('data', (chunk: Buffer) => {
-        body += chunk.toString();
+        chunks.push(chunk);
       });
       req.on('end', () => {
+        const rawBody = Buffer.concat(chunks);
+        const body = rawBody.toString();
+        if (req.url === '/api/v1/auth/transport') {
+          res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
+          res.end(rawBody);
+          return;
+        }
         res.writeHead(req.url?.includes('/login') ? 401 : 200, {
           'Content-Type': 'application/json',
           'Set-Cookie': 'session=test; HttpOnly',
@@ -76,6 +84,45 @@ describe('Gateway → Auth (HTTP)', () => {
       authorization: 'Bearer test',
     });
     expect(res.headers['set-cookie']).toEqual(['session=test; HttpOnly']);
+  });
+
+  it('conserva el cuerpo de formularios y caracteres Unicode', async () => {
+    const response = await request(gateway.getHttpServer())
+      .post('/api/v1/auth/login')
+      .type('form')
+      .send({ name: 'María', code: 'A&B' })
+      .expect(401);
+    expect(new URLSearchParams(response.body.body).get('name')).toBe('María');
+    expect(new URLSearchParams(response.body.body).get('code')).toBe('A&B');
+  });
+
+  it('reenvía JSON comprimido sin dejar headers de compresión incorrectos', async () => {
+    const payload = { email: 'estudiante@alu.uct.cl', password: 'áéí' };
+    await gateway.listen(0, '127.0.0.1');
+    const response = await fetch(
+      `${await gateway.getUrl()}/api/v1/auth/login`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Encoding': 'gzip',
+        },
+        body: new Uint8Array(gzipSync(JSON.stringify(payload))),
+      },
+    );
+    expect(response.status).toBe(401);
+    const result = (await response.json()) as { body: string };
+    expect(JSON.parse(result.body)).toEqual(payload);
+  });
+
+  it('conserva bytes sin procesar en solicitudes y respuestas', async () => {
+    const payload = Buffer.from([0, 255, 128, 13, 10, 42]);
+    const response = await request(gateway.getHttpServer())
+      .post('/api/v1/auth/transport')
+      .set('Content-Type', 'application/octet-stream')
+      .send(payload)
+      .expect(200);
+    expect(response.body).toEqual(payload);
   });
 
   it.each(['get', 'put', 'patch', 'delete'] as const)(
