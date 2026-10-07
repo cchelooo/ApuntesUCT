@@ -3,18 +3,17 @@ import { ConfigService } from '@nestjs/config';
 
 const mockCaptured: Array<Record<string, unknown>> = [];
 
-jest.mock('http-proxy-middleware', () => ({
-  createProxyMiddleware: (options: Record<string, unknown>) => {
+const mockWeb = jest.fn();
+jest.mock('httpxy', () => ({
+  createProxyServer: (options: Record<string, unknown>) => {
     mockCaptured.push(options);
-    return () => undefined;
+    return { web: mockWeb };
   },
-  fixRequestBody: jest.fn(),
 }));
 
-// El módulo se importa después de declarar el mock porque jest.mock se eleva por
-// encima de los imports: sin este orden, createProxyMiddleware ya estaría
-// resuelto cuando se registra el mock.
 import { ProxyModule } from './proxy.module';
+import { serviceProxy } from './service-proxy';
+import type { Request, Response } from 'express';
 
 interface RouteSpec {
   path: string;
@@ -112,7 +111,7 @@ describe('ProxyModule', () => {
       ['Material', 'MATERIAL_SERVICE_URL', 'http://127.0.0.1:3003'],
       ['Search', 'SEARCH_SERVICE_URL', 'http://127.0.0.1:3005'],
     ])(
-      '%s fija timeout de 5 s, changeOrigin y fixRequestBody',
+      '%s fija timeout de 5 s, y changeOrigin',
       (_label, urlKey, expected) => {
         const { options } = configure();
         const option = options.find((item) => item.target === expected);
@@ -120,58 +119,36 @@ describe('ProxyModule', () => {
         expect(option).toBeDefined();
         expect(option?.proxyTimeout).toBe(5000);
         expect(option?.changeOrigin).toBe(true);
-        expect(option?.on).toHaveProperty('proxyReq');
       },
     );
 
     it.each([
-      ['Material', 'MATERIAL_SERVICE_URL', 'http://127.0.0.1:3003', 'Material Service'],
-      ['Search', 'SEARCH_SERVICE_URL', 'http://127.0.0.1:3005', 'Search Service'],
-    ])(
-      '%s responde 502 con su propio mensaje cuando el destino falla',
-      (_label, _urlKey, target, serviceName) => {
-        const { options } = configure();
-        const option = options.find((item) => item.target === target);
-        const on = option?.on as {
-          error: (err: Error, req: unknown, res: unknown) => void;
-        };
-
-        const writeHead = jest.fn();
-        const end = jest.fn();
-        on.error(new Error('ECONNREFUSED'), {}, { writeHead, end, headersSent: false });
-
-        expect(writeHead).toHaveBeenCalledWith(502, {
-          'Content-Type': 'application/json',
-        });
-        expect(end).toHaveBeenCalledWith(
-          JSON.stringify({
-            statusCode: 502,
-            message: `${serviceName} no disponible`,
-          }),
-        );
-      },
-    );
-
-    it.each([
-      ['Material', 'MATERIAL_SERVICE_URL', 'http://127.0.0.1:3003'],
-      ['Search', 'SEARCH_SERVICE_URL', 'http://127.0.0.1:3005'],
-    ])(
-      '%s no intenta responder si ya se enviaron cabeceras',
-      (_label, _urlKey, target) => {
-        const { options } = configure();
-        const option = options.find((item) => item.target === target);
-        const on = option?.on as {
-          error: (err: Error, req: unknown, res: unknown) => void;
-        };
-
-        const writeHead = jest.fn();
-        const end = jest.fn();
-        on.error(new Error('ECONNRESET'), {}, { writeHead, end, headersSent: true });
-
-        expect(writeHead).not.toHaveBeenCalled();
-        expect(end).not.toHaveBeenCalled();
-      },
-    );
+      ['Material Service', false],
+      ['Search Service', false],
+      ['Material Service', true],
+      ['Search Service', true],
+    ])('maneja el fallo de %s con headersSent=%s', async (serviceName, headersSent) => {
+      mockWeb.mockRejectedValueOnce(new Error('ECONNRESET'));
+      const middleware = serviceProxy('http://upstream', serviceName);
+      const req = { originalUrl: '/api/v1/materials', headers: {} } as Request;
+      const res = {
+        headersSent,
+        destroyed: false,
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+        destroy: jest.fn(),
+      };
+      middleware(req, res as unknown as Response, jest.fn());
+      await Promise.resolve();
+      if (headersSent) {
+        expect(res.destroy).toHaveBeenCalled();
+        expect(res.status).not.toHaveBeenCalled();
+        expect(res.json).not.toHaveBeenCalled();
+      } else {
+        expect(res.status).toHaveBeenCalledWith(502);
+        expect(res.json).toHaveBeenCalledWith({ statusCode: 502, message: `${serviceName} no disponible` });
+      }
+    });
   });
 
   describe('rutas capturadas', () => {

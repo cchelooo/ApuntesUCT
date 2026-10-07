@@ -20,7 +20,7 @@ export function MaterialMetadata({ material }: MaterialMetadataProps) {
   return (
     <section
       aria-labelledby="material-metadata-title"
-      className="rounded-sm border border-catalog-line bg-catalog-paper p-5"
+      className="rounded-xs border border-catalog-line bg-catalog-paper p-5"
     >
       <h2
         id="material-metadata-title"

@@ -48,9 +48,8 @@ npm run test:e2e --workspace=api-gateway -- --runInBand
 El Gateway reenvía `/api/v1/auth` y sus subrutas al origen definido por
 `AUTH_SERVICE_URL` (por defecto `http://127.0.0.1:3001`). Conserva el método,
 query, cuerpo, Authorization y las respuestas del servicio, incluidos cookies y
-códigos de error. Usa `http-proxy-middleware` con `fixRequestBody` para reenviar
-los cuerpos que Nest ya procesó:
-[documentación del middleware](https://github.com/chimurai/http-proxy-middleware).
+códigos de error. Usa `httpxy` mediante `serviceProxy`, que reconstruye los cuerpos JSON y
+formularios que Nest ya procesó y conserva los streams sin procesar.
 
 | Ruta del Gateway | Ruta en Auth |
 | --- | --- |
@@ -286,3 +285,21 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+### Regresión del contrato real de Material
+
+Desde `backend`, después de compilar ambos servicios:
+
+```bash
+npm run build
+npm run test:integration --workspace=api-gateway
+```
+
+Esta prueba levanta Gateway y el controlador real del POST de Material en puertos
+locales efímeros. Comprueba multipart, metadatos Unicode, los cinco formatos
+admitidos, detección del MIME, el límite inclusivo de 15 MB y respuestas
+`400`/`413`/`415`/`502`. No usa base de datos ni MinIO: el POST sigue siendo simulado.
+Los contenedores Office de prueba son sintéticos y verifican identificación de
+formatos, no la apertura/renderización de documentos en Office.
+La conservación de bytes y `Content-Disposition` de descarga se prueba con un
+upstream simulado; no implica que el endpoint real de descarga esté implementado.

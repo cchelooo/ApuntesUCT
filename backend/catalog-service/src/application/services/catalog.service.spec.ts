@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '.prisma/catalog-client';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { FilterCatalogDto } from '../dtos/filter-catalog.dto';
 import { CatalogService } from './catalog.service';
@@ -114,6 +114,7 @@ describe('CatalogService', () => {
               createdAt: true,
               updatedAt: true,
               subjects: {
+                where: { active: true },
                 select: {
                   id: true,
                   name: true,
@@ -200,14 +201,17 @@ describe('CatalogService', () => {
       const result = await service.filterCatalog({});
 
       expect(prismaService.subject.findMany).toHaveBeenCalledWith({
-        where: {},
+        where: {
+          active: true,
+          career: { active: true, university: { active: true } },
+        },
         include: {
           career: {
             include: {
               university: true,
             },
           },
-          professors: true,
+          professors: { where: { active: true } },
         },
       });
       expect(result).toEqual(mockResult);
@@ -228,11 +232,16 @@ describe('CatalogService', () => {
 
       expect(prismaService.subject.findMany).toHaveBeenCalledWith({
         where: {
-          career: { universityId: 'univ-123' },
+          active: true,
+          career: {
+            universityId: 'univ-123',
+            active: true,
+            university: { active: true },
+          },
           careerId: 'career-123',
           id: 'subj-123',
           professors: {
-            some: { id: 'prof-123' },
+            some: { id: 'prof-123', active: true },
           },
         },
         include: {
@@ -241,7 +250,7 @@ describe('CatalogService', () => {
               university: true,
             },
           },
-          professors: true,
+          professors: { where: { active: true } },
         },
       });
       expect(result).toEqual(mockResult);

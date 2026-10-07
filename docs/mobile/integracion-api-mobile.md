@@ -53,7 +53,7 @@ Implementado en `backend/api-gateway/src/modules/proxy/proxy.module.ts` (issue *
 | Rutas enviadas al proxy | `/api/v1/auth` y `/api/v1/auth/*` (métodos `ALL`) |
 | Servicio destino | `AUTH_SERVICE_URL` (por defecto `http://127.0.0.1:3001`) |
 | Variable de entorno | `AUTH_SERVICE_URL` — ver `backend/api-gateway/.env.example` |
-| Timeout del proxy | `proxyTimeout: 5000` ms (configuración de `http-proxy-middleware`) |
+| Timeout del proxy | `proxyTimeout: 5000` ms (configuración de `httpxy` mediante `serviceProxy`) |
 | Reescritura de ruta | `/api/v1/auth/health` → `/api/v1/health` (el controlador de salud vive en `/health`) |
 | Comportamiento adicional | `changeOrigin: true`; el cuerpo de POST se reenvía (`fixRequestBody`) |
 

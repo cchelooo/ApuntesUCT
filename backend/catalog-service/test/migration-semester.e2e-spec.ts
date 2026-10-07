@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '.prisma/catalog-client';
 
 describe('Migración de base de datos: Columna semester en subjects', () => {
   let prisma: PrismaClient;
@@ -54,6 +54,8 @@ describe('Migración de base de datos: Columna semester en subjects', () => {
     expect(result[0].semester).toBe(1);
 
     // 5. Limpieza de la tabla de prueba
-    await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "subjects_migration_test"`);
+    await prisma.$executeRawUnsafe(
+      `DROP TABLE IF EXISTS "subjects_migration_test"`,
+    );
   });
 });

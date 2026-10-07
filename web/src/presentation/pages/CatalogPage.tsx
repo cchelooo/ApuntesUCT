@@ -18,7 +18,7 @@ export function CatalogPage() {
           compartido la comunidad.
         </p>
 
-        <div className="mt-6 flex w-full max-w-sm items-center gap-2 rounded-sm border border-catalog-line bg-catalog-paper px-3 py-2 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2">
+        <div className="mt-6 flex w-full max-w-sm items-center gap-2 rounded-xs border border-catalog-line bg-catalog-paper px-3 py-2 focus-within:ring-2 focus-within:ring-uct-sky focus-within:ring-offset-2">
           <svg
             viewBox="0 0 20 20"
             className="h-4 w-4 shrink-0 text-catalog-ink/50"
@@ -36,7 +36,7 @@ export function CatalogPage() {
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Buscar por nombre o código"
             aria-label="Buscar asignaturas por nombre o código"
-            className="w-full !bg-transparent text-sm !text-catalog-ink placeholder:!text-catalog-ink/40 focus:!outline-none !border-none focus:!ring-0 focus:!ring-offset-0 !p-0 !m-0 !shadow-none"
+            className="w-full !bg-transparent text-sm !text-catalog-ink placeholder:!text-catalog-ink/40 focus:!outline-hidden !border-none focus:!ring-0 focus:!ring-offset-0 !p-0 !m-0 !shadow-none"
             containerClassName="flex-1"
           />
         </div>
@@ -52,7 +52,7 @@ export function CatalogPage() {
         <CatalogFilterSidebar />
         <div className="min-w-0 flex-1">
           {isError ? (
-            <div className="rounded-sm border border-dashed border-catalog-line bg-catalog-paperMuted px-6 py-12 text-center">
+            <div className="rounded-xs border border-dashed border-catalog-line bg-catalog-paperMuted px-6 py-12 text-center">
               <p className="font-display text-lg text-catalog-ink">
                 No se pudo cargar el catálogo
               </p>
@@ -65,7 +65,7 @@ export function CatalogPage() {
               {Array.from({ length: 8 }).map((_, i) => (
                 <div
                   key={i}
-                  className="h-40 animate-pulse rounded-sm border border-catalog-line bg-catalog-paperMuted"
+                  className="h-40 animate-pulse rounded-xs border border-catalog-line bg-catalog-paperMuted"
                 />
               ))}
             </div>
