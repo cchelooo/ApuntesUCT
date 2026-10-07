@@ -27,18 +27,20 @@ El **API Gateway** (puerto `3000`) es la entrada prevista para los servicios de 
 
 ### 1.2 Excepción: el catálogo NO pasa por el gateway
 
-**Mobile NO consulta el catálogo a través de `:3000`.** La app usa `ApiConfig.catalogBaseUrl` (por defecto `http://10.0.2.2:3002/api/v1` en emulador Android y `http://localhost:3002/api/v1` en local), es decir, **consulta directamente el Catalog Service en `:3002`**, porque el proxy del gateway solo cubre hoy `/api/v1/auth` (sección 2). Cuando el gateway exponga un proxy para `/catalog`, Mobile podrá unificar el tráfico en `:3000` (el código de `api_config.dart` ya está preparado para eso).
+**Mobile NO consulta el catálogo a través de `:3000`.** La app usa `ApiConfig.catalogBaseUrl` (por defecto `http://10.0.2.2:3002/api/v1` en emulador Android y `http://localhost:3002/api/v1` en local), es decir, **consulta directamente el Catalog Service en `:3002`**. El gateway ya enruta `/api/v1/catalog` (y `/api/v1/materials` y `/api/v1/search`, ver sección 8), pero Mobile mantiene la conexión directa por una decisión previa de su implementación, no por una limitación del gateway. El código de `api_config.dart` ya está preparado para migrar a `:3000`.
 
 Por lo tanto, **no es correcto afirmar que toda la comunicación actual pasa por `:3000`**: solo la de auth/salud; el catálogo es la excepción documentada.
 
 ### 1.3 CORS y Swagger
 
-- **CORS:** habilitado en los tres servicios (`app.enableCors()` en api-gateway, auth-service y catalog-service), sin restricción de orígenes en desarrollo.
+- **CORS:** habilitado en api-gateway, auth-service, catalog-service y material-service (`app.enableCors()`), sin restricción de orígenes en desarrollo. `search-service` **no** llama a `enableCors()`, así que su `:3005` directo rechaza peticiones cross-origin; a través del gateway no aplica porque quien responde es el gateway.
 - **Documentación OpenAPI:**
   - Índice de servicios: `http://<host>:3000/api/docs`
   - Spec del gateway (JSON): `http://<host>:3000/api/docs/gateway-json`
   - Auth Service: `http://localhost:3001/api/docs` · JSON `/api/docs-json`
   - Catalog Service: `http://localhost:3002/api/docs` · JSON `/api/docs-json`
+  - Material Service: `http://localhost:3003/api/docs` · JSON `/api/docs-json`
+  - Search Service: `http://localhost:3005/api/docs` · JSON `/api/docs-json`
 
 ---
 
@@ -62,6 +64,38 @@ Implementado en `backend/api-gateway/src/modules/proxy/proxy.module.ts` (issue *
 ```
 
 Verificado en vivo (sección 8): tanto `GET /api/v1/auth/health` como `POST /api/v1/auth/login` devuelven ese `502` cuando el auth-service está caído.
+
+---
+
+## 2b. Gateway → Material y Search: proxy HTTP
+
+Implementado en `backend/api-gateway/src/modules/proxy/proxy.module.ts` (issue **#222**).
+
+| Aspecto | Material | Search |
+|---|---|---|
+| Rutas enviadas al proxy | `/api/v1/materials` y `/api/v1/materials/*` (`ALL`) | `/api/v1/search` y `/api/v1/search/*` (`ALL`) |
+| Servicio destino | `MATERIAL_SERVICE_URL` (por defecto `http://127.0.0.1:3003`) | `SEARCH_SERVICE_URL` (por defecto `http://127.0.0.1:3005`) |
+| Timeout | 5 s | 5 s |
+| Mensaje `502` | `Material Service no disponible` | `Search Service no disponible` |
+
+Comparten el contrato ya verificado con Catalog: conservan método, query, cuerpo,
+`Authorization` y cookies, y usan `fixRequestBody` para reenviar los cuerpos que
+Nest ya procesó. No hay reescritura de ruta: el prefijo `/api/v1` se conserva tal
+cual, lo que encaja con ambos servicios.
+
+```json
+{ "statusCode": 502, "message": "Material Service no disponible" }
+{ "statusCode": 502, "message": "Search Service no disponible" }
+```
+
+**Cómo interpretar las respuestas hoy.** El `502` significa servicio caído, no
+servicio incompleto. Con los servicios levantados:
+
+| Petición | Respuesta | Motivo |
+|---|---|---|
+| `GET /api/v1/search?q=datos` | `200` con `results: []` | El endpoint existe pero la búsqueda desacoplada es un stub |
+| `GET /api/v1/materials` | `200` con `items: []` | El listado paginado está implementado (#318); la base no tiene datos |
+| `GET /api/v1/materials` con el servicio parado | `502` | Destino inalcanzable |
 
 ---
 
@@ -265,7 +299,10 @@ Devuelve la jerarquía **Universidad → Carreras → Asignaturas** (universidad
 | Autenticación real (JWT firmado y autorización) | **Pendiente** | El login actual es mock (sección 3.3); el esquema final es JWT Bearer |
 | Paginación `page`/`limit` (`items`/`total`) | **Propuesta** | **No implementada** en los endpoints actuales de catálogo; si se requiere, debe proponerse y aprobarse el contrato |
 | `year`/`type` en `/catalog/filter` | Pendiente | `501` solo si la secuencia es válida; depende del módulo de Recursos |
-| Proxy Gateway → `/catalog` | Pendiente | Hoy Mobile consulta el catálogo directo en `:3002` (sección 1.2) |
+| Proxy Gateway → `/catalog` | Enrutado, no usado por Mobile | El gateway enruta `/api/v1/catalog`, pero Mobile sigue consultando el catálogo directo en `:3002` por decisión propia (sección 1.2) |
+| Endpoints de Material | **Parcial** | `/api/v1/materials` está enrutada (#222) y `material-service` (#311) ya expone el listado paginado (#318, `200` con `items: []`); el detalle, la subida real y el preview siguen pendientes |
+| Búsqueda en `/api/v1/search` | **Pendiente** | La ruta está enrutada (#222) y `search-service` existe (#305), pero `GET /api/v1/search?q=` devuelve un stub con `results: []` y `total: 0` |
+| Proxy Gateway → `/quality` | **Pendiente** | El gateway no enruta `/api/v1/quality` y el servicio sigue siendo un placeholder |
 
 ---
 

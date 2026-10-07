@@ -125,11 +125,6 @@ describe('Gateway → Auth (HTTP)', () => {
     expect(response.body).toEqual(payload);
   });
 
-  it('no agrega rutas de Material o Search pendientes del Sprint 2', async () => {
-    await request(gateway.getHttpServer()).get('/api/v1/materials').expect(404);
-    await request(gateway.getHttpServer()).get('/api/v1/search').expect(404);
-  });
-
   it.each(['get', 'put', 'patch', 'delete'] as const)(
     'conserva el método %s',
     async (method) => {
