@@ -228,7 +228,7 @@ describe('Catalog Service (e2e)', () => {
 
     afterAll(async () => {
       await prisma.professor.deleteMany({
-        where: { email: { in: [email('a'), email('b')] } },
+        where: { email: { in: [email('a'), email('ai'), email('b')] } },
       });
       await prisma.university.deleteMany({
         where: {
