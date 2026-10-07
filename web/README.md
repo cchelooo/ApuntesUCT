@@ -1,5 +1,15 @@
 # React + TypeScript + Vite
 
+## Estilos y compatibilidad
+
+La web utiliza Tailwind CSS 4.3 mediante `@tailwindcss/vite`. Los colores y
+fuentes se mantienen en `tailwind.config.js`, cargado desde `src/index.css`.
+La paleta clara proviene de `mobile/lib/core/theme/uct_palette.dart`.
+
+Navegadores mínimos: Safari 16.4, Chrome 111 y Firefox 128. Véase la
+[guía de migración de Tailwind](https://tailwindcss.com/docs/upgrade-guide).
+Después de actualizar dependencias hay que reiniciar `npm run dev`.
+
 ## Pruebas
 
 Ejecuta las pruebas en modo interactivo con `npm test` o una sola vez con `npm run test:run`.

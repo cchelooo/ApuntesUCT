@@ -8,7 +8,7 @@ import {
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { FilterCatalogDto } from '../dtos/filter-catalog.dto';
 import { UniversityResponseDto } from '../dtos/catalog-response.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '.prisma/catalog-client';
 import { CreateSubjectDto } from '../dtos/create-subject.dto';
 
 @Injectable()
@@ -39,6 +39,7 @@ export class CatalogService {
             createdAt: true,
             updatedAt: true,
             subjects: {
+              where: { active: true },
               select: {
                 id: true,
                 name: true,
@@ -96,13 +97,14 @@ export class CatalogService {
     }
 
     // 4. Consulta en BD para niveles válidos (1 al 4) utilizando tipos estrictos de Prisma
-    const whereCondition: Prisma.SubjectWhereInput = {};
-
-    if (filters.universityId) {
-      whereCondition.career = {
-        universityId: filters.universityId,
-      };
-    }
+    const whereCondition: Prisma.SubjectWhereInput = {
+      active: true,
+      career: {
+        active: true,
+        university: { active: true },
+        ...(filters.universityId ? { universityId: filters.universityId } : {}),
+      },
+    };
 
     if (filters.careerId) {
       whereCondition.careerId = filters.careerId;
@@ -114,7 +116,7 @@ export class CatalogService {
 
     if (filters.professorId) {
       whereCondition.professors = {
-        some: { id: filters.professorId },
+        some: { id: filters.professorId, active: true },
       };
     }
 
@@ -126,7 +128,7 @@ export class CatalogService {
             university: true,
           },
         },
-        professors: true,
+        professors: { where: { active: true } },
       },
     });
   }
@@ -155,6 +157,8 @@ export class CatalogService {
           code: data.code,
           semester: data.semester,
           careerId: data.careerId,
+          description: data.description,
+          active: data.active,
         },
       });
     } catch (error) {
@@ -177,9 +181,7 @@ export class CatalogService {
     });
 
     if (!subject) {
-      throw new NotFoundException(
-        `La asignatura con ID ${id} no existe.`,
-      );
+      throw new NotFoundException(`La asignatura con ID ${id} no existe.`);
     }
 
     return this.prisma.subject.delete({

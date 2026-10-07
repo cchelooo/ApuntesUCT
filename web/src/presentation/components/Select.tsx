@@ -38,11 +38,11 @@ export const Select = ({
   const containerWidthClass = fullWidth ? 'w-full' : 'w-auto';
 
   const baseSelectClass =
-    'block w-full rounded-md border text-sm transition-colors px-3 py-2 outline-none focus:ring-2 focus:ring-offset-2 bg-white appearance-none';
+    'block w-full rounded-md border text-sm transition-colors px-3 py-2 outline-hidden focus:ring-2 focus:ring-offset-2 bg-white appearance-none';
 
   const stateClass = error
     ? 'border-red-500 text-red-900 focus:border-red-500 focus:ring-red-500'
-    : 'border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500';
+    : 'border-gray-300 text-gray-900 focus:border-uct-sky focus:ring-uct-sky';
 
   const disabledClass = disabled
     ? 'bg-gray-100 opacity-75 cursor-not-allowed'

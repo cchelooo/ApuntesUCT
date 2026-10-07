@@ -44,5 +44,16 @@
     "prisma@6.19.3": true,
     "@prisma/engines@6.19.3": true,
     "@prisma/engines@6.12.0": true
+  },
+  "overrides": {
+    "@nestjs/swagger": {
+      "js-yaml": "5.4.3"
+    },
+    "@istanbuljs/load-nyc-config": {
+      "js-yaml": "4.3.2"
+    },
+    "@prisma/config": {
+      "deepmerge-ts": "8.0.0"
+    }
   }
 }
