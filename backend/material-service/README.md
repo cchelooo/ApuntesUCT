@@ -251,3 +251,13 @@ Los MIME locales documentados son:
 - Word .docx: `application/vnd.openxmlformats-officedocument.wordprocessingml.document`.
 - PowerPoint .ppt: `application/vnd.ms-powerpoint`.
 - PowerPoint .pptx: `application/vnd.openxmlformats-officedocument.presentationml.presentation`.
+
+### Validación del archivo del contrato simulado
+
+Se permiten hasta **15 728 640 bytes inclusive**. Multer limita la recepción y
+el validador vuelve a comprobar el tamaño. El MIME de la respuesta se obtiene
+del contenido: el nombre del archivo y su MIME declarado no determinan la aceptación.
+PDF, DOCX y PPTX usan la detección de Nest; DOC y PPT se identifican leyendo su
+contenedor CFB y los streams de Word/PowerPoint. Un archivo XLS, un contenedor
+dañado o texto renombrado a PDF se rechazan con `415`.
+Esto valida el formato, no sustituye análisis antimalware ni implementa almacenamiento.

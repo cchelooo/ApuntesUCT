@@ -6,7 +6,6 @@ import {
   UseInterceptors,
   ParseFilePipe,
   MaxFileSizeValidator,
-  FileTypeValidator,
   PayloadTooLargeException,
   UnsupportedMediaTypeException,
   BadRequestException,
@@ -28,6 +27,7 @@ import {
   MATERIAL_MIME_TYPES,
   MATERIAL_FILE_DESCRIPTION,
 } from '../dto/create-material.dto';
+import { MaterialFileTypeValidator } from '../validators/material-file-type.validator';
 import { ErrorResponseDto } from '../dto/error-response.dto';
 import { CreateMaterialResponseDto, MaterialStatus } from '../dto/material-response.dto';
 
@@ -39,7 +39,11 @@ const MAX_FILE_SIZE_BYTES = 15728640; // 15 MB
 @ApiExtraModels(ErrorResponseDto, CreateMaterialResponseDto)
 export class MaterialController {
   @Post()
-  @UseInterceptors(FileInterceptor('file'))
+  // Multer corta la recepción antes de cargar un archivo arbitrariamente grande.
+  // Sus límites y MaxFileSizeValidator son exclusivos: se permite exactamente 15 MB.
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE_BYTES + 1, files: 1 } }),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary: 'Subir y registrar un nuevo material o enlace académico',
@@ -162,11 +166,8 @@ export class MaterialController {
       new ParseFilePipe({
         fileIsRequired: false,
         validators: [
-          new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE_BYTES }),
-          new FileTypeValidator({
-            fileType:
-              /(pdf|msword|wordprocessingml\.document|ms-powerpoint|presentationml\.presentation)$/i,
-          }),
+          new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE_BYTES + 1 }),
+          new MaterialFileTypeValidator(),
         ],
         exceptionFactory: (error) => {
           if (error.includes('expected size')) {

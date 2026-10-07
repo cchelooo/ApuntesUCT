@@ -54,7 +54,7 @@ El respaldo contiene el estado previo completo, incluyendo mantenimiento; no es
 un PR de Sprint 2 listo para fusionar. Permite recuperar selectivamente el trabajo.
 No se publicó ninguna rama ni se modificó el historial de main.
 
-**Retirado de la rama activa y conservado en el respaldo:**
+**Retirado al separar el alcance el 5 de octubre y conservado en el respaldo:**
 
 - Los cuatro endpoints académicos y sus nuevas pruebas: corresponden a David,
   semana 1, «Completar Catalog Service y separar definitivamente Material/Search».
@@ -69,10 +69,25 @@ Sus cambios restantes aquí son de paleta y compatibilidad con Tailwind. Tampoco
 se crearon nuevos servicios Material/Search ni se implementaron subida, descarga,
 versionado, búsqueda o endpoints de moderación.
 
-El nuevo proxy conserva únicamente las rutas públicas existentes de Auth/Catalog.
-Las pruebas verifican que Material/Search siguen sin exposición nueva. La
-sustitución de su motor es mantenimiento técnico y debe coordinarse con David
-porque sus tareas del sprint editarán el mismo módulo.
+Al separar el alcance el 5 de octubre, el proxy conservó únicamente las rutas
+públicas existentes de Auth/Catalog. Material/Search quedaron a cargo de la tarea
+correspondiente del sprint.
+
+### Actualización del 6 de octubre: integración del proxy de main
+
+El merge local `d298a3f` incorpora la tarea #222 ya integrada por el equipo en
+main (`1c14b99`). Ahora el Gateway también enruta `/api/v1/materials` y
+`/api/v1/search`, con sus variables de entorno y errores `502` propios.
+La resolución conserva `httpxy` y las correcciones de seguridad de esta rama.
+Se adaptaron las pruebas que dependían de la librería anterior y se retiró la
+expectativa obsoleta de que esas dos rutas devolvieran `404`.
+
+Validación de la integración: compilación y lint del Gateway aprobados,
+21 pruebas unitarias y 41 pruebas HTTP aprobadas; auditoría del backend con
+0 vulnerabilidades reportadas. Las pruebas de Material/Search usan servidores
+simulados: no acreditan todavía el flujo real de subida, almacenamiento y descarga.
+El POST de Material sigue siendo un contrato simulado. No se implementaron
+persistencia, MinIO ni funcionalidades de semanas posteriores al resolver el merge.
 
 ## Correcciones conservadas
 
