@@ -1,7 +1,7 @@
 # Burndown S2
 
 Primer snapshot guardado: 2026-10-03.
-Ultimo snapshot: 2026-10-05.
+Ultimo snapshot: 2026-10-06.
 No se reconstruyen horas de dias sin snapshot.
 
 ## Ventanas del sprint
@@ -18,15 +18,15 @@ Las tareas con `Equipo = Compartido` quedan fuera del burndown de equipos e inte
 
 | Equipo | Items | Horas asignadas | Horas usadas | Horas restantes | Horas excedidas | Grafico |
 |---|---:|---:|---:|---:|---:|---|
-| INT2 | 50 | 120 | 21.2 | 99.3 | 0.5 | [ver (2026-09-30 a 2026-10-28)](charts/team-int2.svg) |
+| INT2 | 50 | 120 | 21.6 | 99 | 0.6 | [ver (2026-09-30 a 2026-10-28)](charts/team-int2.svg) |
 | INT4 | 32 | 80 | 8.5 | 71.5 | 0 | [ver (2026-10-01 a 2026-10-29)](charts/team-int4.svg) |
 
 ## Integrantes
 
 | Equipo | Integrante | Items | Horas asignadas | Horas usadas | Horas restantes | Horas excedidas | Grafico |
 |---|---|---:|---:|---:|---:|---:|---|
-| INT2 | Ailyn Melillan | 9 | 20 | 4.7 | 15.3 | 0 | [ver (2026-09-30 a 2026-10-28)](charts/member-ailynmelillan.svg) |
-| INT2 | Antonio Lara | 8 | 20 | 5.1 | 15 | 0.1 | [ver (2026-09-30 a 2026-10-28)](charts/member-alara2024uct.svg) |
+| INT2 | Ailyn Melillan | 9 | 20 | 5 | 15 | 0 | [ver (2026-09-30 a 2026-10-28)](charts/member-ailynmelillan.svg) |
+| INT2 | Antonio Lara | 8 | 20 | 5.2 | 15 | 0.2 | [ver (2026-09-30 a 2026-10-28)](charts/member-alara2024uct.svg) |
 | INT2 | David Villegas | 9 | 20 | 2 | 18 | 0 | [ver (2026-09-30 a 2026-10-28)](charts/member-david7985.svg) |
 | INT2 | Gabriel Gutierrez | 8 | 20 | 4 | 16 | 0 | [ver (2026-09-30 a 2026-10-28)](charts/member-gabrielgutierrez1.svg) |
 | INT2 | Martina Iturrieta | 8 | 20 | 4.9 | 15.5 | 0.4 | [ver (2026-09-30 a 2026-10-28)](charts/member-kennyaale.svg) |
