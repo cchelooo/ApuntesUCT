@@ -32,11 +32,17 @@ export class SubjectResponseDto {
   })
   semester!: number;
 
-  @ApiPropertyOptional()
-  description?: string;
+  @ApiPropertyOptional({ nullable: true })
+  description?: string | null;
 
   @ApiProperty()
   active!: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Carrera a la que pertenece la asignatura.',
+    format: 'uuid',
+  })
+  careerId?: string;
 
   @ApiPropertyOptional({ type: [ProfessorResponseDto] })
   professors?: ProfessorResponseDto[];
@@ -60,6 +66,12 @@ export class CareerResponseDto {
 
   @ApiProperty()
   active!: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Universidad a la que pertenece la carrera.',
+    format: 'uuid',
+  })
+  universityId?: string;
 
   @ApiPropertyOptional({ type: [SubjectResponseDto] })
   subjects?: SubjectResponseDto[];

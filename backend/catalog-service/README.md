@@ -20,6 +20,52 @@ src/
 └── infrastructure/ # Prisma, configuración, servicios externos
 ```
 
+## Endpoints
+
+Prefijo `api/v1`, todas las rutas cuelgan de `/catalog`:
+
+| Método | Ruta | Descripción |
+| --- | --- | --- |
+| `GET` | `/catalog` | Árbol jerárquico del catálogo (universidades → carreras → asignaturas); no incluye profesores |
+| `GET` | `/catalog/universities` | Listado de universidades activas (selector académico) |
+| `GET` | `/catalog/careers` | Listado de carreras activas; acepta `universityId` |
+| `GET` | `/catalog/subjects` | Listado de asignaturas activas; acepta `careerId` |
+| `GET` | `/catalog/professors` | Listado de profesores activos; acepta `subjectId` |
+| `GET` | `/catalog/filter` | Filtrado jerárquico en 4 niveles: `universityId`, `careerId`, `subjectId`, `professorId` |
+| `POST` | `/catalog/universities` | Crear universidad |
+| `DELETE` | `/catalog/universities/:id` | Eliminar universidad en cascada |
+| `POST` | `/catalog/careers` | Crear carrera |
+| `DELETE` | `/catalog/careers/:id` | Eliminar carrera en cascada |
+| `POST` | `/catalog/professors` | Crear profesor (opcionalmente vinculado con `subjectIds`) |
+| `DELETE` | `/catalog/professors/:id` | Eliminar profesor |
+| `POST` | `/catalog/subjects` | Crear asignatura |
+| `DELETE` | `/catalog/subjects/:id` | Eliminar asignatura |
+
+Los cuatro listados (`/catalog/universities`, `/catalog/careers`, `/catalog/subjects`
+y `/catalog/professors`) devuelven únicamente entidades **activas**, ordenadas por
+nombre, e incorporan el filtro opcional por su padre inmediato (`universityId`,
+`careerId` o `subjectId`). Son los que alimentan los selectores académicos en
+cascada del frontend.
+
+El filtro (`/catalog/filter`) respeta una secuencia jerárquica de 4 niveles
+(`careerId` exige `universityId`, `subjectId` exige `careerId` y `professorId`
+exige `subjectId`). Devuelve `400` si la secuencia es inválida; no emite `404`
+ni `409`.
+
+Los endpoints de gestión (`POST`/`DELETE`) responden `404` cuando la entidad o su
+padre no existe, y `409` cuando el `code` o el `email` ya están registrados.
+
+### Alcance del dominio (separación Catalog / Material / Search)
+
+Catalog modela **únicamente la jerarquía universidad → carrera → asignatura →
+profesor**. Los metadatos de los materiales (`year`, `type`) pertenecen a
+**Material Service** y la búsqueda por año/tipo corresponde a **Search Service**.
+Por lo tanto, `year` y `type` no forman parte del contrato de Catalog: sus
+endpoints no los aceptan ni los resuelven contra `Resource`. Además, el
+`ValidationPipe` con `whitelist` **ignora** silenciosamente cualquier parámetro
+ajeno al DTO (incluidos `year`/`type` heredados de clientes antiguos) en lugar de
+rechazarlo, para no romper la compatibilidad.
+
 ## Base de Datos
 
 Este servicio utiliza **Prisma ORM** junto con PostgreSQL para la gestión del modelo de catálogo.
