@@ -3,8 +3,9 @@
 Microservicio NestJS de materiales académicos con persistencia Prisma (#217).
 Requiere Node.js 22, npm y PostgreSQL. Usa `db-material` de Docker Compose
 (contenedor `db_material`, base `material_db`, puerto local `5436`).
-MinIO se utiliza al guardar archivos mediante el adaptador interno (#231).
-El listado y healthcheck no requieren conectarse a MinIO; el POST con archivo sí.
+MinIO se utiliza al guardar y descargar archivos mediante el adaptador interno (#231, #236).
+El listado y healthcheck no requieren conectarse a MinIO; la subida con archivo y la
+descarga sí.
 
 ## Instalación y ejecución
 
@@ -46,6 +47,7 @@ La compilación genera `dist/main.js`. También se puede ejecutar `npm run start
 | --- | --- |
 | `POST http://localhost:3003/api/v1/materials` | Creación y subida real (contexto de autor local temporal) |
 | `GET http://localhost:3003/api/v1/materials` | Listado paginado de materiales publicados |
+| `GET http://localhost:3003/api/v1/materials/:id/download` | Descarga del archivo de un material publicado |
 | `GET http://localhost:3003/api/v1/health` | Estado del proceso |
 | `GET http://localhost:3003/api/docs` | Swagger UI |
 | `GET http://localhost:3003/api/docs-json` | Especificación OpenAPI |
@@ -128,6 +130,45 @@ El proxy de `/api/v1/materials` en API Gateway corresponde a #222. Esta tarea
 expone el endpoint en el puerto de Material Service (`3003`). Hay ejemplos
 manuales en `backend/http/materials.http`.
 
+## Descarga de materiales (#236)
+
+`GET /api/v1/materials/:id/download` descarga el archivo de la **última versión** del
+material (`versionNumber` mayor) o la versión indicada con `?versionId=<uuid>`.
+Solo sirve materiales `PUBLISHED`; el ID del material debe ser un UUID.
+
+| Parámetro | Tipo | Descripción |
+| --- | --- | --- |
+| `id` | UUID (path) | Identificador del material. |
+| `versionId` | UUID (query, opcional) | Versión concreta a descargar; por defecto la última. |
+
+La versión se resuelve internamente en base de datos; el servidor solo guarda la
+`storageKey` y no la expone en ningún momento. El archivo se streama desde MinIO
+leyendo la clave almacenada en `MaterialVersion.storageKey`; no se genera una URL
+firmada ni se devuelve la ruta interna del bucket.
+
+Respuesta `200 OK` (stream):
+
+- `Content-Type`: el MIME persistido de la versión (`MaterialVersion.mimeType`).
+- `Content-Disposition: attachment; filename="<nombre original>"`.
+- `Content-Length`: el tamaño persistido (`MaterialVersion.fileSize`). El nombre se
+   sanitiza a caracteres ASCII imprimibles; si queda vacío, se usa `material`.
+
+Errores:
+
+| Código | Caso |
+| --- | --- |
+| `400` | UUID inválido, `versionId` no UUID o parámetro desconocido en la query. |
+| `404` | Material inexistente o no publicado, versión inexistente del material, o clave ausente en MinIO. |
+| `503` | Almacenamiento no disponible o error de lectura interno. |
+
+El filtro HTTP global no interviene en el streaming: el cuerpo viaja byte a byte.
+La resolución del material y de la versión se consultan en PostgreSQL antes de tocar
+MinIO, por lo que un material sin versiones responde `404` sin depender del almacenamiento.
+
+Este endpoint no forma parte del listado: no agrega versiones, claves ni URLs al
+contrato paginado. La descarga también está disponible en el Gateway `#222`
+(`/api/v1/materials/:id/download`), que retransmite el stream y sus cabeceras.
+
 ## Estructura
 
 - `src/presentation`: controladores HTTP y módulos de entrada.
@@ -174,7 +215,9 @@ aplicarla si ya está registrada. Para cambios posteriores en desarrollo:
 npm run prisma:migrate --workspace=material-service -- --name nombre_del_cambio
 ```
 
-La descarga y los demás endpoints de materiales quedan para tareas posteriores. El listado no modifica el modelo legado `Resource` de Catalog.
+Los endpoints restantes de materiales y las transiciones de estado quedan para
+tareas posteriores. El listado no modifica el modelo legado `Resource` de Catalog.
+La descarga de materiales publicados se implementa en `#236` (sección anterior).
 
 ## Verificación
 
@@ -266,17 +309,19 @@ Esto valida el formato, no sustituye análisis antimalware.
 
 `StorageModule` exporta el puerto `ObjectStorage` y está importado en
 `MaterialsModule`. Los casos de uso pueden inyectar `ObjectStorage` y llamar a
-`save(buffer, mimeType)`. La implementación usa el SDK oficial
+`save(buffer, mimeType)` y a `get(storageKey)`. La implementación usa el SDK oficial
 [MinIO JavaScript](https://github.com/minio/minio-js/blob/master/docs/API.md).
 
 Cada escritura genera `materials/<UUID>` y devuelve `{ storageKey }` **solo para
 uso interno** (por ejemplo, `MaterialVersion.storageKey`). No acepta el nombre
 original del usuario ni devuelve endpoints, buckets, credenciales o URLs firmadas.
-El MIME debe haber sido validado por el caso de uso antes de guardar.
-Los errores de configuración o escritura se convierten en `ObjectStorageError`
-sin incluir los detalles del SDK. El filtro HTTP existente lo presenta como un
-error genérico 500 si llega sin traducir a una ruta HTTP. El caso de uso de
-creación lo traduce a 502 sin detalles internos.
+`get` lee el objeto por su clave y devuelve un stream de bytes; una clave ausente
+se convierte en `ObjectNotFoundError` y los demás fallos en `ObjectStorageError`.
+El MIME debe haber sido validado por el caso de uso antes de guardar. Los errores
+de configuración o escritura también se convierten en `ObjectStorageError` sin
+incluir los detalles del SDK. El filtro HTTP existente lo presenta como un error
+genérico 500 si llega sin traducir a una ruta HTTP; el caso de uso de creación lo
+traduce a 502 y la descarga a 404/503 sin detalles internos.
 
 La configuración y el cliente se inicializan en la primera escritura. No se
 realizan conexiones durante el arranque. Las variables se validan antes de
@@ -307,8 +352,8 @@ crear el cliente; no se aceptan credenciales vacías.
    las variables indicadas en su `.env.example`.
 
 El adaptador requiere un bucket provisionado: no crea buckets ni cambia políticas
-de acceso. El POST usa este adaptador desde el caso de uso de creación (#233).
-La descarga corresponde a una tarea posterior.
+de acceso. El POST usa este adaptador desde el caso de uso de creación (#233) y la
+descarga también lo consume desde `#236`.
 
 ### Prueba contra MinIO real
 
@@ -320,8 +365,9 @@ MATERIAL_TEST_MINIO=1 npm run test:storage
 
 Esta prueba necesita credenciales de prueba que permitan crear/eliminar buckets
 y leer/escribir/eliminar objetos. Crea un bucket privado temporal con nombre UUID,
-verifica contenido, tamaño, MIME, claves distintas y rechazo del acceso anónimo;
-luego elimina sus propios objetos y bucket. No usa ni modifica el bucket de la
+verifica contenido, tamaño, MIME, claves distintas y rechazo del acceso anónimo,
+además de un round-trip de lectura con `get` y el `404` interno cuando la clave no
+existe; luego elimina sus propios objetos y bucket. No usa ni modifica el bucket de la
 aplicación. Sin `MATERIAL_TEST_MINIO=1` se omite. No carga automáticamente `.env`.
 
 
