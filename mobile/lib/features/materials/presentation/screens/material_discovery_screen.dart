@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:apuntesuct_mobile/core/widgets/empty_state.dart';
 import 'package:apuntesuct_mobile/core/widgets/error_state.dart';
 import 'package:apuntesuct_mobile/core/widgets/loading_state.dart';
+import 'package:apuntesuct_mobile/features/catalog/presentation/providers/academic_hierarchy_provider.dart';
+import 'package:apuntesuct_mobile/features/catalog/presentation/widgets/academic_filter_sheet.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/providers/materials_discovery_provider.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_summary_card.dart';
 import 'package:flutter/material.dart';
@@ -60,77 +62,10 @@ class _MaterialDiscoveryScreenState
   }
 
   void _openFiltersModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return Consumer(
-          builder: (context, ref, _) {
-            final subjectsAsync = ref.watch(availableSubjectsProvider);
-
-            return Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Filtrar por Asignatura',
-                    style: Theme.of(ctx).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  subjectsAsync.when(
-                    loading: () => const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(12),
-                        child: CircularProgressIndicator(),
-                      ),
-                    ),
-                    error: (_, _) =>
-                        const Text('No fue posible obtener las asignaturas.'),
-                    data: (subjects) {
-                      if (subjects.isEmpty) {
-                        return const Text(
-                          'No hay asignaturas disponibles en el catálogo.',
-                          style: TextStyle(color: Colors.grey),
-                        );
-                      }
-                      return Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          ActionChip(
-                            label: const Text('Todas'),
-                            onPressed: () {
-                              ref
-                                  .read(discoveryMaterialsProvider.notifier)
-                                  .setSubject(null);
-                              Navigator.pop(ctx);
-                            },
-                          ),
-                          ...subjects.map(
-                            (s) => ActionChip(
-                              label: Text(s),
-                              onPressed: () {
-                                ref
-                                    .read(discoveryMaterialsProvider.notifier)
-                                    .setSubject(s);
-                                Navigator.pop(ctx);
-                              },
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                ],
-              ),
-            );
-          },
-        );
+    AcademicFilterSheet.show(
+      context,
+      onApply: () {
+        // En #294 se conectará la sincronización directa con los resultados de materiales
       },
     );
   }
@@ -138,6 +73,7 @@ class _MaterialDiscoveryScreenState
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(discoveryMaterialsProvider);
+    final hasHierarchyFilters = ref.watch(hasAcademicHierarchyFiltersProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -166,10 +102,14 @@ class _MaterialDiscoveryScreenState
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton.filledTonal(
-                  icon: const Icon(Icons.tune_rounded),
-                  tooltip: 'Filtros',
-                  onPressed: () => _openFiltersModal(context),
+                Badge(
+                  isLabelVisible: hasHierarchyFilters,
+                  smallSize: 8,
+                  child: IconButton.filledTonal(
+                    icon: const Icon(Icons.tune_rounded),
+                    tooltip: 'Filtros Académicos',
+                    onPressed: () => _openFiltersModal(context),
+                  ),
                 ),
               ],
             ),
