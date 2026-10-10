@@ -5,4 +5,6 @@ export interface MaterialListItem {
   professorName: string | null;
   year: number | null;
   type: string | null;
+  subjectId?: string | null;
+  professorId?: string | null;
 }

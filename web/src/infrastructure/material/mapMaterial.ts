@@ -16,10 +16,12 @@ export function mapRawMaterial(raw: RawMaterial): MaterialListItem {
   return {
     id: String(raw.id),
     title: text(raw.title) ?? UNTITLED,
-    subjectName: text(raw.subjectName) ?? text(raw.subject?.name),
-    professorName: text(raw.professorName) ?? text(raw.professor?.name),
-    year: integer(raw.year),
-    type: text(raw.type),
+    year: integer(raw.academicYear),
+    type: text(raw.materialType),
+    subjectName: null,
+    professorName: null,
+    subjectId: text(raw.subjectId),
+    professorId: text(raw.professorId),
   };
 }
 

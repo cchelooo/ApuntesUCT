@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useCatalogNamesQuery } from '../../../application/catalog/useCatalogNamesQuery';
 import { useMaterialsQuery } from '../../../application/material/useMaterialsQuery';
+import { resolveMaterialNames } from '../../../application/material/resolveMaterialNames';
 import { DEFAULT_MATERIALS_PAGE_SIZE } from '../../../infrastructure/material/materialApi';
 import { mapMaterialError } from '../../../infrastructure/material/materialErrorHandler';
 import { Alert } from '../Alert';
@@ -17,6 +19,12 @@ export function MaterialListSection({
   const [page, setPage] = useState(1);
   const { data, isLoading, isError, error, refetch, isFetching } =
     useMaterialsQuery({ page, pageSize });
+  const { data: names } = useCatalogNamesQuery();
+
+  const materials = useMemo(
+    () => resolveMaterialNames(data?.items ?? [], names),
+    [data, names]
+  );
 
   if (isError && !data) {
     return (
@@ -46,7 +54,7 @@ export function MaterialListSection({
           className="mb-4"
         />
       )}
-      <MaterialList materials={data?.items ?? []} isLoading={isLoading} />
+      <MaterialList materials={materials} isLoading={isLoading} />
       {data && (
         <MaterialPagination
           page={page}

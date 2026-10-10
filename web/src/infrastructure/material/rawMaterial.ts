@@ -1,13 +1,10 @@
 export interface RawMaterial {
   id: string;
   title?: string | null;
-  year?: number | null;
-  type?: string | null;
+  academicYear?: number | null;
+  materialType?: string | null;
   subjectId?: string | null;
-  subjectName?: string | null;
-  subject?: { name?: string | null } | null;
-  professorName?: string | null;
-  professor?: { name?: string | null } | null;
+  professorId?: string | null;
 }
 
 export interface RawMaterialPage {
