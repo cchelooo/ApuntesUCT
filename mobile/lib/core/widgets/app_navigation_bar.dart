@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 /// Destinos principales disponibles en la navegación inferior de la app.
-enum AppNavigationDestination { home, search, library, profile }
+///
+/// `materials` se agrega al final (issue #279) para no desplazar los índices
+/// 0-3 existentes (home/search/library/profile).
+enum AppNavigationDestination { home, search, library, profile, materials }
 
 /// Barra de navegación inferior compartida por las pantallas principales.
 ///
@@ -39,6 +42,11 @@ class AppNavigationBar extends StatelessWidget {
       icon: Icon(Icons.person_outline_rounded),
       selectedIcon: Icon(Icons.person_rounded),
       label: 'Perfil',
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.upload_file_outlined),
+      selectedIcon: Icon(Icons.upload_file),
+      label: 'Materiales',
     ),
   ];
 
