@@ -19,11 +19,15 @@ const settings = {
 
 describe('MinioStorageAdapter', () => {
   const putObject = jest.fn();
+  const removeObject = jest.fn();
   let storage: ObjectStorage;
 
   beforeEach(async () => {
+    removeObject.mockReset().mockResolvedValue(undefined);
     putObject.mockReset().mockResolvedValue({ etag: 'etag' });
-    jest.mocked(Client).mockImplementation(() => ({ putObject }) as unknown as Client);
+    jest
+      .mocked(Client)
+      .mockImplementation(() => ({ putObject, removeObject }) as unknown as Client);
     const module = await Test.createTestingModule({ imports: [StorageModule] })
       .overrideProvider(ConfigService)
       .useValue(new ConfigService(settings))
@@ -66,6 +70,16 @@ describe('MinioStorageAdapter', () => {
     await expect(storage.save(Buffer.from('x'), 'application/pdf')).rejects.toEqual(
       new ObjectStorageError(),
     );
+  });
+
+  it('elimina del bucket configurado sin depender de una subida previa', async () => {
+    await storage.remove('materials/uuid');
+    expect(removeObject).toHaveBeenCalledWith('private-materials', 'materials/uuid');
+  });
+
+  it('oculta detalles internos cuando falla el borrado', async () => {
+    removeObject.mockRejectedValue(new Error('private endpoint secret'));
+    await expect(storage.remove('materials/uuid')).rejects.toEqual(new ObjectStorageError());
   });
 
   it('permite instanciar sin configuración pero rechaza guardar sin credenciales', async () => {

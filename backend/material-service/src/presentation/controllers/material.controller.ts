@@ -29,7 +29,10 @@ import {
 } from '../dto/create-material.dto';
 import { MaterialFileTypeValidator } from '../validators/material-file-type.validator';
 import { ErrorResponseDto } from '../dto/error-response.dto';
-import { CreateMaterialResponseDto, MaterialStatus } from '../dto/material-response.dto';
+import { CreateMaterialResponseDto } from '../dto/material-response.dto';
+
+import { CreateMaterial } from '../../application/use-cases/create-material';
+import { MaterialAuthorProvider } from '../../infrastructure/auth/material-author.provider';
 
 const MAX_FILE_SIZE_BYTES = 15728640; // 15 MB
 
@@ -38,6 +41,11 @@ const MAX_FILE_SIZE_BYTES = 15728640; // 15 MB
 @ApiBearerAuth()
 @ApiExtraModels(ErrorResponseDto, CreateMaterialResponseDto)
 export class MaterialController {
+  constructor(
+    private readonly create: CreateMaterial,
+    private readonly author: MaterialAuthorProvider,
+  ) {}
+
   @Post()
   // Multer corta la recepción antes de cargar un archivo arbitrariamente grande.
   // Sus límites y MaxFileSizeValidator son exclusivos: se permite exactamente 15 MB.
@@ -60,8 +68,9 @@ export class MaterialController {
 - **Límite de Archivo:** Máximo **15 MB (15,728,640 bytes)**.
 - **MIMEs Permitidos:** ${MATERIAL_MIME_TYPES.join(', ')}.
 - **Relación del tipo con persistencia/listado:** ${MATERIAL_TYPE_DESCRIPTION}
-- **Autenticación:** Requiere header \`Authorization: Bearer <token>\`.
-- **Estado de Implementación:** Respuesta simulada (Stub).
+- **Autenticación:** Integración pendiente. El token simulado de Auth no autoriza esta operación.
+- **Estado de Implementación:** Persistencia real en PostgreSQL y MinIO.
+- **Autor temporal:** Solo desarrollo con contexto local habilitado por entorno; Auth real pendiente.
     `,
   })
   @ApiBody({
@@ -120,7 +129,7 @@ export class MaterialController {
   })
   @ApiResponse({
     status: 201,
-    description: 'Material registrado en estado PENDING_REVIEW (Respuesta Simulada / Stub).',
+    description: 'Material persistido en estado PENDING_REVIEW.',
     type: CreateMaterialResponseDto,
   })
   @ApiResponse({
@@ -131,12 +140,7 @@ export class MaterialController {
   })
   @ApiResponse({
     status: 401,
-    description: 'Unauthorized - Header Authorization: Bearer <token> ausente o inválido.',
-    type: ErrorResponseDto,
-  })
-  @ApiResponse({
-    status: 404,
-    description: 'Not Found - La asignatura (subjectId) o carrera no existe.',
+    description: 'Unauthorized - Contexto de autor no disponible.',
     type: ErrorResponseDto,
   })
   @ApiResponse({
@@ -186,51 +190,6 @@ export class MaterialController {
     )
     file?: Express.Multer.File,
   ) {
-    // Reglas cruzadas segun tipo de material
-    if (dto.type === MaterialType.LINK) {
-      if (!dto.externalLink) {
-        throw new BadRequestException(
-          'Para materiales de tipo LINK es obligatorio especificar externalLink (URL válida).',
-        );
-      }
-      if (file) {
-        throw new BadRequestException(
-          'Los materiales de tipo LINK no deben incluir un archivo adjunto.',
-        );
-      }
-    } else {
-      // DOCUMENT, PRESENTATION, EXAM, SUMMARY exigen archivo
-      if (!file) {
-        throw new BadRequestException(
-          `Para el tipo de material '${dto.type}' es obligatorio adjuntar un archivo local.`,
-        );
-      }
-    }
-
-    // Respuesta Simulada (Stub) alineada con CreateMaterialResponseDto
-    return {
-      status: 'success',
-      isSimulatedResponse: true,
-      message: 'Material registrado exitosamente en el contrato del servicio.',
-      data: {
-        id: 'mat_' + Date.now(),
-        title: dto.title,
-        description: dto.description || null,
-        year: dto.year,
-        type: dto.type,
-        status: MaterialStatus.PENDING_REVIEW,
-        subjectId: dto.subjectId,
-        careerId: dto.careerId || null,
-        professorId: dto.professorId || null,
-        universityId: 'UNIV-UCT-01',
-        fileUrl: file
-          ? `https://storage.academico.cl/materials/${dto.year}/${file.originalname}`
-          : null,
-        fileSize: file ? file.size : null,
-        mimeType: file ? file.mimetype : null,
-        externalLink: dto.externalLink || null,
-        createdAt: new Date().toISOString(),
-      },
-    };
+    return this.create.execute(dto, this.author.resolve(), file);
   }
 }

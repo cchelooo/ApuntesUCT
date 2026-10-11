@@ -19,12 +19,7 @@ export class MinioStorageAdapter extends ObjectStorage {
 
   async save(content: Buffer, contentType: string): Promise<StoredObject> {
     try {
-      // Inicialización diferida: los endpoints de consulta no requieren MinIO.
-      if (!this.connection) {
-        const options = readMinioConfig(this.config);
-        this.connection = { client: new Client(options.client), bucket: options.bucket };
-      }
-      const { client, bucket } = this.connection;
+      const { client, bucket } = this.getConnection();
       const storageKey = `materials/${randomUUID()}`;
       await client.putObject(bucket, storageKey, content, content.length, {
         'Content-Type': contentType,
@@ -34,5 +29,23 @@ export class MinioStorageAdapter extends ObjectStorage {
       // Los errores del SDK pueden incluir endpoint, bucket y datos de la petición.
       throw new ObjectStorageError();
     }
+  }
+
+  async remove(storageKey: string): Promise<void> {
+    try {
+      const { client, bucket } = this.getConnection();
+      await client.removeObject(bucket, storageKey);
+    } catch {
+      throw new ObjectStorageError();
+    }
+  }
+
+  private getConnection() {
+    // Inicialización diferida: los endpoints de consulta no requieren MinIO.
+    if (!this.connection) {
+      const options = readMinioConfig(this.config);
+      this.connection = { client: new Client(options.client), bucket: options.bucket };
+    }
+    return this.connection;
   }
 }
