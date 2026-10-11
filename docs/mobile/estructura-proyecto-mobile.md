@@ -118,7 +118,7 @@ mobile/
 | `android/` | Integración nativa Android: Gradle, manifest, permisos y configuración de la aplicación. |
 | `ios/` | Integración nativa iOS: Xcode, assets, launch screen y configuración de Runner. |
 | `lib/core/` | Infraestructura compartida: red, errores, tema, validación y widgets base. |
-| `lib/core/config/` | Resolución de URLs. `ApiConfig` usa `API_GATEWAY_URL`/`CATALOG_SERVICE_URL`, `10.0.2.2` en emulador Android y `localhost` en otras plataformas locales. |
+| `lib/core/config/` | Resolución de la entrada pública. `ApiConfig` usa únicamente `API_GATEWAY_URL`, `10.0.2.2` en emulador Android y `localhost` en simulador iOS/escritorio. |
 | `lib/core/network/` | Cliente Dio, interceptor de errores y representación de estados asíncronos. |
 | `lib/core/theme/` | Tema Material 3, colores institucionales y consistencia visual. |
 | `lib/core/validation/` | Reglas de validación de nombre, correo institucional, contraseñas y confirmación. |

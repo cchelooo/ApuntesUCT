@@ -1,0 +1,23 @@
+{
+  "items": [{
+    "id": "00000000-0000-4000-8000-000000000001",
+    "title": "Apunte publicado",
+    "description": null,
+    "uploaderId": "00000000-0000-4000-8000-000000000002",
+    "academicOfferingId": null,
+    "universityId": null,
+    "careerId": null,
+    "subjectId": "subject-test",
+    "professorId": null,
+    "materialTypeId": "00000000-0000-4000-8000-000000000003",
+    "materialType": "DOCUMENT",
+    "academicYear": 2026,
+    "status": "PUBLISHED",
+    "verified": false,
+    "createdAt": "2026-10-07T12:00:00.000Z",
+    "updatedAt": "2026-10-07T12:00:00.000Z"
+  }],
+  "page": 2,
+  "pageSize": 2,
+  "total": 3
+}
