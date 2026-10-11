@@ -11,10 +11,10 @@ export enum MaterialType {
 
 /** Public POST codes map to the name of a local MaterialType record. */
 export const MATERIAL_TYPE_DESCRIPTION =
-  'Código público del tipo de material. Al implementar persistencia, type se resolverá ' +
+  'Código público del tipo de material. type se resuelve ' +
   'por coincidencia exacta con MaterialType.name de un registro activo y su id se ' +
-  'guardará como materialTypeId. GET /materials expone ese id como materialTypeId ' +
-  'y el nombre como materialType. Este POST simulado no consulta ni crea tipos en BD. ' +
+  'guarda como materialTypeId. GET /materials expone ese id como materialTypeId ' +
+  'y el nombre como materialType. Los tipos deben existir y estar activos en BD. ' +
   'El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.';
 
 export const MATERIAL_MIME_TYPES = [
@@ -38,6 +38,7 @@ export class CreateMaterialDto {
   })
   @IsString()
   @IsNotEmpty()
+  @Matches(/\S/u, { message: 'title debe contener al menos un carácter que no sea espacio' })
   title!: string;
 
   @ApiPropertyOptional({
@@ -70,6 +71,7 @@ export class CreateMaterialDto {
   })
   @IsString()
   @IsNotEmpty()
+  @Matches(/\S/u, { message: 'subjectId debe contener al menos un carácter que no sea espacio' })
   subjectId!: string;
 
   @ApiPropertyOptional({
@@ -94,7 +96,10 @@ export class CreateMaterialDto {
     example: 'https://drive.google.com/file/d/xyz/view',
   })
   @IsOptional()
-  @IsUrl({}, { message: 'externalLink debe ser una URL válida (ej. https://...)' })
+  @IsUrl(
+    { protocols: ['http', 'https'], require_protocol: true },
+    { message: 'externalLink debe ser una URL válida (ej. https://...)' },
+  )
   externalLink?: string;
 
   @ApiPropertyOptional({

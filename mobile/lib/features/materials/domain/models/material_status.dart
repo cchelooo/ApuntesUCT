@@ -1,7 +1,8 @@
-/// Estado del dominio Mobile. Los valores del transporte deben contrastarse
-/// con OpenAPI cuando INT2 publique el contrato de Material Service.
+/// Estado del dominio Mobile. GET /materials publica PUBLISHED en OpenAPI;
+/// APPROVED se conserva por compatibilidad con los fixtures visuales.
 enum MaterialStatus {
   pendingReview('PENDING_REVIEW'),
+  published('PUBLISHED'),
   approved('APPROVED'),
   rejected('REJECTED'),
   withdrawn('WITHDRAWN'),
@@ -13,6 +14,7 @@ enum MaterialStatus {
 
   String get label => switch (this) {
     pendingReview => 'En revisión',
+    published => 'Publicado',
     approved => 'Aprobado',
     rejected => 'Rechazado',
     withdrawn => 'Retirado',
@@ -29,6 +31,7 @@ enum MaterialStatus {
 
     return switch (value.trim().toUpperCase()) {
       'PENDING_REVIEW' || 'PENDIENTE' => pendingReview,
+      'PUBLISHED' => published,
       'APPROVED' || 'APROBADO' => approved,
       'REJECTED' || 'RECHAZADO' => rejected,
       'WITHDRAWN' || 'RETIRADO' => withdrawn,

@@ -11,15 +11,33 @@ import {
 import type { Request } from 'express';
 import { CreateMaterialDto, MaterialType } from '../dto/create-material.dto';
 import { ErrorResponseDto } from '../dto/error-response.dto';
-import { CreateMaterialResponseDto, MaterialStatus } from '../dto/material-response.dto';
+import { CreateMaterialResponseDto } from '../dto/material-response.dto';
 
-const MAX_FILE_SIZE_BYTES = 15728640; // 15 MB
+import { CreateMaterial } from '../../application/use-cases/create-material';
+import { MaterialAuthorProvider } from '../../infrastructure/auth/material-author.provider';
+
+const MATERIAL_MIME_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+];
+
+const MATERIAL_TYPE_DESCRIPTION = 'MaterialType.name define la categoría del material relacionado con materialTypeId y los recursos activos mostrados en GET /materials.';
+
+const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15 MB exactos (15,728,640 bytes)
 
 @ApiTags('Materials')
 @Controller('materials')
 @ApiBearerAuth()
 @ApiExtraModels(ErrorResponseDto, CreateMaterialResponseDto)
 export class MaterialController {
+
+  constructor(
+    private readonly create: CreateMaterial,
+    private readonly author: MaterialAuthorProvider,
+  ) {}
 
   @Post()
   @UseInterceptors(FileInterceptor('file'))
@@ -30,12 +48,14 @@ export class MaterialController {
 **REGLAS DE SEGURIDAD Y VALIDACIÓN EN SERVIDOR:**
 - **Autenticación:** Requiere cabecera \`Authorization: Bearer <token>\` vía botón Authorize (Retorna \`401\` si falta o es inválida).
 - **Tamaño máximo:** Límite estricto de 15 MB / 15,728,640 bytes (Retorna \`413\` si se excede).
-- **Tipos MIME permitidos:** PDF (\`application/pdf\`), Word (\`.doc\`, \`.docx\`) y PowerPoint (\`.ppt\`, \`.pptx\`) (Retorna \`415\` si no es compatible).
+- **Tipos MIME permitidos:** ${MATERIAL_MIME_TYPES.join(', ')} (Retorna \`415\` si no es compatible).
 - **Archivo vacío:** Se rechaza si el archivo pesa 0 bytes (Retorna \`400\`).
 - **Metadatos obligatorios y formato:** \`title\`, \`year\` (YYYY), \`type\` y \`subjectId\` validados rigurosamente (Retorna \`400\` si fallan).
 - **Reglas de Negocio por Tipo:** 
   - \`LINK\` exige \`externalLink\` válido y prohíbe archivo.
-  - \`DOCUMENT\`, \`PRESENTATION\`, \`EXAM\` y \`SUMMARY\` exigen archivo local obligatorio.
+  - \`DOCUMENT\`, \`PRESENTATION\`, \`EXAM\`, \`SUMMARY\` exigen archivo local obligatorio.
+- **Relación del tipo:** ${MATERIAL_TYPE_DESCRIPTION}
+- **Endpoints relacionados:** GET /materials para listar recursos activos con materialTypeId.
 - **Seguridad de almacenamiento:** Ningún archivo es almacenado ni procesado si la petición falla en las validaciones previas.
     `
   })
@@ -47,12 +67,21 @@ export class MaterialController {
         title: { type: 'string', example: 'Guía Práctica de Álgebra Lineal' },
         description: { type: 'string', example: 'Ejercicios resueltos sobre valores y vectores propios.' },
         year: { type: 'string', example: '2026' },
-        type: { type: 'string', enum: Object.values(MaterialType), example: MaterialType.DOCUMENT },
+        type: { 
+          type: 'string', 
+          enum: Object.values(MaterialType), 
+          example: MaterialType.DOCUMENT,
+          description: MATERIAL_TYPE_DESCRIPTION 
+        },
         subjectId: { type: 'string', example: 'SUBJ-102' },
         careerId: { type: 'string', example: 'CAREER-INF-01' },
         professorId: { type: 'string', example: 'prof_88321' },
         externalLink: { type: 'string', example: 'https://drive.google.com/file/d/xyz/view' },
-        file: { type: 'string', format: 'binary', description: 'Archivo binario local (Máx 15MB)' },
+        file: { 
+          type: 'string', 
+          format: 'binary', 
+          description: `Archivo binario local (Máx 15MB). MIMEs permitidos: ${MATERIAL_MIME_TYPES.join(', ')}` 
+        },
       },
       required: ['title', 'year', 'type', 'subjectId'],
     },
@@ -84,7 +113,7 @@ export class MaterialController {
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'Material registrado en estado PENDING_REVIEW.', type: CreateMaterialResponseDto })
+  @ApiResponse({ status: 201, description: 'Material persistido en estado PENDING_REVIEW.', type: CreateMaterialResponseDto })
   @ApiResponse({ 
     status: 400, 
     description: 'Bad Request - Metadatos incorrectos, año inválido, archivo vacío o regla de tipo incumplida.',
@@ -225,28 +254,7 @@ export class MaterialController {
       }
     }
 
-    // Respuesta simulada exitosa (Stub)
-    return {
-      status: 'success',
-      isSimulatedResponse: true,
-      message: 'Material validado y registrado exitosamente en estado PENDING_REVIEW.',
-      data: {
-        id: 'mat_' + Date.now(),
-        title: dto.title,
-        description: dto.description || null,
-        year: dto.year,
-        type: dto.type,
-        status: MaterialStatus.PENDING_REVIEW,
-        subjectId: dto.subjectId,
-        careerId: dto.careerId || null,
-        professorId: dto.professorId || null,
-        universityId: 'UNIV-UCT-01',
-        fileUrl: file ? `https://storage.academico.cl/materials/${dto.year}/${file.originalname}` : null,
-        fileSize: file ? file.size : null,
-        mimeType: file ? file.mimetype : null,
-        externalLink: dto.externalLink || null,
-        createdAt: new Date().toISOString(),
-      },
-    };
+    // 4. Ejecución del caso de uso
+    return this.create.execute(dto, this.author.resolve(), file);
   }
 }

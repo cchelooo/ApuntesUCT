@@ -59,7 +59,11 @@ flutter emulators --launch <emulator-id>
 
 ## Configuración de red y conexión con API Gateway
 
-La aplicación móvil se conecta con el ecosistema de backend a través del **API Gateway** (`:3000`) para autenticación y salud, y directamente con el **Catalog Service** (`:3002`) para el catálogo académico (excepción arquitectónica temporal documentada en [`docs/mobile/integracion-api-mobile.md`](../docs/mobile/integracion-api-mobile.md)).
+La aplicación móvil utiliza el **API Gateway** (`:3000`) como única entrada HTTP. Auth, Catalog y el listado de Material comparten `apiclientProvider`, su configuración e interceptores. `CATALOG_SERVICE_URL` ya no configura Mobile.
+
+`materialListingRepositoryProvider` consume `GET /materials?page=...&pageSize=...` y `materialListProvider(page)` expone carga, datos y error. El listado interpreta el estado `PUBLISHED` del Backend. Tanto este repositorio como el de Catalog se pueden reemplazar por un fake mediante overrides de Riverpod.
+
+La pantalla de búsqueda continúa usando `MockMaterialsRepository`: esta tarea prepara la conexión del listado básico, sin conectar búsqueda/filtros al endpoint de Material ni implementar subida, detalle, descarga o versionado.
 
 Las URLs base se resuelven mediante la clase `ApiConfig` (`lib/core/config/api_config.dart`) y pueden ser parametrizadas en tiempo de compilación con `--dart-define`.
 
@@ -67,8 +71,7 @@ Las URLs base se resuelven mediante la clase `ApiConfig` (`lib/core/config/api_c
 
 | Variable | Valor por defecto | Descripción |
 |---|---|---|
-| `API_GATEWAY_URL` | Android: `http://10.0.2.2:3000/api/v1`<br>Desktop/Web: `http://localhost:3000/api/v1` | URL base del API Gateway (Auth y salud). |
-| `CATALOG_SERVICE_URL` | Android: `http://10.0.2.2:3002/api/v1`<br>Desktop/Web: `http://localhost:3002/api/v1` | URL base directa del Catalog Service. |
+| `API_GATEWAY_URL` | Android: `http://10.0.2.2:3000/api/v1`<br>iOS Simulator/Desktop/Web: `http://localhost:3000/api/v1` | Única URL base HTTP de Mobile. |
 | `AUTH_DEMO_MODE` | `false` | Si se define en `true`, activa `MockAuthRepository` para demostraciones o desarrollo offline sin requerir el backend levantado. |
 
 ### Ejemplos de ejecución según entorno
@@ -79,26 +82,23 @@ Las URLs base se resuelven mediante la clase `ApiConfig` (`lib/core/config/api_c
 
 ```bash
 flutter run \
-  --dart-define=API_GATEWAY_URL=http://10.0.2.2:3000/api/v1 \
-  --dart-define=CATALOG_SERVICE_URL=http://10.0.2.2:3002/api/v1
+  --dart-define=API_GATEWAY_URL=http://10.0.2.2:3000/api/v1
 ```
 
-#### 2. Escritorio / Localhost / Web
+#### 2. Simulador iOS / Escritorio / Localhost / Web
 
 ```bash
 flutter run \
-  --dart-define=API_GATEWAY_URL=http://localhost:3000/api/v1 \
-  --dart-define=CATALOG_SERVICE_URL=http://localhost:3002/api/v1
+  --dart-define=API_GATEWAY_URL=http://localhost:3000/api/v1
 ```
 
 #### 3. Dispositivo físico (misma red Wi-Fi / LAN)
 
-Reemplaza `192.168.1.X` con la dirección IP local de tu computador en la red Wi-Fi (asegúrate de que los puertos 3000 y 3002 no estén bloqueados por el firewall):
+Reemplaza `192.168.1.X` con la dirección IP local de tu computador en la red Wi-Fi (asegúrate de que el puerto 3000 no esté bloqueado por el firewall):
 
 ```bash
 flutter run -d <device-id> \
-  --dart-define=API_GATEWAY_URL=http://192.168.1.50:3000/api/v1 \
-  --dart-define=CATALOG_SERVICE_URL=http://192.168.1.50:3002/api/v1
+  --dart-define=API_GATEWAY_URL=http://192.168.1.50:3000/api/v1
 ```
 
 #### 4. Modo demostración offline (sin Backend)
@@ -161,6 +161,35 @@ flutter test test/features/auth/presentation/login_dio_test.dart
 flutter test --coverage
 ```
 
+### Comprobación HTTP con Backend real (opcional)
+
+El archivo `test/integration/gateway_live_test.dart` se omite en la ejecución
+normal. Para activarlo, levantar Gateway, Catalog y Material con sus bases
+migradas siguiendo los README de [Backend](../backend/README.md) y
+[Material Service](../backend/material-service/README.md). Desde `mobile/`:
+
+```bash
+flutter test --dart-define=RUN_GATEWAY_SMOKE=true \
+  --dart-define=API_GATEWAY_URL=http://localhost:3000/api/v1 \
+  test/integration/gateway_live_test.dart
+```
+
+Con datos de prueba existentes se pueden añadir
+`--dart-define=EXPECTED_SUBJECT_ID=<id>` y
+`--dart-define=EXPECTED_MATERIAL_ID=<id-publicado>` para comprobar registros
+concretos. Sin esos valores también se admite una base vacía. La prueba solo lee
+datos; no crea ni elimina registros.
+
+Para comprobar los errores 502, detener **solo los procesos de Catalog y Material**,
+mantener Gateway levantado y ejecutar:
+
+```bash
+flutter test --dart-define=RUN_GATEWAY_SMOKE=true \
+  --dart-define=GATEWAY_SERVICES_UNAVAILABLE=true \
+  --dart-define=API_GATEWAY_URL=http://localhost:3000/api/v1 \
+  test/integration/gateway_live_test.dart
+```
+
 ### Limpieza y mantenimiento del proyecto
 
 Si experimentas problemas con paquetes o artefactos de compilación obsoletos:
@@ -183,4 +212,3 @@ flutter doctor
 - [Estructura del proyecto Mobile](../docs/mobile/estructura-proyecto-mobile.md) — convención de carpetas por capas y features.
 - [Tema visual y diseño](../docs/mobile/tema-visual.md) — paleta de colores institucional, tipografía y componentes base.
 - [Puertos y ejecución local del Backend](../backend/README.md) — instrucciones para levantar Gateway, Auth y Catalog.
-
