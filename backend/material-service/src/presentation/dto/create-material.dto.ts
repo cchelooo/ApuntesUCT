@@ -38,6 +38,7 @@ export class CreateMaterialDto {
   })
   @IsString()
   @IsNotEmpty()
+  @Matches(/\S/u, { message: 'title debe contener al menos un carácter que no sea espacio' })
   title!: string;
 
   @ApiPropertyOptional({
@@ -70,6 +71,7 @@ export class CreateMaterialDto {
   })
   @IsString()
   @IsNotEmpty()
+  @Matches(/\S/u, { message: 'subjectId debe contener al menos un carácter que no sea espacio' })
   subjectId!: string;
 
   @ApiPropertyOptional({
