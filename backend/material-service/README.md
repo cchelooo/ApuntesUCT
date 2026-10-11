@@ -3,13 +3,15 @@
 Microservicio NestJS de materiales académicos con persistencia Prisma (#217).
 Requiere Node.js 22, npm y PostgreSQL. Usa `db-material` de Docker Compose
 (contenedor `db_material`, base `material_db`, puerto local `5436`).
-MinIO todavía no es necesario para ejecutar el servicio.
+MinIO se utiliza al guardar archivos mediante el adaptador interno (#231).
+El listado, healthcheck y contrato POST simulado no requieren conectarse a MinIO.
 
 ## Instalación y ejecución
 
 Desde la raíz del repositorio:
 
 ```bash
+cp .env.example .env # solo si no existe; completar credenciales de MinIO
 docker compose up -d db-material
 cd backend
 npm ci
@@ -261,3 +263,66 @@ PDF, DOCX y PPTX usan la detección de Nest; DOC y PPT se identifican leyendo su
 contenedor CFB y los streams de Word/PowerPoint. Un archivo XLS, un contenedor
 dañado o texto renombrado a PDF se rechazan con `415`.
 Esto valida el formato, no sustituye análisis antimalware ni implementa almacenamiento.
+
+
+## Adaptador de almacenamiento MinIO (#231)
+
+`StorageModule` exporta el puerto `ObjectStorage` y está importado en
+`MaterialsModule`. Los casos de uso pueden inyectar `ObjectStorage` y llamar a
+`save(buffer, mimeType)`. La implementación usa el SDK oficial
+[MinIO JavaScript](https://github.com/minio/minio-js/blob/master/docs/API.md).
+
+Cada escritura genera `materials/<UUID>` y devuelve `{ storageKey }` **solo para
+uso interno** (por ejemplo, `MaterialVersion.storageKey`). No acepta el nombre
+original del usuario ni devuelve endpoints, buckets, credenciales o URLs firmadas.
+El MIME debe haber sido validado por el caso de uso antes de guardar.
+Los errores de configuración o escritura se convierten en `ObjectStorageError`
+sin incluir los detalles del SDK. El filtro HTTP existente lo presenta como un
+error genérico 500 si llega a una ruta HTTP.
+
+La configuración y el cliente se inicializan en la primera escritura. No se
+realizan conexiones durante el arranque. Las variables se validan antes de
+crear el cliente; no se aceptan credenciales vacías.
+
+| Variable | Uso |
+| --- | --- |
+| `MINIO_ENDPOINT` | Host sin protocolo ni ruta; `localhost` en desarrollo, `minio` desde la red Compose |
+| `MINIO_PORT` | Puerto S3, por defecto `9000` (no el de la consola) |
+| `MINIO_USE_SSL` | Literal `true` o `false`, por defecto `false` para desarrollo local |
+| `MINIO_BUCKET` | Nombre del bucket privado existente |
+| `MINIO_ACCESS_KEY` | Credencial del usuario de servicio |
+| `MINIO_SECRET_KEY` | Secreto del usuario de servicio |
+
+### Preparación local
+
+1. Copiar `.env.example` de la raíz a `.env` si no existe y completar
+   `MINIO_ROOT_USER` y `MINIO_ROOT_PASSWORD` con valores propios (contraseña de
+   al menos 8 caracteres). Compose exige estas variables incluso al iniciar
+   otros servicios. Son credenciales administrativas, distintas de las del servicio.
+2. Ejecutar `docker compose up -d minio` desde la raíz. Los puertos S3 y consola
+   se publican únicamente en loopback para desarrollo local.
+3. Entrar a `http://localhost:9001` con esas credenciales y crear el bucket
+   `materials`. Mantener su acceso **privado**, sin política anónima.
+4. Crear credenciales de servicio con permiso `s3:PutObject` sobre
+   `arn:aws:s3:::materials/*` y `s3:GetBucketLocation` sobre
+   `arn:aws:s3:::materials`. Copiarlas en `material-service/.env`, junto con
+   las variables indicadas en su `.env.example`.
+
+El adaptador requiere un bucket provisionado: no crea buckets ni cambia políticas
+de acceso. El POST continúa siendo el contrato simulado de la tarea anterior;
+la persistencia de metadatos, la coordinación de subida y la descarga pertenecen
+a los siguientes casos de uso. Esta tarea no guarda archivos desde ese stub.
+
+### Prueba contra MinIO real
+
+Desde `backend/material-service`, con variables MinIO exportadas en el proceso:
+
+```bash
+MATERIAL_TEST_MINIO=1 npm run test:storage
+```
+
+Esta prueba necesita credenciales de prueba que permitan crear/eliminar buckets
+y leer/escribir/eliminar objetos. Crea un bucket privado temporal con nombre UUID,
+verifica contenido, tamaño, MIME, claves distintas y rechazo del acceso anónimo;
+luego elimina sus propios objetos y bucket. No usa ni modifica el bucket de la
+aplicación. Sin `MATERIAL_TEST_MINIO=1` se omite. No carga automáticamente `.env`.

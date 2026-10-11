@@ -49,6 +49,13 @@ Cada bloque a continuación se ejecuta en una **terminal independiente**, siempr
 
 1. Levantar las dependencias de infraestructura (PostgreSQL + MinIO):
 
+Antes de usar Compose, copiar `.env.example` de la raíz a `.env` (si no existe)
+y completar `MINIO_ROOT_USER` y `MINIO_ROOT_PASSWORD` con valores propios.
+Compose exige estas variables; no se incluyen credenciales MinIO en el código.
+La contraseña debe tener al menos 8 caracteres. Los puertos de MinIO se publican
+solo en `127.0.0.1`. Para configurar el bucket privado y las credenciales de
+Material Service, ver [el adaptador de almacenamiento](material-service/README.md#adaptador-de-almacenamiento-minio-231).
+
 ```bash
 docker compose up -d
 ```
