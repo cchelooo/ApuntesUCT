@@ -4,7 +4,7 @@ Microservicio NestJS de materiales académicos con persistencia Prisma (#217).
 Requiere Node.js 22, npm y PostgreSQL. Usa `db-material` de Docker Compose
 (contenedor `db_material`, base `material_db`, puerto local `5436`).
 MinIO se utiliza al guardar archivos mediante el adaptador interno (#231).
-El listado, healthcheck y contrato POST simulado no requieren conectarse a MinIO.
+El listado y healthcheck no requieren conectarse a MinIO; el POST con archivo sí.
 
 ## Instalación y ejecución
 
@@ -44,6 +44,7 @@ La compilación genera `dist/main.js`. También se puede ejecutar `npm run start
 
 | Endpoint | Propósito |
 | --- | --- |
+| `POST http://localhost:3003/api/v1/materials` | Creación y subida real (contexto de autor local temporal) |
 | `GET http://localhost:3003/api/v1/materials` | Listado paginado de materiales publicados |
 | `GET http://localhost:3003/api/v1/health` | Estado del proceso |
 | `GET http://localhost:3003/api/docs` | Swagger UI |
@@ -150,9 +151,8 @@ El esquema sigue el MER de Material en `docs/diagrams/int4/diagrama_mer_material
 
 Las únicas relaciones SQL son `Material → MaterialType` y
 `MaterialVersion → Material`. Ambas usan `RESTRICT` al eliminar para proteger
-los materiales y su historial. La validación de metadatos, la asignación del
-siguiente número de versión y las transiciones de estado corresponden a los
-futuros casos de uso; este esquema no los implementa.
+los materiales y su historial. La creación (#233) guarda metadatos y la primera versión. La actualización de
+versiones y las transiciones de estado corresponden a futuros casos de uso.
 
 `uploaderId` y `createdBy` son UUID lógicos de Auth. `subjectId`, `professorId`,
 `universityId`, `careerId` y `academicOfferingId` son identificadores lógicos de
@@ -174,8 +174,7 @@ aplicarla si ya está registrada. Para cambios posteriores en desarrollo:
 npm run prisma:migrate --workspace=material-service -- --name nombre_del_cambio
 ```
 
-La carga y descarga de archivos y los demás endpoints de materiales quedan para
-tareas posteriores. El listado no modifica el modelo legado `Resource` de Catalog.
+La descarga y los demás endpoints de materiales quedan para tareas posteriores. El listado no modifica el modelo legado `Resource` de Catalog.
 
 ## Verificación
 
@@ -223,11 +222,10 @@ El servicio participa en los comandos globales `build`, `lint`, `test`,
 
 ## Relación del contrato de creación con los tipos persistidos
 
-`POST /api/v1/materials` sigue siendo un contrato simulado: no persiste materiales,
-no busca tipos en la base y no devuelve un `materialTypeId` inventado.
+`POST /api/v1/materials` persiste materiales y resuelve el tipo en la base.
 Su respuesta inicial documenta únicamente `PENDING_REVIEW`.
 
-Al implementar la persistencia, el servidor resolverá el código público `type`
+El servidor resuelve el código público `type`
 por coincidencia exacta con el nombre único de un registro activo de `MaterialType`:
 
 | `type` del POST | `MaterialType.name` a resolver |
@@ -238,11 +236,10 @@ por coincidencia exacta con el nombre único de un registro activo de `MaterialT
 | `EXAM` | `EXAM` |
 | `SUMMARY` | `SUMMARY` |
 
-El ID de ese registro será `Material.materialTypeId`. El listado existente
+El ID de ese registro es `Material.materialTypeId`. El listado existente
 `GET /api/v1/materials` expone ese ID como `materialTypeId` y su nombre como
-`materialType`. No se confunden códigos con UUIDs. Los registros deberán existir
-al habilitar la creación real; un tipo inexistente o inactivo deberá rechazarse
-como metadato inválido. Esta corrección no agrega seeds ni consultas de persistencia.
+`materialType`. No se confunden códigos con UUIDs. La migración de #233 incorpora los cinco tipos sin modificar los existentes.
+Un tipo inexistente o inactivo se rechaza con 400 antes de guardar archivos.
 El enum de creación es un subconjunto admitido por el POST; el listado puede
 contener otros tipos ya persistidos, como `CLASS_NOTES`, sin modificar su contrato.
 
@@ -254,7 +251,7 @@ Los MIME locales documentados son:
 - PowerPoint .ppt: `application/vnd.ms-powerpoint`.
 - PowerPoint .pptx: `application/vnd.openxmlformats-officedocument.presentationml.presentation`.
 
-### Validación del archivo del contrato simulado
+### Validación del archivo
 
 Se permiten hasta **15 728 640 bytes inclusive**. Multer limita la recepción y
 el validador vuelve a comprobar el tamaño. El MIME de la respuesta se obtiene
@@ -262,7 +259,7 @@ del contenido: el nombre del archivo y su MIME declarado no determinan la acepta
 PDF, DOCX y PPTX usan la detección de Nest; DOC y PPT se identifican leyendo su
 contenedor CFB y los streams de Word/PowerPoint. Un archivo XLS, un contenedor
 dañado o texto renombrado a PDF se rechazan con `415`.
-Esto valida el formato, no sustituye análisis antimalware ni implementa almacenamiento.
+Esto valida el formato, no sustituye análisis antimalware.
 
 
 ## Adaptador de almacenamiento MinIO (#231)
@@ -278,7 +275,8 @@ original del usuario ni devuelve endpoints, buckets, credenciales o URLs firmada
 El MIME debe haber sido validado por el caso de uso antes de guardar.
 Los errores de configuración o escritura se convierten en `ObjectStorageError`
 sin incluir los detalles del SDK. El filtro HTTP existente lo presenta como un
-error genérico 500 si llega a una ruta HTTP.
+error genérico 500 si llega sin traducir a una ruta HTTP. El caso de uso de
+creación lo traduce a 502 sin detalles internos.
 
 La configuración y el cliente se inicializan en la primera escritura. No se
 realizan conexiones durante el arranque. Las variables se validan antes de
@@ -303,15 +301,14 @@ crear el cliente; no se aceptan credenciales vacías.
    se publican únicamente en loopback para desarrollo local.
 3. Entrar a `http://localhost:9001` con esas credenciales y crear el bucket
    `materials`. Mantener su acceso **privado**, sin política anónima.
-4. Crear credenciales de servicio con permiso `s3:PutObject` sobre
+4. Crear credenciales de servicio con permisos `s3:PutObject` y `s3:DeleteObject` sobre
    `arn:aws:s3:::materials/*` y `s3:GetBucketLocation` sobre
    `arn:aws:s3:::materials`. Copiarlas en `material-service/.env`, junto con
    las variables indicadas en su `.env.example`.
 
 El adaptador requiere un bucket provisionado: no crea buckets ni cambia políticas
-de acceso. El POST continúa siendo el contrato simulado de la tarea anterior;
-la persistencia de metadatos, la coordinación de subida y la descarga pertenecen
-a los siguientes casos de uso. Esta tarea no guarda archivos desde ese stub.
+de acceso. El POST usa este adaptador desde el caso de uso de creación (#233).
+La descarga corresponde a una tarea posterior.
 
 ### Prueba contra MinIO real
 
@@ -326,3 +323,97 @@ y leer/escribir/eliminar objetos. Crea un bucket privado temporal con nombre UUI
 verifica contenido, tamaño, MIME, claves distintas y rechazo del acceso anónimo;
 luego elimina sus propios objetos y bucket. No usa ni modifica el bucket de la
 aplicación. Sin `MATERIAL_TEST_MINIO=1` se omite. No carga automáticamente `.env`.
+
+
+## Creación y subida (#233)
+
+Esta rama parte de `feature/231-adaptador-almacenamiento-minio`, pendiente de
+revisión. El diff de #233 debe revisarse contra esa rama hasta integrar #231.
+
+Aplicar la nueva migración antes de ejecutar el servicio:
+
+```bash
+cd backend
+npm run prisma:generate --workspace=material-service
+npm run prisma:deploy --workspace=material-service
+```
+
+La migración agrega `Material.externalLink` nullable y los cinco tipos del POST.
+No reinicia tablas ni cambia tipos ya existentes, incluidos los desactivados.
+
+### Autor temporal de desarrollo
+
+Auth todavía entrega tokens simulados sin firma. Esos tokens **no autorizan**
+este endpoint. Hasta integrar Auth real, el POST requiere configurar explícitamente
+en `material-service/.env`:
+
+```dotenv
+NODE_ENV=development
+MATERIAL_LOCAL_AUTHOR_ENABLED=true
+MATERIAL_LOCAL_UPLOADER_ID=<UUID-del-autor-de-prueba>
+MATERIAL_LOCAL_UNIVERSITY_ID=<ID-institucional-opcional>
+```
+
+Este modo asigna el mismo autor configurado a todas las subidas locales. No es
+un mecanismo de autenticación. Fuera de `NODE_ENV=development`, con el modo
+apagado o sin UUID válido, el POST responde 401. Está apagado por defecto y no
+acepta IDs de autor enviados en el body. El despliegue con autenticación real
+requiere reemplazar `MaterialAuthorProvider` por contexto verificado de Auth.
+Las referencias académicas se guardan como IDs lógicos; la comprobación de su
+existencia en Catalog sigue pendiente. Universidad es null si no está configurada.
+
+### Flujo y consistencia
+
+1. Validar multipart, formato/tamaño del archivo y reglas archivo/enlace.
+2. Resolver un tipo activo por nombre. LINK requiere URL HTTP(S), sin archivo.
+3. Para archivos, confirmar primero la escritura en MinIO.
+4. Crear material y primera versión mediante escritura anidada transaccional
+   de Prisma, con estado `PENDING_REVIEW`, tamaño real y checksum SHA-256.
+5. Devolver 201 con ID y fecha reales, `isSimulatedResponse: false` y metadatos
+   públicos. `fileUrl` permanece null hasta implementar la descarga. No se
+   serializan claves, rutas o credenciales de MinIO.
+
+LINK guarda `externalLink` en Material sin versión binaria. Los demás tipos
+requieren archivo y permiten guardar también una URL de respaldo.
+Un fallo de MinIO devuelve 502 sin insertar material ni versión. Un fallo al
+insertar la versión revierte también el material y devuelve 500.
+Si PostgreSQL confirma un rechazo/rollback, el caso de uso consulta si existe una
+versión que use la clave recién subida. Si no existe, elimina ese objeto de MinIO.
+La limpieza no reemplaza el error original ni elimina objetos referenciados.
+PostgreSQL y MinIO no comparten transacción: ante errores de conexión/commit
+incierto, se conserva el archivo para no borrar una subida posiblemente válida.
+Si no puede verificarse la referencia o falla el borrado, se registra una advertencia
+interna con la clave para su revisión. No hay reintentos persistentes ni barrido
+periódico: esas situaciones y una caída del proceso aún pueden dejar objetos
+huérfanos. No se promete atomicidad entre sistemas ni idempotencia HTTP.
+
+Ejemplo con archivo, tras configurar el contexto local y el bucket privado:
+
+```bash
+curl -X POST http://localhost:3003/api/v1/materials \
+  -F 'title=Apuntes de álgebra' -F 'year=2026' -F 'type=DOCUMENT' \
+  -F 'subjectId=SUBJ-102' -F 'file=@/ruta/apuntes.pdf'
+```
+
+Ejemplo con enlace:
+
+```bash
+curl -X POST http://localhost:3003/api/v1/materials \
+  -F 'title=Clase grabada' -F 'year=2026' -F 'type=LINK' \
+  -F 'subjectId=SUBJ-102' -F 'externalLink=https://example.com/clase'
+```
+
+### Verificación de creación real
+
+Desde `backend/material-service`, después del build, exportar las credenciales
+MinIO de pruebas y `MATERIAL_TEST_DATABASE_URL`, y ejecutar:
+
+```bash
+MATERIAL_TEST_UPLOAD=1 node --test test/create-material.integration.cjs
+```
+
+La prueba usa un esquema PostgreSQL y un bucket MinIO temporales. Comprueba los
+cuatro tipos de archivo, LINK, los bytes almacenados, checksum, metadatos, autor,
+validaciones, rechazo de tipos inactivos, fallo real de MinIO y rollback de la
+creación anidada. Elimina sus propios recursos al terminar. No modifica los datos
+del servicio ni requiere migrar el esquema de la aplicación para probarse.

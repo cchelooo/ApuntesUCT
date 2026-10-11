@@ -5,7 +5,10 @@ import type { SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec
 import { MaterialController } from '../controllers/material.controller';
 import { MaterialsController } from '../materials/materials.controller';
 import { MaterialsService } from '../../application/services/materials.service';
-import { CreateMaterialDto, MaterialType } from './create-material.dto';
+import { CreateMaterialDto } from './create-material.dto';
+
+import { CreateMaterial } from '../../application/use-cases/create-material';
+import { MaterialAuthorProvider } from '../../infrastructure/auth/material-author.provider';
 
 describe('Contrato OpenAPI de materiales', () => {
   let app: INestApplication;
@@ -14,7 +17,11 @@ describe('Contrato OpenAPI de materiales', () => {
   beforeAll(async () => {
     const module = await Test.createTestingModule({
       controllers: [MaterialController, MaterialsController],
-      providers: [{ provide: MaterialsService, useValue: { list: jest.fn() } }],
+      providers: [
+        { provide: MaterialsService, useValue: { list: jest.fn() } },
+        { provide: CreateMaterial, useValue: { execute: jest.fn() } },
+        { provide: MaterialAuthorProvider, useValue: { resolve: jest.fn() } },
+      ],
     }).compile();
     app = module.createNestApplication();
     app.setGlobalPrefix('api/v1');
@@ -54,17 +61,6 @@ describe('Contrato OpenAPI de materiales', () => {
       enum: ['PENDING_REVIEW'],
     });
     expect(schema('MaterialSummaryDto').properties!.status).toMatchObject({ enum: ['PUBLISHED'] });
-    const response = await app.get(MaterialController).createMaterial({
-      title: 'Enlace de prueba',
-      year: '2026',
-      type: MaterialType.LINK,
-      subjectId: 'subject-1',
-      externalLink: 'https://example.com/material',
-    });
-    expect(response.isSimulatedResponse).toBe(true);
-    expect(response.data.status).toBe('PENDING_REVIEW');
-    expect(response.data.fileSize).toBeNull();
-    expect(response.data.fileUrl).toBeNull();
   });
 
   it('explica la relación de type con el listado en el multipart publicado y en los DTOs', () => {
@@ -80,7 +76,7 @@ describe('Contrato OpenAPI de materiales', () => {
       expect(description).toContain('MaterialType.name');
       expect(description).toContain('materialTypeId');
       expect(description).toContain('GET /materials');
-      expect(description).toContain('simulado');
+      expect(description).toContain('activos');
     }
     expect(schema('MaterialSummaryDto').properties).toHaveProperty('materialTypeId');
     expect(schema('MaterialSummaryDto').properties).toHaveProperty('materialType');

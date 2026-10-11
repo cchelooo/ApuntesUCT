@@ -17,3 +17,31 @@ GET {{materialBaseUrl}}/materials?page=0
 
 ### Búsqueda no admitida: 400 (corresponde a Search Service)
 GET {{materialBaseUrl}}/materials?q=calculo
+
+
+### Crear un enlace real (#233)
+# Requiere contexto local de autor habilitado y migraciones aplicadas.
+POST {{materialBaseUrl}}/materials
+Content-Type: multipart/form-data; boundary=material-boundary
+
+--material-boundary
+Content-Disposition: form-data; name="title"
+
+Clase grabada
+--material-boundary
+Content-Disposition: form-data; name="year"
+
+2026
+--material-boundary
+Content-Disposition: form-data; name="type"
+
+LINK
+--material-boundary
+Content-Disposition: form-data; name="subjectId"
+
+SUBJ-102
+--material-boundary
+Content-Disposition: form-data; name="externalLink"
+
+https://example.com/clase
+--material-boundary--
