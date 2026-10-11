@@ -63,7 +63,28 @@ La aplicación móvil utiliza el **API Gateway** (`:3000`) como única entrada H
 
 `materialListingRepositoryProvider` consume `GET /materials?page=...&pageSize=...` y `materialListProvider(page)` expone carga, datos y error. El listado interpreta el estado `PUBLISHED` del Backend. Tanto este repositorio como el de Catalog se pueden reemplazar por un fake mediante overrides de Riverpod.
 
-La pantalla de búsqueda continúa usando `MockMaterialsRepository`: esta tarea prepara la conexión del listado básico, sin conectar búsqueda/filtros al endpoint de Material ni implementar subida, detalle, descarga o versionado.
+`materialRepositoryProvider` utiliza `DioMaterialRepository` y el mismo cliente
+central para listado y subida. La subida envía `multipart/form-data` a
+`/materials` con los campos publicados en OpenAPI: `title`, `description`,
+`year`, `type`, `subjectId`, `careerId`, `professorId`, `externalLink` y `file`,
+según archivo o enlace. `universityId` lo deriva Backend y no se envía.
+
+El POST actual es un stub: `MaterialDetail.isSimulatedResponse` conserva su
+indicador. Una respuesta con `true` **no demuestra persistencia en PostgreSQL
+ni MinIO**. Se mapean año, tamaño, MIME y enlace; no se inventan versiones ni se
+utiliza `fileUrl` como destino de descarga. El adaptador conserva códigos y
+mensajes de error, incluidas las listas de validación de NestJS, y admite
+`CancelToken` y `onSendProgress` al llamar a `DioMaterialRepository.upload`.
+Cada intento reconstruye el multipart; no se reintenta un POST automáticamente.
+
+Detalle (#235), descarga (#236/#237) y versionado tienen placeholders explícitos
+que lanzan `ApiException` explicando el contrato pendiente, sin peticiones HTTP
+ni resultados ficticios. Se completarán cuando INT2 publique sus contratos.
+La #273 sigue pendiente de esos contratos y de la validación integrada real.
+
+La pantalla de búsqueda continúa usando `MockMaterialsRepository`. Este
+repositorio no conecta todavía las pantallas de subida/detalle/descarga ni
+traslada la búsqueda y los filtros de Search al listado de Material.
 
 Las URLs base se resuelven mediante la clase `ApiConfig` (`lib/core/config/api_config.dart`) y pueden ser parametrizadas en tiempo de compilación con `--dart-define`.
 
@@ -189,6 +210,21 @@ flutter test --dart-define=RUN_GATEWAY_SMOKE=true \
   --dart-define=API_GATEWAY_URL=http://localhost:3000/api/v1 \
   test/integration/gateway_live_test.dart
 ```
+
+El contrato de subida tiene una comprobación HTTP optativa en
+`test/integration/material_upload_live_test.dart`. Se ejecuta únicamente contra
+un Gateway y el controlador POST stub de Material en un entorno de pruebas:
+
+```bash
+flutter test --dart-define=RUN_MATERIAL_UPLOAD_SMOKE=true \
+  --dart-define=API_GATEWAY_URL=http://localhost:3000/api/v1 \
+  test/integration/material_upload_live_test.dart
+```
+
+Comprueba multipart con archivo/enlace y conservación del error `415`. Exige
+`isSimulatedResponse: true`; no demuestra persistencia ni autenticación real.
+Cuando INT2 integre creación real, esta prueba debe adaptarse a un entorno con
+PostgreSQL/MinIO desechables antes de volver a activarla.
 
 ### Limpieza y mantenimiento del proyecto
 

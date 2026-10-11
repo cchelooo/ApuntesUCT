@@ -1,0 +1,22 @@
+{
+  "status": "success",
+  "isSimulatedResponse": true,
+  "message": "Material registrado exitosamente en el contrato del servicio.",
+  "data": {
+    "id": "mat_1791730000000",
+    "title": "Apuntes de álgebra",
+    "description": "Ejercicios resueltos",
+    "year": "2026",
+    "type": "DOCUMENT",
+    "status": "PENDING_REVIEW",
+    "subjectId": "subject-test",
+    "careerId": "career-test",
+    "professorId": "professor-test",
+    "universityId": "UNIV-UCT-01",
+    "fileUrl": "https://storage.academico.cl/materials/2026/apuntes.pdf",
+    "fileSize": 26,
+    "mimeType": "application/pdf",
+    "externalLink": null,
+    "createdAt": "2026-10-11T12:00:00.000Z"
+  }
+}
