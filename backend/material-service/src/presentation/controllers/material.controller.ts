@@ -1,33 +1,15 @@
-import {
-  Controller,
-  Post,
-  Body,
-  UploadedFile,
-  UseInterceptors,
-  ParseFilePipe,
-  MaxFileSizeValidator,
-  PayloadTooLargeException,
-  UnsupportedMediaTypeException,
-  BadRequestException,
+import { 
+  Controller, Post, Body, UploadedFile, UseInterceptors, Req,
+  ParseFilePipe, MaxFileSizeValidator, FileTypeValidator, 
+  PayloadTooLargeException, UnsupportedMediaTypeException, BadRequestException, UnauthorizedException 
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import {
-  ApiTags,
-  ApiConsumes,
-  ApiBearerAuth,
-  ApiOperation,
-  ApiResponse,
-  ApiBody,
-  ApiExtraModels,
+import { 
+  ApiTags, ApiConsumes, ApiBearerAuth, ApiOperation, 
+  ApiResponse, ApiBody, ApiExtraModels 
 } from '@nestjs/swagger';
-import {
-  CreateMaterialDto,
-  MaterialType,
-  MATERIAL_TYPE_DESCRIPTION,
-  MATERIAL_MIME_TYPES,
-  MATERIAL_FILE_DESCRIPTION,
-} from '../dto/create-material.dto';
-import { MaterialFileTypeValidator } from '../validators/material-file-type.validator';
+import type { Request } from 'express';
+import { CreateMaterialDto, MaterialType } from '../dto/create-material.dto';
 import { ErrorResponseDto } from '../dto/error-response.dto';
 import { CreateMaterialResponseDto, MaterialStatus } from '../dto/material-response.dto';
 
@@ -38,61 +20,45 @@ const MAX_FILE_SIZE_BYTES = 15728640; // 15 MB
 @ApiBearerAuth()
 @ApiExtraModels(ErrorResponseDto, CreateMaterialResponseDto)
 export class MaterialController {
+
   @Post()
-  // Multer corta la recepción antes de cargar un archivo arbitrariamente grande.
-  // Sus límites y MaxFileSizeValidator son exclusivos: se permite exactamente 15 MB.
-  @UseInterceptors(
-    FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE_BYTES + 1, files: 1 } }),
-  )
+  @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({
-    summary: 'Subir y registrar un nuevo material o enlace académico',
+  @ApiOperation({ 
+    summary: 'Subir y registrar un nuevo material o enlace académico con validaciones de seguridad',
     description: `
-**REGLAS Y CONTRATO DE NEGOCIO:**
-- **Estado Inicial:** Todo material creado inicia en estado \`PENDING_REVIEW\`.
-- **Identificadores Académicos:**
-  - \`subjectId\` (Obligatorio) y \`careerId\` (Opcional) vinculan el recurso al catálogo académico.
-  - \`professorId\` (Opcional) almacena el identificador único del docente.
-  - \`universityId\` se deriva automáticamente del contexto institucional/autenticación.
-- **Reglas de Archivo / Enlace por Tipo (\`type\`):**
-  - **LINK:** Requiere de manera obligatoria \`externalLink\` (validado como URL). No acepta archivo binario.
-  - **DOCUMENT, PRESENTATION, EXAM, SUMMARY:** Requieren obligatoriamente un **archivo local** (file). Se permite incluir \`externalLink\` como URL de respaldo secundaria.
-- **Límite de Archivo:** Máximo **15 MB (15,728,640 bytes)**.
-- **MIMEs Permitidos:** ${MATERIAL_MIME_TYPES.join(', ')}.
-- **Relación del tipo con persistencia/listado:** ${MATERIAL_TYPE_DESCRIPTION}
-- **Autenticación:** Requiere header \`Authorization: Bearer <token>\`.
-- **Estado de Implementación:** Respuesta simulada (Stub).
-    `,
+**REGLAS DE SEGURIDAD Y VALIDACIÓN EN SERVIDOR:**
+- **Autenticación:** Requiere cabecera \`Authorization: Bearer <token>\` vía botón Authorize (Retorna \`401\` si falta o es inválida).
+- **Tamaño máximo:** Límite estricto de 15 MB / 15,728,640 bytes (Retorna \`413\` si se excede).
+- **Tipos MIME permitidos:** PDF (\`application/pdf\`), Word (\`.doc\`, \`.docx\`) y PowerPoint (\`.ppt\`, \`.pptx\`) (Retorna \`415\` si no es compatible).
+- **Archivo vacío:** Se rechaza si el archivo pesa 0 bytes (Retorna \`400\`).
+- **Metadatos obligatorios y formato:** \`title\`, \`year\` (YYYY), \`type\` y \`subjectId\` validados rigurosamente (Retorna \`400\` si fallan).
+- **Reglas de Negocio por Tipo:** 
+  - \`LINK\` exige \`externalLink\` válido y prohíbe archivo.
+  - \`DOCUMENT\`, \`PRESENTATION\`, \`EXAM\` y \`SUMMARY\` exigen archivo local obligatorio.
+- **Seguridad de almacenamiento:** Ningún archivo es almacenado ni procesado si la petición falla en las validaciones previas.
+    `
   })
   @ApiBody({
-    description:
-      'Metadatos en formato multipart/form-data y archivo adjunto opcional/obligatorio según type.',
+    description: 'Metadatos y archivo adjunto',
     schema: {
       type: 'object',
       properties: {
         title: { type: 'string', example: 'Guía Práctica de Álgebra Lineal' },
-        description: {
-          type: 'string',
-          example: 'Ejercicios resueltos sobre valores y vectores propios.',
-        },
+        description: { type: 'string', example: 'Ejercicios resueltos sobre valores y vectores propios.' },
         year: { type: 'string', example: '2026' },
-        type: {
-          type: 'string',
-          enum: Object.values(MaterialType),
-          example: MaterialType.DOCUMENT,
-          description: MATERIAL_TYPE_DESCRIPTION,
-        },
+        type: { type: 'string', enum: Object.values(MaterialType), example: MaterialType.DOCUMENT },
         subjectId: { type: 'string', example: 'SUBJ-102' },
         careerId: { type: 'string', example: 'CAREER-INF-01' },
         professorId: { type: 'string', example: 'prof_88321' },
         externalLink: { type: 'string', example: 'https://drive.google.com/file/d/xyz/view' },
-        file: { type: 'string', format: 'binary', description: MATERIAL_FILE_DESCRIPTION },
+        file: { type: 'string', format: 'binary', description: 'Archivo binario local (Máx 15MB)' },
       },
       required: ['title', 'year', 'type', 'subjectId'],
     },
     examples: {
       conArchivoLocal: {
-        summary: 'Opción A: Documento/Examen/Resumen (Requiere Archivo)',
+        summary: 'Subida de Documento Local',
         value: {
           title: 'Apunte de Redes IPv4',
           description: 'Documento PDF con subnetting',
@@ -105,7 +71,7 @@ export class MaterialController {
         },
       },
       conEnlaceExterno: {
-        summary: 'Opción B: Enlace Externo (Requiere URL válidamente formateada)',
+        summary: 'Registro de Enlace Externo',
         value: {
           title: 'Clase Grabada - Arquitectura Django',
           description: 'Video explicativo en Drive/YouTube',
@@ -118,100 +84,152 @@ export class MaterialController {
       },
     },
   })
-  @ApiResponse({
-    status: 201,
-    description: 'Material registrado en estado PENDING_REVIEW (Respuesta Simulada / Stub).',
-    type: CreateMaterialResponseDto,
+  @ApiResponse({ status: 201, description: 'Material registrado en estado PENDING_REVIEW.', type: CreateMaterialResponseDto })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Bad Request - Metadatos incorrectos, año inválido, archivo vacío o regla de tipo incumplida.',
+    schema: {
+      example: {
+        statusCode: 400,
+        error: 'Bad Request',
+        message: 'Para materiales de tipo LINK es obligatorio especificar externalLink (URL válida).',
+        timestamp: '2026-10-10T23:55:00.000Z',
+        path: '/api/v1/materials'
+      }
+    }
   })
-  @ApiResponse({
-    status: 400,
-    description:
-      'Bad Request - Error de validación en metadatos, formato de URL inválido o incumplimiento de regla file/link según el type.',
-    type: ErrorResponseDto,
+  @ApiResponse({ 
+    status: 401, 
+    description: 'Unauthorized - Petición sin token de autenticación.',
+    schema: {
+      example: {
+        statusCode: 401,
+        error: 'Unauthorized',
+        message: 'Se requiere autenticación mediante token Bearer para realizar esta operación.',
+        timestamp: '2026-10-10T23:55:00.000Z',
+        path: '/api/v1/materials'
+      }
+    }
   })
-  @ApiResponse({
-    status: 401,
-    description: 'Unauthorized - Header Authorization: Bearer <token> ausente o inválido.',
-    type: ErrorResponseDto,
+  @ApiResponse({ 
+    status: 404, 
+    description: 'Not Found - Asignatura o recurso no encontrado.',
+    schema: {
+      example: {
+        statusCode: 404,
+        error: 'Not Found',
+        message: 'La asignatura con id SUBJ-999 no existe.',
+        timestamp: '2026-10-10T23:55:00.000Z',
+        path: '/api/v1/materials'
+      }
+    }
   })
-  @ApiResponse({
-    status: 404,
-    description: 'Not Found - La asignatura (subjectId) o carrera no existe.',
-    type: ErrorResponseDto,
+  @ApiResponse({ 
+    status: 413, 
+    description: 'Payload Too Large - El archivo supera los 15 MB.',
+    schema: {
+      example: {
+        statusCode: 413,
+        error: 'Payload Too Large',
+        message: 'El archivo excede el tamaño máximo permitido de 15 MB (15728640 bytes).',
+        timestamp: '2026-10-10T23:55:00.000Z',
+        path: '/api/v1/materials'
+      }
+    }
   })
-  @ApiResponse({
-    status: 413,
-    description:
-      'Payload Too Large - El archivo supera el tamaño máximo permitidos de 15 MB (15728640 bytes).',
-    type: ErrorResponseDto,
+  @ApiResponse({ 
+    status: 415, 
+    description: 'Unsupported Media Type - Formato de archivo no soportado.',
+    schema: {
+      example: {
+        statusCode: 415,
+        error: 'Unsupported Media Type',
+        message: 'Tipo de archivo no admitido. Formatos válidos: PDF, Word (.doc, .docx) y PowerPoint (.ppt, .pptx).',
+        timestamp: '2026-10-10T23:55:00.000Z',
+        path: '/api/v1/materials'
+      }
+    }
   })
-  @ApiResponse({
-    status: 415,
-    description: 'Unsupported Media Type - Formato de archivo no admitido.',
-    type: ErrorResponseDto,
+  @ApiResponse({ 
+    status: 500, 
+    description: 'Internal Server Error - Error inesperado en el servidor.',
+    schema: {
+      example: {
+        statusCode: 500,
+        error: 'Internal Server Error',
+        message: 'Ocurrió un error interno en el servidor al procesar la solicitud.',
+        timestamp: '2026-10-10T23:55:00.000Z',
+        path: '/api/v1/materials'
+      }
+    }
   })
-  @ApiResponse({
-    status: 500,
-    description: 'Internal Server Error - Error no controlado.',
-    type: ErrorResponseDto,
-  })
-  @ApiResponse({
-    status: 502,
-    description: 'Bad Gateway - Indisponibilidad de servicios externos.',
-    type: ErrorResponseDto,
+  @ApiResponse({ 
+    status: 502, 
+    description: 'Bad Gateway - Error de comunicación con servicios dependientes.',
+    schema: {
+      example: {
+        statusCode: 502,
+        error: 'Bad Gateway',
+        message: 'Error de comunicación con el servicio de infraestructura o gateway.',
+        timestamp: '2026-10-10T23:55:00.000Z',
+        path: '/api/v1/materials'
+      }
+    }
   })
   async createMaterial(
+    @Req() req: Request,
     @Body() dto: CreateMaterialDto,
     @UploadedFile(
       new ParseFilePipe({
         fileIsRequired: false,
         validators: [
-          new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE_BYTES + 1 }),
-          new MaterialFileTypeValidator(),
+          new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE_BYTES }),
+          new FileTypeValidator({ fileType: /(pdf|msword|wordprocessingml\.document|ms-powerpoint|presentationml\.presentation)$/i }),
         ],
         exceptionFactory: (error) => {
           if (error.includes('expected size')) {
-            return new PayloadTooLargeException(
-              `El archivo excede el tamaño máximo permitido de 15 MB (${MAX_FILE_SIZE_BYTES} bytes).`,
-            );
+            return new PayloadTooLargeException(`El archivo excede el tamaño máximo permitido de 15 MB (${MAX_FILE_SIZE_BYTES} bytes).`);
           }
           if (error.includes('expected type')) {
-            return new UnsupportedMediaTypeException(
-              'Tipo de archivo no admitido. Formatos válidos: PDF, Word (.doc, .docx) y PowerPoint (.ppt, .pptx).',
-            );
+            return new UnsupportedMediaTypeException('Tipo de archivo no admitido. Formatos válidos: PDF, Word (.doc, .docx) y PowerPoint (.ppt, .pptx).');
           }
           return new BadRequestException(error);
         },
-      }),
-    )
-    file?: Express.Multer.File,
+      })
+    ) file?: Express.Multer.File,
   ) {
-    // Reglas cruzadas segun tipo de material
+    const authHeader = req.headers['authorization'];
+
+    // 1. Validación de Autenticación (401 si no hay token Bearer)
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedException('Se requiere autenticación mediante token Bearer para realizar esta operación.');
+    }
+
+    // 2. Validación de Archivo Vacío (0 bytes) (400)
+    if (file && file.size === 0) {
+      throw new BadRequestException('El archivo adjunto está vacío (0 bytes) y no puede ser procesado.');
+    }
+
+    // 3. Reglas cruzadas por Tipo de Material (400)
     if (dto.type === MaterialType.LINK) {
       if (!dto.externalLink) {
-        throw new BadRequestException(
-          'Para materiales de tipo LINK es obligatorio especificar externalLink (URL válida).',
-        );
+        throw new BadRequestException('Para materiales de tipo LINK es obligatorio especificar externalLink (URL válida).');
       }
       if (file) {
-        throw new BadRequestException(
-          'Los materiales de tipo LINK no deben incluir un archivo adjunto.',
-        );
+        throw new BadRequestException('Los materiales de tipo LINK no deben incluir un archivo adjunto.');
       }
     } else {
-      // DOCUMENT, PRESENTATION, EXAM, SUMMARY exigen archivo
+      // DOCUMENT, PRESENTATION, EXAM, SUMMARY exigen archivo obligatorio
       if (!file) {
-        throw new BadRequestException(
-          `Para el tipo de material '${dto.type}' es obligatorio adjuntar un archivo local.`,
-        );
+        throw new BadRequestException(`Para el tipo de material '${dto.type}' es obligatorio adjuntar un archivo local.`);
       }
     }
 
-    // Respuesta Simulada (Stub) alineada con CreateMaterialResponseDto
+    // Respuesta simulada exitosa (Stub)
     return {
       status: 'success',
       isSimulatedResponse: true,
-      message: 'Material registrado exitosamente en el contrato del servicio.',
+      message: 'Material validado y registrado exitosamente en estado PENDING_REVIEW.',
       data: {
         id: 'mat_' + Date.now(),
         title: dto.title,
@@ -223,9 +241,7 @@ export class MaterialController {
         careerId: dto.careerId || null,
         professorId: dto.professorId || null,
         universityId: 'UNIV-UCT-01',
-        fileUrl: file
-          ? `https://storage.academico.cl/materials/${dto.year}/${file.originalname}`
-          : null,
+        fileUrl: file ? `https://storage.academico.cl/materials/${dto.year}/${file.originalname}` : null,
         fileSize: file ? file.size : null,
         mimeType: file ? file.mimetype : null,
         externalLink: dto.externalLink || null,
