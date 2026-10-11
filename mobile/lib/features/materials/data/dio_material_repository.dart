@@ -72,7 +72,48 @@ class DioMaterialRepository implements MaterialRepository {
     String materialId, {
     String? versionId,
   }) async {
-    throw UnimplementedError();
+    try {
+      final queryParams = <String, dynamic>{};
+      if (versionId != null && versionId.isNotEmpty) {
+        queryParams['versionId'] = versionId;
+      }
+
+      final response = await _apiClient.dio.get<List<int>>(
+        '/api/v1/materials/$materialId/download',
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
+        options: Options(
+          responseType: ResponseType.bytes,
+          headers: {'Accept': '*/*'},
+        ),
+      );
+
+      // Extracción del nombre de archivo desde Content-Disposition
+      String fileName = 'material_$materialId';
+      final disposition = response.headers.value('content-disposition');
+      if (disposition != null) {
+        final match = RegExp(r'''filename[^;=\n]*=((['"]).*?\2|[^;\n]*)''')
+            .firstMatch(disposition);
+        if (match != null && match.group(1) != null) {
+          fileName = match
+              .group(1)!
+              .replaceAll('"', '')
+              .replaceAll("'", '')
+              .trim();
+        }
+      }
+
+      final mimeType =
+          response.headers.value('content-type') ?? 'application/octet-stream';
+      final bytes = response.data ?? <int>[];
+
+      return MaterialDownload(
+        fileName: fileName,
+        mimeType: mimeType,
+        bytes: bytes,
+      );
+    } on DioException {
+      rethrow;
+    }
   }
 
   @override

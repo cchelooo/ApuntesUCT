@@ -3,6 +3,7 @@ import 'package:apuntesuct_mobile/core/widgets/error_state.dart';
 import 'package:apuntesuct_mobile/core/widgets/loading_state.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_detail_provider.dart';
+import 'package:apuntesuct_mobile/features/materials/data/dio_material_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -319,14 +320,59 @@ class MaterialDetailScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 28),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: FilledButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.download_rounded),
-              label: const Text('Descargar Material'),
-            ),
+
+          Consumer(
+            builder: (context, ref, _) {
+              return SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton.icon(
+                  onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text('Descargando ${summary.title}...'),
+                        duration: const Duration(seconds: 1),
+                      ),
+                    );
+
+                    try {
+                      final repo = ref.read(dioMaterialRepositoryProvider);
+                      final downloadData = await repo.download(
+                        summary.id,
+                        versionId: currentVersion?.id,
+                      );
+
+                      if (context.mounted) {
+                        messenger.hideCurrentSnackBar();
+                        messenger.showSnackBar(
+                          SnackBar(
+                            backgroundColor: Colors.green.shade700,
+                            content: Text(
+                              'Descarga completada: ${downloadData.fileName} (${downloadData.bytes.length} bytes)',
+                            ),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        messenger.hideCurrentSnackBar();
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            backgroundColor: Colors.redAccent,
+                            content: Text(
+                              'Error al descargar el archivo. Intenta nuevamente.',
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.download_rounded),
+                  label: const Text('Descargar Material'),
+                ),
+              );
+            },
           ),
         ],
       ),
