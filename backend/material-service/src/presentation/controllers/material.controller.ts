@@ -15,6 +15,7 @@ import { CreateMaterialResponseDto } from '../dto/material-response.dto';
 
 import { CreateMaterial } from '../../application/use-cases/create-material';
 import { MaterialAuthorProvider } from '../../infrastructure/auth/material-author.provider';
+import { MaterialFileTypeValidator } from '../validators/material-file-type.validator';
 
 const MATERIAL_MIME_TYPES = [
   'application/pdf',
@@ -39,20 +40,6 @@ class EmptyFileValidator extends FileValidator<object> {
 
   public buildErrorMessage(): string {
     return 'El archivo adjunto está vacío (0 bytes) y no puede ser procesado.';
-  }
-}
-
-/**
- * Validador personalizado para asegurar los 5 formatos del contrato: PDF, DOC, DOCX, PPT y PPTX
- */
-class MaterialFileTypeValidator extends FileValidator<object> {
-  public isValid(file?: Express.Multer.File): boolean {
-    if (!file) return true;
-    return MATERIAL_MIME_TYPES.includes(file.mimetype);
-  }
-
-  public buildErrorMessage(): string {
-    return 'Tipo de archivo no admitido. Formatos válidos: PDF, Word (.doc, .docx) y PowerPoint (.ppt, .pptx).';
   }
 }
 
@@ -135,7 +122,7 @@ export class MaterialController {
         validators: [
           new EmptyFileValidator({}),
           new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE_BYTES + 1 }),
-          new MaterialFileTypeValidator({}),
+          new MaterialFileTypeValidator(),
         ],
         exceptionFactory: (error) => {
           if (error.includes('vacío') || error.includes('empty')) {

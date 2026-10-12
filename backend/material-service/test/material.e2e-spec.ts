@@ -1,29 +1,29 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { createHash } from 'node:crypto';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/infrastructure/prisma/prisma.service';
 import { setupApp } from '../src/setup-app';
 import { ObjectStorage } from '../src/application/ports/object-storage.port';
 import { MaterialAuthorProvider } from '../src/infrastructure/auth/material-author.provider';
-
 describe('Materials API (E2E)', () => {
   let app: INestApplication;
   const prisma = {
-    material: { 
-      findMany: jest.fn(), 
+    material: {
+      findMany: jest.fn(),
       count: jest.fn(),
-      create: jest.fn()
+      create: jest.fn(),
     },
     materialType: {
-      findFirst: jest.fn()
+      findFirst: jest.fn(),
     },
     $transaction: jest.fn((queries: Promise<unknown>[]) => Promise.all(queries)),
   };
-
   const storage = { save: jest.fn(), remove: jest.fn() };
   const authorProvider = { resolve: () => ({ id: '18b428c0-6879-4d34-9de8-df9a17438b28', universityId: null }) };
-
   const material = {
     id: 'c0bc574d-41a6-4cb6-9b0f-d3c48b216441',
     title: 'Apuntes de cálculo',
@@ -42,7 +42,6 @@ describe('Materials API (E2E)', () => {
     createdAt: '2026-10-01T12:00:00.000Z',
     updatedAt: '2026-10-01T12:00:00.000Z',
   };
-
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
@@ -54,12 +53,10 @@ describe('Materials API (E2E)', () => {
       .overrideProvider(MaterialAuthorProvider)
       .useValue(authorProvider)
       .compile();
-
     app = moduleRef.createNestApplication();
     setupApp(app);
     await app.init();
   });
-
   beforeEach(() => {
     jest.clearAllMocks();
     prisma.material.findMany.mockResolvedValue([]);
@@ -68,13 +65,11 @@ describe('Materials API (E2E)', () => {
     prisma.material.create.mockImplementation(({ data }) =>
       Promise.resolve({ ...data, id: 'test-material-id', createdAt: new Date() }),
     );
-    storage.save.mockResolvedValue('https://storage.url/file.doc');
+    storage.save.mockResolvedValue({ storageKey: 'materials/test-file' });
   });
-
   afterAll(async () => {
     await app.close();
   });
-
   describe('GET /api/v1/materials', () => {
     it('devuelve página vacía y valores predeterminados', async () => {
       const { body } = await request(app.getHttpServer()).get('/api/v1/materials').expect(200);
@@ -83,7 +78,6 @@ describe('Materials API (E2E)', () => {
         expect.objectContaining({ skip: 0, take: 20 }),
       );
     });
-
     it('pagina publicados con orden estable y serializa metadatos', async () => {
       prisma.material.findMany.mockResolvedValue([{
         ...material,
@@ -119,7 +113,6 @@ describe('Materials API (E2E)', () => {
       });
       expect(prisma.material.findMany.mock.calls[0][0].select.versions).toBeUndefined();
     });
-
     it('conserva total y página fuera de rango', async () => {
       prisma.material.count.mockResolvedValue(3);
       const { body } = await request(app.getHttpServer())
@@ -127,12 +120,10 @@ describe('Materials API (E2E)', () => {
         .expect(200);
       expect(body).toEqual({ items: [], page: 9, pageSize: 2, total: 3 });
     });
-
     it('acepta el tamaño máximo', async () => {
       await request(app.getHttpServer()).get('/api/v1/materials?pageSize=100').expect(200);
       expect(prisma.material.findMany).toHaveBeenCalledWith(expect.objectContaining({ take: 100 }));
     });
-
     it.each([
       'page=0',
       'page=-1',
@@ -161,7 +152,6 @@ describe('Materials API (E2E)', () => {
       expect(prisma.material.findMany).not.toHaveBeenCalled();
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
-
     it('documenta parámetros y respuesta en OpenAPI', async () => {
       const { body } = await request(app.getHttpServer()).get('/api/docs-json').expect(200);
       const endpoint = body.paths['/api/v1/materials'].get;
@@ -180,6 +170,7 @@ describe('Materials API (E2E)', () => {
   });
 
   describe('POST /api/v1/materials - Validaciones de Archivos y Multipart', () => {
+    const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
     const validMetadata = {
       title: 'Documento de Prueba E2E',
       year: '2026',
@@ -187,81 +178,136 @@ describe('Materials API (E2E)', () => {
       subjectId: 'SUBJ-101',
     };
 
-    const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
+    // Archivos reales incluidos en el paquete. Se usa el validador de producción.
+    const exactPdf = readFileSync(join(__dirname, 'fixtures', 'valid-exact-15mb.pdf'));
+    const docBuffer = readFileSync(join(__dirname, 'fixtures', 'valid-document.doc'));
+    const pptBuffer = readFileSync(join(__dirname, 'fixtures', 'valid-presentation.ppt'));
+    const pngBuffer = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNgaPgPAAIDAYAkYfWXAAAAAElFTkSuQmCC',
+      'base64',
+    );
 
-    it('debería rechazar con 413 un archivo que supere por 1 byte el límite', async () => {
-      const oversizedBuffer = Buffer.alloc(MAX_FILE_SIZE_BYTES + 1);
-
-      const { body } = await request(app.getHttpServer())
+    const upload = (buffer: Buffer, filename: string, contentType: string, type = 'DOCUMENT') =>
+      request(app.getHttpServer())
         .post('/api/v1/materials')
         .field('title', validMetadata.title)
         .field('year', validMetadata.year)
-        .field('type', validMetadata.type)
+        .field('type', type)
         .field('subjectId', validMetadata.subjectId)
-        .attach('file', oversizedBuffer, { filename: 'file-oversized.pdf', contentType: 'application/pdf' })
-        .expect(413);
+        .attach('file', buffer, { filename, contentType });
 
+    const expectNoWrites = () => {
+      expect(storage.save).not.toHaveBeenCalled();
+      expect(storage.remove).not.toHaveBeenCalled();
+      expect(prisma.material.create).not.toHaveBeenCalled();
+    };
+
+    const expectVersion = (buffer: Buffer, filename: string, mimeType: string) => {
+      expect(storage.save).toHaveBeenCalledTimes(1);
+      expect(storage.save).toHaveBeenCalledWith(buffer, mimeType);
+      expect(prisma.material.create).toHaveBeenCalledTimes(1);
+      expect(prisma.material.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: 'PENDING_REVIEW',
+            versions: expect.objectContaining({
+              create: expect.objectContaining({
+                versionNumber: 1,
+                storageKey: 'materials/test-file',
+                originalFilename: filename,
+                mimeType,
+                fileSize: BigInt(buffer.length),
+                checksum: createHash('sha256').update(buffer).digest('hex'),
+                createdBy: authorProvider.resolve().id,
+              }),
+            }),
+          }),
+        }),
+      );
+    };
+
+    it('acepta un PDF válido de exactamente 15 MiB y persiste la clave en la versión', async () => {
+      expect(exactPdf.length).toBe(MAX_FILE_SIZE_BYTES);
+      const { body } = await upload(exactPdf, 'exact-15mb.pdf', 'application/pdf').expect(201);
+      expectVersion(exactPdf, 'exact-15mb.pdf', 'application/pdf');
+      expect(body.data.fileSize).toBe(MAX_FILE_SIZE_BYTES);
+      expect(body.data.mimeType).toBe('application/pdf');
+      expect(body.data.fileUrl).toBeNull();
+      expect(body.data.storageKey).toBeUndefined();
+    });
+
+    it('acepta un PDF de un byte menos que el límite', async () => {
+      // Solo elimina el salto de línea final; %%EOF queda intacto.
+      const buffer = exactPdf.subarray(0, exactPdf.length - 1);
+      expect(buffer.length).toBe(MAX_FILE_SIZE_BYTES - 1);
+      await upload(buffer, 'below-limit.pdf', 'application/pdf').expect(201);
+      expectVersion(buffer, 'below-limit.pdf', 'application/pdf');
+    });
+
+    it.each([1, 1024 * 1024])('rechaza con 413 un PDF que supera el límite por %i bytes', async (extra) => {
+      // Parte del mismo PDF válido: el rechazo debe deberse al tamaño.
+      const buffer = Buffer.concat([exactPdf, Buffer.alloc(extra, 0x0a)]);
+      expect(buffer.length).toBe(MAX_FILE_SIZE_BYTES + extra);
+      const { body } = await upload(buffer, 'oversized.pdf', 'application/pdf').expect(413);
       expect(body.statusCode).toBe(413);
-      expect(prisma.material.create).not.toHaveBeenCalled();
-      expect(storage.save).not.toHaveBeenCalled();
+      expectNoWrites();
     });
 
-    it('debería aceptar archivos DOC y PPT con su contenido correspondiente', async () => {
-      const docBuffer = Buffer.alloc(1024);
-      const pptBuffer = Buffer.alloc(1024);
-
-      await request(app.getHttpServer())
-        .post('/api/v1/materials')
-        .field('title', 'Apunte Word')
-        .field('year', '2026')
-        .field('type', 'DOCUMENT')
-        .field('subjectId', 'SUBJ-101')
-        .attach('file', docBuffer, { filename: 'documento.doc', contentType: 'application/msword' })
-        .expect(201);
-
-      await request(app.getHttpServer())
-        .post('/api/v1/materials')
-        .field('title', 'Presentación PPT')
-        .field('year', '2026')
-        .field('type', 'PRESENTATION')
-        .field('subjectId', 'SUBJ-101')
-        .attach('file', pptBuffer, { filename: 'presentacion.ppt', contentType: 'application/vnd.ms-powerpoint' })
-        .expect(201);
-
-      expect(storage.save).toHaveBeenCalledTimes(2);
+    it.each([
+      {
+        filename: 'documento.doc',
+        buffer: docBuffer,
+        mimeType: 'application/msword',
+        type: 'DOCUMENT',
+      },
+      {
+        filename: 'presentacion.ppt',
+        buffer: pptBuffer,
+        mimeType: 'application/vnd.ms-powerpoint',
+        type: 'PRESENTATION',
+      },
+    ])('acepta $filename auténtico y registra sus metadatos de versión', async ({ filename, buffer, mimeType, type }) => {
+      await upload(buffer, filename, mimeType, type).expect(201);
+      expectVersion(buffer, filename, mimeType);
     });
 
-    it('debería rechazar un archivo vacío (0 bytes) con 400 antes de llegar al MIME', async () => {
-      const emptyBuffer = Buffer.alloc(0);
+    it.each([
+      { filename: 'fake.pdf', contentType: 'application/pdf' },
+      { filename: 'fake.doc', contentType: 'application/msword' },
+      { filename: 'fake.ppt', contentType: 'application/vnd.ms-powerpoint' },
+    ])('rechaza texto falso declarado como $filename con 415', async ({ filename, contentType }) => {
+      const buffer = Buffer.from('Texto plano falso que no es un documento real');
+      const { body } = await upload(buffer, filename, contentType).expect(415);
+      expect(body.statusCode).toBe(415);
+      expectNoWrites();
+    });
 
-      const { body } = await request(app.getHttpServer())
-        .post('/api/v1/materials')
-        .field('title', validMetadata.title)
-        .field('year', validMetadata.year)
-        .field('type', validMetadata.type)
-        .field('subjectId', validMetadata.subjectId)
-        .attach('file', emptyBuffer, { filename: 'empty.pdf', contentType: 'application/pdf' })
-        .expect(400);
+    it.each([
+      { filename: 'zeros.doc', contentType: 'application/msword' },
+      { filename: 'zeros.ppt', contentType: 'application/vnd.ms-powerpoint' },
+    ])('rechaza bytes en cero declarados como $filename con 415', async ({ filename, contentType }) => {
+      const { body } = await upload(Buffer.alloc(1024), filename, contentType).expect(415);
+      expect(body.statusCode).toBe(415);
+      expectNoWrites();
+    });
 
+    it.each([
+      { filename: 'empty.pdf', contentType: 'application/pdf' },
+      { filename: 'empty.doc', contentType: 'application/msword' },
+      { filename: 'empty.ppt', contentType: 'application/vnd.ms-powerpoint' },
+    ])('rechaza $filename de 0 bytes con 400 antes del filtro de contenido', async ({ filename, contentType }) => {
+      const { body } = await upload(Buffer.alloc(0), filename, contentType).expect(400);
       expect(body.statusCode).toBe(400);
-      expect(prisma.material.create).not.toHaveBeenCalled();
-      expect(storage.save).not.toHaveBeenCalled();
+      expectNoWrites();
     });
 
-    it('no debe invocar el almacenamiento si el tipo MIME no es soportado', async () => {
-      const invalidBuffer = Buffer.alloc(100);
-
-      await request(app.getHttpServer())
-        .post('/api/v1/materials')
-        .field('title', validMetadata.title)
-        .field('year', validMetadata.year)
-        .field('type', validMetadata.type)
-        .field('subjectId', validMetadata.subjectId)
-        .attach('file', invalidBuffer, { filename: 'image.png', contentType: 'image/png' })
-        .expect(415);
-
-      expect(prisma.material.create).not.toHaveBeenCalled();
-      expect(storage.save).not.toHaveBeenCalled();
+    it.each([
+      { filename: 'image.png', contentType: 'image/png' },
+      { filename: 'image.pdf', contentType: 'application/pdf' },
+    ])('rechaza un PNG real enviado como $filename con 415', async ({ filename, contentType }) => {
+      const { body } = await upload(pngBuffer, filename, contentType).expect(415);
+      expect(body.statusCode).toBe(415);
+      expectNoWrites();
     });
   });
 });
