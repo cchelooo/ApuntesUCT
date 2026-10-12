@@ -85,3 +85,31 @@ export default defineConfig([
   },
 ]);
 ```
+
+## Cliente de Material (#223)
+
+`VITE_API_URL` debe apuntar al API Gateway (por ejemplo,
+`http://localhost:3000/api/v1`). El cliente de Material no usa un origen
+alternativo cuando falta esta configuración.
+
+- `fetchMaterials(params, signal)` conserva el mapeo del listado para la UI,
+  incluyendo `totalPages`, y permite cancelar solicitudes con TanStack Query.
+  El contrato HTTP de listado está en `domain/material/materialApi.ts`; el
+  modelo de presentación está en `domain/material/materialPage.ts`.
+- `createMaterial(material, { accessToken?, signal? })` envía multipart con
+  `professorId` y admite DOCUMENT, PRESENTATION, EXAM, SUMMARY y LINK. El navegador
+  establece el Content-Type y su boundary. Si se proporciona un token, se envía
+  como Bearer; el cliente no obtiene credenciales de almacenamiento global.
+- `useCreateMaterialMutation(accessToken?)` invalida las consultas de materiales
+  al completar la creación. La integración real con Auth sigue pendiente en
+  backend; el token simulado de login no habilita la creación.
+- `fetchMaterial` y `downloadMaterial` son operaciones provisionales: las rutas
+  `/materials/:id` y `/materials/:id/download` todavía no están publicadas en
+  el contrato de backend. No conectarlas a la UI hasta que se confirmen. El
+  detalle devuelve `unknown` y la descarga una `Response` sin interpretar;
+  no se presupone un esquema de detalle ni un archivo binario. Sus pruebas
+  verifican únicamente el transporte con respuestas simuladas.
+
+El contrato de creación corresponde a los DTO Swagger de Material Service.
+Los campos marcados opcionales en Swagger permanecen opcionales en TypeScript,
+aunque la implementación actual los incluya con valores null.

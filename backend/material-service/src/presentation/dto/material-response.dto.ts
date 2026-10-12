@@ -72,7 +72,8 @@ export class MaterialDataDto {
     type: String,
     example: null,
     nullable: true,
-    description: 'Reservado para el futuro endpoint de descarga; actualmente null.',
+    description:
+      'Siempre null: la descarga usa GET /materials/:id/download sin exponer una URL de MinIO.',
   })
   fileUrl!: string | null;
 

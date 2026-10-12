@@ -265,10 +265,18 @@ diferencia con la sección 5 es qué responden hoy con el servicio levantado.
   existe y responde `200`, pero la búsqueda desacoplada es trabajo en curso.
 - El healthcheck del servicio está en `http://localhost:3005/api/v1/health`.
 
-### Material Service — `/api/v1/materials` (enrutado, listado implementado)
+### Material Service — `/api/v1/materials` (enrutado, listado y descarga implementados)
 - `GET /materials` — Listado paginado ya implementado (#318): devuelve
   `{ "items": [], "page": 1, "pageSize": 20, "total": 0 }` con la base vacía.
   Acepta `page` y `pageSize`; no hace búsqueda textual.
+- `GET /materials/:id/download` — Descarga ya implementada (#236): resuelve la
+  **última versión** publicada y la transmite como `StreamableFile` con
+  `Content-Type` del archivo y `Content-Disposition: attachment; filename="..."`.
+  Acepta `versionId` (query, UUID opcional) para pedir una versión concreta.
+  - `id` inválido (no UUID) → `400`.
+  - Material inexistente/no publicado o versión inexistente → `404`.
+  - Almacenamiento no disponible → `503`.
+  - La clave interna de MinIO nunca viaja al cliente.
 - `POST /materials` — Subida multipart declarada como **stub** en el contrato del
   servicio (máx. 15MB, PDF/Word/PPT, o `externalLink` para tipo `LINK`).
 - El healthcheck del servicio está en `http://localhost:3003/api/v1/health` y su

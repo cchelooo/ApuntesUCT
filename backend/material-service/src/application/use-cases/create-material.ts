@@ -111,7 +111,7 @@ export class CreateMaterial {
         careerId: material.careerId,
         professorId: material.professorId,
         universityId: material.universityId,
-        // La descarga se implementará en su caso de uso; nunca publicar la ruta MinIO.
+        // La descarga (#236) resuelve la clave internamente; nunca publicar la ruta MinIO.
         fileUrl: null,
         fileSize: file?.buffer.length ?? null,
         mimeType: file?.mimetype ?? null,
