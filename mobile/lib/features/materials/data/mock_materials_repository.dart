@@ -81,6 +81,19 @@ class MockMaterialsRepository implements MaterialsRepository {
     if (delay > Duration.zero) {
       await Future.delayed(delay);
     }
-    return MaterialFixtures.sampleDetail1;
+    // Primero busca en el dataset inyectado (respeta customDataset de tests),
+    // luego en los fixtures conocidos. Nunca devuelve un detalle ajeno:
+    // si el ID no existe se lanza NotFound para que la ruta muestre
+    // «Material no encontrado» en lugar del contenido equivocado.
+    for (final summary in _dataset) {
+      if (summary.id == id) {
+        final fixture = MaterialFixtures.detailForId(id);
+        if (fixture != null) return fixture;
+        return MaterialDetail(summary: summary);
+      }
+    }
+    final fixture = MaterialFixtures.detailForId(id);
+    if (fixture != null) return fixture;
+    throw MaterialNotFoundException(id);
   }
 }

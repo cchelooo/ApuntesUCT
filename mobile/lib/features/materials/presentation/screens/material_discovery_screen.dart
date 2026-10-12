@@ -7,6 +7,7 @@ import 'package:apuntesuct_mobile/features/materials/presentation/providers/mate
 import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_summary_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class MaterialDiscoveryScreen extends ConsumerStatefulWidget {
   const MaterialDiscoveryScreen({super.key});
@@ -256,7 +257,11 @@ class _MaterialDiscoveryScreenState
             ),
           );
         }
-        return MaterialSummaryCard(material: state.items[index]);
+        final item = state.items[index];
+        return MaterialSummaryCard(
+          material: item,
+          onTap: () => context.push('/materials/${item.id}'),
+        );
       },
     );
   }

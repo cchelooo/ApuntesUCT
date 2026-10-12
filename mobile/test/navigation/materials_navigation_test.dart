@@ -53,18 +53,48 @@ void main() {
     expect(find.text('Subir Material'), findsOneWidget);
     expect(appRouter.state.uri.path, '/materials/upload');
 
-    // --- Apertura directa: detalle por ID conocido ---
+    // --- Apertura directa: detalle por ID conocido (mat-101) ---
     appRouter.go('/materials/mat-101');
     await tester.pumpAndSettle();
     expect(find.byType(MaterialDetailScreen), findsOneWidget);
     expect(find.text('Detalle del Material'), findsOneWidget);
+    expect(
+      find.text('Resumen Certamen 1 - Estructuras de Datos'),
+      findsOneWidget,
+    );
     expect(appRouter.state.uri.path, '/materials/mat-101');
+
+    // --- Apertura directa: mat-102 resuelve su propio fixture ---
+    appRouter.go('/materials/mat-102');
+    await tester.pumpAndSettle();
+    expect(find.byType(MaterialDetailScreen), findsOneWidget);
+    expect(
+      find.text('Guía de Ejercicios Resueltos - Cálculo I'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Resumen Certamen 1 - Estructuras de Datos'),
+      findsNothing,
+    );
+    expect(appRouter.state.uri.path, '/materials/mat-102');
 
     // --- Apertura directa: ID desconocido no revienta ni queda en blanco ---
     appRouter.go('/materials/id-inexistente');
     await tester.pumpAndSettle();
     expect(find.text('Material no encontrado'), findsOneWidget);
+    expect(find.byType(MaterialDetailScreen), findsNothing);
     expect(appRouter.state.uri.path, '/materials/id-inexistente');
+
+    // --- Tap en tarjeta navega a /materials/:id (no Navigator local) ---
+    appRouter.go('/materials');
+    await tester.pumpAndSettle();
+    expect(find.byType(MaterialDiscoveryScreen), findsOneWidget);
+    await tester.tap(
+      find.text('Resumen Certamen 1 - Estructuras de Datos'),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(MaterialDetailScreen), findsOneWidget);
+    expect(appRouter.state.uri.path, '/materials/mat-101');
 
     // --- El catálogo académico sigue intacto ---
     appRouter.go('/catalog');
