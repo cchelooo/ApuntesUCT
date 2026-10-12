@@ -33,6 +33,14 @@ test(
         assert.deepEqual(Buffer.concat(chunks), content);
       }
       assert.notEqual(keys[0], keys[1]);
+      const readStream = await adapter.get(keys[0]);
+      const readChunks = [];
+      for await (const chunk of readStream) readChunks.push(chunk);
+      assert.deepEqual(Buffer.concat(readChunks), content);
+      await assert.rejects(adapter.get(`materials/absent-${randomUUID()}`), (error) => {
+        assert.equal(error.name, 'ObjectNotFoundError');
+        return true;
+      });
       const anonymous = new Client({ ...options.client, accessKey: '', secretKey: '' });
       await assert.rejects(anonymous.statObject(bucket, keys[0]), { code: 'AccessDenied' });
     } finally {

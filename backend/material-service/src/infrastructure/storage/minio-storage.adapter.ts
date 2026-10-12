@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
-import { Client } from 'minio';
+import type { Readable } from 'node:stream';
+import { Client, S3Error } from 'minio';
 import {
+  ObjectNotFoundError,
   ObjectStorage,
   ObjectStorageError,
   StoredObject,
@@ -27,6 +29,21 @@ export class MinioStorageAdapter extends ObjectStorage {
       return { storageKey };
     } catch {
       // Los errores del SDK pueden incluir endpoint, bucket y datos de la petición.
+      throw new ObjectStorageError();
+    }
+  }
+
+  async get(storageKey: string): Promise<Readable> {
+    try {
+      const { client, bucket } = this.getConnection();
+      return await client.getObject(bucket, storageKey);
+    } catch (error) {
+      if (error instanceof S3Error) {
+        const { code } = error;
+        if (code === 'NoSuchKey' || code === 'NoSuchBucket' || code === 'NotFound') {
+          throw new ObjectNotFoundError();
+        }
+      }
       throw new ObjectStorageError();
     }
   }
