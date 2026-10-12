@@ -13,3 +13,18 @@ export interface RawMaterialPage {
   pageSize: number;
   total: number;
 }
+
+export interface RawMaterialVersion {
+  versionNumber?: number | null;
+  originalFilename?: string | null;
+  mimeType?: string | null;
+  fileSize?: number | string | null;
+  createdAt?: string | null;
+}
+
+export interface RawMaterialDetail extends RawMaterial {
+  description?: string | null;
+  externalLink?: string | null;
+  currentVersion?: RawMaterialVersion | null;
+  versions?: RawMaterialVersion[] | null;
+}

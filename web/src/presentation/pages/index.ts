@@ -6,4 +6,5 @@ export * from './CatalogPage';
 export * from './SearchPage';
 export * from './LibraryPage';
 export * from './MaterialDetailPage';
+export * from './MaterialDetailRoute';
 export * from './NotFoundPage';
