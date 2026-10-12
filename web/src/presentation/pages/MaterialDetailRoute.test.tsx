@@ -29,7 +29,10 @@ function renderRoute(path: string) {
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/material/:materialId" element={<MaterialDetailRoute />} />
+          <Route
+            path="/material/:materialId"
+            element={<MaterialDetailRoute />}
+          />
           <Route path="/catalog" element={<p>Catálogo</p>} />
         </Routes>
       </MemoryRouter>
