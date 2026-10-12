@@ -320,7 +320,7 @@ Todos responden `200` con un arreglo JSON y `400` si el UUID del filtro es invá
 | Paginación `page`/`limit` (`items`/`total`) | **Propuesta** | **No implementada** en los endpoints actuales de catálogo; si se requiere, debe proponerse y aprobarse el contrato |
 | `year`/`type` fuera de Catalog | **Resuelto (#221)** | No forman parte del contrato de Catalog: son de Material Service y la búsqueda por año/tipo de Search Service |
 | Proxy Gateway → `/catalog` | Usado por Mobile (#272) | `CatalogRepository` usa el cliente central del Gateway; no consulta `:3002` directamente (sección 1.2) |
-| Endpoints de Material | **Parcial** | `/api/v1/materials` está enrutada (#222); `material-service` (#311) expone el listado paginado (#318), la creación/subida real (#233) y la descarga `GET /api/v1/materials/:id/download` (#236, última versión o `?versionId=`); el detalle y el preview siguen pendientes |
+| Endpoints de Material | **Parcial** | `/api/v1/materials` está enrutada (#222); `material-service` (#311) expone el listado paginado (#318), la creación/subida real (#233) y la descarga `GET /api/v1/materials/:id/download` (#236, última versión o `?versionId=`); subida multipart y descarga binaria validadas a través del Gateway en el puerto 3000 (#237, `docs/reports/validacion-proxy-gateway-2026-10-12.md`); el detalle y el preview siguen pendientes |
 | Búsqueda en `/api/v1/search` | **Pendiente** | La ruta está enrutada (#222) y `search-service` existe (#305), pero `GET /api/v1/search?q=` devuelve un stub con `results: []` y `total: 0` |
 | Proxy Gateway → `/quality` | **Pendiente** | El gateway no enruta `/api/v1/quality` y el servicio sigue siendo un placeholder |
 

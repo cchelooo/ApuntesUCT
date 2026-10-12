@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
+const { Readable } = require('node:stream');
 const CFB = require('cfb');
 const { Test } = require('@nestjs/testing');
 const { ConfigService } = require('@nestjs/config');
@@ -8,6 +9,12 @@ const { configureRoutes } = require('../dist/configure-routes');
 const {
   MaterialController,
 } = require('../../material-service/dist/presentation/controllers/material.controller');
+const {
+  MaterialsController,
+} = require('../../material-service/dist/presentation/materials/materials.controller');
+const {
+  MaterialsService,
+} = require('../../material-service/dist/application/services/materials.service');
 const {
   CreateMaterial,
 } = require('../../material-service/dist/application/use-cases/create-material');
@@ -25,16 +32,30 @@ const {
   HttpExceptionFilter,
 } = require('../../material-service/dist/infrastructure/filters/http-exception.filter');
 
-// Uses the real HTTP controller, validators and use case with mocked persistence/storage.
+// Uses the real HTTP controllers, validators and use cases with mocked persistence/storage.
+// Reproduces the acceptance topology: clients only use the Gateway on 3000, which proxies
+// to Material on its reserved 3003 for both multipart uploads and binary downloads.
 // Run after building both api-gateway and material-service (Node handles file-type ESM).
 test('Gateway → contrato HTTP real de Material', async (t) => {
   let material;
   let gateway;
   try {
+    const binaryContent = Buffer.concat([
+      Buffer.from('%PDF-1.7\n'),
+      Buffer.from([0x00, 0x01, 0x7f, 0x80, 0xff, 0x0d, 0x0a, 0x42]),
+    ]);
+    let materialRow = { id: '11111111-1111-4111-8111-111111111111' };
+    const versionRow = {
+      storageKey: 'private/calculo-v1',
+      mimeType: 'application/pdf',
+      originalFilename: 'cálculo.pdf',
+      fileSize: binaryContent.length,
+    };
     const materialModule = await Test.createTestingModule({
-      controllers: [MaterialController],
+      controllers: [MaterialController, MaterialsController],
       providers: [
         CreateMaterial,
+        MaterialsService,
         {
           provide: MaterialAuthorProvider,
           useValue: {
@@ -46,7 +67,10 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
         },
         {
           provide: ObjectStorage,
-          useValue: { save: async () => ({ storageKey: 'private/test' }) },
+          useValue: {
+            save: async () => ({ storageKey: 'private/test' }),
+            get: async () => Readable.from([binaryContent]),
+          },
         },
         {
           provide: PrismaService,
@@ -58,7 +82,9 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
                 id: 'material-id',
                 createdAt: new Date(),
               }),
+              findFirst: async () => materialRow,
             },
+            materialVersion: { findFirst: async () => versionRow },
           },
         },
       ],
@@ -66,20 +92,19 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
     material = materialModule.createNestApplication();
     setupApp(material);
     material.useGlobalFilters(new HttpExceptionFilter());
-    await material.listen(0, '127.0.0.1');
-    const target = await material.getUrl();
+    // Material escucha en su puerto reservado; el Gateway usa ese valor por defecto.
+    await material.listen(3003, '127.0.0.1');
     const gatewayModule = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(ConfigService)
-      .useValue({
-        get: (key) => (key === 'MATERIAL_SERVICE_URL' ? target : undefined),
-      })
+      .useValue({ get: () => undefined })
       .compile();
     gateway = gatewayModule.createNestApplication();
     configureRoutes(gateway);
-    await gateway.listen(0, '127.0.0.1');
-    const base = await gateway.getUrl();
+    // El cliente solo conoce el puerto 3000 del Gateway.
+    await gateway.listen(3000, '127.0.0.1');
+    const base = 'http://127.0.0.1:3000';
     const maxSize = 15 * 1024 * 1024;
     const post = async ({
       bytes,
@@ -226,6 +251,43 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
         const result = await post({ fields: { year: 'abc' }, size: 100 });
         assert.equal(result.status, 400);
         assert.ok(Array.isArray(result.body.message));
+      },
+    );
+    await t.test(
+      'descarga el binario íntegro pasando por el Gateway',
+      async () => {
+        materialRow = { id: '11111111-1111-4111-8111-111111111111' };
+        const response = await fetch(
+          `${base}/api/v1/materials/11111111-1111-4111-8111-111111111111/download`,
+        );
+        assert.equal(response.status, 200);
+        assert.equal(response.headers.get('content-type'), 'application/pdf');
+        assert.equal(
+          response.headers.get('content-disposition'),
+          `attachment; filename="calculo.pdf"; filename*=UTF-8''c%C3%A1lculo.pdf`,
+        );
+        assert.equal(
+          response.headers.get('content-length'),
+          String(binaryContent.length),
+        );
+        const received = Buffer.from(await response.arrayBuffer());
+        assert.ok(received.equals(binaryContent));
+      },
+    );
+    await t.test('propaga el 404 del material a través del Gateway', async () => {
+      materialRow = null;
+      const response = await fetch(
+        `${base}/api/v1/materials/22222222-2222-4222-8222-222222222222/download`,
+      );
+      assert.equal(response.status, 404);
+      assert.equal((await response.json()).statusCode, 404);
+    });
+    await t.test(
+      'rechaza un UUID inválido con 400 conservando el formato',
+      async () => {
+        const response = await fetch(`${base}/api/v1/materials/nope/download`);
+        assert.equal(response.status, 400);
+        assert.equal((await response.json()).statusCode, 400);
       },
     );
     await t.test(
