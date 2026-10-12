@@ -1,8 +1,4 @@
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   CreateMaterialRequest,
   ListMaterialsParams,
@@ -11,7 +7,6 @@ import {
   createMaterial,
   downloadMaterial,
   fetchMaterial,
-  fetchMaterials,
 } from '../../infrastructure/material/materialApi';
 
 export const materialQueryKeys = {
@@ -23,26 +18,22 @@ export const materialQueryKeys = {
   detail: (id: string) => [...materialQueryKeys.details(), id] as const,
 };
 
-export function useMaterialsQuery(params: ListMaterialsParams = {}) {
-  return useQuery({
-    queryKey: materialQueryKeys.list(params),
-    queryFn: () => fetchMaterials(params),
-  });
-}
+export { useMaterialsQuery } from './useMaterialsQuery';
 
 export function useMaterialQuery(materialId: string) {
   return useQuery({
     queryKey: materialQueryKeys.detail(materialId),
-    queryFn: () => fetchMaterial(materialId),
+    queryFn: ({ signal }) => fetchMaterial(materialId, signal),
     enabled: Boolean(materialId),
   });
 }
 
-export function useCreateMaterialMutation() {
+export function useCreateMaterialMutation(accessToken?: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (material: CreateMaterialRequest) => createMaterial(material),
+    mutationFn: (material: CreateMaterialRequest) =>
+      createMaterial(material, { accessToken }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: materialQueryKeys.all });
     },

@@ -24,6 +24,8 @@ La aplicación Mobile no consume los microservicios directamente, sino a través
   - Gateway: `http://localhost:3000/api/docs`
   - Auth Service: `http://localhost:3001/api/docs` (JSON spec en `/api/docs-json`)
   - Catalog Service: `http://localhost:3002/api/docs` (JSON spec en `/api/docs-json`)
+  - Material Service: `http://localhost:3003/api/docs` (JSON spec en `/api/docs-json`)
+  - Search Service: `http://localhost:3005/api/docs` (JSON spec en `/api/docs-json`)
 
 ---
 
@@ -163,8 +165,6 @@ Microservicio encargado de la estructura académica: Universidades, Carreras, As
   - `careerId` (UUID, opcional — requiere `universityId`)
   - `subjectId` (UUID, opcional — requiere `careerId`)
   - `professorId` (UUID, opcional — requiere `subjectId`)
-  - `year` (Int `2000-2100`, opcional — requiere `professorId`, actualmente *501 Not Implemented*)
-  - `type` (String, opcional — requiere `year`, actualmente *501 Not Implemented*)
 - **Comportamiento**:
   - Sin parámetros: Devuelve todas las asignaturas.
   - Con filtros válidos: Devuelve asignaturas coincidentes con sus relaciones (`career`, `university`, `professors`).
@@ -199,18 +199,18 @@ Microservicio encargado de la estructura académica: Universidades, Carreras, As
 
 ---
 
-### 3.2. Endpoints REST Individuales Requeridos para Selectores en Mobile
+### 3.2. Endpoints REST Individuales para Selectores en Mobile
 
-Para poblar dinámicamente los dropdowns en los filtros de búsqueda y el formulario de subida de material sin transferir árboles jerárquicos pesados, Mobile requiere (o solicita formalmente a INT2) los siguientes endpoints independientes:
+Para poblar dinámicamente los dropdowns en los filtros de búsqueda y el formulario de subida de material sin transferir árboles jerárquicos pesados, el Catalog Service expone los siguientes endpoints independientes (#221). Devuelven únicamente entidades **activas** ordenadas por nombre:
 
-| Método | Endpoint Requerido | Query / Params | Respuesta esperada | Modelo Mobile |
+| Método | Endpoint | Query / Params | Respuesta esperada | Modelo Mobile |
 |---|---|---|---|---|
 | **GET** | `/catalog/universities` | — | `UniversityModel[]` | `UniversityModel` |
 | **GET** | `/catalog/careers` | `?universityId=<uuid>` | `CareerModel[]` filtrado por universidad | `CareerModel` |
 | **GET** | `/catalog/subjects` | `?careerId=<uuid>` | `SubjectModel[]` filtrado por carrera | `SubjectModel` |
 | **GET** | `/catalog/professors` | `?subjectId=<uuid>` | `ProfessorModel[]` asociados a la asignatura | `ProfessorModel` |
 
-> 💡 **Estrategia de compatibilidad provisional**: Mientras Backend no exponga las rutas REST individuales arriba listadas, Mobile puede consumir `GET /catalog/filter` y extraer en memoria las listas únicas de Universidades, Carreras y Profesores a partir del árbol de asignaturas devuelto.
+> 💡 El filtro por el padre (`universityId`, `careerId`, `subjectId`) es **opcional**: sin él, el listado devuelve todas las entidades activas de ese nivel.
 
 ---
 
@@ -224,10 +224,10 @@ Para poblar dinámicamente los dropdowns en los filtros de búsqueda y el formul
 | **Auth** | POST | `/api/v1/auth/logout` | ⏳ Pendiente |  Limpieza local implementada | **P2 (Media)** |
 | **Auth** | POST | `/api/v1/auth/refresh` | ⏳ Pendiente |  Interceptor preparado | **P2 (Media)** |
 | **Catalog**| GET | `/api/v1/catalog/filter` |  Implementado (#71, #97) |  Consumo en Catálogo | **P0 (Crítica)** |
-| **Catalog**| GET | `/api/v1/catalog/universities` | ⏳ Solicitado (usar `/filter` alternativo)|  Modelo Dart definido | **P1 (Alta)** |
-| **Catalog**| GET | `/api/v1/catalog/careers` | ⏳ Solicitado (usar `/filter` alternativo)|  Modelo Dart definido | **P1 (Alta)** |
-| **Catalog**| GET | `/api/v1/catalog/subjects` | ⏳ Solicitado (usar `/filter` alternativo)|  Modelo Dart definido | **P1 (Alta)** |
-| **Catalog**| GET | `/api/v1/catalog/professors`| ⏳ Solicitado (usar `/filter` alternativo)|  Modelo Dart definido | **P1 (Alta)** |
+| **Catalog**| GET | `/api/v1/catalog/universities` |  Implementado (#221) |  Modelo Dart definido | **P1 (Alta)** |
+| **Catalog**| GET | `/api/v1/catalog/careers` |  Implementado (#221) |  Modelo Dart definido | **P1 (Alta)** |
+| **Catalog**| GET | `/api/v1/catalog/subjects` |  Implementado (#221) |  Modelo Dart definido | **P1 (Alta)** |
+| **Catalog**| GET | `/api/v1/catalog/professors`|  Implementado (#221) |  Modelo Dart definido | **P1 (Alta)** |
 
 ---
 
@@ -253,15 +253,35 @@ En caso de indisponibilidad de microservicios (por ejemplo si Auth Service está
 
 ---
 
-## 6. Endpoints Futuros (Sprint 2+ · Referencia)
+## 6. Endpoints en Rutas por Gateway (alcanzables pero aún sin implementar)
 
-### Material Service — `/api/v1/materials`
-- `GET /materials` — Listado paginado de materiales con filtros.
-- `GET /materials/:id` — Detalle del material y versiones.
-- `POST /materials` — Subida multipart de documento (máx. 15MB, PDF/Word/PPT) o enlace externo a video.
-- `GET /materials/:id/preview` — URL / Stream para visor embebido.
+Estas rutas **ya están enrutadas por el Gateway** (#222) y sus servicios están
+integrados en `main` (#311 y #305), así que Mobile puede llamar a `:3000`. La
+diferencia con la sección 5 es qué responden hoy con el servicio levantado.
 
-### Quality Service — `/api/v1/quality`
+### Search Service — `/api/v1/search` (enrutado, responde stub)
+- `GET /search?q=` — Búsqueda global. Hoy devuelve
+  `{ "query": ..., "results": [], "total": 0, "message": ... }`: el servicio
+  existe y responde `200`, pero la búsqueda desacoplada es trabajo en curso.
+- El healthcheck del servicio está en `http://localhost:3005/api/v1/health`.
+
+### Material Service — `/api/v1/materials` (enrutado, listado implementado)
+- `GET /materials` — Listado paginado ya implementado (#318): devuelve
+  `{ "items": [], "page": 1, "pageSize": 20, "total": 0 }` con la base vacía.
+  Acepta `page` y `pageSize`; no hace búsqueda textual.
+- `POST /materials` — Subida multipart declarada como **stub** en el contrato del
+  servicio (máx. 15MB, PDF/Word/PPT, o `externalLink` para tipo `LINK`).
+- El healthcheck del servicio está en `http://localhost:3003/api/v1/health` y su
+  Swagger en `http://localhost:3003/api/docs`.
+- El `502` del Gateway (`Material Service no disponible`) solo aparece cuando el
+  servicio está caído.
+- Contrato pendiente cuando se implemente:
+  - `GET /materials/:id` — Detalle del material y versiones.
+  - `GET /materials/:id/preview` — URL / Stream para visor embebido.
+
+### Quality Service — `/api/v1/quality` (no enrutado)
+El gateway **no** enruta `/api/v1/quality` y el servicio sigue siendo un
+placeholder sin implementación.
 - `POST /quality/ratings` — Calificación y reseña (1 a 5 estrellas).
 - `POST /quality/favorites` / `DELETE /quality/favorites/:id` — Guardar/quitar de favoritos.
 - `POST /quality/reports` — Reportar material con motivo obligatorio.

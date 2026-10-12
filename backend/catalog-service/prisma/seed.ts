@@ -1,9 +1,11 @@
-import { PrismaClient, ResourceType } from '@prisma/client';
+import { PrismaClient, ResourceType } from '.prisma/catalog-client';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Iniciando seeding idempotente y compatible con datos preexistentes...');
+  console.log(
+    '🌱 Iniciando seeding idempotente y compatible con datos preexistentes...',
+  );
 
   await prisma.$transaction(async (tx) => {
     // 1. Universidad (Clave única: code)
@@ -115,12 +117,18 @@ async function main() {
           data: resourceData,
         });
 
-    console.log('✅ Seeding completado exitosamente sin duplicados ni sobreescritura de datos:');
+    console.log(
+      '✅ Seeding completado exitosamente sin duplicados ni sobreescritura de datos:',
+    );
     console.log(` - Universidad: ${uct.name} (${uct.id})`);
     console.log(` - Carrera: ${ici.name} (${ici.id})`);
     console.log(` - Profesor: ${professor.name} (${professor.id})`);
-    console.log(` - Asignatura: ${dataStructures.name} [Profesores: ${dataStructures.professors.length}]`);
-    console.log(` - Recurso: ${resource.title} (${resource.id}) [Tipo: ${resource.type}, Año: ${resource.year}]`);
+    console.log(
+      ` - Asignatura: ${dataStructures.name} [Profesores: ${dataStructures.professors.length}]`,
+    );
+    console.log(
+      ` - Recurso: ${resource.title} (${resource.id}) [Tipo: ${resource.type}, Año: ${resource.year}]`,
+    );
   });
 }
 

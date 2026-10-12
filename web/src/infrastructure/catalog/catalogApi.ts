@@ -1,3 +1,4 @@
+import { mapRawSubjectsToSubjects } from './mapCatalogSubject';
 import type { RawCatalogSubject } from './rawCatalogSubject';
 
 const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1';
@@ -73,7 +74,9 @@ export async function fetchSubjectsByCareer(
       `No se pudieron obtener las asignaturas (status ${response.status})`
     );
   }
-  return response.json();
+  return mapRawSubjectsToSubjects(
+    (await response.json()) as RawCatalogSubject[]
+  );
 }
 
 export async function fetchProfessorsBySubject(
