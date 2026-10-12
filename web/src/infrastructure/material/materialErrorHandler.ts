@@ -9,12 +9,10 @@ export interface MaterialApiError {
  * Mapea un error de la API de Materiales a un mensaje amigable en español.
  * Aplica para operaciones de subida y descarga de archivos.
  *
- * ALCANCE DE SUBIDA (PENDIENTE):
- * Aunque este mapeo está completamente preparado para manejar errores de subida
- * (como 413 Payload Too Large y 415 Unsupported Media Type), actualmente solo
- * se está utilizando en el flujo de descarga (MaterialDownloadButton).
- * La integración con la operación de subida queda pendiente para una próxima tarea,
- * cuando se implemente el componente respectivo de UI.
+ * ALCANCE DE SUBIDA Y DESCARGA:
+ * Este mapeo maneja errores tanto del flujo de descarga (MaterialDownloadButton)
+ * como del flujo de subida de archivos (MaterialUploadForm / MaterialForm),
+ * incluyendo específicamente los códigos 413 (Payload Too Large) y 415 (Unsupported Media Type).
  *
  * Códigos de error manejados:
  * - 400: Solicitud incorrecta (ej. datos faltantes o inválidos)

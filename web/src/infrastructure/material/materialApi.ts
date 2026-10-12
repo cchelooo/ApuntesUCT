@@ -77,3 +77,98 @@ export async function fetchMaterials(
 
   return mapRawMaterialPage(body);
 }
+
+export interface UploadMaterialPayload {
+  title: string;
+  description?: string;
+  year: string | number;
+  type: string;
+  subjectId: string;
+  careerId?: string;
+  professorId?: string;
+  externalLink?: string;
+  file?: File | Blob | null;
+}
+
+export interface UploadMaterialResponseData {
+  id: string;
+  title: string;
+  description?: string | null;
+  year: string;
+  type: string;
+  status: string;
+  subjectId: string;
+  careerId?: string | null;
+  professorId?: string | null;
+  universityId?: string | null;
+  fileUrl?: string | null;
+  fileSize?: number | null;
+  mimeType?: string | null;
+  externalLink?: string | null;
+  createdAt?: string;
+}
+
+export interface UploadMaterialResponse {
+  status: string;
+  isSimulatedResponse?: boolean;
+  message: string;
+  data: UploadMaterialResponseData;
+}
+
+export async function uploadMaterial(
+  payload: UploadMaterialPayload | FormData,
+  signal?: AbortSignal
+): Promise<UploadMaterialResponse> {
+  let body: FormData;
+  if (payload instanceof FormData) {
+    body = payload;
+  } else {
+    body = new FormData();
+    body.append('title', payload.title.trim());
+    if (payload.description) {
+      body.append('description', payload.description.trim());
+    }
+    body.append('year', String(payload.year).trim());
+    body.append('type', payload.type);
+    body.append('subjectId', payload.subjectId.trim());
+    if (payload.careerId) {
+      body.append('careerId', payload.careerId.trim());
+    }
+    if (payload.professorId) {
+      body.append('professorId', payload.professorId.trim());
+    }
+    if (payload.externalLink) {
+      body.append('externalLink', payload.externalLink.trim());
+    }
+    if (payload.file) {
+      body.append('file', payload.file);
+    }
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}/materials`, {
+      method: 'POST',
+      body,
+      signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw error;
+    }
+    throw new MaterialRequestError('Fallo de red al subir el material', {
+      isNetworkError: true,
+    });
+  }
+
+  if (!response.ok) {
+    throw new MaterialRequestError(
+      `No se pudo subir el material (status ${response.status})`,
+      { status: response.status }
+    );
+  }
+
+  return response.json();
+}
+
+export const createMaterial = uploadMaterial;
