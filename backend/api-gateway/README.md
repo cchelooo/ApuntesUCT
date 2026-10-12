@@ -301,5 +301,8 @@ admitidos, detección del MIME, el límite inclusivo de 15 MB y respuestas
 `400`/`413`/`415`/`502`. No usa base de datos ni MinIO: el POST sigue siendo simulado.
 Los contenedores Office de prueba son sintéticos y verifican identificación de
 formatos, no la apertura/renderización de documentos en Office.
-La conservación de bytes y `Content-Disposition` de descarga se prueba con un
-upstream simulado; no implica que el endpoint real de descarga esté implementado.
+La conservación de bytes y `Content-Disposition` (incluido `filename*` UTF-8, RFC 5987)
+a través del proxy se prueba con un upstream simulado. El endpoint real de descarga
+(`GET /api/v1/materials/:id/download`, #236) ya está implementado e integrado con MinIO;
+el flujo real Gateway → Material Service → MinIO se validó con servicios reales y su
+contrato se documenta en el README de material-service.

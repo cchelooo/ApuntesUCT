@@ -149,9 +149,12 @@ firmada ni se devuelve la ruta interna del bucket.
 Respuesta `200 OK` (stream):
 
 - `Content-Type`: el MIME persistido de la versión (`MaterialVersion.mimeType`).
-- `Content-Disposition: attachment; filename="<nombre original>"`.
-- `Content-Length`: el tamaño persistido (`MaterialVersion.fileSize`). El nombre se
-   sanitiza a caracteres ASCII imprimibles; si queda vacío, se usa `material`.
+- `Content-Disposition: attachment; filename="<ASCII>"; filename*=UTF-8''<nombre original>`.
+  El nombre original se conserva codificado en UTF-8 (RFC 5987) en `filename*` para
+  clientes modernos; `filename` es una alternativa ASCII segura (sin tildes, ñ ni otros
+  caracteres no imprimibles) que neutraliza comillas y CR/LF para evitar inyección de
+  cabeceras. Si el nombre queda vacío se usa `material`.
+- `Content-Length`: el tamaño persistido (`MaterialVersion.fileSize`).
 
 Errores:
 
@@ -416,8 +419,8 @@ existencia en Catalog sigue pendiente. Universidad es null si no está configura
 4. Crear material y primera versión mediante escritura anidada transaccional
    de Prisma, con estado `PENDING_REVIEW`, tamaño real y checksum SHA-256.
 5. Devolver 201 con ID y fecha reales, `isSimulatedResponse: false` y metadatos
-   públicos. `fileUrl` permanece null hasta implementar la descarga. No se
-   serializan claves, rutas o credenciales de MinIO.
+   públicos. `fileUrl` permanece null: la descarga se realiza por
+   `GET /materials/:id/download` (#236) sin exponer claves, rutas ni credenciales de MinIO.
 
 LINK guarda `externalLink` en Material sin versión binaria. Los demás tipos
 requieren archivo y permiten guardar también una URL de respaldo.

@@ -11,13 +11,7 @@ import { ListMaterialsQueryDto } from '../../application/dtos/list-materials-que
 import { MaterialPageDto } from '../../application/dtos/material-page.dto';
 import { MaterialsService } from '../../application/services/materials.service';
 import { DownloadMaterialQueryDto } from './dto/download-material-query.dto';
-
-function sanitizeFilename(filename: string): string {
-  const fallback = 'material';
-  if (!filename) return fallback;
-  const safe = filename.replace(/[\r\n"]+/g, '_').replace(/[^\x20-\x7e]/g, '_').trim();
-  return safe || fallback;
-}
+import { buildContentDisposition } from './content-disposition';
 
 @ApiTags('materials')
 @Controller('materials')
@@ -48,7 +42,7 @@ export class MaterialsController {
   @ApiProduces('application/octet-stream')
   @ApiOkResponse({
     description:
-      'Stream del archivo con Content-Type, Content-Length y Content-Disposition: attachment; filename=...',
+      "Stream del archivo con Content-Type, Content-Length y Content-Disposition: attachment; filename=\"<ASCII>\"; filename*=UTF-8''<nombre original>.",
   })
   @ApiBadRequestResponse({ description: 'UUID inválido o parámetro desconocido.' })
   @ApiNotFoundResponse({ description: 'Material, versión o archivo inexistente.' })
@@ -59,7 +53,7 @@ export class MaterialsController {
     const result = await this.materials.download(id, query.versionId);
     return new StreamableFile(result.stream, {
       type: result.mimeType,
-      disposition: `attachment; filename="${sanitizeFilename(result.filename)}"`,
+      disposition: buildContentDisposition(result.filename),
       length: result.size,
     });
   }

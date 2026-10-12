@@ -59,7 +59,7 @@ describe('GET /api/v1/materials/:id/download', () => {
       .expect(200);
     expect(response.headers['content-type']).toBe('application/pdf');
     expect(response.headers['content-disposition']).toBe(
-      'attachment; filename="apuntes-calculo.pdf"',
+      `attachment; filename="apuntes-calculo.pdf"; filename*=UTF-8''apuntes-calculo.pdf`,
     );
     expect(response.headers['content-length']).toBe(String(content.length));
     expect(response.body).toEqual(content);
@@ -81,6 +81,50 @@ describe('GET /api/v1/materials/:id/download', () => {
     expect(prisma.materialVersion.findFirst).toHaveBeenCalledWith({
       where: { id: versionId, materialId },
     });
+  });
+
+  it.each([
+    [
+      'cálculo.pdf',
+      `attachment; filename="calculo.pdf"; filename*=UTF-8''c%C3%A1lculo.pdf`,
+    ],
+    ['niño.pdf', `attachment; filename="nino.pdf"; filename*=UTF-8''ni%C3%B1o.pdf`],
+    [
+      'guía de cálculo.pdf',
+      `attachment; filename="guia de calculo.pdf"; filename*=UTF-8''gu%C3%ADa%20de%20c%C3%A1lculo.pdf`,
+    ],
+    [
+      'apunte "final".pdf',
+      `attachment; filename="apunte _final_.pdf"; filename*=UTF-8''apunte%20%22final%22.pdf`,
+    ],
+  ])(
+    'conserva el nombre especial %s en la cabecera de descarga',
+    async (name, expected) => {
+      prisma.materialVersion.findFirst.mockResolvedValue({
+        ...version,
+        originalFilename: name,
+      });
+      const response = await request(app.getHttpServer())
+        .get(`/api/v1/materials/${materialId}/download`)
+        .expect(200);
+      expect(response.headers['content-disposition']).toBe(expected);
+    },
+  );
+
+  it('no permite inyectar cabeceras con un nombre malicioso', async () => {
+    prisma.materialVersion.findFirst.mockResolvedValue({
+      ...version,
+      originalFilename: 'informe".pdf\r\nX-Injected: yes',
+    });
+    const response = await request(app.getHttpServer())
+      .get(`/api/v1/materials/${materialId}/download`)
+      .expect(200);
+    const header = response.headers['content-disposition'];
+    expect(header).not.toMatch(/[\r\n]/);
+    expect(header).not.toContain('%0d');
+    expect(header).not.toContain('%0a');
+    expect(header.match(/"/g)).toHaveLength(2);
+    expect(response.headers['x-injected']).toBeUndefined();
   });
 
   it('devuelve 404 para un material inexistente o no publicado', async () => {
