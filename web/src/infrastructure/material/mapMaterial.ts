@@ -76,9 +76,7 @@ export function mapRawMaterialPage(raw: RawMaterialPage): MaterialPage {
   };
 }
 
-function pickCurrentVersion(
-  raw: RawMaterialDetail
-): RawMaterialVersion | null {
+function pickCurrentVersion(raw: RawMaterialDetail): RawMaterialVersion | null {
   if (raw.currentVersion) return raw.currentVersion;
   const versions = raw.versions ?? [];
   if (versions.length === 0) return null;
@@ -114,7 +112,9 @@ export function mapRawMaterialDetail(
     type: text(raw.materialType),
     year: integer(raw.academicYear),
     subjectName: subjectId ? (names?.subjects[subjectId] ?? null) : null,
-    professorName: professorId ? (names?.professors[professorId] ?? null) : null,
+    professorName: professorId
+      ? (names?.professors[professorId] ?? null)
+      : null,
     version: version ? mapRawVersion(version) : null,
     downloadUrl: version ? buildMaterialDownloadUrl(String(raw.id)) : null,
   };

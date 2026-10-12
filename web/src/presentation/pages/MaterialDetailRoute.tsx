@@ -22,7 +22,8 @@ export function MaterialDetailRoute() {
 
   let status: MaterialViewStatus = 'ready';
   if (!materialId) status = 'not-found';
-  else if (isError) status = isMaterialNotFound(error) ? 'not-found' : 'unavailable';
+  else if (isError)
+    status = isMaterialNotFound(error) ? 'not-found' : 'unavailable';
   else if (isPending) status = 'loading';
 
   return (
