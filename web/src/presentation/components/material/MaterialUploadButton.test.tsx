@@ -135,4 +135,103 @@ describe('MaterialUploadButton - Feedback y prevención de dobles envíos (#243)
       expect(button).toHaveAttribute('aria-busy', 'false');
     });
   });
+
+  it('resetea el valor del selector/input de archivo tras un error permitiendo volver a seleccionar el mismo archivo', async () => {
+    const uploadFn = vi
+      .fn()
+      .mockRejectedValueOnce({ status: 413 })
+      .mockResolvedValueOnce({ id: 'ok-2' });
+
+    render(<MaterialUploadButton uploadFn={uploadFn} />);
+
+    const file = new File(['content'], 'mismo-archivo.pdf', {
+      type: 'application/pdf',
+    });
+    const input = screen.getByTestId('file-upload-input') as HTMLInputElement;
+
+    // Primer intento: Falla con error 413
+    await userEvent.upload(input, file);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/15 MB/i);
+    });
+
+    // El input debe haberse reseteado a vacío tras el fallo
+    expect(input.value).toBe('');
+
+    // Permite reintentar seleccionando exactamente el mismo archivo
+    await userEvent.upload(input, file);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('¡Material subido exitosamente!')
+      ).toBeInTheDocument();
+    });
+    expect(uploadFn).toHaveBeenCalledTimes(2);
+  });
+
+  it('no muestra alertas de éxito y error simultáneamente si el callback onSuccess lanza un error tras la subida', async () => {
+    const uploadFn = vi.fn().mockResolvedValueOnce({ id: 'mat-created' });
+    const onSuccess = vi.fn().mockImplementation(() => {
+      throw new Error('Error en callback posterior');
+    });
+    const onError = vi.fn();
+
+    render(
+      <MaterialUploadButton
+        uploadFn={uploadFn}
+        onSuccess={onSuccess}
+        onError={onError}
+      />
+    );
+
+    const file = new File(['content'], 'apunte.pdf', {
+      type: 'application/pdf',
+    });
+    const input = screen.getByTestId('file-upload-input');
+    await userEvent.upload(input, file);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+
+    // Se asegura de que no coexistan mensajes de éxito y error al mismo tiempo
+    expect(
+      screen.queryByText('¡Material subido exitosamente!')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(onError).toHaveBeenCalledTimes(1);
+  });
+
+  it('limpia la alerta de error previa al completar una subida exitosa', async () => {
+    const uploadFn = vi
+      .fn()
+      .mockRejectedValueOnce({ status: 415 })
+      .mockResolvedValueOnce({ id: 'ok-reintento' });
+
+    render(<MaterialUploadButton uploadFn={uploadFn} />);
+
+    const file = new File(['bad'], 'archivo.pdf', {
+      type: 'application/pdf',
+    });
+    const input = screen.getByTestId('file-upload-input');
+
+    // Intento 1: Falla con error 415
+    await userEvent.upload(input, file);
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/PDF/i);
+    });
+
+    // Intento 2: Éxito en la subida
+    await userEvent.upload(input, file);
+    await waitFor(() => {
+      expect(
+        screen.getByText('¡Material subido exitosamente!')
+      ).toBeInTheDocument();
+      expect(screen.getByRole('status')).toBeInTheDocument();
+    });
+
+    // La alerta de error no debe coexistir con la de éxito
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
 });

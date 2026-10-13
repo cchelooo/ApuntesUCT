@@ -74,17 +74,31 @@ export function MaterialUploadButton({
         result = await uploadMaterial(formData);
       }
 
+      setError(null);
       setSuccess('¡Material subido exitosamente!');
-      onSuccess?.(result);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+
+      // Callback onSuccess separado para evitar mostrar éxito y error de manera simultánea
+      // si el callback falla posteriormente a la creación del material.
+      try {
+        onSuccess?.(result);
+      } catch (callbackErr: unknown) {
+        setSuccess(null);
+        const errorMsg = mapMaterialUploadError(callbackErr);
+        setError(errorMsg);
+        onError?.(callbackErr);
       }
     } catch (err: unknown) {
+      setSuccess(null);
       const errorMsg = mapMaterialUploadError(err);
       setError(errorMsg);
       onError?.(err);
     } finally {
       setIsUploading(false);
+      // Limpieza o reseteo del selector tanto en éxito como en error
+      // para permitir volver a seleccionar el mismo archivo si se desea.
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -102,7 +116,7 @@ export function MaterialUploadButton({
           data-testid="upload-button-error-alert"
         />
       )}
-      {success && (
+      {!error && success && (
         <Alert
           variant="success"
           message={success}
