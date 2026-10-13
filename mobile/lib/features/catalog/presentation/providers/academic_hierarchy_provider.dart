@@ -1,4 +1,4 @@
-﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:apuntesuct_mobile/features/catalog/domain/academic_hierarchy_repository.dart';
 import 'package:apuntesuct_mobile/models/career_model.dart';
@@ -329,6 +329,20 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
   IAcademicHierarchyRepository get _repo =>
       ref.read(academicHierarchyRepositoryProvider);
 
+  // -------------------------------------------------------------------------
+  // Contadores de generación — descartan respuestas obsoletas (race condition)
+  // -------------------------------------------------------------------------
+
+  /// Incrementa cada vez que se inicia una nueva petición de carreras.
+  /// La respuesta sólo se aplica si el contador no cambió durante el await.
+  int _careersGen = 0;
+
+  /// Idem para asignaturas.
+  int _subjectsGen = 0;
+
+  /// Idem para profesores.
+  int _professorsGen = 0;
+
   @override
   AcademicHierarchyState build() => const AcademicHierarchyState();
 
@@ -366,6 +380,11 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
         ? universityId.trim()
         : null;
 
+    // Invalida cualquier petición de carreras/asignaturas/profesores en vuelo.
+    final myGen = ++_careersGen;
+    _subjectsGen++;
+    _professorsGen++;
+
     // Reset inmediato: limpia hijos, errores Y loadings de niveles hijo
     state = state.copyWith(
       selection: AcademicHierarchySelection(
@@ -389,8 +408,11 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
     state = state.copyWith(isLoadingCareers: true);
     try {
       final careers = await _repo.fetchCareersByUniversity(validId);
+      // Descarta la respuesta si el usuario ya seleccionó otra universidad.
+      if (_careersGen != myGen) return;
       state = state.copyWith(careers: careers, isLoadingCareers: false);
     } catch (e) {
+      if (_careersGen != myGen) return;
       state = state.copyWith(
         isLoadingCareers: false,
         errorCareers: e.toString(),
@@ -406,6 +428,10 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
     final validId = (careerId != null && careerId.trim().isNotEmpty)
         ? careerId.trim()
         : null;
+
+    // Invalida peticiones de asignaturas/profesores en vuelo.
+    final myGen = ++_subjectsGen;
+    _professorsGen++;
 
     state = state.copyWith(
       selection: state.selection.copyWith(
@@ -427,8 +453,11 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
     state = state.copyWith(isLoadingSubjects: true);
     try {
       final subjects = await _repo.fetchSubjectsByCareer(validId);
+      // Descarta la respuesta si el usuario ya seleccionó otra carrera.
+      if (_subjectsGen != myGen) return;
       state = state.copyWith(subjects: subjects, isLoadingSubjects: false);
     } catch (e) {
+      if (_subjectsGen != myGen) return;
       state = state.copyWith(
         isLoadingSubjects: false,
         errorSubjects: e.toString(),
@@ -444,6 +473,9 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
     final validId = (subjectId != null && subjectId.trim().isNotEmpty)
         ? subjectId.trim()
         : null;
+
+    // Invalida peticiones de profesores en vuelo.
+    final myGen = ++_professorsGen;
 
     state = state.copyWith(
       selection: state.selection.copyWith(
@@ -461,8 +493,11 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
     state = state.copyWith(isLoadingProfessors: true);
     try {
       final professors = await _repo.fetchProfessorsBySubject(validId);
+      // Descarta la respuesta si el usuario ya seleccionó otra asignatura.
+      if (_professorsGen != myGen) return;
       state = state.copyWith(professors: professors, isLoadingProfessors: false);
     } catch (e) {
+      if (_professorsGen != myGen) return;
       state = state.copyWith(
         isLoadingProfessors: false,
         errorProfessors: e.toString(),
@@ -518,6 +553,10 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
   /// Reinicia la seleccion activa manteniendo universidades cargadas.
   /// Tambien limpia todos los loadings de niveles hijos.
   void resetSelection() {
+    // Invalida cualquier petición async pendiente antes de limpiar.
+    _careersGen++;
+    _subjectsGen++;
+    _professorsGen++;
     state = state.copyWith(
       selection: const AcademicHierarchySelection.empty(),
       careers: const [],
@@ -534,6 +573,10 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
 
   /// Reinicia todo el estado a valores iniciales por defecto.
   void resetAll() {
+    // Invalida cualquier petición async pendiente antes de limpiar.
+    _careersGen++;
+    _subjectsGen++;
+    _professorsGen++;
     state = const AcademicHierarchyState();
   }
 
