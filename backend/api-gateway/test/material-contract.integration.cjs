@@ -1,4 +1,4 @@
-﻿const assert = require('node:assert/strict');
+const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const { Readable } = require('node:stream');
 const CFB = require('cfb');
@@ -36,7 +36,7 @@ const {
 // Reproduces the acceptance topology: clients only use the Gateway on 3000, which proxies
 // to Material on its reserved 3003 for both multipart uploads and binary downloads.
 // Run after building both api-gateway and material-service (Node handles file-type ESM).
-test('Gateway â†’ contrato HTTP real de Material', async (t) => {
+test('Gateway → contrato HTTP real de Material', async (t) => {
   let material;
   let gateway;
   try {
@@ -44,12 +44,12 @@ test('Gateway â†’ contrato HTTP real de Material', async (t) => {
       Buffer.from('%PDF-1.7\n'),
       Buffer.from([0x00, 0x01, 0x7f, 0x80, 0xff, 0x0d, 0x0a, 0x42]),
     ]);
-    let lastSavedBuffer = Buffer.alloc(0);
+    let lastSavedBuffer = Buffer.alloc(0);\n    let capturedHeaders = {};
     let materialRow = { id: '11111111-1111-4111-8111-111111111111' };
     const versionRow = {
       storageKey: 'private/calculo-v1',
       mimeType: 'application/pdf',
-      originalFilename: 'cÃ¡lculo.pdf',
+      originalFilename: 'cálculo.pdf',
       fileSize: binaryContent.length,
     };
     const materialModule = await Test.createTestingModule({
@@ -116,7 +116,7 @@ test('Gateway â†’ contrato HTTP real de Material', async (t) => {
     } = {}) => {
       const body = new FormData();
       for (const [key, value] of Object.entries({
-        title: 'Ãlgebra & cÃ¡lculo',
+        title: 'Álgebra & cálculo',
         year: '2026',
         type: 'DOCUMENT',
         subjectId: 'subject-test',
@@ -144,7 +144,7 @@ test('Gateway â†’ contrato HTTP real de Material', async (t) => {
         });
         assert.equal(result.status, 201);
         assert.equal(result.body.isSimulatedResponse, false);
-        assert.equal(result.body.data.title, 'Ãlgebra & cÃ¡lculo');
+        assert.equal(result.body.data.title, 'Álgebra & cálculo');
         assert.equal(result.body.data.mimeType, 'application/pdf');
         assert.equal(result.body.data.fileSize, 100);
         assert.equal(result.body.data.status, 'PENDING_REVIEW');
@@ -246,7 +246,7 @@ test('Gateway â†’ contrato HTTP real de Material', async (t) => {
       },
     );
     await t.test(
-      'conserva 400 en metadatos invÃ¡lidos y archivo ausente',
+      'conserva 400 en metadatos inválidos y archivo ausente',
       async () => {
         assert.equal((await post()).status, 400);
         const result = await post({ fields: { year: 'abc' }, size: 100 });
@@ -255,7 +255,7 @@ test('Gateway â†’ contrato HTTP real de Material', async (t) => {
       },
     );
     await t.test(
-      'descarga el binario Ã­ntegro pasando por el Gateway',
+      'descarga el binario íntegro pasando por el Gateway',
       async () => {
         materialRow = { id: '11111111-1111-4111-8111-111111111111' };
         const response = await fetch(
@@ -275,7 +275,7 @@ test('Gateway â†’ contrato HTTP real de Material', async (t) => {
         assert.ok(received.equals(binaryContent));
       },
     );
-    await t.test('propaga el 404 del material a travÃ©s del Gateway', async () => {
+    await t.test('propaga el 404 del material a través del Gateway', async () => {
       materialRow = null;
       const response = await fetch(
         `${base}/api/v1/materials/22222222-2222-4222-8222-222222222222/download`,
@@ -284,7 +284,7 @@ test('Gateway â†’ contrato HTTP real de Material', async (t) => {
       assert.equal((await response.json()).statusCode, 404);
     });
     await t.test(
-      'rechaza un UUID invÃ¡lido con 400 conservando el formato',
+      'rechaza un UUID inválido con 400 conservando el formato',
       async () => {
         const response = await fetch(`${base}/api/v1/materials/nope/download`);
         assert.equal(response.status, 400);
@@ -397,7 +397,7 @@ test('Gateway â†’ contrato HTTP real de Material', async (t) => {
       assert.ok(lastSavedBuffer.equals(Buffer.from(content)));
     });
     await t.test(
-      'responde 502 controlado despuÃ©s de cerrar Material',
+      'responde 502 controlado después de cerrar Material',
       async () => {
         await material.close();
         const result = await post();
@@ -410,6 +410,7 @@ test('Gateway â†’ contrato HTTP real de Material', async (t) => {
     await material?.close();
   }
 });
+
 
 
 
