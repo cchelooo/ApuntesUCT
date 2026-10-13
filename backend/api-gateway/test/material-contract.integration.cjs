@@ -103,7 +103,6 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
       .compile();
     gateway = gatewayModule.createNestApplication();
     configureRoutes(gateway);
-    gateway.enableCors({ exposedHeaders: ['Content-Disposition'] });
     // El cliente solo conoce el puerto 3000 del Gateway.
     await gateway.listen(3000, '127.0.0.1');
     const base = 'http://127.0.0.1:3000';
