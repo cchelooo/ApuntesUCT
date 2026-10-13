@@ -291,6 +291,20 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
         assert.equal((await response.json()).statusCode, 400);
       },
     );
+    await t.test('preflight OPTIONS para subida conserva CORS', async () => {
+      const response = await fetch(base + '/api/v1/materials', {
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'http://localhost:5173',
+          'Access-Control-Request-Method': 'POST',
+          'Access-Control-Request-Headers': 'Authorization, Content-Type',
+        },
+      });
+      assert.ok(response.status === 200 || response.status === 204);
+      const allowHeaders = response.headers.get('access-control-allow-headers') || '';
+      assert.ok(allowHeaders.toLowerCase().includes('authorization'));
+      assert.ok(allowHeaders.toLowerCase().includes('content-type'));
+    });
     await t.test(
       'responde 502 controlado después de cerrar Material',
       async () => {
@@ -305,3 +319,4 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
     await material?.close();
   }
 });
+
