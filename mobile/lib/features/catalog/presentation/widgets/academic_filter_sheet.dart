@@ -210,7 +210,7 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                 isLoading: hierarchyState.isLoadingUniversities,
                 dropdown: DropdownButtonFormField<String>(
                   key: const Key('filter_university_dropdown'),
-                  initialValue: hierarchyState.selectedUniversityId,
+                  value: hierarchyState.selectedUniversityId,
                   isExpanded: true,
                   hint: const Text('Seleccionar universidad...'),
                   decoration: _inputDecoration(
@@ -238,7 +238,7 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                 isLoading: hierarchyState.isLoadingCareers,
                 dropdown: DropdownButtonFormField<String>(
                   key: const Key('filter_career_dropdown'),
-                  initialValue: hierarchyState.selectedCareerId,
+                  value: hierarchyState.selectedCareerId,
                   isExpanded: true,
                   hint: Text(
                     !hierarchyState.isUniversitySelected
@@ -285,7 +285,7 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                 isLoading: hierarchyState.isLoadingSubjects,
                 dropdown: DropdownButtonFormField<String>(
                   key: const Key('filter_subject_dropdown'),
-                  initialValue: hierarchyState.selectedSubjectId,
+                  value: hierarchyState.selectedSubjectId,
                   isExpanded: true,
                   hint: Text(
                     !hierarchyState.isCareerSelected
@@ -332,7 +332,7 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                 isLoading: hierarchyState.isLoadingProfessors,
                 dropdown: DropdownButtonFormField<String>(
                   key: const Key('filter_professor_dropdown'),
-                  initialValue: hierarchyState.selectedProfessorId,
+                  value: hierarchyState.selectedProfessorId,
                   isExpanded: true,
                   hint: Text(
                     !hierarchyState.isSubjectSelected
@@ -378,7 +378,7 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                 icon: Icons.calendar_today_outlined,
                 dropdown: DropdownButtonFormField<int>(
                   key: const Key('filter_year_dropdown'),
-                  initialValue: hierarchyState.selectedYear,
+                  value: hierarchyState.selectedYear,
                   isExpanded: true,
                   hint: const Text('Todos los años...'),
                   decoration: _inputDecoration(
@@ -405,7 +405,7 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                 icon: Icons.category_outlined,
                 dropdown: DropdownButtonFormField<String>(
                   key: const Key('filter_type_dropdown'),
-                  initialValue: hierarchyState.selectedType,
+                  value: hierarchyState.selectedType,
                   isExpanded: true,
                   hint: const Text('Todos los tipos...'),
                   decoration: _inputDecoration(
