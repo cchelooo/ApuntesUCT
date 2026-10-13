@@ -4,7 +4,7 @@ import { Input } from '../Input';
 import { Select } from '../Select';
 import { Alert } from '../Alert';
 import { Spinner } from '../Spinner';
-import { mapMaterialError } from '../../../infrastructure/material/materialErrorHandler';
+import { mapMaterialUploadError } from '../../../infrastructure/material/materialErrorHandler';
 import {
   uploadMaterial,
   type MaterialTypeValue,
@@ -53,6 +53,7 @@ export function MaterialUploadForm({
     const selectedFile = e.target.files?.[0] ?? null;
     setFile(selectedFile);
     setError(null);
+    setSuccess(null);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -125,7 +126,7 @@ export function MaterialUploadForm({
 
       onSuccess?.(result);
     } catch (err: unknown) {
-      const errorMessage = mapMaterialError(err, 'upload');
+      const errorMessage = mapMaterialUploadError(err);
       setError(errorMessage);
       onError?.(err);
     } finally {
@@ -137,6 +138,7 @@ export function MaterialUploadForm({
     <form
       onSubmit={handleSubmit}
       noValidate
+      aria-busy={isUploading}
       className={`space-y-4 rounded-lg border border-catalog-line bg-catalog-paper p-6 shadow-xs ${className}`.trim()}
       aria-label="Formulario de subida de material"
       data-testid="material-upload-form"
@@ -299,6 +301,7 @@ export function MaterialUploadForm({
         <Button
           type="submit"
           disabled={isUploading}
+          aria-busy={isUploading}
           data-testid="upload-submit-button"
           className="w-full sm:w-auto"
         >

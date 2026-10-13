@@ -196,4 +196,79 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
       ).toBeInTheDocument();
     });
   });
+
+  it('establece el atributo aria-busy en el formulario y en el botón durante la subida', async () => {
+    let resolveUpload: (val: unknown) => void;
+    const uploadPromise = new Promise((resolve) => {
+      resolveUpload = resolve;
+    });
+    const uploadFn = vi.fn().mockImplementation(() => uploadPromise);
+
+    render(<MaterialUploadForm uploadFn={uploadFn} />);
+
+    fireEvent.change(screen.getByTestId('upload-title-input'), {
+      target: { value: 'Guía de Estudio' },
+    });
+    fireEvent.change(screen.getByTestId('upload-subject-input'), {
+      target: { value: 'MAT-101' },
+    });
+
+    const file = new File(['content'], 'guia.pdf', {
+      type: 'application/pdf',
+    });
+    await userEvent.upload(screen.getByTestId('upload-file-input'), file);
+
+    const form = screen.getByTestId('material-upload-form');
+    const submitBtn = screen.getByTestId('upload-submit-button');
+
+    expect(form).toHaveAttribute('aria-busy', 'false');
+    expect(submitBtn).toHaveAttribute('aria-busy', 'false');
+
+    fireEvent.click(submitBtn);
+
+    expect(form).toHaveAttribute('aria-busy', 'true');
+    expect(submitBtn).toHaveAttribute('aria-busy', 'true');
+
+    resolveUpload!({ id: 'ok-1' });
+
+    await waitFor(() => {
+      expect(form).toHaveAttribute('aria-busy', 'false');
+      expect(submitBtn).toHaveAttribute('aria-busy', 'false');
+    });
+  });
+
+  it('limpia las alertas previas al seleccionar un nuevo archivo en el input', async () => {
+    const uploadFn = vi.fn().mockRejectedValueOnce({ status: 413 });
+
+    render(<MaterialUploadForm uploadFn={uploadFn} />);
+
+    fireEvent.change(screen.getByTestId('upload-title-input'), {
+      target: { value: 'Libro muy pesado' },
+    });
+    fireEvent.change(screen.getByTestId('upload-subject-input'), {
+      target: { value: 'INF-201' },
+    });
+
+    const file = new File(['large content'], 'libro.pdf', {
+      type: 'application/pdf',
+    });
+    const fileInput = screen.getByTestId('upload-file-input');
+    await userEvent.upload(fileInput, file);
+
+    fireEvent.click(screen.getByTestId('upload-submit-button'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/15 MB/i);
+    });
+
+    // Seleccionar un archivo diferente debe limpiar la alerta
+    const newFile = new File(['small'], 'liviano.pdf', {
+      type: 'application/pdf',
+    });
+    fireEvent.change(fileInput, {
+      target: { files: [newFile] },
+    });
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
 });

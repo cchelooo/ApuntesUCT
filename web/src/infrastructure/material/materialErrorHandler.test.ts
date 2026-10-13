@@ -76,6 +76,16 @@ describe('materialErrorHandler', () => {
     );
   });
 
+  it('Debe soportar statusCode alternativo (común en respuestas REST)', () => {
+    const error = { statusCode: 413 };
+    expect(mapMaterialUploadError(error)).toContain('15 MB');
+  });
+
+  it('Debe soportar objetos de respuesta Axios/HTTP anidados con response.status', () => {
+    const error = { response: { status: 415 } };
+    expect(mapMaterialUploadError(error)).toContain('PDF');
+  });
+
   it('Debe devolver un error inesperado para excepciones genéricas', () => {
     const error = new Error('JSON.parse failed');
     expect(mapMaterialError(error)).toBe(

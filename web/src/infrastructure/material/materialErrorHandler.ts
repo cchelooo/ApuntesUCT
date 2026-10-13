@@ -1,8 +1,10 @@
 export interface MaterialApiError {
   status?: number;
+  statusCode?: number;
   message?: string;
   isNetworkError?: boolean;
   name?: string;
+  response?: { status?: number };
 }
 
 export type MaterialErrorContext = 'upload' | 'download' | 'general';
@@ -36,7 +38,14 @@ export function mapMaterialError(
     }
 
     const apiError = error as MaterialApiError;
-    const status = apiError.status;
+    const rawStatus =
+      apiError.status ?? apiError.statusCode ?? apiError.response?.status;
+    const status =
+      typeof rawStatus === 'number'
+        ? rawStatus
+        : typeof rawStatus === 'string'
+          ? parseInt(rawStatus, 10)
+          : undefined;
 
     switch (status) {
       case 400:

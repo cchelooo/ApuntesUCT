@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Button } from '../Button';
 import { Alert } from '../Alert';
 import { Spinner } from '../Spinner';
-import { mapMaterialError } from '../../../infrastructure/material/materialErrorHandler';
+import { mapMaterialUploadError } from '../../../infrastructure/material/materialErrorHandler';
 import { uploadMaterial } from '../../../infrastructure/material/materialApi';
 
 export interface MaterialUploadButtonProps {
@@ -80,7 +80,7 @@ export function MaterialUploadButton({
         fileInputRef.current.value = '';
       }
     } catch (err: unknown) {
-      const errorMsg = mapMaterialError(err, 'upload');
+      const errorMsg = mapMaterialUploadError(err);
       setError(errorMsg);
       onError?.(err);
     } finally {
@@ -121,6 +121,7 @@ export function MaterialUploadButton({
         type="button"
         onClick={handleButtonClick}
         disabled={isUploading || disabled}
+        aria-busy={isUploading}
         className="w-full"
         data-testid="material-upload-button"
       >

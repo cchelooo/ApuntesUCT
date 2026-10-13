@@ -108,4 +108,31 @@ describe('MaterialUploadButton - Feedback y prevención de dobles envíos (#243)
       );
     });
   });
+
+  it('establece el atributo aria-busy en el botón mientras la subida está en progreso', async () => {
+    let resolveUpload: (val: unknown) => void;
+    const uploadPromise = new Promise((resolve) => {
+      resolveUpload = resolve;
+    });
+    const uploadFn = vi.fn().mockImplementation(() => uploadPromise);
+
+    render(<MaterialUploadButton uploadFn={uploadFn} />);
+
+    const button = screen.getByTestId('material-upload-button');
+    expect(button).toHaveAttribute('aria-busy', 'false');
+
+    const file = new File(['content'], 'resumen.pdf', {
+      type: 'application/pdf',
+    });
+    const input = screen.getByTestId('file-upload-input');
+    await userEvent.upload(input, file);
+
+    expect(button).toHaveAttribute('aria-busy', 'true');
+
+    resolveUpload!({ id: 'done' });
+
+    await waitFor(() => {
+      expect(button).toHaveAttribute('aria-busy', 'false');
+    });
+  });
 });
