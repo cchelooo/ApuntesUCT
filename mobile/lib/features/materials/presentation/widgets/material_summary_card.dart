@@ -1,6 +1,6 @@
-import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
-import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
+
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_status.dart';
+import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_detail_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -13,16 +13,9 @@ class MaterialSummaryCard extends StatelessWidget {
   void _defaultNavigate(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => MaterialDetailScreen(
-          detail: MaterialDetail(
-            summary: material,
-            downloadUrl: '',
-            fileSizeBytes: 0,
-            tags: [
-              material.subjectName,
-              material.materialType,
-            ].where((tag) => tag.trim().isNotEmpty).toList(),
-          ),
+        builder: (_) => MaterialDetailScreen.byId(
+          materialId: material.id,
+          initialSummary: material,
         ),
       ),
     );
@@ -51,7 +44,6 @@ class MaterialSummaryCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Fila superior: Tipo, Año y Estado protegidos con Wrap o Flex
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -130,8 +122,6 @@ class MaterialSummaryCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-
-              // Cabecera: Icono y Título
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -214,8 +204,6 @@ class MaterialSummaryCard extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 10),
-
-              // Fila inferior: Autor y estadísticas protegidas
               Row(
                 children: [
                   Icon(

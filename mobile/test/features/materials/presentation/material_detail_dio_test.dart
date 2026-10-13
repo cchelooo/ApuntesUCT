@@ -5,7 +5,6 @@ import 'package:apuntesuct_mobile/core/network/api_client.dart';
 import 'package:apuntesuct_mobile/core/widgets/empty_state.dart';
 import 'package:apuntesuct_mobile/core/widgets/error_state.dart';
 import 'package:apuntesuct_mobile/core/widgets/loading_state.dart';
-import 'package:apuntesuct_mobile/features/materials/data/dio_material_repository.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_detail_screen.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -48,7 +47,7 @@ void main() {
     'downloadCount': 42,
     'rating': 4.8,
     'createdAt': '2026-10-05T14:00:00.000Z',
-    'downloadUrl': '/api/v1/materials/$testMaterialId/download',
+    'downloadUrl': '/materials/$testMaterialId/download',
     'fileSizeBytes': 1048576,
     'tags': ['Álgebra', 'Certamen'],
     'viewCount': 120,
@@ -71,7 +70,7 @@ void main() {
       (WidgetTester tester) async {
         final dio = Dio();
         dio.httpClientAdapter = MockHttpAdapter((options) {
-          expect(options.path, '/api/v1/materials/$testMaterialId');
+          expect(options.path, '/materials/$testMaterialId');
           return ResponseBody.fromString(
             jsonEncode({'status': 'success', 'data': sampleDetailJson}),
             200,
@@ -85,19 +84,17 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [materialApiClientProvider.overrideWithValue(apiClient)],
-            child: const MaterialApp(
+            overrides: [apiclientProvider.overrideWithValue(apiClient)],
+            child: MaterialApp(
               home: MaterialDetailScreen.byId(materialId: testMaterialId),
             ),
           ),
         );
 
-        // Loading inicial
         expect(find.byType(LoadingState), findsOneWidget);
 
         await tester.pumpAndSettle();
 
-        // Validación de metadata y versión
         expect(find.text('Certamen 2 Resuelto - Álgebra'), findsOneWidget);
         expect(find.text('Álgebra Lineal'), findsOneWidget);
         expect(find.text('APROBADO'), findsOneWidget);
@@ -107,6 +104,42 @@ void main() {
         expect(find.text('Descargar Material'), findsOneWidget);
       },
     );
+
+    testWidgets('No se desborda en pantallas pequeñas de 309px de ancho', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(309, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final dio = Dio();
+      dio.httpClientAdapter = MockHttpAdapter((options) {
+        return ResponseBody.fromString(
+          jsonEncode({'status': 'success', 'data': sampleDetailJson}),
+          200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
+      });
+
+      final apiClient = ApiClient(customDio: dio);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [apiclientProvider.overrideWithValue(apiClient)],
+          child: MaterialApp(
+            home: MaterialDetailScreen.byId(materialId: testMaterialId),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Versión actual: v1'), findsOneWidget);
+    });
 
     testWidgets(
       'Material inexistente (404) muestra estado específico y botón volver',
@@ -129,8 +162,8 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
-            overrides: [materialApiClientProvider.overrideWithValue(apiClient)],
-            child: const MaterialApp(
+            overrides: [apiclientProvider.overrideWithValue(apiClient)],
+            child: MaterialApp(
               home: MaterialDetailScreen.byId(materialId: 'mat_inexistente'),
             ),
           ),
@@ -172,8 +205,8 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [materialApiClientProvider.overrideWithValue(apiClient)],
-          child: const MaterialApp(
+          overrides: [apiclientProvider.overrideWithValue(apiClient)],
+          child: MaterialApp(
             home: MaterialDetailScreen.byId(materialId: testMaterialId),
           ),
         ),
@@ -184,7 +217,6 @@ void main() {
       expect(find.byType(ErrorState), findsOneWidget);
       expect(find.text('Reintentar'), findsOneWidget);
 
-      // Preparamos para que la siguiente llamada sea exitosa y reintentamos
       shouldFail = false;
       await tester.tap(find.text('Reintentar'));
       await tester.pumpAndSettle();
