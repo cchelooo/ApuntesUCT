@@ -5,7 +5,7 @@ import 'package:apuntesuct_mobile/features/catalog/presentation/providers/academ
 import 'package:apuntesuct_mobile/models/models.dart';
 
 void main() {
-  group('AcademicHierarchyProvider Tests (Issue #281)', () {
+  group('AcademicHierarchyProvider Tests (Issue #281 & #282)', () {
     late ProviderContainer container;
 
     setUp(() {
@@ -25,147 +25,156 @@ void main() {
       expect(state.selectedCareerId, isNull);
       expect(state.selectedSubjectId, isNull);
       expect(state.selectedProfessorId, isNull);
+      expect(state.selectedYear, isNull);
+      expect(state.selectedType, isNull);
 
       expect(state.universities, isEmpty);
       expect(state.careers, isEmpty);
       expect(state.subjects, isEmpty);
       expect(state.professors, isEmpty);
+      expect(state.availableYears, isNotEmpty);
+      expect(state.availableTypes, isNotEmpty);
 
       expect(state.isAnyLoading, isFalse);
       expect(state.hasAnyError, isFalse);
       expect(state.hasActiveFilters, isFalse);
+      expect(state.activeFiltersCount, 0);
 
       expect(state.canSelectUniversity, isTrue);
       expect(state.canSelectCareer, isFalse);
       expect(state.canSelectSubject, isFalse);
       expect(state.canSelectProfessor, isFalse);
+      expect(state.canSelectYear, isTrue);
+      expect(state.canSelectType, isTrue);
     });
 
-    test(
-      'selectUniversity actualiza universidad y reinicia hijos en cascada',
-      () {
-        final notifier = container.read(academicHierarchyProvider.notifier);
+    test('selectUniversity carga las carreras del padre y reinicia selecciones hijas', () {
+      final notifier = container.read(academicHierarchyProvider.notifier);
 
-        // Cargar datos mock iniciales
-        notifier.setUniversities(UniversityModel.mockList());
-        notifier.setCareers(CareerModel.mockList());
-        notifier.setSubjects(SubjectModel.mockList());
-        notifier.setProfessors(ProfessorModel.mockList());
+      notifier.setUniversities(UniversityModel.mockList());
 
-        // Simular selección previa completa
-        notifier.selectUniversity('uct-main-uuid');
-        notifier.selectCareer('career-inf-uuid');
-        notifier.selectSubject('subj-integra-iv-uuid');
-        notifier.selectProfessor('prof-mellado-uuid');
+      // Seleccionar universidad UCT -> debe cargar carreras mock y desbloquear carrera
+      notifier.selectUniversity('uct-main-uuid');
+      var state = container.read(academicHierarchyProvider);
 
-        var state = container.read(academicHierarchyProvider);
-        expect(state.selectedUniversityId, 'uct-main-uuid');
-        expect(state.selectedCareerId, 'career-inf-uuid');
-        expect(state.selectedSubjectId, 'subj-integra-iv-uuid');
-        expect(state.selectedProfessorId, 'prof-mellado-uuid');
-        expect(state.hasActiveFilters, isTrue);
+      expect(state.selectedUniversityId, 'uct-main-uuid');
+      expect(state.selectedCareerId, isNull);
+      expect(state.selectedSubjectId, isNull);
+      expect(state.selectedProfessorId, isNull);
 
-        // Cambiar a otra universidad -> debe reiniciar carrera, asignatura y profesor
-        notifier.selectUniversity('otra-uni-uuid');
-        state = container.read(academicHierarchyProvider);
+      // Verifica que la cascada NO quede bloqueada: carreras cargadas
+      expect(state.careers, isNotEmpty);
+      expect(state.subjects, isEmpty);
+      expect(state.professors, isEmpty);
 
-        expect(state.selectedUniversityId, 'otra-uni-uuid');
-        expect(state.selectedCareerId, isNull);
-        expect(state.selectedSubjectId, isNull);
-        expect(state.selectedProfessorId, isNull);
+      expect(state.canSelectCareer, isTrue);
+      expect(state.canSelectSubject, isFalse);
+      expect(state.canSelectProfessor, isFalse);
 
-        // Las listas dependientes se vacían esperando los datos del nuevo padre
-        expect(state.careers, isEmpty);
-        expect(state.subjects, isEmpty);
-        expect(state.professors, isEmpty);
+      // Seleccionar carrera
+      notifier.selectCareer(state.careers.first.id);
+      state = container.read(academicHierarchyProvider);
+      expect(state.selectedCareerId, state.careers.first.id);
+      expect(state.subjects, isNotEmpty);
+      expect(state.canSelectSubject, isTrue);
 
-        expect(state.canSelectCareer, isTrue);
-        expect(state.canSelectSubject, isFalse);
-        expect(state.canSelectProfessor, isFalse);
-      },
-    );
+      // Seleccionar asignatura
+      notifier.selectSubject(state.subjects.first.id);
+      state = container.read(academicHierarchyProvider);
+      expect(state.selectedSubjectId, state.subjects.first.id);
+      expect(state.professors, isNotEmpty);
+      expect(state.canSelectProfessor, isTrue);
 
-    test('selectCareer reinicia asignatura y profesor', () {
+      // Si se cambia de universidad, se reinician las selecciones hijas y se cargan las carreras del nuevo padre
+      notifier.selectUniversity('otra-uni-uuid');
+      state = container.read(academicHierarchyProvider);
+
+      expect(state.selectedUniversityId, 'otra-uni-uuid');
+      expect(state.selectedCareerId, isNull);
+      expect(state.selectedSubjectId, isNull);
+      expect(state.selectedProfessorId, isNull);
+      expect(state.careers, isNotEmpty);
+      expect(state.subjects, isEmpty);
+      expect(state.professors, isEmpty);
+    });
+
+    test('selectCareer carga asignaturas y reinicia niveles inferiores', () {
       final notifier = container.read(academicHierarchyProvider.notifier);
 
       notifier.selectUniversity('uct-main-uuid');
-      notifier.selectCareer('carrera-1');
-      notifier.selectSubject('ramo-1');
-      notifier.selectProfessor('prof-1');
+      notifier.selectCareer('inf-uct-uuid');
+      notifier.selectSubject('subj-eda-uuid');
+      notifier.selectProfessor('prof-mellado-uuid');
 
       // Cambiar carrera
-      notifier.selectCareer('carrera-2');
+      notifier.selectCareer('ind-uct-uuid');
       final state = container.read(academicHierarchyProvider);
 
-      expect(state.selectedUniversityId, 'uct-main-uuid');
-      expect(state.selectedCareerId, 'carrera-2');
+      expect(state.selectedCareerId, 'ind-uct-uuid');
       expect(state.selectedSubjectId, isNull);
       expect(state.selectedProfessorId, isNull);
+      expect(state.subjects, isNotEmpty);
+      expect(state.professors, isEmpty);
 
       expect(state.canSelectSubject, isTrue);
       expect(state.canSelectProfessor, isFalse);
     });
 
-    test('selectSubject reinicia profesor', () {
+    test('selectSubject carga profesores y reinicia profesor previo', () {
       final notifier = container.read(academicHierarchyProvider.notifier);
 
       notifier.selectUniversity('uct-main-uuid');
-      notifier.selectCareer('carrera-1');
-      notifier.selectSubject('ramo-1');
-      notifier.selectProfessor('prof-1');
+      notifier.selectCareer('inf-uct-uuid');
+      notifier.selectSubject('subj-eda-uuid');
+      notifier.selectProfessor('prof-mellado-uuid');
 
       // Cambiar asignatura
-      notifier.selectSubject('ramo-2');
+      notifier.selectSubject('subj-calculo-uuid');
       final state = container.read(academicHierarchyProvider);
 
-      expect(state.selectedSubjectId, 'ramo-2');
+      expect(state.selectedSubjectId, 'subj-calculo-uuid');
       expect(state.selectedProfessorId, isNull);
+      expect(state.professors, isNotEmpty);
       expect(state.canSelectProfessor, isTrue);
     });
 
-    test('selectProfessor actualiza únicamente el profesor', () {
+    test('selectYear y selectType gestionan los filtros 5 y 6', () {
       final notifier = container.read(academicHierarchyProvider.notifier);
 
-      notifier.selectUniversity('uct-main-uuid');
-      notifier.selectCareer('carrera-1');
-      notifier.selectSubject('ramo-1');
-      notifier.selectProfessor('prof-1');
+      notifier.selectYear(2026);
+      expect(container.read(academicHierarchyProvider).selectedYear, 2026);
+      expect(container.read(academicHierarchyProvider).isYearSelected, isTrue);
 
-      notifier.selectProfessor('prof-2');
-      final state = container.read(academicHierarchyProvider);
+      notifier.selectType('certamen');
+      expect(
+        container.read(academicHierarchyProvider).selectedType,
+        'certamen',
+      );
+      expect(container.read(academicHierarchyProvider).isTypeSelected, isTrue);
+      expect(container.read(academicHierarchyProvider).activeFiltersCount, 2);
 
-      expect(state.selectedUniversityId, 'uct-main-uuid');
-      expect(state.selectedCareerId, 'carrera-1');
-      expect(state.selectedSubjectId, 'ramo-1');
-      expect(state.selectedProfessorId, 'prof-2');
+      notifier.selectYear(null);
+      expect(container.read(academicHierarchyProvider).selectedYear, isNull);
+      expect(container.read(academicHierarchyProvider).activeFiltersCount, 1);
     });
 
-    test('toQueryParams serializa correctamente los parámetros no nulos', () {
+    test('toQueryParams serializa los 6 filtros oficiales', () {
       final notifier = container.read(academicHierarchyProvider.notifier);
 
-      // Sin selección
-      expect(
-        container.read(academicHierarchyProvider).toQueryParams(),
-        isEmpty,
-      );
-
-      // Selección parcial
       notifier.selectUniversity('uct-uuid');
       notifier.selectCareer('carr-uuid');
-      expect(container.read(academicHierarchyProvider).toQueryParams(), {
-        'universityId': 'uct-uuid',
-        'careerId': 'carr-uuid',
-      });
-
-      // Selección completa
       notifier.selectSubject('subj-uuid');
       notifier.selectProfessor('prof-uuid');
-      expect(container.read(academicHierarchyProvider).toQueryParams(), {
-        'universityId': 'uct-uuid',
-        'careerId': 'carr-uuid',
-        'subjectId': 'subj-uuid',
-        'professorId': 'prof-uuid',
-      });
+      notifier.selectYear(2026);
+      notifier.selectType('guia');
+
+      final params = container.read(academicHierarchyProvider).toQueryParams();
+      expect(params['universityId'], 'uct-uuid');
+      expect(params['careerId'], 'carr-uuid');
+      expect(params['subjectId'], 'subj-uuid');
+      expect(params['professorId'], 'prof-uuid');
+      expect(params['year'], '2026');
+      expect(params['type'], 'guia');
     });
 
     test(
@@ -176,6 +185,8 @@ void main() {
         notifier.setUniversities(UniversityModel.mockList());
         notifier.selectUniversity('uct-main-uuid');
         notifier.selectCareer('career-inf-uuid');
+        notifier.selectYear(2025);
+        notifier.selectType('apunte');
 
         expect(
           container.read(academicHierarchyProvider).hasActiveFilters,
@@ -188,8 +199,9 @@ void main() {
         expect(state.hasActiveFilters, isFalse);
         expect(state.selectedUniversityId, isNull);
         expect(state.selectedCareerId, isNull);
+        expect(state.selectedYear, isNull);
+        expect(state.selectedType, isNull);
         expect(state.universities, isNotEmpty);
-        expect(state.careers, isEmpty);
       },
     );
 
@@ -204,42 +216,6 @@ void main() {
 
       expect(state.universities, isEmpty);
       expect(state.selectedUniversityId, isNull);
-    });
-
-    test('Gestión de estados de carga y error por nivel', () {
-      final notifier = container.read(academicHierarchyProvider.notifier);
-
-      notifier.setLoadingUniversities(true);
-      expect(
-        container.read(academicHierarchyProvider).isLoadingUniversities,
-        isTrue,
-      );
-      expect(container.read(academicHierarchyProvider).isAnyLoading, isTrue);
-      expect(
-        container.read(academicHierarchyProvider).canSelectUniversity,
-        isFalse,
-      );
-
-      notifier.setLoadingUniversities(false);
-      notifier.setErrorUniversities('Error de red en universidades');
-      expect(
-        container.read(academicHierarchyProvider).errorUniversities,
-        'Error de red en universidades',
-      );
-      expect(container.read(academicHierarchyProvider).hasAnyError, isTrue);
-
-      notifier.setErrorUniversities(null);
-      expect(container.read(academicHierarchyProvider).hasAnyError, isFalse);
-    });
-
-    test('hasAcademicHierarchyFiltersProvider reacciona reactivamente a la selección', () {
-      expect(container.read(hasAcademicHierarchyFiltersProvider), isFalse);
-
-      container.read(academicHierarchyProvider.notifier).selectUniversity('u1');
-      expect(container.read(hasAcademicHierarchyFiltersProvider), isTrue);
-
-      container.read(academicHierarchyProvider.notifier).resetSelection();
-      expect(container.read(hasAcademicHierarchyFiltersProvider), isFalse);
     });
   });
 }

@@ -65,7 +65,15 @@ class _MaterialDiscoveryScreenState
     AcademicFilterSheet.show(
       context,
       onApply: () {
-        // En #294 se conectará la sincronización directa con los resultados de materiales
+        final hierarchy = ref.read(academicHierarchyProvider);
+        final selectedSubject = hierarchy.selectedSubject;
+        if (selectedSubject != null) {
+          ref
+              .read(discoveryMaterialsProvider.notifier)
+              .setSubject(selectedSubject.name);
+        } else if (!hierarchy.hasActiveFilters) {
+          ref.read(discoveryMaterialsProvider.notifier).setSubject(null);
+        }
       },
     );
   }
@@ -126,6 +134,9 @@ class _MaterialDiscoveryScreenState
                     ref
                         .read(discoveryMaterialsProvider.notifier)
                         .setSubject(null);
+                    ref
+                        .read(academicHierarchyProvider.notifier)
+                        .selectSubject(null);
                   },
                 ),
               ),

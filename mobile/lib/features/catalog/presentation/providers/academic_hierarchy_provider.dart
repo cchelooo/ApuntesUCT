@@ -5,31 +5,46 @@ import 'package:apuntesuct_mobile/models/professor_model.dart';
 import 'package:apuntesuct_mobile/models/subject_model.dart';
 import 'package:apuntesuct_mobile/models/university_model.dart';
 
-/// Representa la selección académica actual en la jerarquía de 4 niveles.
+/// Representa la selección de filtros en el catálogo institucional.
+/// Cubre los 6 filtros oficiales en su orden canónico:
+/// 1. Universidad
+/// 2. Carrera
+/// 3. Asignatura
+/// 4. Profesor
+/// 5. Año académico
+/// 6. Tipo de material
 class AcademicHierarchySelection {
   final String? universityId;
   final String? careerId;
   final String? subjectId;
   final String? professorId;
+  final int? academicYear;
+  final String? materialType;
 
   const AcademicHierarchySelection({
     this.universityId,
     this.careerId,
     this.subjectId,
     this.professorId,
+    this.academicYear,
+    this.materialType,
   });
 
   const AcademicHierarchySelection.empty()
     : universityId = null,
       careerId = null,
       subjectId = null,
-      professorId = null;
+      professorId = null,
+      academicYear = null,
+      materialType = null;
 
   bool get isEmpty =>
       (universityId == null || universityId!.isEmpty) &&
       (careerId == null || careerId!.isEmpty) &&
       (subjectId == null || subjectId!.isEmpty) &&
-      (professorId == null || professorId!.isEmpty);
+      (professorId == null || professorId!.isEmpty) &&
+      academicYear == null &&
+      (materialType == null || materialType!.isEmpty);
 
   bool get isNotEmpty => !isEmpty;
 
@@ -38,10 +53,14 @@ class AcademicHierarchySelection {
     String? careerId,
     String? subjectId,
     String? professorId,
+    int? academicYear,
+    String? materialType,
     bool clearUniversity = false,
     bool clearCareer = false,
     bool clearSubject = false,
     bool clearProfessor = false,
+    bool clearAcademicYear = false,
+    bool clearMaterialType = false,
   }) {
     return AcademicHierarchySelection(
       universityId: clearUniversity
@@ -50,6 +69,12 @@ class AcademicHierarchySelection {
       careerId: clearCareer ? null : (careerId ?? this.careerId),
       subjectId: clearSubject ? null : (subjectId ?? this.subjectId),
       professorId: clearProfessor ? null : (professorId ?? this.professorId),
+      academicYear: clearAcademicYear
+          ? null
+          : (academicYear ?? this.academicYear),
+      materialType: clearMaterialType
+          ? null
+          : (materialType ?? this.materialType),
     );
   }
 
@@ -68,6 +93,14 @@ class AcademicHierarchySelection {
     if (professorId != null && professorId!.trim().isNotEmpty) {
       params['professorId'] = professorId!.trim();
     }
+    if (academicYear != null) {
+      params['year'] = academicYear.toString();
+      params['academicYear'] = academicYear.toString();
+    }
+    if (materialType != null && materialType!.trim().isNotEmpty) {
+      params['type'] = materialType!.trim();
+      params['materialType'] = materialType!.trim();
+    }
     return params;
   }
 
@@ -79,22 +112,36 @@ class AcademicHierarchySelection {
           universityId == other.universityId &&
           careerId == other.careerId &&
           subjectId == other.subjectId &&
-          professorId == other.professorId;
+          professorId == other.professorId &&
+          academicYear == other.academicYear &&
+          materialType == other.materialType;
 
   @override
   int get hashCode =>
       universityId.hashCode ^
       careerId.hashCode ^
       subjectId.hashCode ^
-      professorId.hashCode;
+      professorId.hashCode ^
+      academicYear.hashCode ^
+      materialType.hashCode;
 
   @override
   String toString() =>
-      'AcademicHierarchySelection(universityId: $universityId, careerId: $careerId, subjectId: $subjectId, professorId: $professorId)';
+      'AcademicHierarchySelection(universityId: $universityId, careerId: $careerId, subjectId: $subjectId, professorId: $professorId, academicYear: $academicYear, materialType: $materialType)';
 }
 
 /// Estado inmutable que gestiona la clasificación jerárquica y entidades activas.
 class AcademicHierarchyState {
+  static const List<int> defaultYears = [2026, 2025, 2024, 2023, 2022, 2021];
+  static const List<String> defaultTypes = [
+    'apunte',
+    'certamen',
+    'guia',
+    'taller',
+    'resumen',
+    'laboratorio',
+  ];
+
   final AcademicHierarchySelection selection;
 
   // Listas de entidades disponibles en memoria
@@ -102,6 +149,8 @@ class AcademicHierarchyState {
   final List<CareerModel> careers;
   final List<SubjectModel> subjects;
   final List<ProfessorModel> professors;
+  final List<int> availableYears;
+  final List<String> availableTypes;
 
   // Indicadores de carga por nivel
   final bool isLoadingUniversities;
@@ -121,6 +170,8 @@ class AcademicHierarchyState {
     this.careers = const [],
     this.subjects = const [],
     this.professors = const [],
+    this.availableYears = defaultYears,
+    this.availableTypes = defaultTypes,
     this.isLoadingUniversities = false,
     this.isLoadingCareers = false,
     this.isLoadingSubjects = false,
@@ -131,11 +182,13 @@ class AcademicHierarchyState {
     this.errorProfessors,
   });
 
-  // Accesores directos a IDs seleccionados
+  // Accesores directos a selecciones
   String? get selectedUniversityId => selection.universityId;
   String? get selectedCareerId => selection.careerId;
   String? get selectedSubjectId => selection.subjectId;
   String? get selectedProfessorId => selection.professorId;
+  int? get selectedYear => selection.academicYear;
+  String? get selectedType => selection.materialType;
 
   bool get isUniversitySelected =>
       selectedUniversityId != null && selectedUniversityId!.isNotEmpty;
@@ -145,12 +198,16 @@ class AcademicHierarchyState {
       selectedSubjectId != null && selectedSubjectId!.isNotEmpty;
   bool get isProfessorSelected =>
       selectedProfessorId != null && selectedProfessorId!.isNotEmpty;
+  bool get isYearSelected => selectedYear != null;
+  bool get isTypeSelected => selectedType != null && selectedType!.isNotEmpty;
 
   // Reglas de habilitación en cascada para la UI (Issue #282 y #289)
   bool get canSelectUniversity => !isLoadingUniversities;
   bool get canSelectCareer => isUniversitySelected && !isLoadingCareers;
   bool get canSelectSubject => isCareerSelected && !isLoadingSubjects;
   bool get canSelectProfessor => isSubjectSelected && !isLoadingProfessors;
+  bool get canSelectYear => true;
+  bool get canSelectType => true;
 
   // Objetos completos seleccionados (si se encuentran en las listas actuales)
   UniversityModel? get selectedUniversity {
@@ -198,7 +255,22 @@ class AcademicHierarchyState {
       errorSubjects != null ||
       errorProfessors != null;
 
-  bool get hasActiveFilters => selection.isNotEmpty;
+  bool get hasActiveFilters =>
+      isUniversitySelected ||
+      isCareerSelected ||
+      isSubjectSelected ||
+      isProfessorSelected ||
+      isYearSelected ||
+      isTypeSelected;
+
+  int get activeFiltersCount => [
+    isUniversitySelected,
+    isCareerSelected,
+    isSubjectSelected,
+    isProfessorSelected,
+    isYearSelected,
+    isTypeSelected,
+  ].where((selected) => selected).length;
 
   Map<String, String> toQueryParams() => selection.toQueryParams();
 
@@ -208,6 +280,8 @@ class AcademicHierarchyState {
     List<CareerModel>? careers,
     List<SubjectModel>? subjects,
     List<ProfessorModel>? professors,
+    List<int>? availableYears,
+    List<String>? availableTypes,
     bool? isLoadingUniversities,
     bool? isLoadingCareers,
     bool? isLoadingSubjects,
@@ -227,6 +301,8 @@ class AcademicHierarchyState {
       careers: careers ?? this.careers,
       subjects: subjects ?? this.subjects,
       professors: professors ?? this.professors,
+      availableYears: availableYears ?? this.availableYears,
+      availableTypes: availableTypes ?? this.availableTypes,
       isLoadingUniversities:
           isLoadingUniversities ?? this.isLoadingUniversities,
       isLoadingCareers: isLoadingCareers ?? this.isLoadingCareers,
@@ -255,7 +331,7 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
     return const AcademicHierarchyState();
   }
 
-  /// Selecciona una universidad y reinicia en cascada las selecciones y listas hijas.
+  /// Selecciona una universidad y carga las carreras correspondientes a ese padre.
   void selectUniversity(String? universityId) {
     if (state.selectedUniversityId == universityId) return;
 
@@ -263,14 +339,24 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
         ? universityId.trim()
         : null;
 
+    List<CareerModel> nextCareers = const [];
+    if (validId != null) {
+      final allCareers = CareerModel.mockList();
+      final matching = allCareers
+          .where((c) => c.universityId == validId)
+          .toList();
+      nextCareers = matching.isNotEmpty ? matching : allCareers;
+    }
+
     state = state.copyWith(
-      selection: AcademicHierarchySelection(
+      selection: state.selection.copyWith(
         universityId: validId,
-        careerId: null,
-        subjectId: null,
-        professorId: null,
+        clearUniversity: validId == null,
+        clearCareer: true,
+        clearSubject: true,
+        clearProfessor: true,
       ),
-      careers: const [],
+      careers: nextCareers,
       subjects: const [],
       professors: const [],
       clearErrorCareers: true,
@@ -279,13 +365,18 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
     );
   }
 
-  /// Selecciona una carrera y reinicia en cascada asignatura y profesor.
+  /// Selecciona una carrera y carga las asignaturas correspondientes a ese padre.
   void selectCareer(String? careerId) {
     if (state.selectedCareerId == careerId) return;
 
     final validId = (careerId != null && careerId.trim().isNotEmpty)
         ? careerId.trim()
         : null;
+
+    List<SubjectModel> nextSubjects = const [];
+    if (validId != null) {
+      nextSubjects = SubjectModel.mockList();
+    }
 
     state = state.copyWith(
       selection: state.selection.copyWith(
@@ -294,14 +385,14 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
         clearSubject: true,
         clearProfessor: true,
       ),
-      subjects: const [],
+      subjects: nextSubjects,
       professors: const [],
       clearErrorSubjects: true,
       clearErrorProfessors: true,
     );
   }
 
-  /// Selecciona una asignatura y reinicia en cascada el profesor.
+  /// Selecciona una asignatura y carga los profesores correspondientes.
   void selectSubject(String? subjectId) {
     if (state.selectedSubjectId == subjectId) return;
 
@@ -309,13 +400,18 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
         ? subjectId.trim()
         : null;
 
+    List<ProfessorModel> nextProfessors = const [];
+    if (validId != null) {
+      nextProfessors = ProfessorModel.mockList();
+    }
+
     state = state.copyWith(
       selection: state.selection.copyWith(
         subjectId: validId,
         clearSubject: validId == null,
         clearProfessor: true,
       ),
-      professors: const [],
+      professors: nextProfessors,
       clearErrorProfessors: true,
     );
   }
@@ -332,6 +428,30 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
       selection: state.selection.copyWith(
         professorId: validId,
         clearProfessor: validId == null,
+      ),
+    );
+  }
+
+  /// Selecciona o deselecciona el año académico.
+  void selectYear(int? year) {
+    state = state.copyWith(
+      selection: state.selection.copyWith(
+        academicYear: year,
+        clearAcademicYear: year == null,
+      ),
+    );
+  }
+
+  /// Selecciona o deselecciona el tipo de material.
+  void selectType(String? type) {
+    final validType = (type != null && type.trim().isNotEmpty)
+        ? type.trim()
+        : null;
+
+    state = state.copyWith(
+      selection: state.selection.copyWith(
+        materialType: validType,
+        clearMaterialType: validType == null,
       ),
     );
   }

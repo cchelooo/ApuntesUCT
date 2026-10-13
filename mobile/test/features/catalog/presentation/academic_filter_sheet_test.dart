@@ -28,8 +28,8 @@ void main() {
     );
   }
 
-  group('AcademicFilterSheet Widget Tests (Issue #282)', () {
-    testWidgets('Renderiza el modal con los 4 niveles jerárquicos', (
+  group('AcademicFilterSheet Widget Tests (Issue #282 - 6 Filtros)', () {
+    testWidgets('Renderiza el modal con los 6 filtros en orden oficial', (
       tester,
     ) async {
       await tester.pumpWidget(buildTestWidget());
@@ -38,17 +38,26 @@ void main() {
       await tester.tap(find.text('Abrir filtros'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Filtros Académicos'), findsOneWidget);
+      expect(find.text('Filtros del Catálogo'), findsOneWidget);
+      // 1. Universidad
       expect(
         find.byKey(const Key('filter_university_dropdown')),
         findsOneWidget,
       );
+      // 2. Carrera
       expect(find.byKey(const Key('filter_career_dropdown')), findsOneWidget);
+      // 3. Asignatura
       expect(find.byKey(const Key('filter_subject_dropdown')), findsOneWidget);
+      // 4. Profesor
       expect(
         find.byKey(const Key('filter_professor_dropdown')),
         findsOneWidget,
       );
+      // 5. Año
+      expect(find.byKey(const Key('filter_year_dropdown')), findsOneWidget);
+      // 6. Tipo
+      expect(find.byKey(const Key('filter_type_dropdown')), findsOneWidget);
+
       expect(find.byKey(const Key('filter_apply_button')), findsOneWidget);
       expect(find.byKey(const Key('filter_close_button')), findsOneWidget);
     });
@@ -85,11 +94,9 @@ void main() {
     );
 
     testWidgets(
-      'Al seleccionar universidad se habilita la selección de carrera',
+      'Al seleccionar universidad carga carreras sin bloquear la cascada',
       (tester) async {
         final container = ProviderContainer();
-        final notifier = container.read(academicHierarchyProvider.notifier);
-        notifier.loadMockHierarchy();
 
         await tester.pumpWidget(
           UncontrolledProviderScope(
@@ -118,9 +125,19 @@ void main() {
         await tester.tap(find.text('Universidad Católica de Temuco').last);
         await tester.pumpAndSettle();
 
-        // Carrera ya no debe tener el texto de bloqueo
+        // Carrera ya no debe tener el texto de bloqueo y debe tener opciones disponibles
         expect(find.text('Selecciona una universidad primero'), findsNothing);
         expect(find.text('Seleccionar carrera...'), findsOneWidget);
+
+        // Abrir dropdown de Carrera
+        await tester.tap(find.byKey(const Key('filter_career_dropdown')));
+        await tester.pumpAndSettle();
+
+        // Debe mostrar carreras mock sin estar bloqueado
+        expect(
+          find.text('Ingeniería Civil en Informática').last,
+          findsOneWidget,
+        );
       },
     );
 
@@ -132,6 +149,7 @@ void main() {
         final notifier = container.read(academicHierarchyProvider.notifier);
         notifier.loadMockHierarchy();
         notifier.selectUniversity('uct-main-uuid');
+        notifier.selectYear(2026);
 
         await tester.pumpWidget(
           UncontrolledProviderScope(
@@ -166,6 +184,7 @@ void main() {
         );
 
         // Tocar Aplicar
+        await tester.ensureVisible(find.byKey(const Key('filter_apply_button')));
         await tester.tap(find.byKey(const Key('filter_apply_button')));
         await tester.pumpAndSettle();
 

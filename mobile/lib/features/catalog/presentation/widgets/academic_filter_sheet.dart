@@ -3,14 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:apuntesuct_mobile/core/theme/uct_palette.dart';
 import 'package:apuntesuct_mobile/features/catalog/presentation/providers/academic_hierarchy_provider.dart';
+import 'package:apuntesuct_mobile/models/university_model.dart';
 
-/// Modal inferior interactivo para configurar y aplicar filtros jerárquicos académicos.
-///
-/// Implementa los 4 niveles del Catálogo Institucional:
+/// Modal inferior interactivo para configurar y aplicar los 6 filtros oficiales del Catálogo:
 /// 1. Universidad
 /// 2. Carrera
 /// 3. Asignatura
 /// 4. Profesor
+/// 5. Año
+/// 6. Tipo
 class AcademicFilterSheet extends ConsumerStatefulWidget {
   final VoidCallback? onApply;
 
@@ -43,9 +44,10 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final state = ref.read(academicHierarchyProvider);
-      // Si aún no hay universidades cargadas, inicializar con el catálogo base
       if (state.universities.isEmpty && !state.isLoadingUniversities) {
-        ref.read(academicHierarchyProvider.notifier).loadMockHierarchy();
+        ref
+            .read(academicHierarchyProvider.notifier)
+            .setUniversities(UniversityModel.mockList());
       }
     });
   }
@@ -65,12 +67,7 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
     final colorPrimario = isDark ? UctPalette.amarillo : UctPalette.azul;
     final colorTextoBotonPrimario = isDark ? UctPalette.navy : Colors.white;
 
-    final activeFiltersCount = [
-      hierarchyState.isUniversitySelected,
-      hierarchyState.isCareerSelected,
-      hierarchyState.isSubjectSelected,
-      hierarchyState.isProfessorSelected,
-    ].where((selected) => selected).length;
+    final activeFiltersCount = hierarchyState.activeFiltersCount;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -114,7 +111,7 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
-                      Icons.account_tree_outlined,
+                      Icons.tune_rounded,
                       color: colorPrimario,
                       size: 22,
                     ),
@@ -125,14 +122,14 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Filtros Académicos',
+                          'Filtros del Catálogo',
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         Text(
                           activeFiltersCount > 0
-                              ? '$activeFiltersCount nivel(es) seleccionado(s)'
-                              : 'Clasificación jerárquica UCT',
+                              ? '$activeFiltersCount filtro(s) activo(s)'
+                              : '6 filtros en orden oficial',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
                                 color: isDark
@@ -167,7 +164,7 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Banner informativo de cascada
+              // Banner orientativo de cascada
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -208,7 +205,7 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
               // 1. Selector de Universidad
               _buildDropdownSection(
                 context: context,
-                label: 'Universidad',
+                label: '1. Universidad',
                 icon: Icons.account_balance_outlined,
                 isLoading: hierarchyState.isLoadingUniversities,
                 dropdown: DropdownButtonFormField<String>(
@@ -236,7 +233,7 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
               // 2. Selector de Carrera
               _buildDropdownSection(
                 context: context,
-                label: 'Carrera',
+                label: '2. Carrera',
                 icon: Icons.school_outlined,
                 isLoading: hierarchyState.isLoadingCareers,
                 dropdown: DropdownButtonFormField<String>(
@@ -283,7 +280,7 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
               // 3. Selector de Asignatura
               _buildDropdownSection(
                 context: context,
-                label: 'Asignatura',
+                label: '3. Asignatura',
                 icon: Icons.menu_book_outlined,
                 isLoading: hierarchyState.isLoadingSubjects,
                 dropdown: DropdownButtonFormField<String>(
@@ -330,7 +327,7 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
               // 4. Selector de Profesor
               _buildDropdownSection(
                 context: context,
-                label: 'Profesor / Docente',
+                label: '4. Profesor / Docente',
                 icon: Icons.person_outline,
                 isLoading: hierarchyState.isLoadingProfessors,
                 dropdown: DropdownButtonFormField<String>(
@@ -370,6 +367,60 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                   onChanged: hierarchyState.canSelectProfessor
                       ? (val) => notifier.selectProfessor(val)
                       : null,
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // 5. Selector de Año Académico
+              _buildDropdownSection(
+                context: context,
+                label: '5. Año Académico',
+                icon: Icons.calendar_today_outlined,
+                dropdown: DropdownButtonFormField<int>(
+                  key: const Key('filter_year_dropdown'),
+                  initialValue: hierarchyState.selectedYear,
+                  isExpanded: true,
+                  hint: const Text('Todos los años...'),
+                  decoration: _inputDecoration(
+                    colorFondoCampo,
+                    colorBordeCampo,
+                  ),
+                  items: hierarchyState.availableYears
+                      .map(
+                        (y) => DropdownMenuItem(
+                          value: y,
+                          child: Text(y.toString()),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) => notifier.selectYear(val),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // 6. Selector de Tipo de Material
+              _buildDropdownSection(
+                context: context,
+                label: '6. Tipo de Material',
+                icon: Icons.category_outlined,
+                dropdown: DropdownButtonFormField<String>(
+                  key: const Key('filter_type_dropdown'),
+                  initialValue: hierarchyState.selectedType,
+                  isExpanded: true,
+                  hint: const Text('Todos los tipos...'),
+                  decoration: _inputDecoration(
+                    colorFondoCampo,
+                    colorBordeCampo,
+                  ),
+                  items: hierarchyState.availableTypes
+                      .map(
+                        (t) => DropdownMenuItem(
+                          value: t,
+                          child: Text(t.toUpperCase()),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) => notifier.selectType(val),
                 ),
               ),
               const SizedBox(height: 24),
