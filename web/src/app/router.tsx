@@ -11,6 +11,7 @@ import {
   LibraryPage,
   MaterialDetailPage,
   NotFoundPage,
+  MaterialUploadPage,
 } from '../presentation/pages';
 
 export const router = createBrowserRouter([
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
       { path: 'catalog', element: <CatalogPage /> },
       { path: 'search', element: <SearchPage /> },
       { path: 'library', element: <LibraryPage /> },
+      { path: 'materials/upload', element: <MaterialUploadPage /> },
       { path: 'material/:materialId', element: <MaterialDetailPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
