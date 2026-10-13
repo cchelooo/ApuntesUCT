@@ -10,7 +10,7 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   // Habilitar CORS
-  app.enableCors();
+  app.enableCors({ exposedHeaders: ['Content-Disposition'] });
 
   // Prefijo global /api/v1 y rutas públicas de health
   configureRoutes(app);

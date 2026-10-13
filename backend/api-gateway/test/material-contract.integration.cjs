@@ -44,6 +44,7 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
       Buffer.from('%PDF-1.7\n'),
       Buffer.from([0x00, 0x01, 0x7f, 0x80, 0xff, 0x0d, 0x0a, 0x42]),
     ]);
+    let lastSavedBuffer = Buffer.alloc(0);
     let materialRow = { id: '11111111-1111-4111-8111-111111111111' };
     const versionRow = {
       storageKey: 'private/calculo-v1',
@@ -68,7 +69,7 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
         {
           provide: ObjectStorage,
           useValue: {
-            save: async () => ({ storageKey: 'private/test' }),
+            save: async (content) => { lastSavedBuffer = Buffer.isBuffer(content)?content:Buffer.from(content); return { storageKey: 'private/test' }; },
             get: async () => Readable.from([binaryContent]),
           },
         },
@@ -102,6 +103,7 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
       .compile();
     gateway = gatewayModule.createNestApplication();
     configureRoutes(gateway);
+    gateway.enableCors({ exposedHeaders: ['Content-Disposition'] });
     // El cliente solo conoce el puerto 3000 del Gateway.
     await gateway.listen(3000, '127.0.0.1');
     const base = 'http://127.0.0.1:3000';
