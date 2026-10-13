@@ -2,22 +2,35 @@ import 'package:apuntesuct_mobile/core/widgets/empty_state.dart';
 import 'package:apuntesuct_mobile/core/widgets/error_state.dart';
 import 'package:apuntesuct_mobile/core/widgets/loading_state.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
+import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_detail_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class MaterialDetailScreen extends ConsumerWidget {
+class MaterialDetailScreen extends StatelessWidget {
   final MaterialDetail? _detail;
-  final String? materialId;
+  final String? _explicitId;
 
   const MaterialDetailScreen({super.key, required MaterialDetail detail})
     : _detail = detail, // ignore: prefer_initializing_formals
-      materialId = null;
+      _explicitId = null;
 
-  const MaterialDetailScreen.byId({super.key, required this.materialId})
-    : _detail = null;
+  MaterialDetailScreen.byId({
+    super.key,
+    required String materialId,
+    MaterialSummary? initialSummary,
+  }) : _explicitId = materialId,
+       _detail = initialSummary != null
+           ? MaterialDetail(summary: initialSummary)
+           : null;
 
-  MaterialDetail get detail => _detail!;
+  String get materialId => _explicitId ?? _detail?.summary.id ?? '';
+
+  MaterialDetail get detail =>
+      _detail ??
+      MaterialDetail(
+        summary: MaterialSummary(id: materialId, title: ''),
+      );
 
   String _formatBytes(int bytes) {
     if (bytes <= 0) return '0 B';
@@ -32,59 +45,77 @@ class MaterialDetailScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (_detail != null) {
-      return _buildScaffold(context, _detail);
+  Widget build(BuildContext context) {
+    final localDetail = _detail;
+    final hasProviderScope =
+        context.findAncestorWidgetOfExactType<ProviderScope>() != null;
+
+    if ((_explicitId == null && localDetail != null) ||
+        (!hasProviderScope && localDetail != null)) {
+      return _buildScaffold(context, localDetail);
     }
 
-    final detailAsync = ref.watch(materialDetailProvider(materialId!));
+    return Consumer(
+      builder: (context, ref, child) {
+        final detailAsync = ref.watch(materialDetailProvider(materialId));
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Detalle del Material'),
-        centerTitle: true,
-      ),
-      body: detailAsync.when(
-        loading: () =>
-            const LoadingState(message: 'Cargando información del material...'),
-        error: (error, _) {
-          if (error.isNotFound) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const EmptyState(
-                      title: 'Material no encontrado',
-                      subtitle: 'El material solicitado no existe o fue eliminado del catálogo.',
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Detalle del Material'),
+            centerTitle: true,
+          ),
+          body: detailAsync.when(
+            loading: () {
+              if (localDetail != null && localDetail.summary.title.isNotEmpty) {
+                return _buildBody(context, localDetail);
+              }
+              return const LoadingState(
+                message: 'Cargando información del material...',
+              );
+            },
+            error: (error, _) {
+              if (error.isNotFound) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const EmptyState(
+                          title: 'Material no encontrado',
+                          subtitle: 'El material solicitado no existe o fue eliminado del catálogo.',
+                        ),
+                        const SizedBox(height: 20),
+                        FilledButton.icon(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.arrow_back),
+                          label: const Text('Volver al catálogo'),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 20),
-                    FilledButton.icon(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_back),
-                      label: const Text('Volver al catálogo'),
-                    ),
-                  ],
+                  ),
+                );
+              }
+
+              if (localDetail != null && localDetail.summary.title.isNotEmpty) {
+                return _buildBody(context, localDetail);
+              }
+
+              return Center(
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: ErrorState(
+                    message: 'No fue posible cargar el material. Verifica tu conexión.',
+                    onRetry: () =>
+                        ref.invalidate(materialDetailProvider(materialId)),
+                  ),
                 ),
-              ),
-            );
-          }
-
-          return Center(
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: ErrorState(
-                message:
-                    'No fue posible cargar el material. Verifica tu conexión.',
-                onRetry: () =>
-                    ref.invalidate(materialDetailProvider(materialId!)),
-              ),
-            ),
-          );
-        },
-        data: (loadedDetail) => _buildBody(context, loadedDetail),
-      ),
+              );
+            },
+            data: (loadedDetail) => _buildBody(context, loadedDetail),
+          ),
+        );
+      },
     );
   }
 
@@ -196,7 +227,9 @@ class MaterialDetailScreen extends ConsumerWidget {
           if (summary.professor != null && summary.professor!.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
-              'Docente: ${summary.professor}',
+              summary.professor!.startsWith('Docente:')
+                  ? summary.professor!
+                  : 'Docente: ${summary.professor}',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: colorScheme.primary,
                 fontWeight: FontWeight.w500,
@@ -211,31 +244,37 @@ class MaterialDetailScreen extends ConsumerWidget {
                 color: colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  Icon(
-                    Icons.history_rounded,
-                    size: 16,
-                    color: colorScheme.primary,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.history_rounded,
+                        size: 16,
+                        color: colorScheme.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Versión actual: v${currentVersion.versionNumber}',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Versión actual: v${currentVersion.versionNumber}',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  if (currentVersion.originalFileName != null) ...[
-                    const SizedBox(width: 8),
+                  if (currentVersion.originalFileName != null)
                     Text(
                       '(${currentVersion.originalFileName})',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.outline,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ],
                 ],
               ),
             ),

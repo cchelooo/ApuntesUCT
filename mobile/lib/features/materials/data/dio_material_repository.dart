@@ -7,12 +7,8 @@ import 'package:apuntesuct_mobile/features/materials/domain/repositories/materia
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final materialApiClientProvider = Provider<ApiClient>((ref) {
-  return ApiClient();
-});
-
 final dioMaterialRepositoryProvider = Provider<MaterialRepository>((ref) {
-  final apiClient = ref.watch(materialApiClientProvider);
+  final apiClient = ref.watch(apiclientProvider);
   return DioMaterialRepository(apiClient);
 });
 
@@ -24,9 +20,7 @@ class DioMaterialRepository implements MaterialRepository {
   @override
   Future<MaterialDetail> getDetail(String materialId) async {
     try {
-      final response = await _apiClient.dio.get(
-        '/api/v1/materials/$materialId',
-      );
+      final response = await _apiClient.dio.get('/materials/$materialId');
       final data = response.data;
       if (data is Map<String, dynamic>) {
         final payload = data['data'] is Map<String, dynamic>
@@ -44,7 +38,7 @@ class DioMaterialRepository implements MaterialRepository {
   Future<MaterialPage> list({int page = 1, int pageSize = 10}) async {
     try {
       final response = await _apiClient.dio.get(
-        '/api/v1/materials',
+        '/materials',
         queryParameters: {'page': page, 'pageSize': pageSize},
       );
       final data = response.data;
