@@ -366,22 +366,28 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
                         ),
                       )
                       .toList(),
-                  onChanged: (u) => setState(() {
-                    _university = u;
-                    // Si la carrera elegida no pertenece a la universidad,
-                    // se limpia para no enviar una combinación inválida.
-                    if (_career != null &&
-                        u != null &&
-                        _career!.universityId != u.id &&
-                        !_visibleCareers.contains(_career)) {
+                  onChanged: (u) {
+                    if (u?.id == _university?.id) return;
+                    setState(() {
+                      // Cascada: todo lo elegido bajo otra universidad queda
+                      // obsoleto. La comparación es por universityId y no por
+                      // pertenencia a la lista visible, porque con mocks la
+                      // lista cae al fallback (todas) y conservaría una
+                      // carrera UCT bajo UFRO: clasificación incompatible.
+                      _university = u;
                       _career = null;
-                    }
-                  }),
+                      _subject = null;
+                      _professor = null;
+                    });
+                  },
                   validator: (v) =>
                       v == null ? 'La universidad es obligatoria.' : null,
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<CareerModel>(
+                  // Sin `value:` en Flutter 3.47 (solo initialValue): la key
+                  // fuerza el reseteo visual cuando la cascada limpia.
+                  key: ValueKey('upload-career-${_university?.id}'),
                   initialValue: _career,
                   isExpanded: true,
                   decoration: const InputDecoration(
@@ -405,6 +411,7 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<SubjectModel>(
+                  key: ValueKey('upload-subject-${_university?.id}'),
                   initialValue: _subject,
                   isExpanded: true,
                   decoration: const InputDecoration(
@@ -428,6 +435,7 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<ProfessorModel?>(
+                  key: ValueKey('upload-professor-${_university?.id}'),
                   initialValue: _professor,
                   isExpanded: true,
                   decoration: const InputDecoration(

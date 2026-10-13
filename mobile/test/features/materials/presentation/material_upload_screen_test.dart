@@ -68,6 +68,14 @@ void main() {
       );
     });
 
+    test('título sin mínimo: solo exige no vacío (contrato @IsNotEmpty)',
+        () {
+      expect(MaterialUploadValidation.validateTitle('AB'), isNull);
+      expect(MaterialUploadValidation.validateTitle('X'), isNull);
+      expect(MaterialUploadValidation.validateTitle('  '), isNotNull);
+      expect(MaterialUploadValidation.validateTitle(null), isNotNull);
+    });
+
     test('coherencia tipo ↔ fuente', () {
       expect(
         MaterialUploadValidation.validateTypeAgainstSource(
@@ -173,6 +181,49 @@ void main() {
       expect(find.text('La carrera es obligatoria.'), findsOneWidget);
       expect(find.text('La asignatura es obligatoria.'), findsOneWidget);
       expect(find.text('El tipo es obligatorio.'), findsOneWidget);
+    });
+
+    testWidgets('cambiar universidad limpia la carrera incompatible',
+        (tester) async {
+      await pumpScreen(tester);
+
+      Future<void> selectOption({
+        required String fieldLabel,
+        required String option,
+      }) async {
+        final field = find.text(fieldLabel).first;
+        await tester.ensureVisible(field);
+        await tester.pumpAndSettle();
+        await tester.tap(field);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(option).last);
+        await tester.pumpAndSettle();
+      }
+
+      await selectOption(
+        fieldLabel: 'Universidad',
+        option: 'Universidad Católica de Temuco',
+      );
+      await selectOption(
+        fieldLabel: 'Carrera',
+        option: 'Ingeniería Civil en Informática',
+      );
+      expect(
+        find.text('Ingeniería Civil en Informática'),
+        findsOneWidget,
+      );
+
+      // UCT → UFRO: la carrera UCT debe desaparecer del formulario,
+      // aunque el fallback de mocks la siga ofreciendo en la lista.
+      await selectOption(
+        fieldLabel: 'Universidad Católica de Temuco',
+        option: 'Universidad de La Frontera',
+      );
+      expect(
+        find.text('Ingeniería Civil en Informática'),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('muestra nombre y tamaño del archivo elegido',

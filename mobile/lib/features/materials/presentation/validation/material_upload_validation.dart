@@ -65,13 +65,11 @@ abstract final class MaterialUploadValidation {
     return '${value.toStringAsFixed(1)} ${suffixes[i]}';
   }
 
-  /// Título obligatorio con mínimo de 3 caracteres visibles.
+  /// Título obligatorio según el contrato (`@IsString() @IsNotEmpty()`
+  /// sin mínimo de caracteres).
   static String? validateTitle(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'El título es obligatorio.';
-    }
-    if (value.trim().length < 3) {
-      return 'El título debe tener al menos 3 caracteres.';
     }
     return null;
   }
