@@ -1,8 +1,14 @@
 import { Prisma } from '.prisma/material-client';
 import { BadGatewayException, BadRequestException, Logger } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import { CreateMaterial } from './create-material';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
-import { createHash } from 'node:crypto';
+import { ObjectStorage } from '../ports/object-storage.port';
+import {
+  CatalogPort,
+  CatalogUnavailableError,
+  InvalidAcademicReferenceError,
+} from '../ports/catalog.port';
 
 describe('CreateMaterial', () => {
   const prisma = {
@@ -10,7 +16,14 @@ describe('CreateMaterial', () => {
     material: { create: jest.fn() },
     materialVersion: { findFirst: jest.fn() },
   };
-  const storage = { save: jest.fn(), remove: jest.fn() };
+  const catalog: jest.Mocked<CatalogPort> = {
+    validateReferences: jest.fn(),
+  };
+  const storage: jest.Mocked<ObjectStorage> = {
+    save: jest.fn(),
+    remove: jest.fn(),
+    get: jest.fn(),
+  };
   const author = { id: '11111111-1111-4111-8111-111111111111', universityId: null };
   const input = { title: 'Apunte', type: 'DOCUMENT', year: '2026', subjectId: 'subject-1' };
   const file = {
@@ -18,12 +31,13 @@ describe('CreateMaterial', () => {
     originalname: '../../apunte.pdf',
     mimetype: 'application/pdf',
   };
-  const useCase = new CreateMaterial(prisma as unknown as PrismaService, storage);
+  let useCase: CreateMaterial;
 
   beforeEach(() => {
     jest.resetAllMocks();
     jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     prisma.materialVersion.findFirst.mockResolvedValue(null);
+    catalog.validateReferences.mockResolvedValue(undefined);
     storage.remove.mockResolvedValue(undefined);
     prisma.materialType.findFirst.mockResolvedValue({ id: 'type-id' });
     storage.save.mockResolvedValue({ storageKey: 'materials/internal-key' });
@@ -34,6 +48,12 @@ describe('CreateMaterial', () => {
         createdAt: new Date('2026-10-11T12:00:00Z'),
       }),
     );
+    // Orden del constructor: Prisma, almacenamiento y Catalog.
+    useCase = new CreateMaterial(prisma as unknown as PrismaService, storage, catalog);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('guarda antes de crear material y versión atómicamente con checksum y autor', async () => {
@@ -42,6 +62,12 @@ describe('CreateMaterial', () => {
       return Promise.resolve({ ...data, id: 'material-id', createdAt: new Date() });
     });
     const result = await useCase.execute(input, author, file);
+    expect(catalog.validateReferences).toHaveBeenCalledWith({
+      subjectId: input.subjectId,
+      careerId: undefined,
+      professorId: undefined,
+      universityId: author.universityId,
+    });
     expect(prisma.material.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         status: 'PENDING_REVIEW',
@@ -66,13 +92,26 @@ describe('CreateMaterial', () => {
     expect(JSON.stringify(result)).not.toContain('internal-key');
   });
 
+  it('espera la confirmación de Catalog antes de almacenar o persistir', async () => {
+    let confirm!: () => void;
+    catalog.validateReferences.mockImplementation(
+      () => new Promise<void>((resolve) => { confirm = resolve; }),
+    );
+    const pending = useCase.execute(input, author, file);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(catalog.validateReferences).toHaveBeenCalledTimes(1);
+    expect(storage.save).not.toHaveBeenCalled();
+    expect(prisma.material.create).not.toHaveBeenCalled();
+    confirm();
+    await pending;
+    expect(storage.save).toHaveBeenCalledTimes(1);
+    expect(prisma.material.create).toHaveBeenCalledTimes(1);
+  });
+
   it('espera la confirmación de MinIO antes de escribir en PostgreSQL', async () => {
     let confirm!: (result: { storageKey: string }) => void;
     storage.save.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          confirm = resolve;
-        }),
+      () => new Promise((resolve) => { confirm = resolve; }),
     );
     const pending = useCase.execute(input, author, file);
     await new Promise<void>((resolve) => setImmediate(resolve));
@@ -85,9 +124,9 @@ describe('CreateMaterial', () => {
 
   it('persiste LINK sin escribir MinIO ni crear una versión de archivo', async () => {
     const result = await useCase.execute(
-      { ...input, type: 'LINK', externalLink: 'https://example.com/note' },
-      author,
+      { ...input, type: 'LINK', externalLink: 'https://example.com/note' }, author,
     );
+    expect(catalog.validateReferences).toHaveBeenCalledTimes(1);
     expect(storage.save).not.toHaveBeenCalled();
     expect(prisma.material.create.mock.calls[0][0].data.versions).toBeUndefined();
     expect(result.data.externalLink).toBe('https://example.com/note');
@@ -96,11 +135,27 @@ describe('CreateMaterial', () => {
 
   it('conserva el enlace de respaldo de un archivo', async () => {
     const result = await useCase.execute(
-      { ...input, externalLink: 'https://example.com/backup' },
-      author,
-      file,
+      { ...input, externalLink: 'https://example.com/backup' }, author, file,
     );
     expect(result.data.externalLink).toBe('https://example.com/backup');
+  });
+
+  it('rechaza referencias inválidas con 400 sin almacenar ni persistir', async () => {
+    catalog.validateReferences.mockRejectedValue(
+      new InvalidAcademicReferenceError('subjectId', 'La asignatura no existe o está inactiva.'),
+    );
+    await expect(useCase.execute(input, author, file)).rejects.toThrow(BadRequestException);
+    expect(storage.save).not.toHaveBeenCalled();
+    expect(prisma.material.create).not.toHaveBeenCalled();
+    expect(storage.remove).not.toHaveBeenCalled();
+  });
+
+  it('devuelve 502 si Catalog no está disponible sin almacenar ni persistir', async () => {
+    catalog.validateReferences.mockRejectedValue(new CatalogUnavailableError());
+    await expect(useCase.execute(input, author, file)).rejects.toThrow(BadGatewayException);
+    expect(storage.save).not.toHaveBeenCalled();
+    expect(prisma.material.create).not.toHaveBeenCalled();
+    expect(storage.remove).not.toHaveBeenCalled();
   });
 
   it('no crea ningún registro si falla MinIO y oculta el error interno', async () => {
@@ -117,6 +172,7 @@ describe('CreateMaterial', () => {
   it('rechaza tipo inexistente/inactivo antes de escribir un archivo', async () => {
     prisma.materialType.findFirst.mockResolvedValue(null);
     await expect(useCase.execute(input, author, file)).rejects.toThrow(BadRequestException);
+    expect(catalog.validateReferences).not.toHaveBeenCalled();
     expect(storage.save).not.toHaveBeenCalled();
     expect(prisma.material.create).not.toHaveBeenCalled();
   });
@@ -126,29 +182,25 @@ describe('CreateMaterial', () => {
     await expect(useCase.execute({ ...input, type: 'LINK' }, author)).rejects.toThrow(
       BadRequestException,
     );
-    await expect(
-      useCase.execute(
-        { ...input, type: 'LINK', externalLink: 'https://example.com' },
-        author,
-        file,
-      ),
-    ).rejects.toThrow(BadRequestException);
+    await expect(useCase.execute(
+      { ...input, type: 'LINK', externalLink: 'https://example.com' }, author, file,
+    )).rejects.toThrow(BadRequestException);
     expect(prisma.materialType.findFirst).not.toHaveBeenCalled();
+    expect(catalog.validateReferences).not.toHaveBeenCalled();
+    expect(storage.save).not.toHaveBeenCalled();
+    expect(prisma.material.create).not.toHaveBeenCalled();
   });
 
-  const rollback = () =>
-    new Prisma.PrismaClientKnownRequestError('rollback', {
-      code: 'P2003',
-      clientVersion: '6.12.0',
-    });
+  const rollback = () => new Prisma.PrismaClientKnownRequestError('rollback', {
+    code: 'P2003', clientVersion: '6.12.0',
+  });
 
   it('elimina solo la clave subida tras rechazo confirmado y sin referencia', async () => {
     const error = rollback();
     prisma.material.create.mockRejectedValue(error);
     await expect(useCase.execute(input, author, file)).rejects.toBe(error);
     expect(prisma.materialVersion.findFirst).toHaveBeenCalledWith({
-      where: { storageKey: 'materials/internal-key' },
-      select: { id: true },
+      where: { storageKey: 'materials/internal-key' }, select: { id: true },
     });
     expect(storage.remove).toHaveBeenCalledWith('materials/internal-key');
   });
@@ -173,9 +225,11 @@ describe('CreateMaterial', () => {
     async (operation) => {
       const error = rollback();
       prisma.material.create.mockRejectedValue(error);
-      if (operation === 'lookup')
+      if (operation === 'lookup') {
         prisma.materialVersion.findFirst.mockRejectedValue(new Error('db unavailable'));
-      else storage.remove.mockRejectedValue(new Error('storage unavailable'));
+      } else {
+        storage.remove.mockRejectedValue(new Error('storage unavailable'));
+      }
       await expect(useCase.execute(input, author, file)).rejects.toBe(error);
       if (operation === 'lookup') expect(storage.remove).not.toHaveBeenCalled();
       expect(Logger.prototype.warn).toHaveBeenCalled();
@@ -184,9 +238,9 @@ describe('CreateMaterial', () => {
 
   it('no intenta limpiar LINK ni fallos de subida', async () => {
     prisma.material.create.mockRejectedValue(rollback());
-    await expect(
-      useCase.execute({ ...input, type: 'LINK', externalLink: 'https://example.com' }, author),
-    ).rejects.toThrow();
+    await expect(useCase.execute(
+      { ...input, type: 'LINK', externalLink: 'https://example.com' }, author,
+    )).rejects.toThrow();
     expect(storage.remove).not.toHaveBeenCalled();
     storage.save.mockRejectedValue(new Error('write failed'));
     await expect(useCase.execute(input, author, file)).rejects.toThrow();

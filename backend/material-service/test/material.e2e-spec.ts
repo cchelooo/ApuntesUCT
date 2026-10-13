@@ -9,6 +9,7 @@ import { PrismaService } from '../src/infrastructure/prisma/prisma.service';
 import { setupApp } from '../src/setup-app';
 import { ObjectStorage } from '../src/application/ports/object-storage.port';
 import { MaterialAuthorProvider } from '../src/infrastructure/auth/material-author.provider';
+import { CatalogPort } from '../src/application/ports/catalog.port';
 describe('Materials API (E2E)', () => {
   let app: INestApplication;
   const prisma = {
@@ -23,7 +24,10 @@ describe('Materials API (E2E)', () => {
     $transaction: jest.fn((queries: Promise<unknown>[]) => Promise.all(queries)),
   };
   const storage = { save: jest.fn(), remove: jest.fn() };
-  const authorProvider = { resolve: () => ({ id: '18b428c0-6879-4d34-9de8-df9a17438b28', universityId: null }) };
+  const catalog = { validateReferences: jest.fn() };
+  const authorProvider = {
+    resolve: () => ({ id: '18b428c0-6879-4d34-9de8-df9a17438b28', universityId: null }),
+  };
   const material = {
     id: 'c0bc574d-41a6-4cb6-9b0f-d3c48b216441',
     title: 'Apuntes de cálculo',
@@ -50,6 +54,8 @@ describe('Materials API (E2E)', () => {
       .useValue(prisma)
       .overrideProvider(ObjectStorage)
       .useValue(storage)
+      .overrideProvider(CatalogPort)
+      .useValue(catalog)
       .overrideProvider(MaterialAuthorProvider)
       .useValue(authorProvider)
       .compile();
@@ -59,6 +65,7 @@ describe('Materials API (E2E)', () => {
   });
   beforeEach(() => {
     jest.clearAllMocks();
+    catalog.validateReferences.mockResolvedValue(undefined);
     prisma.material.findMany.mockResolvedValue([]);
     prisma.material.count.mockResolvedValue(0);
     prisma.materialType.findFirst.mockResolvedValue({ id: '73dfc2a6-7424-49a1-9449-c66b38cbe771' });
@@ -79,11 +86,13 @@ describe('Materials API (E2E)', () => {
       );
     });
     it('pagina publicados con orden estable y serializa metadatos', async () => {
-      prisma.material.findMany.mockResolvedValue([{
-        ...material,
-        createdAt: new Date('2026-10-01T12:00:00Z'),
-        updatedAt: new Date('2026-10-01T12:00:00Z'),
-      }]);
+      prisma.material.findMany.mockResolvedValue([
+        {
+          ...material,
+          createdAt: new Date('2026-10-01T12:00:00Z'),
+          updatedAt: new Date('2026-10-01T12:00:00Z'),
+        },
+      ]);
       prisma.material.count.mockResolvedValue(3);
       const { body } = await request(app.getHttpServer())
         .get('/api/v1/materials?page=2&pageSize=2')
@@ -155,7 +164,10 @@ describe('Materials API (E2E)', () => {
     it('documenta parámetros y respuesta en OpenAPI', async () => {
       const { body } = await request(app.getHttpServer()).get('/api/docs-json').expect(200);
       const endpoint = body.paths['/api/v1/materials'].get;
-      expect(endpoint.parameters.map((p: { name: string }) => p.name)).toEqual(['page', 'pageSize']);
+      expect(endpoint.parameters.map((p: { name: string }) => p.name)).toEqual([
+        'page',
+        'pageSize',
+      ]);
       expect(endpoint.responses['200'].content['application/json'].schema.$ref).toBe(
         '#/components/schemas/MaterialPageDto',
       );
@@ -204,7 +216,12 @@ describe('Materials API (E2E)', () => {
 
     const expectVersion = (buffer: Buffer, filename: string, mimeType: string) => {
       expect(storage.save).toHaveBeenCalledTimes(1);
-      expect(storage.save).toHaveBeenCalledWith(buffer, mimeType);
+      // Buffer.equals compara los bytes sin expandir 15 millones de entradas en Jest.
+      const [savedBuffer, savedMimeType] = storage.save.mock.calls[0] as [Buffer, string];
+      expect(Buffer.isBuffer(savedBuffer)).toBe(true);
+      expect(savedBuffer.length).toBe(buffer.length);
+      expect(savedBuffer.equals(buffer)).toBe(true);
+      expect(savedMimeType).toBe(mimeType);
       expect(prisma.material.create).toHaveBeenCalledTimes(1);
       expect(prisma.material.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -244,14 +261,17 @@ describe('Materials API (E2E)', () => {
       expectVersion(buffer, 'below-limit.pdf', 'application/pdf');
     });
 
-    it.each([1, 1024 * 1024])('rechaza con 413 un PDF que supera el límite por %i bytes', async (extra) => {
-      // Parte del mismo PDF válido: el rechazo debe deberse al tamaño.
-      const buffer = Buffer.concat([exactPdf, Buffer.alloc(extra, 0x0a)]);
-      expect(buffer.length).toBe(MAX_FILE_SIZE_BYTES + extra);
-      const { body } = await upload(buffer, 'oversized.pdf', 'application/pdf').expect(413);
-      expect(body.statusCode).toBe(413);
-      expectNoWrites();
-    });
+    it.each([1, 1024 * 1024])(
+      'rechaza con 413 un PDF que supera el límite por %i bytes',
+      async (extra) => {
+        // Parte del mismo PDF válido: el rechazo debe deberse al tamaño.
+        const buffer = Buffer.concat([exactPdf, Buffer.alloc(extra, 0x0a)]);
+        expect(buffer.length).toBe(MAX_FILE_SIZE_BYTES + extra);
+        const { body } = await upload(buffer, 'oversized.pdf', 'application/pdf').expect(413);
+        expect(body.statusCode).toBe(413);
+        expectNoWrites();
+      },
+    );
 
     it.each([
       {
@@ -266,40 +286,52 @@ describe('Materials API (E2E)', () => {
         mimeType: 'application/vnd.ms-powerpoint',
         type: 'PRESENTATION',
       },
-    ])('acepta $filename auténtico y registra sus metadatos de versión', async ({ filename, buffer, mimeType, type }) => {
-      await upload(buffer, filename, mimeType, type).expect(201);
-      expectVersion(buffer, filename, mimeType);
-    });
+    ])(
+      'acepta $filename auténtico y registra sus metadatos de versión',
+      async ({ filename, buffer, mimeType, type }) => {
+        await upload(buffer, filename, mimeType, type).expect(201);
+        expectVersion(buffer, filename, mimeType);
+      },
+    );
 
     it.each([
       { filename: 'fake.pdf', contentType: 'application/pdf' },
       { filename: 'fake.doc', contentType: 'application/msword' },
       { filename: 'fake.ppt', contentType: 'application/vnd.ms-powerpoint' },
-    ])('rechaza texto falso declarado como $filename con 415', async ({ filename, contentType }) => {
-      const buffer = Buffer.from('Texto plano falso que no es un documento real');
-      const { body } = await upload(buffer, filename, contentType).expect(415);
-      expect(body.statusCode).toBe(415);
-      expectNoWrites();
-    });
+    ])(
+      'rechaza texto falso declarado como $filename con 415',
+      async ({ filename, contentType }) => {
+        const buffer = Buffer.from('Texto plano falso que no es un documento real');
+        const { body } = await upload(buffer, filename, contentType).expect(415);
+        expect(body.statusCode).toBe(415);
+        expectNoWrites();
+      },
+    );
 
     it.each([
       { filename: 'zeros.doc', contentType: 'application/msword' },
       { filename: 'zeros.ppt', contentType: 'application/vnd.ms-powerpoint' },
-    ])('rechaza bytes en cero declarados como $filename con 415', async ({ filename, contentType }) => {
-      const { body } = await upload(Buffer.alloc(1024), filename, contentType).expect(415);
-      expect(body.statusCode).toBe(415);
-      expectNoWrites();
-    });
+    ])(
+      'rechaza bytes en cero declarados como $filename con 415',
+      async ({ filename, contentType }) => {
+        const { body } = await upload(Buffer.alloc(1024), filename, contentType).expect(415);
+        expect(body.statusCode).toBe(415);
+        expectNoWrites();
+      },
+    );
 
     it.each([
       { filename: 'empty.pdf', contentType: 'application/pdf' },
       { filename: 'empty.doc', contentType: 'application/msword' },
       { filename: 'empty.ppt', contentType: 'application/vnd.ms-powerpoint' },
-    ])('rechaza $filename de 0 bytes con 400 antes del filtro de contenido', async ({ filename, contentType }) => {
-      const { body } = await upload(Buffer.alloc(0), filename, contentType).expect(400);
-      expect(body.statusCode).toBe(400);
-      expectNoWrites();
-    });
+    ])(
+      'rechaza $filename de 0 bytes con 400 antes del filtro de contenido',
+      async ({ filename, contentType }) => {
+        const { body } = await upload(Buffer.alloc(0), filename, contentType).expect(400);
+        expect(body.statusCode).toBe(400);
+        expectNoWrites();
+      },
+    );
 
     it.each([
       { filename: 'image.png', contentType: 'image/png' },
