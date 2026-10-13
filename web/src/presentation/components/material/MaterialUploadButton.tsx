@@ -77,14 +77,12 @@ export function MaterialUploadButton({
       setError(null);
       setSuccess('¡Material subido exitosamente!');
 
-      // Callback onSuccess separado para evitar mostrar éxito y error de manera simultánea
-      // si el callback falla posteriormente a la creación del material.
+      // Callback onSuccess separado: si el material ya fue creado con éxito pero el callback
+      // posterior falla, la confirmación de subida exitosa se conserva y se trata el fallo
+      // del callback por separado (notificando a onError) sin reemplazar el estado por un error de subida.
       try {
-        onSuccess?.(result);
+        await Promise.resolve(onSuccess?.(result));
       } catch (callbackErr: unknown) {
-        setSuccess(null);
-        const errorMsg = mapMaterialUploadError(callbackErr);
-        setError(errorMsg);
         onError?.(callbackErr);
       }
     } catch (err: unknown) {

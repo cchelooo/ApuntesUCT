@@ -170,7 +170,7 @@ describe('MaterialUploadButton - Feedback y prevención de dobles envíos (#243)
     expect(uploadFn).toHaveBeenCalledTimes(2);
   });
 
-  it('no muestra alertas de éxito y error simultáneamente si el callback onSuccess lanza un error tras la subida', async () => {
+  it('conserva la confirmación de éxito y no muestra error de subida si el callback onSuccess falla tras la creación', async () => {
     const uploadFn = vi.fn().mockResolvedValueOnce({ id: 'mat-created' });
     const onSuccess = vi.fn().mockImplementation(() => {
       throw new Error('Error en callback posterior');
@@ -191,15 +191,21 @@ describe('MaterialUploadButton - Feedback y prevención de dobles envíos (#243)
     const input = screen.getByTestId('file-upload-input');
     await userEvent.upload(input, file);
 
+    // La confirmación de subida exitosa debe conservarse
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(
+        screen.getByText('¡Material subido exitosamente!')
+      ).toBeInTheDocument();
+      expect(screen.getByRole('status')).toBeInTheDocument();
     });
 
-    // Se asegura de que no coexistan mensajes de éxito y error al mismo tiempo
+    // No debe reemplazar el éxito por un error de subida ni mostrar alertas de error simultáneas
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(
-      screen.queryByText('¡Material subido exitosamente!')
+      screen.queryByTestId('upload-button-error-alert')
     ).not.toBeInTheDocument();
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+    // Se trata el fallo del callback por separado notificando a onError
     expect(onError).toHaveBeenCalledTimes(1);
   });
 
@@ -233,5 +239,40 @@ describe('MaterialUploadButton - Feedback y prevención de dobles envíos (#243)
 
     // La alerta de error no debe coexistir con la de éxito
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('conserva la confirmación de éxito y no muestra error de subida si el callback onSuccess retorna una promesa rechazada', async () => {
+    const uploadFn = vi.fn().mockResolvedValueOnce({ id: 'mat-async' });
+    const callbackError = new Error('Fallo asíncrono en onSuccess');
+    const onSuccess = vi.fn().mockRejectedValueOnce(callbackError);
+    const onError = vi.fn();
+
+    render(
+      <MaterialUploadButton
+        uploadFn={uploadFn}
+        onSuccess={onSuccess}
+        onError={onError}
+      />
+    );
+
+    const file = new File(['content'], 'apunte.pdf', {
+      type: 'application/pdf',
+    });
+    const input = screen.getByTestId('file-upload-input');
+    await userEvent.upload(input, file);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('¡Material subido exitosamente!')
+      ).toBeInTheDocument();
+      expect(screen.getByRole('status')).toBeInTheDocument();
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+      expect(onError).toHaveBeenCalledWith(callbackError);
+    });
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('upload-button-error-alert')
+    ).not.toBeInTheDocument();
   });
 });

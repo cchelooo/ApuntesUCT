@@ -271,4 +271,116 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
+
+  it('conserva la confirmación de éxito y no muestra error de subida si el callback onSuccess falla tras la creación', async () => {
+    let resolveUpload: (val: unknown) => void;
+    const uploadPromise = new Promise((resolve) => {
+      resolveUpload = resolve;
+    });
+    const uploadFn = vi.fn().mockImplementation(() => uploadPromise);
+    const onSuccess = vi.fn().mockImplementation(() => {
+      throw new Error('Error en onSuccess posterior');
+    });
+    const onError = vi.fn();
+
+    render(
+      <MaterialUploadForm
+        uploadFn={uploadFn}
+        onSuccess={onSuccess}
+        onError={onError}
+      />
+    );
+
+    fireEvent.change(screen.getByTestId('upload-title-input'), {
+      target: { value: 'Guía de Estudio' },
+    });
+    fireEvent.change(screen.getByTestId('upload-subject-input'), {
+      target: { value: 'MAT-101' },
+    });
+
+    const file = new File(['content'], 'guia.pdf', {
+      type: 'application/pdf',
+    });
+    const fileInput = screen.getByTestId('upload-file-input');
+    await userEvent.upload(fileInput, file);
+
+    const submitBtn = screen.getByTestId('upload-submit-button');
+    fireEvent.click(submitBtn);
+
+    expect(submitBtn).toBeDisabled();
+    expect(submitBtn).toHaveTextContent(/subiendo material/i);
+    expect(uploadFn).toHaveBeenCalledTimes(1);
+
+    // Resuelve la subida exitosa del material
+    resolveUpload!({ id: 'form-mat-1' });
+
+    // La confirmación de subida exitosa debe conservarse
+    await waitFor(() => {
+      expect(
+        screen.getByText('¡Material subido exitosamente!')
+      ).toBeInTheDocument();
+      expect(screen.getByRole('status')).toBeInTheDocument();
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+    });
+
+    // No debe reemplazar el éxito por un error de subida ni mostrar mensajes de error simultáneos
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    // Se notifica el fallo del callback a onError por separado
+    expect(onError).toHaveBeenCalledTimes(1);
+  });
+
+  it('conserva la confirmación de éxito y no muestra error de subida si el callback onSuccess retorna una promesa rechazada tras la creación', async () => {
+    let resolveUpload: (val: unknown) => void;
+    const uploadPromise = new Promise((resolve) => {
+      resolveUpload = resolve;
+    });
+    const uploadFn = vi.fn().mockImplementation(() => uploadPromise);
+    const callbackError = new Error('Error asíncrono en onSuccess');
+    const onSuccess = vi.fn().mockRejectedValueOnce(callbackError);
+    const onError = vi.fn();
+
+    render(
+      <MaterialUploadForm
+        uploadFn={uploadFn}
+        onSuccess={onSuccess}
+        onError={onError}
+      />
+    );
+
+    fireEvent.change(screen.getByTestId('upload-title-input'), {
+      target: { value: 'Guía de Estudio Avanzada' },
+    });
+    fireEvent.change(screen.getByTestId('upload-subject-input'), {
+      target: { value: 'MAT-102' },
+    });
+
+    const file = new File(['content'], 'guia.pdf', {
+      type: 'application/pdf',
+    });
+    const fileInput = screen.getByTestId('upload-file-input');
+    await userEvent.upload(fileInput, file);
+
+    const submitBtn = screen.getByTestId('upload-submit-button');
+    fireEvent.click(submitBtn);
+
+    expect(submitBtn).toBeDisabled();
+    expect(uploadFn).toHaveBeenCalledTimes(1);
+
+    // Resuelve la subida exitosa del material
+    resolveUpload!({ id: 'form-mat-async' });
+
+    // La confirmación de subida exitosa debe conservarse
+    await waitFor(() => {
+      expect(
+        screen.getByText('¡Material subido exitosamente!')
+      ).toBeInTheDocument();
+      expect(screen.getByRole('status')).toBeInTheDocument();
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+      expect(onError).toHaveBeenCalledWith(callbackError);
+    });
+
+    // No debe reemplazar el éxito por un error de subida ni mostrar mensajes de error simultáneos
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
 });

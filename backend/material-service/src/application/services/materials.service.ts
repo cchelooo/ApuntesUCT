@@ -1,12 +1,33 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import type { Readable } from 'node:stream';
 import { Prisma } from '.prisma/material-client';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { ListMaterialsQueryDto } from '../dtos/list-materials-query.dto';
 import { MaterialPageDto } from '../dtos/material-page.dto';
+import {
+  ObjectNotFoundError,
+  ObjectStorage,
+  ObjectStorageError,
+} from '../ports/object-storage.port';
+
+export interface DownloadResult {
+  stream: Readable;
+  mimeType: string;
+  filename: string;
+  size: number;
+}
 
 @Injectable()
 export class MaterialsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: ObjectStorage,
+  ) {}
 
   async list({ page, pageSize }: ListMaterialsQueryDto): Promise<MaterialPageDto> {
     const skip = (page - 1) * pageSize;
@@ -57,5 +78,45 @@ export class MaterialsService {
       pageSize,
       total,
     };
+  }
+
+  async download(materialId: string, versionId?: string): Promise<DownloadResult> {
+    const material = await this.prisma.material.findFirst({
+      where: { id: materialId, status: 'PUBLISHED' },
+      select: { id: true },
+    });
+    if (!material) {
+      throw new NotFoundException('Material no encontrado.');
+    }
+
+    const version = versionId
+      ? await this.prisma.materialVersion.findFirst({
+          where: { id: versionId, materialId },
+        })
+      : await this.prisma.materialVersion.findFirst({
+          where: { materialId },
+          orderBy: { versionNumber: 'desc' },
+        });
+    if (!version) {
+      throw new NotFoundException('Versión del material no encontrada.');
+    }
+
+    try {
+      const stream = await this.storage.get(version.storageKey);
+      return {
+        stream,
+        mimeType: version.mimeType,
+        filename: version.originalFilename,
+        size: Number(version.fileSize),
+      };
+    } catch (error) {
+      if (error instanceof ObjectNotFoundError) {
+        throw new NotFoundException('Archivo no disponible.');
+      }
+      if (error instanceof ObjectStorageError) {
+        throw new ServiceUnavailableException('Almacenamiento de archivos no disponible.');
+      }
+      throw error;
+    }
   }
 }

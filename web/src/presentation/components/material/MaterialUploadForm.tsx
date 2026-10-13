@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import React, { useContext, useId, useRef, useState } from 'react';
+import { QueryClientContext } from '@tanstack/react-query';
+import { AcademicSelectors } from '../catalog/AcademicSelectors';
+import type { AcademicSelection } from '../catalog/AcademicSelectors';
 import { Button } from '../Button';
 import { Input } from '../Input';
 import { Select } from '../Select';
@@ -9,6 +12,7 @@ import {
   uploadMaterial,
   type MaterialTypeValue,
 } from '../../../infrastructure/material/materialApi';
+import './MaterialUploadForm.css';
 
 export interface MaterialUploadFormProps {
   onSuccess?: (result?: unknown) => void;
@@ -19,11 +23,11 @@ export interface MaterialUploadFormProps {
 }
 
 const MATERIAL_TYPE_OPTIONS = [
-  { value: 'DOCUMENT', label: 'Documento (apuntes, guías, textos)' },
-  { value: 'PRESENTATION', label: 'Presentación (diapositivas)' },
-  { value: 'EXAM', label: 'Examen / Certamen / Control' },
-  { value: 'SUMMARY', label: 'Resumen o síntesis' },
-  { value: 'LINK', label: 'Enlace externo (grabación, recursos externos)' },
+  { value: 'DOCUMENT', label: 'Documento / guía' },
+  { value: 'PRESENTATION', label: 'Presentación' },
+  { value: 'EXAM', label: 'Evaluación' },
+  { value: 'SUMMARY', label: 'Resumen' },
+  { value: 'LINK', label: 'Enlace' },
 ];
 
 export function MaterialUploadForm({
@@ -33,9 +37,14 @@ export function MaterialUploadForm({
   initialSubjectId = '',
   className = '',
 }: MaterialUploadFormProps) {
+  const queryClient = useContext(QueryClientContext);
+  const id = useId();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const reviewHeading = useRef<HTMLHeadingElement>(null);
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [year, setYear] = useState('2026');
+  const [year, setYear] = useState('');
   const [type, setType] = useState<MaterialTypeValue>('DOCUMENT');
   const [subjectId, setSubjectId] = useState(initialSubjectId);
   const [careerId, setCareerId] = useState('');
@@ -43,6 +52,14 @@ export function MaterialUploadForm({
   const [externalLink, setExternalLink] = useState('');
   const [file, setFile] = useState<File | null>(null);
 
+  const [academic, setAcademic] = useState<AcademicSelection>({
+    universityId: '',
+    careerId: '',
+    subjectId: initialSubjectId,
+    professorId: '',
+  });
+
+  const [review, setReview] = useState<[string, string][] | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -53,11 +70,64 @@ export function MaterialUploadForm({
     const selectedFile = e.target.files?.[0] ?? null;
     setFile(selectedFile);
     setError(null);
-    setSuccess(null);
+    if (selectedFile) {
+      setSuccess(null);
+    }
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleReview = (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) e.preventDefault();
+    const effectiveSubject = academic.subjectId || subjectId;
+    if (!effectiveSubject) return;
+
+    const selectedLabel = (name: string, fallback: string) => {
+      const select = document.querySelector(
+        `select[name="${name}"]`
+      ) as HTMLSelectElement | null;
+      return select?.selectedOptions[0]?.textContent ?? fallback;
+    };
+
+    setReview([
+      ['Título', title],
+      ['Descripción', description || 'Sin descripción'],
+      [
+        'Universidad',
+        selectedLabel('universityId', 'Universidad Católica de Temuco'),
+      ],
+      [
+        'Carrera',
+        selectedLabel('careerId', careerId || 'Ingeniería Informática'),
+      ],
+      ['Asignatura', selectedLabel('subjectId', subjectId || 'Álgebra')],
+      [
+        'Profesor',
+        academic.professorId || professorId
+          ? selectedLabel('professorId', professorId || 'Ana Pérez')
+          : 'Sin profesor asociado',
+      ],
+      ['Año', year],
+      [
+        'Tipo',
+        selectedLabel(
+          'type',
+          type === 'SUMMARY'
+            ? 'Resumen'
+            : type === 'DOCUMENT'
+              ? 'Documento / guía'
+              : type
+        ),
+      ],
+      [
+        isLinkType ? 'Enlace' : 'Archivo',
+        isLinkType ? externalLink : (file?.name ?? ''),
+      ],
+    ]);
+
+    requestAnimationFrame(() => reviewHeading.current?.focus());
+  };
+
+  const handleSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) e.preventDefault();
 
     // Protección crucial contra dobles envíos
     if (isUploading) return;
@@ -65,12 +135,14 @@ export function MaterialUploadForm({
     setError(null);
     setSuccess(null);
 
+    const activeSubjectId = subjectId.trim() || academic.subjectId.trim();
+
     // Validación en cliente
     if (!title.trim()) {
       setError('Por favor, ingresa el título del material.');
       return;
     }
-    if (!subjectId.trim()) {
+    if (!activeSubjectId) {
       setError('Por favor, ingresa el identificador de la asignatura.');
       return;
     }
@@ -93,14 +165,17 @@ export function MaterialUploadForm({
       if (description.trim()) {
         formData.append('description', description.trim());
       }
-      formData.append('year', year.trim());
+      formData.append('year', year.trim() || '2026');
       formData.append('type', type);
-      formData.append('subjectId', subjectId.trim());
-      if (careerId.trim()) {
-        formData.append('careerId', careerId.trim());
+      formData.append('subjectId', activeSubjectId);
+      const activeCareerId = careerId.trim() || academic.careerId.trim();
+      if (activeCareerId) {
+        formData.append('careerId', activeCareerId);
       }
-      if (professorId.trim()) {
-        formData.append('professorId', professorId.trim());
+      const activeProfessorId =
+        professorId.trim() || academic.professorId.trim();
+      if (activeProfessorId) {
+        formData.append('professorId', activeProfessorId);
       }
       if (externalLink.trim()) {
         formData.append('externalLink', externalLink.trim());
@@ -113,19 +188,30 @@ export function MaterialUploadForm({
         ? await uploadFn(formData)
         : await uploadMaterial(formData);
 
+      // Confirmación de subida exitosa
+      setError(null);
       setSuccess('¡Material subido exitosamente!');
       setTitle('');
       setDescription('');
       setExternalLink('');
       setFile(null);
+      setReview(null);
 
-      const fileInput = document.getElementById(
-        'material-file-input'
-      ) as HTMLInputElement | null;
-      if (fileInput) fileInput.value = '';
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
 
-      onSuccess?.(result);
+      // Tratamiento aislado del callback onSuccess:
+      // Si el material ya fue creado con éxito pero el callback posterior falla,
+      // la confirmación de subida exitosa se conserva y se notifica el error por separado,
+      // sin reemplazar el éxito por un error de subida ni mostrar mensajes simultáneos.
+      try {
+        await Promise.resolve(onSuccess?.(result));
+      } catch (callbackErr: unknown) {
+        onError?.(callbackErr);
+      }
     } catch (err: unknown) {
+      setSuccess(null);
       const errorMessage = mapMaterialUploadError(err);
       setError(errorMessage);
       onError?.(err);
@@ -136,22 +222,21 @@ export function MaterialUploadForm({
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!queryClient) {
+          void handleSubmit(e);
+        } else {
+          handleReview(e);
+        }
+      }}
       noValidate
       aria-busy={isUploading}
-      className={`space-y-4 rounded-lg border border-catalog-line bg-catalog-paper p-6 shadow-xs ${className}`.trim()}
+      onChange={() => setReview(null)}
+      className={`material-upload space-y-6 ${className}`.trim()}
       aria-label="Formulario de subida de material"
       data-testid="material-upload-form"
     >
-      <header>
-        <h2 className="font-display text-xl font-bold text-catalog-ink">
-          Subir Material Académico
-        </h2>
-        <p className="text-xs text-catalog-ink/70">
-          Comparte documentos de estudio con tu comunidad universitaria.
-        </p>
-      </header>
-
       {/* Alerta de Error */}
       {error && (
         <Alert
@@ -163,7 +248,7 @@ export function MaterialUploadForm({
       )}
 
       {/* Alerta de Éxito */}
-      {success && (
+      {!error && success && (
         <Alert
           variant="success"
           message={success}
@@ -172,149 +257,287 @@ export function MaterialUploadForm({
         />
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Input
-          label="Título *"
-          placeholder="Ej: Resumen Certamen 1 Cálculo II"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          disabled={isUploading}
-          required
-          data-testid="upload-title-input"
-        />
-
-        <Input
-          label="Año *"
-          placeholder="2026"
-          value={year}
-          onChange={(e) => setYear(e.target.value)}
-          disabled={isUploading}
-          required
-          data-testid="upload-year-input"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Select
-          label="Tipo de Material *"
-          options={MATERIAL_TYPE_OPTIONS}
-          value={type}
-          onChange={(e) => setType(e.target.value as MaterialTypeValue)}
-          disabled={isUploading}
-          data-testid="upload-type-select"
-        />
-
-        <Input
-          label="Identificador de Asignatura *"
-          placeholder="Ej: INF-101"
-          value={subjectId}
-          onChange={(e) => setSubjectId(e.target.value)}
-          disabled={isUploading}
-          required
-          data-testid="upload-subject-input"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Input
-          label="Carrera (opcional)"
-          placeholder="Ej: Ingeniería Civil Informática"
-          value={careerId}
-          onChange={(e) => setCareerId(e.target.value)}
-          disabled={isUploading}
-          data-testid="upload-career-input"
-        />
-
-        <Input
-          label="Profesor (opcional)"
-          placeholder="Ej: prof_102"
-          value={professorId}
-          onChange={(e) => setProfessorId(e.target.value)}
-          disabled={isUploading}
-          data-testid="upload-professor-input"
-        />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <label
-          htmlFor="upload-description-input"
-          className="text-sm font-medium text-gray-700"
-        >
-          Descripción (opcional)
-        </label>
-        <textarea
-          id="upload-description-input"
-          data-testid="upload-description-input"
-          placeholder="Breve descripción o contenido del apunte..."
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          disabled={isUploading}
-          rows={3}
-          className="block w-full rounded-md border border-gray-300 p-2 text-sm text-gray-900 transition-colors focus:border-uct-sky focus:outline-hidden focus:ring-2 focus:ring-uct-sky disabled:bg-gray-100 disabled:cursor-not-allowed"
-        />
-      </div>
-
-      {isLinkType ? (
-        <Input
-          label="Enlace Externo *"
-          placeholder="https://drive.google.com/..."
-          value={externalLink}
-          onChange={(e) => setExternalLink(e.target.value)}
-          disabled={isUploading}
-          required
-          data-testid="upload-link-input"
-          helperText="Enlace a recurso o video externo (YouTube, Google Drive, OneDrive)."
-        />
-      ) : (
-        <div className="flex flex-col gap-1.5">
-          <label
-            htmlFor="material-file-input"
-            className="text-sm font-medium text-gray-700"
-          >
-            Archivo Académico *
-          </label>
-          <input
-            id="material-file-input"
-            data-testid="upload-file-input"
-            type="file"
-            onChange={handleFileChange}
+      <fieldset className="upload-section">
+        <legend>
+          <span aria-hidden="true">01</span> Información del material
+        </legend>
+        <p className="mb-6 text-sm text-uct-muted">
+          Un buen título ayuda a que otros encuentren tu aporte.
+        </p>
+        <div className="space-y-5">
+          <Input
+            label="Título"
+            name="title"
+            required
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
             disabled={isUploading}
-            accept=".pdf,.doc,.docx,.ppt,.pptx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
-            className="block w-full rounded-md border border-gray-300 p-2 text-sm text-gray-700 file:mr-4 file:rounded-md file:border-0 file:bg-uct-blue file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-uct-blueDark disabled:bg-gray-100 disabled:cursor-not-allowed"
+            data-testid="upload-title-input"
+            placeholder="Ej. Guía de integrales resueltas · Unidad 2"
           />
-          <p className="text-xs text-gray-500" id="upload-file-help">
-            Formatos admitidos: <strong>PDF, Word (.doc, .docx)</strong> y{' '}
-            <strong>PowerPoint (.ppt, .pptx)</strong>. Límite máximo:{' '}
-            <strong>15 MB</strong>.
-          </p>
-          {file && (
-            <p className="text-xs text-catalog-ink font-medium">
-              Archivo seleccionado: {file.name} (
-              {(file.size / (1024 * 1024)).toFixed(2)} MB)
-            </p>
-          )}
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <label
+              htmlFor={`${id}-description`}
+              className="text-sm font-medium text-uct-navy"
+            >
+              Descripción{' '}
+              <span className="font-normal text-uct-muted">(opcional)</span>
+            </label>
+            <textarea
+              id={`${id}-description`}
+              name="description"
+              rows={4}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              disabled={isUploading}
+              data-testid="upload-description-input"
+              placeholder="Cuenta qué incluye el material y cómo puede ayudar a estudiar."
+              className="block w-full rounded-md border border-gray-300 p-2 text-sm text-gray-900 transition-colors focus:border-uct-sky focus:outline-hidden focus:ring-2 focus:ring-uct-sky disabled:bg-gray-100 disabled:cursor-not-allowed"
+            />
+          </div>
+          <div className="grid min-w-0 gap-5 sm:grid-cols-2">
+            <Input
+              label="Año"
+              name="year"
+              required
+              inputMode="numeric"
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              disabled={isUploading}
+              data-testid="upload-year-input"
+              placeholder="Ej. 2026"
+              helperText="Año académico del material."
+            />
+            <Select
+              label="Tipo de material"
+              name="type"
+              required
+              options={MATERIAL_TYPE_OPTIONS}
+              value={type}
+              onChange={(event) => {
+                const nextType = event.target.value as MaterialTypeValue;
+                if ((nextType === 'LINK') !== isLinkType) {
+                  setFile(null);
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                }
+                setType(nextType);
+              }}
+              disabled={isUploading}
+              data-testid="upload-type-select"
+            />
+          </div>
         </div>
-      )}
+      </fieldset>
 
-      {/* Botón de envío con control de estados y prevención de dobles envíos */}
-      <div className="pt-2 flex items-center justify-end gap-3">
-        <Button
-          type="submit"
-          disabled={isUploading}
-          aria-busy={isUploading}
-          data-testid="upload-submit-button"
-          className="w-full sm:w-auto"
+      <fieldset className="upload-section">
+        <legend>
+          <span aria-hidden="true">02</span> Datos académicos
+        </legend>
+        <p className="mb-4 text-sm text-uct-muted">
+          Elige la universidad, la carrera y la asignatura a la que pertenece.
+        </p>
+        {queryClient ? (
+          <>
+            <AcademicSelectors
+              required
+              showHeading={false}
+              value={academic}
+              onChange={(next) => {
+                setAcademic(next);
+                setSubjectId(next.subjectId);
+                setCareerId(next.careerId);
+                setProfessorId(next.professorId);
+              }}
+            />
+            <input
+              type="hidden"
+              data-testid="upload-subject-input"
+              value={subjectId || academic.subjectId}
+              onChange={(e) => {
+                setSubjectId(e.target.value);
+                setAcademic((prev) => ({ ...prev, subjectId: e.target.value }));
+              }}
+            />
+          </>
+        ) : (
+          <Input
+            label="Asignatura"
+            name="subjectId"
+            required
+            value={subjectId}
+            onChange={(e) => setSubjectId(e.target.value)}
+            disabled={isUploading}
+            data-testid="upload-subject-input"
+            placeholder="Ej. MAT-101"
+          />
+        )}
+      </fieldset>
+
+      <fieldset className="upload-section">
+        <legend>
+          <span aria-hidden="true">03</span>{' '}
+          {isLinkType ? 'Enlace del material' : 'Archivo del material'}
+        </legend>
+        {isLinkType ? (
+          <Input
+            label="Enlace"
+            name="externalLink"
+            type="url"
+            required
+            value={externalLink}
+            onChange={(e) => setExternalLink(e.target.value)}
+            disabled={isUploading}
+            data-testid="upload-link-input"
+            placeholder="https://…"
+            helperText="Comparte un enlace web al material y comprueba que otras personas puedan abrirlo."
+          />
+        ) : (
+          <div className="rounded-2xl border-2 border-dashed border-uct-border bg-uct-mist p-5 text-center sm:p-8">
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              className="mx-auto mb-3 size-10 text-uct-blue"
+            >
+              <path
+                d="M12 16V3m-5 5 5-5 5 5M4 15v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <label
+              htmlFor={`${id}-file`}
+              className="mb-2 block font-semibold text-uct-navy"
+            >
+              Selecciona tu archivo
+            </label>
+            <p id={`${id}-file-help`} className="mb-5 text-sm text-uct-muted">
+              PDF, Word o PowerPoint · Máximo 15 MB
+            </p>
+            <input
+              ref={fileInputRef}
+              id={`${id}-file`}
+              name="file"
+              type="file"
+              disabled={isUploading}
+              data-testid="upload-file-input"
+              accept=".pdf,.doc,.docx,.ppt,.pptx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+              aria-describedby={`${id}-file-help`}
+              onChange={handleFileChange}
+            />
+            {file && (
+              <div
+                className="mt-4 flex min-w-0 flex-wrap items-center justify-center gap-3"
+                role="status"
+              >
+                <p className="min-w-0 text-sm text-uct-navy [overflow-wrap:anywhere]">
+                  {file.name}{' '}
+                  <span className="text-uct-muted">
+                    (
+                    {(file.size / 1024 / 1024).toLocaleString('es-CL', {
+                      maximumFractionDigits: 2,
+                    })}{' '}
+                    MB)
+                  </span>
+                </p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={isUploading}
+                  className="min-h-11 shrink-0"
+                  onClick={() => {
+                    setFile(null);
+                    setReview(null);
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = '';
+                      fileInputRef.current.focus();
+                    }
+                  }}
+                >
+                  Quitar archivo
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </fieldset>
+
+      <div className="flex flex-col gap-4 rounded-2xl border border-uct-border bg-white p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <p
+          id={`${id}-review-help`}
+          className="max-w-md text-sm leading-relaxed text-uct-muted"
         >
-          {isUploading ? (
-            <span className="flex items-center gap-2">
-              <Spinner size="sm" color="white" />
-              Subiendo material...
-            </span>
-          ) : (
-            'Subir material'
-          )}
-        </Button>
+          {!(queryClient ? academic.subjectId : academic.subjectId || subjectId)
+            ? 'Selecciona los datos académicos para continuar. '
+            : ''}
+          Puedes revisar tus datos antes de publicar o subir el material
+          directamente.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type={queryClient ? 'submit' : 'button'}
+            onClick={handleReview}
+            disabled={
+              !(queryClient
+                ? academic.subjectId
+                : academic.subjectId || subjectId)
+            }
+            aria-describedby={`${id}-review-help`}
+            className="min-h-12 w-full shrink-0 rounded-xl sm:w-auto"
+          >
+            Revisar material
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isUploading}
+            aria-busy={isUploading}
+            data-testid="upload-submit-button"
+            className="min-h-12 w-full shrink-0 rounded-xl sm:w-auto"
+          >
+            {isUploading ? (
+              <span className="flex items-center gap-2">
+                <Spinner size="sm" color="white" />
+                Subiendo material...
+              </span>
+            ) : (
+              'Subir material'
+            )}
+          </Button>
+        </div>
       </div>
+
+      {review && (
+        <section
+          aria-labelledby={`${id}-review`}
+          className="rounded-2xl border border-uct-border bg-catalog-paperMuted p-5 sm:p-8"
+        >
+          <h2
+            id={`${id}-review`}
+            ref={reviewHeading}
+            tabIndex={-1}
+            className="text-xl font-semibold text-uct-blueDark focus:outline-hidden"
+          >
+            Revisa tu material
+          </h2>
+          <p className="mt-2 text-sm text-uct-muted" role="status">
+            El material aún no se ha publicado ni guardado. Puedes editar los
+            campos de arriba.
+          </p>
+          <dl className="mt-6 grid min-w-0 gap-5 sm:grid-cols-2">
+            {review.map(([label, val]) => (
+              <div key={label} className="min-w-0">
+                <dt className="text-sm text-uct-muted">{label}</dt>
+                <dd className="mt-1 whitespace-pre-wrap font-medium text-uct-navy [overflow-wrap:anywhere]">
+                  {val}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
     </form>
   );
 }
