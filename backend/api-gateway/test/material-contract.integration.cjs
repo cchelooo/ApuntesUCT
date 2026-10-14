@@ -1,4 +1,4 @@
-const assert = require('node:assert/strict');
+﻿const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const { Readable } = require('node:stream');
 const CFB = require('cfb');
@@ -36,7 +36,7 @@ const {
 // Reproduces the acceptance topology: clients only use the Gateway on 3000, which proxies
 // to Material on its reserved 3003 for both multipart uploads and binary downloads.
 // Run after building both api-gateway and material-service (Node handles file-type ESM).
-test('Gateway → contrato HTTP real de Material', async (t) => {
+test('Gateway â†’ contrato HTTP real de Material', async (t) => {
   let material;
   let gateway;
   try {
@@ -45,11 +45,11 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
       Buffer.from([0x00, 0x01, 0x7f, 0x80, 0xff, 0x0d, 0x0a, 0x42]),
     ]);
     let lastSavedBuffer = Buffer.alloc(0);\n    let capturedHeaders = {};
-    let materialRow = { id: '11111111-1111-4111-8111-111111111111' };
+    let lastSavedBuffer = Buffer.alloc(0);\n    let materialRow = { id: '11111111-1111-4111-8111-111111111111' };
     const versionRow = {
       storageKey: 'private/calculo-v1',
       mimeType: 'application/pdf',
-      originalFilename: 'cálculo.pdf',
+      originalFilename: 'cÃ¡lculo.pdf',
       fileSize: binaryContent.length,
     };
     const materialModule = await Test.createTestingModule({
@@ -116,7 +116,7 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
     } = {}) => {
       const body = new FormData();
       for (const [key, value] of Object.entries({
-        title: 'Álgebra & cálculo',
+        title: 'Ãlgebra & cÃ¡lculo',
         year: '2026',
         type: 'DOCUMENT',
         subjectId: 'subject-test',
@@ -144,7 +144,7 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
         });
         assert.equal(result.status, 201);
         assert.equal(result.body.isSimulatedResponse, false);
-        assert.equal(result.body.data.title, 'Álgebra & cálculo');
+        assert.equal(result.body.data.title, 'Ãlgebra & cÃ¡lculo');
         assert.equal(result.body.data.mimeType, 'application/pdf');
         assert.equal(result.body.data.fileSize, 100);
         assert.equal(result.body.data.status, 'PENDING_REVIEW');
@@ -190,7 +190,7 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
           streams['[Content_Types].xml'] =
             `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Override PartName="/${Object.keys(streams)[0]}" ContentType="${mime}.main+xml"/></Types>`;
         const result = await post({
-          bytes: officeFile(streams, zip),
+          bytes,
           mime: 'application/octet-stream',
         });
         assert.equal(result.status, 201);
@@ -212,7 +212,7 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
     await t.test('acepta exactamente 15 MB', async () => {
       const result = await post({ size: maxSize });
       assert.equal(result.status, 201);
-      assert.equal(result.body.data.fileSize, maxSize);
+      assert.equal(result.body.data.fileSize, maxSize);\n      assert.ok(Buffer.isBuffer(lastSavedBuffer));\n      assert.equal(lastSavedBuffer.length, maxSize);
     });
     await t.test(
       'devuelve 413 por un byte de exceso conservando el formato de error',
@@ -246,7 +246,7 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
       },
     );
     await t.test(
-      'conserva 400 en metadatos inválidos y archivo ausente',
+      'conserva 400 en metadatos invÃ¡lidos y archivo ausente',
       async () => {
         assert.equal((await post()).status, 400);
         const result = await post({ fields: { year: 'abc' }, size: 100 });
@@ -255,7 +255,7 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
       },
     );
     await t.test(
-      'descarga el binario íntegro pasando por el Gateway',
+      'descarga el binario Ã­ntegro pasando por el Gateway',
       async () => {
         materialRow = { id: '11111111-1111-4111-8111-111111111111' };
         const response = await fetch(
@@ -272,10 +272,13 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
           String(binaryContent.length),
         );
         const received = Buffer.from(await response.arrayBuffer());
+        assert.equal(response.headers.get('access-control-allow-origin'), 'http://localhost:5173');
+        const exposed = response.headers.get('access-control-expose-headers') || '';
+        assert.ok(exposed.toLowerCase().includes('content-disposition'));
         assert.ok(received.equals(binaryContent));
       },
     );
-    await t.test('propaga el 404 del material a través del Gateway', async () => {
+    await t.test('propaga el 404 del material a travÃ©s del Gateway', async () => {
       materialRow = null;
       const response = await fetch(
         `${base}/api/v1/materials/22222222-2222-4222-8222-222222222222/download`,
@@ -284,7 +287,7 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
       assert.equal((await response.json()).statusCode, 404);
     });
     await t.test(
-      'rechaza un UUID inválido con 400 conservando el formato',
+      'rechaza un UUID invÃ¡lido con 400 conservando el formato',
       async () => {
         const response = await fetch(`${base}/api/v1/materials/nope/download`);
         assert.equal(response.status, 400);
@@ -396,8 +399,49 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
       assert.ok(Buffer.isBuffer(lastSavedBuffer));
       assert.ok(lastSavedBuffer.equals(Buffer.from(content)));
     });
+    await t.test('conserva multipart y bytes en envio chunked sin Content-Length', async () => {
+      const boundary = '----chunkedtest' + Date.now();
+      const content = '%PDF-1.4\nchunked-bytes-test';
+      const bodyText = '--' + boundary + '\r\n' +
+        'Content-Disposition: form-data; name="title"\r\n\r\nChunked PDF\r\n' +
+        '--' + boundary + '\r\n' +
+        'Content-Disposition: form-data; name="year"\r\n\r\n2026\r\n' +
+        '--' + boundary + '\r\n' +
+        'Content-Disposition: form-data; name="type"\r\n\r\nDOCUMENT\r\n' +
+        '--' + boundary + '\r\n' +
+        'Content-Disposition: form-data; name="subjectId"\r\n\r\nSUBJ-CH\r\n' +
+        '--' + boundary + '\r\n' +
+        'Content-Disposition: form-data; name="file"; filename="chunked.pdf"\r\n' +
+        'Content-Type: application/pdf\r\n\r\n' +
+        content + '\r\n' +
+        '--' + boundary + '--\r\n';
+      const body = Buffer.from(bodyText);
+      const req = await import('node:http');
+      const gatewayUrl = new URL(base);
+      const chunks = [];
+      for (let i = 0; i < body.length; i += 10) chunks.push(body.slice(i, i + 10));
+      const resp = await new Promise((resolve, reject) => {
+        const r = req.request({
+          hostname: gatewayUrl.hostname,
+          port: gatewayUrl.port,
+          path: '/api/v1/materials',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'multipart/form-data; boundary=' + boundary,
+            'Transfer-Encoding': 'chunked',
+            Authorization: 'Bearer test-token',
+          },
+        }, (res) => { let data=''; res.on('data',c=>data+=c); res.on('end',()=>resolve({status:res.statusCode,body:data})); });
+        r.on('error', reject);
+        for (const c of chunks) r.write(c);
+        r.end();
+      });
+      assert.equal(resp.status, 201);
+      assert.ok(Buffer.isBuffer(lastSavedBuffer));
+      assert.ok(lastSavedBuffer.equals(Buffer.from(content)));
+    });
     await t.test(
-      'responde 502 controlado después de cerrar Material',
+      'responde 502 controlado despuÃ©s de cerrar Material',
       async () => {
         await material.close();
         const result = await post();
@@ -410,6 +454,16 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
     await material?.close();
   }
 });
+
+
+
+
+
+
+
+
+
+
 
 
 

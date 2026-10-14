@@ -1,4 +1,4 @@
-import { ValidationPipe } from '@nestjs/common';
+﻿import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { configureRoutes } from './configure-routes';
@@ -12,7 +12,7 @@ async function bootstrap() {
   // Habilitar CORS
   app.enableCors({ exposedHeaders: ['Content-Disposition'] });
 
-  // Prefijo global /api/v1 y rutas públicas de health
+  // Prefijo global /api/v1 y rutas pÃºblicas de health
   configureRoutes(app);
 
   // Validaciones globales de DTOs
@@ -28,10 +28,11 @@ async function bootstrap() {
 
   const port = configService.get<number>('PORT') || 3000;
   await app.listen(port);
-  console.log(`🚀 API Gateway corriendo en: http://localhost:${port}/api/v1`);
-  console.log(`Índice de documentación en http://localhost:${port}/api/docs`);
+  console.log(`ðŸš€ API Gateway corriendo en: http://localhost:${port}/api/v1`);
+  console.log(`Ãndice de documentaciÃ³n en http://localhost:${port}/api/docs`);
   console.log(
     `Swagger API Gateway en http://localhost:${port}/api/docs/gateway`,
   );
 }
 bootstrap();
+
