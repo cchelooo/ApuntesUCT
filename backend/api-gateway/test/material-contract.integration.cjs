@@ -198,14 +198,21 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
         assert.equal(typeof result.body.message, 'string');
       },
     );
-    await t.test('rechaza texto aunque declare MIME PDF con 415', async () => {
-      const result = await post({
-        size: 100,
-        content: 'contenido de texto falso',
-      });
-      assert.equal(result.status, 415);
-      assert.equal(result.body.statusCode, 415);
-    });
+    await t.test(
+      'rechaza texto aunque declare MIME PDF con 415 conservando el formato',
+      async () => {
+        const result = await post({
+          size: 100,
+          content: 'contenido de texto falso',
+        });
+        assert.equal(result.status, 415);
+        assert.equal(result.body.statusCode, 415);
+        assert.equal(result.body.error, 'Unsupported Media Type');
+        assert.equal(result.body.path, '/api/v1/materials');
+        assert.equal(typeof result.body.message, 'string');
+        assert.ok(result.body.message.length > 0);
+      },
+    );
     await t.test(
       'permite LINK sin archivo y rechaza LINK con archivo',
       async () => {
