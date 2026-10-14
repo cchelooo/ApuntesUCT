@@ -17,10 +17,11 @@ export interface MaterialRequestOptions {
 }
 
 function getMaterialsUrl(path = ''): string {
-  const baseUrl = import.meta.env.VITE_API_URL;
-  if (!baseUrl) {
-    throw new Error('Falta configurar VITE_API_URL para acceder a la API.');
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl === '') {
+    throw new Error('VITE_API_URL is not configured');
   }
+  const baseUrl = envUrl ?? 'http://localhost:3000/api/v1';
 
   return `${baseUrl.replace(/\/+$/, '')}/materials${path}`;
 }
@@ -123,6 +124,78 @@ export async function fetchMaterials(
   }
 
   return mapRawMaterialPage(body);
+}
+
+export type MaterialTypeValue =
+  'DOCUMENT' | 'PRESENTATION' | 'EXAM' | 'SUMMARY' | 'LINK';
+
+export interface UploadMaterialInput {
+  title: string;
+  description?: string;
+  year: string;
+  type: MaterialTypeValue;
+  subjectId: string;
+  careerId?: string;
+  professorId?: string;
+  externalLink?: string;
+  file?: File | Blob;
+}
+
+export async function uploadMaterial(
+  input: UploadMaterialInput | FormData,
+  signal?: AbortSignal
+): Promise<unknown> {
+  let body: FormData;
+  if (input instanceof FormData) {
+    body = input;
+  } else {
+    body = new FormData();
+    body.append('title', input.title);
+    if (input.description) body.append('description', input.description);
+    body.append('year', input.year);
+    body.append('type', input.type);
+    body.append('subjectId', input.subjectId);
+    if (input.careerId) body.append('careerId', input.careerId);
+    if (input.professorId) body.append('professorId', input.professorId);
+    if (input.externalLink) body.append('externalLink', input.externalLink);
+    if (input.file) body.append('file', input.file);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(getMaterialsUrl(), {
+      method: 'POST',
+      body,
+      signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw error;
+    }
+    throw new MaterialRequestError('Fallo de red al subir el material', {
+      isNetworkError: true,
+    });
+  }
+
+  if (!response.ok) {
+    let errorMessage = `No se pudo subir el material (status ${response.status})`;
+    try {
+      const data = await response.json();
+      if (data && typeof data === 'object' && 'message' in data) {
+        errorMessage = Array.isArray(data.message)
+          ? data.message.join(', ')
+          : String(data.message);
+      }
+    } catch {
+      // Sin cuerpo JSON
+    }
+
+    throw new MaterialRequestError(errorMessage, {
+      status: response.status,
+    });
+  }
+
+  return response.json();
 }
 
 /** Provisional route: backend has not published the detail contract yet. */
