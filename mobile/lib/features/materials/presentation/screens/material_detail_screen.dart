@@ -4,7 +4,7 @@ import 'package:apuntesuct_mobile/core/widgets/loading_state.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_detail_provider.dart';
-import 'package:apuntesuct_mobile/features/materials/data/dio_material_repository.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_download_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -13,7 +13,7 @@ class MaterialDetailScreen extends StatelessWidget {
   final String? _explicitId;
 
   const MaterialDetailScreen({super.key, required MaterialDetail detail})
-    : _detail = detail, // ignore: prefer_initializing_formals
+    : _detail = detail,
       _explicitId = null;
 
   MaterialDetailScreen.byId({
@@ -48,85 +48,81 @@ class MaterialDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final localDetail = _detail;
-    final hasProviderScope =
-        context.findAncestorWidgetOfExactType<ProviderScope>() != null;
 
-    if ((_explicitId == null && localDetail != null) ||
-        (!hasProviderScope && localDetail != null)) {
-      return _buildScaffold(context, localDetail);
-    }
+    // Si se pasa un ID explícito, delegamos a Riverpod para fetching
+    if (_explicitId != null) {
+      return Consumer(
+        builder: (context, ref, child) {
+          final detailAsync = ref.watch(materialDetailProvider(materialId));
 
-    return Consumer(
-      builder: (context, ref, child) {
-        final detailAsync = ref.watch(materialDetailProvider(materialId));
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Detalle del Material'),
+              centerTitle: true,
+            ),
+            body: detailAsync.when(
+              loading: () {
+                if (localDetail != null &&
+                    localDetail.summary.title.isNotEmpty) {
+                  return _buildBody(context, localDetail);
+                }
+                return const LoadingState(
+                  message: 'Cargando información del material...',
+                );
+              },
+              error: (error, _) {
+                if (error.isNotFound) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const EmptyState(
+                            title: 'Material no encontrado',
+                            subtitle: 'El material solicitado no existe o fue eliminado del catálogo.',
+                          ),
+                          const SizedBox(height: 20),
+                          FilledButton.icon(
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: const Icon(Icons.arrow_back),
+                            label: const Text('Volver al catálogo'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
 
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Detalle del Material'),
-            centerTitle: true,
-          ),
-          body: detailAsync.when(
-            loading: () {
-              if (localDetail != null && localDetail.summary.title.isNotEmpty) {
-                return _buildBody(context, localDetail);
-              }
-              return const LoadingState(
-                message: 'Cargando información del material...',
-              );
-            },
-            error: (error, _) {
-              if (error.isNotFound) {
+                if (localDetail != null &&
+                    localDetail.summary.title.isNotEmpty) {
+                  return _buildBody(context, localDetail);
+                }
+
                 return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const EmptyState(
-                          title: 'Material no encontrado',
-                          subtitle: 'El material solicitado no existe o fue eliminado del catálogo.',
-                        ),
-                        const SizedBox(height: 20),
-                        FilledButton.icon(
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.arrow_back),
-                          label: const Text('Volver al catálogo'),
-                        ),
-                      ],
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: ErrorState(
+                      message: 'No fue posible cargar el material. Verifica tu conexión.',
+                      onRetry: () =>
+                          ref.invalidate(materialDetailProvider(materialId)),
                     ),
                   ),
                 );
-              }
+              },
+              data: (loadedDetail) => _buildBody(context, loadedDetail),
+            ),
+          );
+        },
+      );
+    }
 
-              if (localDetail != null && localDetail.summary.title.isNotEmpty) {
-                return _buildBody(context, localDetail);
-              }
-
-              return Center(
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: ErrorState(
-                    message: 'No fue posible cargar el material. Verifica tu conexión.',
-                    onRetry: () =>
-                        ref.invalidate(materialDetailProvider(materialId)),
-                  ),
-                ),
-              );
-            },
-            data: (loadedDetail) => _buildBody(context, loadedDetail),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildScaffold(BuildContext context, MaterialDetail data) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Detalle del Material'),
         centerTitle: true,
       ),
-      body: _buildBody(context, data),
+      body: _buildBody(context, localDetail ?? detail),
     );
   }
 
@@ -359,56 +355,65 @@ class MaterialDetailScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 28),
-
           Consumer(
             builder: (context, ref, _) {
+              final downloadState = ref.watch(materialDownloadProvider);
+              final isDownloading = downloadState.isLoading;
+
               return SizedBox(
                 width: double.infinity,
                 height: 48,
                 child: FilledButton.icon(
-                  onPressed: () async {
-                    final messenger = ScaffoldMessenger.of(context);
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text('Descargando ${summary.title}...'),
-                        duration: const Duration(seconds: 1),
-                      ),
-                    );
+                  onPressed: isDownloading
+                      ? null
+                      : () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          try {
+                            final result = await ref
+                                .read(materialDownloadProvider.notifier)
+                                .download(
+                                  materialId,
+                                  versionId: currentVersion?.id,
+                                );
 
-                    try {
-                      final repo = ref.read(dioMaterialRepositoryProvider);
-                      final downloadData = await repo.download(
-                        summary.id,
-                        versionId: currentVersion?.id,
-                      );
-
-                      if (context.mounted) {
-                        messenger.hideCurrentSnackBar();
-                        messenger.showSnackBar(
-                          SnackBar(
-                            backgroundColor: Colors.green.shade700,
-                            content: Text(
-                              'Descarga completada: ${downloadData.fileName} (${downloadData.bytes.length} bytes)',
-                            ),
+                            if (result != null) {
+                              messenger.clearSnackBars();
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Descarga completada: ${result.download.fileName}',
+                                  ),
+                                  backgroundColor: Colors.green.shade700,
+                                ),
+                              );
+                            }
+                          } catch (_) {
+                            messenger.clearSnackBars();
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Error al descargar el material.',
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                  icon: isDownloading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
                           ),
-                        );
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        messenger.hideCurrentSnackBar();
-                        messenger.showSnackBar(
-                          const SnackBar(
-                            backgroundColor: Colors.redAccent,
-                            content: Text(
-                              'Error al descargar el archivo. Intenta nuevamente.',
-                            ),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  icon: const Icon(Icons.download_rounded),
-                  label: const Text('Descargar Material'),
+                        )
+                      : const Icon(Icons.download_rounded),
+                  label: Text(
+                    isDownloading
+                        ? 'Descargando material...'
+                        : 'Descargar Material',
+                  ),
                 ),
               );
             },

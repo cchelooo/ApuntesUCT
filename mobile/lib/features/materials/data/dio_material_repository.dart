@@ -67,47 +67,58 @@ class DioMaterialRepository implements MaterialRepository {
     String? versionId,
   }) async {
     try {
-      final queryParams = <String, dynamic>{};
-      if (versionId != null && versionId.isNotEmpty) {
-        queryParams['versionId'] = versionId;
-      }
-
       final response = await _apiClient.dio.get<List<int>>(
-        '/api/v1/materials/$materialId/download',
-        queryParameters: queryParams.isNotEmpty ? queryParams : null,
-        options: Options(
-          responseType: ResponseType.bytes,
-          headers: {'Accept': '*/*'},
-        ),
+        '/materials/$materialId/download',
+        queryParameters: versionId != null ? {'versionId': versionId} : null,
+        options: Options(responseType: ResponseType.bytes),
       );
 
-      // Extracción del nombre de archivo desde Content-Disposition
-      String fileName = 'material_$materialId';
-      final disposition = response.headers.value('content-disposition');
-      if (disposition != null) {
-        final match = RegExp(r'''filename[^;=\n]*=((['"]).*?\2|[^;\n]*)''')
-            .firstMatch(disposition);
-        if (match != null && match.group(1) != null) {
-          fileName = match
-              .group(1)!
-              .replaceAll('"', '')
-              .replaceAll("'", '')
-              .trim();
-        }
-      }
-
-      final mimeType =
+      final contentDisposition =
+          response.headers.value('content-disposition') ?? '';
+      final contentType =
           response.headers.value('content-type') ?? 'application/octet-stream';
-      final bytes = response.data ?? <int>[];
+
+      final filename = _extractFilename(contentDisposition);
 
       return MaterialDownload(
-        fileName: fileName,
-        mimeType: mimeType,
-        bytes: bytes,
+        bytes: response.data ?? <int>[],
+        fileName: filename,
+        mimeType: contentType,
       );
     } on DioException {
       rethrow;
     }
+  }
+
+  String _extractFilename(String contentDisposition) {
+    if (contentDisposition.isEmpty) return 'material_descargado';
+
+    // 1. Manejo prioritario RFC 5987: filename*=UTF-8''Gu%C3%ADa.pdf
+    final rfc5987Regex = RegExp(
+      r"filename\*=(?:UTF-8|utf-8)''([^;]+)",
+      caseSensitive: false,
+    );
+    final rfcMatch = rfc5987Regex.firstMatch(contentDisposition);
+    if (rfcMatch != null) {
+      final rawEncoded = rfcMatch.group(1)?.trim() ?? '';
+      try {
+        return Uri.decodeComponent(rawEncoded);
+      } catch (_) {
+        return rawEncoded;
+      }
+    }
+
+    // 2. Fallback estándar: filename="archivo.pdf" o filename=archivo.pdf
+    final standardRegex = RegExp(
+      r'filename="?([^";]+)"?',
+      caseSensitive: false,
+    );
+    final standardMatch = standardRegex.firstMatch(contentDisposition);
+    if (standardMatch != null) {
+      return standardMatch.group(1)?.trim() ?? 'material_descargado';
+    }
+
+    return 'material_descargado';
   }
 
   @override
