@@ -1,12 +1,14 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { DocumentBuilder, OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
-import type { SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
+import type {
+  ReferenceObject,
+  SchemaObject,
+} from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 import { MaterialController } from '../controllers/material.controller';
 import { MaterialsController } from '../materials/materials.controller';
 import { MaterialsService } from '../../application/services/materials.service';
 import { CreateMaterialDto } from './create-material.dto';
-
 import { CreateMaterial } from '../../application/use-cases/create-material';
 import { MaterialAuthorProvider } from '../../infrastructure/auth/material-author.provider';
 
@@ -39,6 +41,22 @@ describe('Contrato OpenAPI de materiales', () => {
     return document.components!.schemas![name] as SchemaObject;
   }
 
+  function multipartSchema(): SchemaObject {
+    const post = document.paths['/api/v1/materials'].post!;
+    const body = post.requestBody as {
+      content: Record<string, { schema: SchemaObject | ReferenceObject }>;
+    };
+    const multipart = body.content['multipart/form-data'].schema;
+
+    // El POST debe reutilizar el DTO, no volver a publicar un esquema manual.
+    expect(multipart).toMatchObject({
+      $ref: '#/components/schemas/CreateMaterialDto',
+    });
+
+    // Las propiedades están en el modelo al que apunta la referencia.
+    return schema('CreateMaterialDto');
+  }
+
   it.each(['description', 'careerId', 'professorId', 'fileUrl', 'mimeType', 'externalLink'])(
     'publica %s como string nullable en la respuesta',
     (field) => {
@@ -64,9 +82,7 @@ describe('Contrato OpenAPI de materiales', () => {
   });
 
   it('explica la relación de type con el listado en el multipart publicado y en los DTOs', () => {
-    const post = document.paths['/api/v1/materials'].post!;
-    const body = post.requestBody as { content: Record<string, { schema: SchemaObject }> };
-    const multipart = body.content['multipart/form-data'].schema;
+    const multipart = multipartSchema();
     for (const property of [
       multipart.properties!.type,
       schema('CreateMaterialDto').properties!.type,
@@ -84,8 +100,7 @@ describe('Contrato OpenAPI de materiales', () => {
 
   it('expone los cinco MIME exactos en la operación y en el archivo multipart', () => {
     const post = document.paths['/api/v1/materials'].post!;
-    const body = post.requestBody as { content: Record<string, { schema: SchemaObject }> };
-    const file = body.content['multipart/form-data'].schema.properties!.file as SchemaObject;
+    const file = multipartSchema().properties!.file as SchemaObject;
     expect(file).toMatchObject({ type: 'string', format: 'binary' });
     for (const mime of [
       'application/pdf',

@@ -9,6 +9,7 @@ import { Prisma } from '.prisma/material-client';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { ListMaterialsQueryDto } from '../dtos/list-materials-query.dto';
 import { MaterialPageDto } from '../dtos/material-page.dto';
+import { MaterialDetailDto } from '../dtos/material-detail.dto';
 import {
   ObjectNotFoundError,
   ObjectStorage,
@@ -35,7 +36,6 @@ export class MaterialsService {
       throw new BadRequestException('El desplazamiento de página excede el máximo permitido.');
     }
     const where = { status: 'PUBLISHED' as const };
-    // Both queries see the same snapshot even when materials are published concurrently.
     const [materials, total] = await this.prisma.$transaction(
       [
         this.prisma.material.findMany({
@@ -80,6 +80,79 @@ export class MaterialsService {
     };
   }
 
+  async detail(materialId: string): Promise<MaterialDetailDto> {
+    // Consulta exclusivamente la BD de Material. No necesita Catalog ni MinIO.
+    const material = await this.prisma.material.findFirst({
+      where: { id: materialId, status: 'PUBLISHED' },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        uploaderId: true,
+        academicOfferingId: true,
+        universityId: true,
+        careerId: true,
+        subjectId: true,
+        professorId: true,
+        materialTypeId: true,
+        materialType: { select: { name: true } },
+        academicYear: true,
+        status: true,
+        verified: true,
+        externalLink: true,
+        createdAt: true,
+        updatedAt: true,
+        versions: {
+          orderBy: { versionNumber: 'desc' },
+          take: 1,
+          select: {
+            id: true,
+            versionNumber: true,
+            originalFilename: true,
+            mimeType: true,
+            fileSize: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+    if (!material) throw new NotFoundException('Material no encontrado.');
+    const version = material.versions[0];
+    if (!version && material.materialType.name !== 'LINK') {
+      throw new NotFoundException('Versión del material no encontrada.');
+    }
+    // Mapeo explícito: nunca serializa storageKey ni campos internos de Prisma.
+    return {
+      id: material.id,
+      title: material.title,
+      description: material.description,
+      uploaderId: material.uploaderId,
+      academicOfferingId: material.academicOfferingId,
+      universityId: material.universityId,
+      careerId: material.careerId,
+      subjectId: material.subjectId,
+      professorId: material.professorId,
+      materialTypeId: material.materialTypeId,
+      materialType: material.materialType.name,
+      academicYear: material.academicYear,
+      status: 'PUBLISHED',
+      verified: material.verified,
+      externalLink: material.externalLink,
+      createdAt: material.createdAt.toISOString(),
+      updatedAt: material.updatedAt.toISOString(),
+      currentVersion: version
+        ? {
+            id: version.id,
+            versionNumber: version.versionNumber,
+            originalFilename: version.originalFilename,
+            mimeType: version.mimeType,
+            fileSize: version.fileSize.toString(),
+            createdAt: version.createdAt.toISOString(),
+          }
+        : null,
+    };
+  }
+
   async download(materialId: string, versionId?: string): Promise<DownloadResult> {
     const material = await this.prisma.material.findFirst({
       where: { id: materialId, status: 'PUBLISHED' },
@@ -88,19 +161,13 @@ export class MaterialsService {
     if (!material) {
       throw new NotFoundException('Material no encontrado.');
     }
-
     const version = versionId
-      ? await this.prisma.materialVersion.findFirst({
-          where: { id: versionId, materialId },
-        })
+      ? await this.prisma.materialVersion.findFirst({ where: { id: versionId, materialId } })
       : await this.prisma.materialVersion.findFirst({
           where: { materialId },
           orderBy: { versionNumber: 'desc' },
         });
-    if (!version) {
-      throw new NotFoundException('Versión del material no encontrada.');
-    }
-
+    if (!version) throw new NotFoundException('Versión del material no encontrada.');
     try {
       const stream = await this.storage.get(version.storageKey);
       return {
@@ -110,9 +177,8 @@ export class MaterialsService {
         size: Number(version.fileSize),
       };
     } catch (error) {
-      if (error instanceof ObjectNotFoundError) {
+      if (error instanceof ObjectNotFoundError)
         throw new NotFoundException('Archivo no disponible.');
-      }
       if (error instanceof ObjectStorageError) {
         throw new ServiceUnavailableException('Almacenamiento de archivos no disponible.');
       }

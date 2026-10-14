@@ -3,6 +3,11 @@ import { BadGatewayException, BadRequestException, Injectable, Logger } from '@n
 import { createHash } from 'node:crypto';
 import { ObjectStorage } from '../ports/object-storage.port';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
+import {
+  CatalogPort,
+  CatalogUnavailableError,
+  InvalidAcademicReferenceError,
+} from '../ports/catalog.port';
 
 export interface MaterialAuthor {
   id: string;
@@ -32,6 +37,7 @@ export class CreateMaterial {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: ObjectStorage,
+    private readonly catalog: CatalogPort,
   ) {}
 
   async execute(input: CreateMaterialInput, author: MaterialAuthor, file?: MaterialUpload) {
@@ -49,6 +55,31 @@ export class CreateMaterial {
     });
     if (!type) throw new BadRequestException('Tipo de material inexistente o inactivo.');
 
+    // Para documentos y LINK: validar por contratos HTTP antes de cualquier escritura.
+    try {
+      await this.catalog.validateReferences({
+        subjectId: input.subjectId,
+        careerId: input.careerId,
+        professorId: input.professorId,
+        universityId: author.universityId,
+      });
+    } catch (error) {
+      if (error instanceof InvalidAcademicReferenceError) {
+        throw new BadRequestException({
+          statusCode: 400,
+          error: 'Bad Request',
+          message: error.message,
+          field: error.field,
+        });
+      }
+      if (error instanceof CatalogUnavailableError) {
+        throw new BadGatewayException(
+          'Catalog no está disponible para validar las referencias académicas. Intenta nuevamente.',
+        );
+      }
+      throw error;
+    }
+
     let storageKey: string | undefined;
     if (file) {
       try {
@@ -59,7 +90,6 @@ export class CreateMaterial {
     }
 
     // Prisma ejecuta la creación anidada de material y versión en una transacción.
-    // Nunca registrar una versión antes de confirmar la escritura del objeto.
     const material = await this.prisma.material
       .create({
         data: {
@@ -111,7 +141,6 @@ export class CreateMaterial {
         careerId: material.careerId,
         professorId: material.professorId,
         universityId: material.universityId,
-        // La descarga (#236) resuelve la clave internamente; nunca publicar la ruta MinIO.
         fileUrl: null,
         fileSize: file?.buffer.length ?? null,
         mimeType: file?.mimetype ?? null,
@@ -122,8 +151,6 @@ export class CreateMaterial {
   }
 
   private async cleanupFailedUpload(storageKey: string, error: unknown): Promise<void> {
-    // Solo errores que confirman rechazo/rollback. Una consulta sin resultados
-    // tras un timeout no demuestra que el commit original haya terminado.
     const rollbackCodes = ['P2000', 'P2002', 'P2003', 'P2004', 'P2011', 'P2014', 'P2025', 'P2034'];
     if (
       !(error instanceof Prisma.PrismaClientKnownRequestError) ||
@@ -139,7 +166,6 @@ export class CreateMaterial {
       });
       if (!reference) await this.storage.remove(storageKey);
     } catch {
-      // No reemplazar el error original ni exponer detalles del SDK al cliente.
       this.logger.warn(`Limpieza pendiente: no se pudo verificar o eliminar ${storageKey}`);
     }
   }

@@ -66,8 +66,12 @@ export class CreateMaterialDto {
   type!: MaterialType;
 
   @ApiProperty({
-    description: 'OBLIGATORIO. Identificador académico único de la asignatura.',
-    example: 'SUBJ-102',
+    format: 'uuid',
+    description:
+      'OBLIGATORIO. UUID de una asignatura activa existente en Catalog, con carrera y universidad ' +
+      'activas. Debe ser compatible con la universidad del contexto de autor cuando se configure. ' +
+      'El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.',
+    example: '33333333-3333-4333-8333-333333333333',
   })
   @IsString()
   @IsNotEmpty()
@@ -75,16 +79,22 @@ export class CreateMaterialDto {
   subjectId!: string;
 
   @ApiPropertyOptional({
-    description: 'OPCIONAL. Identificador académico de la carrera o programa.',
-    example: 'CAREER-INF-01',
+    format: 'uuid',
+    description:
+      'OPCIONAL. UUID de una carrera activa existente en Catalog a la que pertenece la asignatura. ' +
+      'El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.',
+    example: '22222222-2222-4222-8222-222222222222',
   })
   @IsOptional()
   @IsString()
   careerId?: string;
 
   @ApiPropertyOptional({
-    description: 'OPCIONAL. Identificador único (ID/UUID) del profesor asignado.',
-    example: 'prof_88321',
+    format: 'uuid',
+    description:
+      'OPCIONAL. UUID de un profesor activo existente en Catalog y vinculado a la asignatura. ' +
+      'El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.',
+    example: '44444444-4444-4444-8444-444444444444',
   })
   @IsOptional()
   @IsString()
@@ -102,11 +112,7 @@ export class CreateMaterialDto {
   )
   externalLink?: string;
 
-  @ApiPropertyOptional({
-    type: 'string',
-    format: 'binary',
-    description: MATERIAL_FILE_DESCRIPTION,
-  })
+  @ApiPropertyOptional({ type: 'string', format: 'binary', description: MATERIAL_FILE_DESCRIPTION })
   @IsOptional()
   file?: Express.Multer.File;
 }

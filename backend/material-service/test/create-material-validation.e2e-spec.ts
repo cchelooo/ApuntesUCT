@@ -4,6 +4,7 @@ import request from 'supertest';
 import { MaterialController } from '../src/presentation/controllers/material.controller';
 import { CreateMaterial } from '../src/application/use-cases/create-material';
 import { ObjectStorage } from '../src/application/ports/object-storage.port';
+import { CatalogPort } from '../src/application/ports/catalog.port';
 import { PrismaService } from '../src/infrastructure/prisma/prisma.service';
 import { MaterialAuthorProvider } from '../src/infrastructure/auth/material-author.provider';
 import { setupApp } from '../src/setup-app';
@@ -12,6 +13,7 @@ describe('POST /materials: campos obligatorios con contenido', () => {
   let app: INestApplication;
   const prisma = { materialType: { findFirst: jest.fn() }, material: { create: jest.fn() } };
   const storage = { save: jest.fn(), remove: jest.fn() };
+  const catalog = { validateReferences: jest.fn() };
   const fields = {
     title: 'Guía de Álgebra Lineal',
     subjectId: 'SUBJ-102',
@@ -21,12 +23,13 @@ describe('POST /materials: campos obligatorios con contenido', () => {
   };
 
   beforeAll(async () => {
-    const module = await Test.createTestingModule({
+    const moduleRef = await Test.createTestingModule({
       controllers: [MaterialController],
       providers: [
         CreateMaterial,
         { provide: PrismaService, useValue: prisma },
         { provide: ObjectStorage, useValue: storage },
+        { provide: CatalogPort, useValue: catalog },
         {
           provide: MaterialAuthorProvider,
           useValue: {
@@ -35,13 +38,14 @@ describe('POST /materials: campos obligatorios con contenido', () => {
         },
       ],
     }).compile();
-    app = module.createNestApplication();
+    app = moduleRef.createNestApplication();
     setupApp(app);
     await app.init();
   });
 
   beforeEach(() => {
     jest.clearAllMocks();
+    catalog.validateReferences.mockResolvedValue(undefined);
     prisma.materialType.findFirst.mockResolvedValue({ id: 'type-id' });
     prisma.material.create.mockImplementation(({ data }) =>
       Promise.resolve({ ...data, id: 'material-id', createdAt: new Date() }),
@@ -66,11 +70,12 @@ describe('POST /materials: campos obligatorios con contenido', () => {
         expect(prisma.materialType.findFirst).not.toHaveBeenCalled();
         expect(prisma.material.create).not.toHaveBeenCalled();
         expect(storage.save).not.toHaveBeenCalled();
+        expect(catalog.validateReferences).not.toHaveBeenCalled();
       },
     );
   }
 
-  it('conserva un título válido con espacios entre palabras y una asignatura válida', async () => {
+  it('conserva un título válido con espacios y una asignatura simulada', async () => {
     const response = await request(app.getHttpServer())
       .post('/api/v1/materials')
       .field(fields)
@@ -79,5 +84,8 @@ describe('POST /materials: campos obligatorios con contenido', () => {
     expect(prisma.material.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ title: fields.title, subjectId: fields.subjectId }),
     });
+    expect(catalog.validateReferences).toHaveBeenCalledWith(
+      expect.objectContaining({ subjectId: fields.subjectId }),
+    );
   });
 });
