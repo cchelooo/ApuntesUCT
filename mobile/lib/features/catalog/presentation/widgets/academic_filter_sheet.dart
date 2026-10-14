@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:apuntesuct_mobile/core/theme/uct_palette.dart';
 import 'package:apuntesuct_mobile/features/catalog/presentation/providers/academic_hierarchy_provider.dart';
-import 'package:apuntesuct_mobile/models/university_model.dart';
 
 /// Modal inferior interactivo para configurar y aplicar los 6 filtros oficiales del Catálogo:
 /// 1. Universidad
@@ -45,9 +44,7 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final state = ref.read(academicHierarchyProvider);
       if (state.universities.isEmpty && !state.isLoadingUniversities) {
-        ref
-            .read(academicHierarchyProvider.notifier)
-            .setUniversities(UniversityModel.mockList());
+        ref.read(academicHierarchyProvider.notifier).loadUniversities();
       }
     });
   }
@@ -208,24 +205,36 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                 label: '1. Universidad',
                 icon: Icons.account_balance_outlined,
                 isLoading: hierarchyState.isLoadingUniversities,
-                dropdown: DropdownButtonFormField<String>(
-                  key: const Key('filter_university_dropdown'),
-                  value: hierarchyState.selectedUniversityId,
-                  isExpanded: true,
-                  hint: const Text('Seleccionar universidad...'),
-                  decoration: _inputDecoration(
-                    colorFondoCampo,
-                    colorBordeCampo,
+                errorMessage: hierarchyState.errorUniversities,
+                onRetry: () => notifier.retryUniversities(),
+                retryKey: const Key('retry_university_button'),
+                dropdown: KeyedSubtree(
+                  key: ValueKey('university_${hierarchyState.selectedUniversityId}'),
+                  child: DropdownButtonFormField<String>(
+                    key: const Key('filter_university_dropdown'),
+                    initialValue: hierarchyState.selectedUniversityId,
+                    isExpanded: true,
+                    hint: Text(
+                      hierarchyState.universities.isEmpty &&
+                              !hierarchyState.isLoadingUniversities &&
+                              hierarchyState.errorUniversities == null
+                          ? 'No hay universidades disponibles'
+                          : 'Seleccionar universidad...',
+                    ),
+                    decoration: _inputDecoration(
+                      colorFondoCampo,
+                      colorBordeCampo,
+                    ),
+                    items: hierarchyState.universities
+                        .map(
+                          (u) => DropdownMenuItem(
+                            value: u.id,
+                            child: Text(u.name, overflow: TextOverflow.ellipsis),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (val) => notifier.selectUniversity(val),
                   ),
-                  items: hierarchyState.universities
-                      .map(
-                        (u) => DropdownMenuItem(
-                          value: u.id,
-                          child: Text(u.name, overflow: TextOverflow.ellipsis),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (val) => notifier.selectUniversity(val),
                 ),
               ),
               const SizedBox(height: 14),
@@ -236,43 +245,55 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                 label: '2. Carrera',
                 icon: Icons.school_outlined,
                 isLoading: hierarchyState.isLoadingCareers,
-                dropdown: DropdownButtonFormField<String>(
-                  key: const Key('filter_career_dropdown'),
-                  value: hierarchyState.selectedCareerId,
-                  isExpanded: true,
-                  hint: Text(
-                    !hierarchyState.isUniversitySelected
-                        ? 'Selecciona una universidad primero'
-                        : 'Seleccionar carrera...',
-                    style: TextStyle(
-                      color: !hierarchyState.canSelectCareer
-                          ? (isDark
-                                ? UctPalette.textoTenueOscuro
-                                : UctPalette.textoCampoClaro)
-                          : null,
+                errorMessage: hierarchyState.errorCareers,
+                onRetry: () => notifier.retryCareers(),
+                retryKey: const Key('retry_career_button'),
+                dropdown: KeyedSubtree(
+                  key: ValueKey(
+                    'career_${hierarchyState.selectedUniversityId}_${hierarchyState.selectedCareerId}',
+                  ),
+                  child: DropdownButtonFormField<String>(
+                    key: const Key('filter_career_dropdown'),
+                    initialValue: hierarchyState.selectedCareerId,
+                    isExpanded: true,
+                    hint: Text(
+                      !hierarchyState.isUniversitySelected
+                          ? 'Selecciona una universidad primero'
+                          : (hierarchyState.careers.isEmpty &&
+                                  !hierarchyState.isLoadingCareers &&
+                                  hierarchyState.errorCareers == null
+                              ? 'No hay carreras disponibles'
+                              : 'Seleccionar carrera...'),
+                      style: TextStyle(
+                        color: !hierarchyState.canSelectCareer
+                            ? (isDark
+                                  ? UctPalette.textoTenueOscuro
+                                  : UctPalette.textoCampoClaro)
+                            : null,
+                      ),
                     ),
-                  ),
-                  decoration: _inputDecoration(
-                    colorFondoCampo,
-                    colorBordeCampo,
-                    enabled: hierarchyState.canSelectCareer,
-                  ),
-                  items: hierarchyState.canSelectCareer
-                      ? hierarchyState.careers
-                            .map(
-                              (c) => DropdownMenuItem(
-                                value: c.id,
-                                child: Text(
-                                  c.name,
-                                  overflow: TextOverflow.ellipsis,
+                    decoration: _inputDecoration(
+                      colorFondoCampo,
+                      colorBordeCampo,
+                      enabled: hierarchyState.canSelectCareer,
+                    ),
+                    items: hierarchyState.canSelectCareer
+                        ? hierarchyState.careers
+                              .map(
+                                (c) => DropdownMenuItem(
+                                  value: c.id,
+                                  child: Text(
+                                    c.name,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                              ),
-                            )
-                            .toList()
-                      : null,
-                  onChanged: hierarchyState.canSelectCareer
-                      ? (val) => notifier.selectCareer(val)
-                      : null,
+                              )
+                              .toList()
+                        : null,
+                    onChanged: hierarchyState.canSelectCareer
+                        ? (val) => notifier.selectCareer(val)
+                        : null,
+                  ),
                 ),
               ),
               const SizedBox(height: 14),
@@ -283,43 +304,55 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                 label: '3. Asignatura',
                 icon: Icons.menu_book_outlined,
                 isLoading: hierarchyState.isLoadingSubjects,
-                dropdown: DropdownButtonFormField<String>(
-                  key: const Key('filter_subject_dropdown'),
-                  value: hierarchyState.selectedSubjectId,
-                  isExpanded: true,
-                  hint: Text(
-                    !hierarchyState.isCareerSelected
-                        ? 'Selecciona una carrera primero'
-                        : 'Seleccionar asignatura...',
-                    style: TextStyle(
-                      color: !hierarchyState.canSelectSubject
-                          ? (isDark
-                                ? UctPalette.textoTenueOscuro
-                                : UctPalette.textoCampoClaro)
-                          : null,
+                errorMessage: hierarchyState.errorSubjects,
+                onRetry: () => notifier.retrySubjects(),
+                retryKey: const Key('retry_subject_button'),
+                dropdown: KeyedSubtree(
+                  key: ValueKey(
+                    'subject_${hierarchyState.selectedCareerId}_${hierarchyState.selectedSubjectId}',
+                  ),
+                  child: DropdownButtonFormField<String>(
+                    key: const Key('filter_subject_dropdown'),
+                    initialValue: hierarchyState.selectedSubjectId,
+                    isExpanded: true,
+                    hint: Text(
+                      !hierarchyState.isCareerSelected
+                          ? 'Selecciona una carrera primero'
+                          : (hierarchyState.subjects.isEmpty &&
+                                  !hierarchyState.isLoadingSubjects &&
+                                  hierarchyState.errorSubjects == null
+                              ? 'No hay asignaturas disponibles'
+                              : 'Seleccionar asignatura...'),
+                      style: TextStyle(
+                        color: !hierarchyState.canSelectSubject
+                            ? (isDark
+                                  ? UctPalette.textoTenueOscuro
+                                  : UctPalette.textoCampoClaro)
+                            : null,
+                      ),
                     ),
-                  ),
-                  decoration: _inputDecoration(
-                    colorFondoCampo,
-                    colorBordeCampo,
-                    enabled: hierarchyState.canSelectSubject,
-                  ),
-                  items: hierarchyState.canSelectSubject
-                      ? hierarchyState.subjects
-                            .map(
-                              (s) => DropdownMenuItem(
-                                value: s.id,
-                                child: Text(
-                                  '${s.code} - ${s.name}',
-                                  overflow: TextOverflow.ellipsis,
+                    decoration: _inputDecoration(
+                      colorFondoCampo,
+                      colorBordeCampo,
+                      enabled: hierarchyState.canSelectSubject,
+                    ),
+                    items: hierarchyState.canSelectSubject
+                        ? hierarchyState.subjects
+                              .map(
+                                (s) => DropdownMenuItem(
+                                  value: s.id,
+                                  child: Text(
+                                    '${s.code} - ${s.name}',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                              ),
-                            )
-                            .toList()
-                      : null,
-                  onChanged: hierarchyState.canSelectSubject
-                      ? (val) => notifier.selectSubject(val)
-                      : null,
+                              )
+                              .toList()
+                        : null,
+                    onChanged: hierarchyState.canSelectSubject
+                        ? (val) => notifier.selectSubject(val)
+                        : null,
+                  ),
                 ),
               ),
               const SizedBox(height: 14),
@@ -330,43 +363,55 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                 label: '4. Profesor / Docente',
                 icon: Icons.person_outline,
                 isLoading: hierarchyState.isLoadingProfessors,
-                dropdown: DropdownButtonFormField<String>(
-                  key: const Key('filter_professor_dropdown'),
-                  value: hierarchyState.selectedProfessorId,
-                  isExpanded: true,
-                  hint: Text(
-                    !hierarchyState.isSubjectSelected
-                        ? 'Selecciona una asignatura primero'
-                        : 'Seleccionar profesor (opcional)...',
-                    style: TextStyle(
-                      color: !hierarchyState.canSelectProfessor
-                          ? (isDark
-                                ? UctPalette.textoTenueOscuro
-                                : UctPalette.textoCampoClaro)
-                          : null,
+                errorMessage: hierarchyState.errorProfessors,
+                onRetry: () => notifier.retryProfessors(),
+                retryKey: const Key('retry_professor_button'),
+                dropdown: KeyedSubtree(
+                  key: ValueKey(
+                    'professor_${hierarchyState.selectedSubjectId}_${hierarchyState.selectedProfessorId}',
+                  ),
+                  child: DropdownButtonFormField<String>(
+                    key: const Key('filter_professor_dropdown'),
+                    initialValue: hierarchyState.selectedProfessorId,
+                    isExpanded: true,
+                    hint: Text(
+                      !hierarchyState.isSubjectSelected
+                          ? 'Selecciona una asignatura primero'
+                          : (hierarchyState.professors.isEmpty &&
+                                  !hierarchyState.isLoadingProfessors &&
+                                  hierarchyState.errorProfessors == null
+                              ? 'No hay profesores disponibles'
+                              : 'Seleccionar profesor (opcional)...'),
+                      style: TextStyle(
+                        color: !hierarchyState.canSelectProfessor
+                            ? (isDark
+                                  ? UctPalette.textoTenueOscuro
+                                  : UctPalette.textoCampoClaro)
+                            : null,
+                      ),
                     ),
-                  ),
-                  decoration: _inputDecoration(
-                    colorFondoCampo,
-                    colorBordeCampo,
-                    enabled: hierarchyState.canSelectProfessor,
-                  ),
-                  items: hierarchyState.canSelectProfessor
-                      ? hierarchyState.professors
-                            .map(
-                              (p) => DropdownMenuItem(
-                                value: p.id,
-                                child: Text(
-                                  p.name,
-                                  overflow: TextOverflow.ellipsis,
+                    decoration: _inputDecoration(
+                      colorFondoCampo,
+                      colorBordeCampo,
+                      enabled: hierarchyState.canSelectProfessor,
+                    ),
+                    items: hierarchyState.canSelectProfessor
+                        ? hierarchyState.professors
+                              .map(
+                                (p) => DropdownMenuItem(
+                                  value: p.id,
+                                  child: Text(
+                                    p.name,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                              ),
-                            )
-                            .toList()
-                      : null,
-                  onChanged: hierarchyState.canSelectProfessor
-                      ? (val) => notifier.selectProfessor(val)
-                      : null,
+                              )
+                              .toList()
+                        : null,
+                    onChanged: hierarchyState.canSelectProfessor
+                        ? (val) => notifier.selectProfessor(val)
+                        : null,
+                  ),
                 ),
               ),
               const SizedBox(height: 14),
@@ -376,24 +421,27 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                 context: context,
                 label: '5. Año Académico',
                 icon: Icons.calendar_today_outlined,
-                dropdown: DropdownButtonFormField<int>(
-                  key: const Key('filter_year_dropdown'),
-                  value: hierarchyState.selectedYear,
-                  isExpanded: true,
-                  hint: const Text('Todos los años...'),
-                  decoration: _inputDecoration(
-                    colorFondoCampo,
-                    colorBordeCampo,
+                dropdown: KeyedSubtree(
+                  key: ValueKey('year_${hierarchyState.selectedYear}'),
+                  child: DropdownButtonFormField<int>(
+                    key: const Key('filter_year_dropdown'),
+                    initialValue: hierarchyState.selectedYear,
+                    isExpanded: true,
+                    hint: const Text('Todos los años...'),
+                    decoration: _inputDecoration(
+                      colorFondoCampo,
+                      colorBordeCampo,
+                    ),
+                    items: hierarchyState.availableYears
+                        .map(
+                          (y) => DropdownMenuItem(
+                            value: y,
+                            child: Text(y.toString()),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (val) => notifier.selectYear(val),
                   ),
-                  items: hierarchyState.availableYears
-                      .map(
-                        (y) => DropdownMenuItem(
-                          value: y,
-                          child: Text(y.toString()),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (val) => notifier.selectYear(val),
                 ),
               ),
               const SizedBox(height: 14),
@@ -403,24 +451,27 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                 context: context,
                 label: '6. Tipo de Material',
                 icon: Icons.category_outlined,
-                dropdown: DropdownButtonFormField<String>(
-                  key: const Key('filter_type_dropdown'),
-                  value: hierarchyState.selectedType,
-                  isExpanded: true,
-                  hint: const Text('Todos los tipos...'),
-                  decoration: _inputDecoration(
-                    colorFondoCampo,
-                    colorBordeCampo,
+                dropdown: KeyedSubtree(
+                  key: ValueKey('type_${hierarchyState.selectedType}'),
+                  child: DropdownButtonFormField<String>(
+                    key: const Key('filter_type_dropdown'),
+                    initialValue: hierarchyState.selectedType,
+                    isExpanded: true,
+                    hint: const Text('Todos los tipos...'),
+                    decoration: _inputDecoration(
+                      colorFondoCampo,
+                      colorBordeCampo,
+                    ),
+                    items: hierarchyState.availableTypes
+                        .map(
+                          (t) => DropdownMenuItem(
+                            value: t,
+                            child: Text(t.toUpperCase()),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (val) => notifier.selectType(val),
                   ),
-                  items: hierarchyState.availableTypes
-                      .map(
-                        (t) => DropdownMenuItem(
-                          value: t,
-                          child: Text(t.toUpperCase()),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (val) => notifier.selectType(val),
                 ),
               ),
               const SizedBox(height: 24),
@@ -465,7 +516,12 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
     required IconData icon,
     required Widget dropdown,
     bool isLoading = false,
+    String? errorMessage,
+    VoidCallback? onRetry,
+    Key? retryKey,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -489,6 +545,56 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
         ),
         const SizedBox(height: 6),
         dropdown,
+        if (errorMessage != null) ...[
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.red.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.red.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.error_outline_rounded,
+                  color: Colors.redAccent,
+                  size: 16,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    errorMessage,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? const Color(0xFFFF8A80) : Colors.red[800],
+                    ),
+                  ),
+                ),
+                if (onRetry != null)
+                  TextButton(
+                    key: retryKey,
+                    onPressed: onRetry,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: const Size(0, 28),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      'Reintentar',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? UctPalette.amarillo : UctPalette.azul,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }

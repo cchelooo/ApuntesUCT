@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:apuntesuct_mobile/features/catalog/domain/academic_hierarchy_repository.dart';
 import 'package:apuntesuct_mobile/models/career_model.dart';
 import 'package:apuntesuct_mobile/models/professor_model.dart';
 import 'package:apuntesuct_mobile/models/subject_model.dart';
@@ -203,9 +204,12 @@ class AcademicHierarchyState {
 
   // Reglas de habilitación en cascada para la UI (Issue #282 y #289)
   bool get canSelectUniversity => !isLoadingUniversities;
-  bool get canSelectCareer => isUniversitySelected && !isLoadingCareers;
-  bool get canSelectSubject => isCareerSelected && !isLoadingSubjects;
-  bool get canSelectProfessor => isSubjectSelected && !isLoadingProfessors;
+  bool get canSelectCareer =>
+      isUniversitySelected && !isLoadingCareers && errorCareers == null;
+  bool get canSelectSubject =>
+      isCareerSelected && !isLoadingSubjects && errorSubjects == null;
+  bool get canSelectProfessor =>
+      isSubjectSelected && !isLoadingProfessors && errorProfessors == null;
   bool get canSelectYear => true;
   bool get canSelectType => true;
 
@@ -326,94 +330,251 @@ class AcademicHierarchyState {
 
 /// Notifier de Riverpod para controlar la jerarquía académica en cascada.
 class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
+  int _careersGen = 0;
+  int _subjectsGen = 0;
+  int _professorsGen = 0;
+
+  IAcademicHierarchyRepository get _repo =>
+      ref.read(academicHierarchyRepositoryProvider);
+
   @override
   AcademicHierarchyState build() {
     return const AcademicHierarchyState();
   }
 
+  /// Carga inicial o recarga de universidades disponibles.
+  Future<void> loadUniversities() async {
+    state = state.copyWith(
+      isLoadingUniversities: true,
+      clearErrorUniversities: true,
+    );
+    try {
+      final list = await _repo.fetchUniversities();
+      state = state.copyWith(
+        universities: list,
+        isLoadingUniversities: false,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoadingUniversities: false,
+        errorUniversities: 'No se pudieron cargar las universidades: $e',
+      );
+    }
+  }
+
+  /// Reintenta la carga de universidades sin afectar la selección activa.
+  Future<void> retryUniversities() async {
+    await loadUniversities();
+  }
+
   /// Selecciona una universidad y carga las carreras correspondientes a ese padre.
-  void selectUniversity(String? universityId) {
+  /// Reinicia niveles hijos (carrera, asignatura, profesor) y descarta peticiones obsoletas.
+  /// Preserva campos no relacionados: Año y Tipo (Issue #289).
+  Future<void> selectUniversity(String? universityId) async {
     if (state.selectedUniversityId == universityId) return;
 
     final validId = (universityId != null && universityId.trim().isNotEmpty)
         ? universityId.trim()
         : null;
 
-    List<CareerModel> nextCareers = const [];
-    if (validId != null) {
-      final allCareers = CareerModel.mockList();
-      final matching = allCareers
-          .where((c) => c.universityId == validId)
-          .toList();
-      nextCareers = matching.isNotEmpty ? matching : allCareers;
-    }
+    final myGen = ++_careersGen;
+    _subjectsGen++;
+    _professorsGen++;
 
     state = state.copyWith(
-      selection: state.selection.copyWith(
+      selection: AcademicHierarchySelection(
         universityId: validId,
-        clearUniversity: validId == null,
-        clearCareer: true,
-        clearSubject: true,
-        clearProfessor: true,
+        careerId: null,
+        subjectId: null,
+        professorId: null,
+        academicYear: state.selection.academicYear,
+        materialType: state.selection.materialType,
       ),
-      careers: nextCareers,
+      careers: const [],
       subjects: const [],
       professors: const [],
+      isLoadingCareers: false,
+      isLoadingSubjects: false,
+      isLoadingProfessors: false,
       clearErrorCareers: true,
       clearErrorSubjects: true,
       clearErrorProfessors: true,
     );
+
+    if (validId == null) return;
+
+    state = state.copyWith(isLoadingCareers: true);
+    try {
+      final careers = await _repo.fetchCareersByUniversity(validId);
+      if (_careersGen != myGen) return;
+      state = state.copyWith(careers: careers, isLoadingCareers: false);
+    } catch (e) {
+      if (_careersGen != myGen) return;
+      state = state.copyWith(
+        isLoadingCareers: false,
+        errorCareers: 'No se pudieron cargar las carreras: $e',
+      );
+    }
+  }
+
+  /// Reintenta la carga de carreras para la universidad seleccionada.
+  /// Preserva campos no relacionados (Año, Tipo).
+  Future<void> retryCareers() async {
+    final uniId = state.selectedUniversityId;
+    if (uniId == null) return;
+
+    final myGen = ++_careersGen;
+    state = state.copyWith(
+      isLoadingCareers: true,
+      clearErrorCareers: true,
+    );
+    try {
+      final careers = await _repo.fetchCareersByUniversity(uniId);
+      if (_careersGen != myGen) return;
+      state = state.copyWith(careers: careers, isLoadingCareers: false);
+    } catch (e) {
+      if (_careersGen != myGen) return;
+      state = state.copyWith(
+        isLoadingCareers: false,
+        errorCareers: 'No se pudieron cargar las carreras: $e',
+      );
+    }
   }
 
   /// Selecciona una carrera y carga las asignaturas correspondientes a ese padre.
-  void selectCareer(String? careerId) {
+  /// Reinicia niveles hijos (asignatura, profesor).
+  /// Preserva campos no relacionados (Universidad, Año, Tipo).
+  Future<void> selectCareer(String? careerId) async {
     if (state.selectedCareerId == careerId) return;
 
     final validId = (careerId != null && careerId.trim().isNotEmpty)
         ? careerId.trim()
         : null;
 
-    List<SubjectModel> nextSubjects = const [];
-    if (validId != null) {
-      nextSubjects = SubjectModel.mockList();
-    }
+    final myGen = ++_subjectsGen;
+    _professorsGen++;
 
     state = state.copyWith(
-      selection: state.selection.copyWith(
+      selection: AcademicHierarchySelection(
+        universityId: state.selectedUniversityId,
         careerId: validId,
-        clearCareer: validId == null,
-        clearSubject: true,
-        clearProfessor: true,
+        subjectId: null,
+        professorId: null,
+        academicYear: state.selection.academicYear,
+        materialType: state.selection.materialType,
       ),
-      subjects: nextSubjects,
+      subjects: const [],
       professors: const [],
+      isLoadingSubjects: false,
+      isLoadingProfessors: false,
       clearErrorSubjects: true,
       clearErrorProfessors: true,
     );
+
+    if (validId == null) return;
+
+    state = state.copyWith(isLoadingSubjects: true);
+    try {
+      final subjects = await _repo.fetchSubjectsByCareer(validId);
+      if (_subjectsGen != myGen) return;
+      state = state.copyWith(subjects: subjects, isLoadingSubjects: false);
+    } catch (e) {
+      if (_subjectsGen != myGen) return;
+      state = state.copyWith(
+        isLoadingSubjects: false,
+        errorSubjects: 'No se pudieron cargar las asignaturas: $e',
+      );
+    }
+  }
+
+  /// Reintenta la carga de asignaturas para la carrera seleccionada.
+  /// Preserva campos no relacionados (Universidad, Carrera, Año, Tipo).
+  Future<void> retrySubjects() async {
+    final careerId = state.selectedCareerId;
+    if (careerId == null) return;
+
+    final myGen = ++_subjectsGen;
+    state = state.copyWith(
+      isLoadingSubjects: true,
+      clearErrorSubjects: true,
+    );
+    try {
+      final subjects = await _repo.fetchSubjectsByCareer(careerId);
+      if (_subjectsGen != myGen) return;
+      state = state.copyWith(subjects: subjects, isLoadingSubjects: false);
+    } catch (e) {
+      if (_subjectsGen != myGen) return;
+      state = state.copyWith(
+        isLoadingSubjects: false,
+        errorSubjects: 'No se pudieron cargar las asignaturas: $e',
+      );
+    }
   }
 
   /// Selecciona una asignatura y carga los profesores correspondientes.
-  void selectSubject(String? subjectId) {
+  /// Reinicia nivel hijo (profesor).
+  /// Preserva campos no relacionados (Universidad, Carrera, Año, Tipo).
+  Future<void> selectSubject(String? subjectId) async {
     if (state.selectedSubjectId == subjectId) return;
 
     final validId = (subjectId != null && subjectId.trim().isNotEmpty)
         ? subjectId.trim()
         : null;
 
-    List<ProfessorModel> nextProfessors = const [];
-    if (validId != null) {
-      nextProfessors = ProfessorModel.mockList();
-    }
+    final myGen = ++_professorsGen;
 
     state = state.copyWith(
-      selection: state.selection.copyWith(
+      selection: AcademicHierarchySelection(
+        universityId: state.selectedUniversityId,
+        careerId: state.selectedCareerId,
         subjectId: validId,
-        clearSubject: validId == null,
-        clearProfessor: true,
+        professorId: null,
+        academicYear: state.selection.academicYear,
+        materialType: state.selection.materialType,
       ),
-      professors: nextProfessors,
+      professors: const [],
+      isLoadingProfessors: false,
       clearErrorProfessors: true,
     );
+
+    if (validId == null) return;
+
+    state = state.copyWith(isLoadingProfessors: true);
+    try {
+      final professors = await _repo.fetchProfessorsBySubject(validId);
+      if (_professorsGen != myGen) return;
+      state = state.copyWith(professors: professors, isLoadingProfessors: false);
+    } catch (e) {
+      if (_professorsGen != myGen) return;
+      state = state.copyWith(
+        isLoadingProfessors: false,
+        errorProfessors: 'No se pudieron cargar los profesores: $e',
+      );
+    }
+  }
+
+  /// Reintenta la carga de profesores para la asignatura seleccionada.
+  /// Preserva campos no relacionados (Universidad, Carrera, Asignatura, Año, Tipo).
+  Future<void> retryProfessors() async {
+    final subjId = state.selectedSubjectId;
+    if (subjId == null) return;
+
+    final myGen = ++_professorsGen;
+    state = state.copyWith(
+      isLoadingProfessors: true,
+      clearErrorProfessors: true,
+    );
+    try {
+      final professors = await _repo.fetchProfessorsBySubject(subjId);
+      if (_professorsGen != myGen) return;
+      state = state.copyWith(professors: professors, isLoadingProfessors: false);
+    } catch (e) {
+      if (_professorsGen != myGen) return;
+      state = state.copyWith(
+        isLoadingProfessors: false,
+        errorProfessors: 'No se pudieron cargar los profesores: $e',
+      );
+    }
   }
 
   /// Selecciona o deselecciona un profesor.
@@ -432,7 +593,7 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
     );
   }
 
-  /// Selecciona o deselecciona el año académico.
+  /// Selecciona o deselecciona el año académico (nivel 5).
   void selectYear(int? year) {
     state = state.copyWith(
       selection: state.selection.copyWith(
@@ -442,7 +603,7 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
     );
   }
 
-  /// Selecciona o deselecciona el tipo de material.
+  /// Selecciona o deselecciona el tipo de material (nivel 6).
   void selectType(String? type) {
     final validType = (type != null && type.trim().isNotEmpty)
         ? type.trim()
@@ -457,12 +618,19 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
   }
 
   /// Reinicia la selección activa manteniendo la lista de universidades cargadas.
+  /// Limpia también indicadores de carga y errores de niveles hijos.
   void resetSelection() {
+    _careersGen++;
+    _subjectsGen++;
+    _professorsGen++;
     state = state.copyWith(
       selection: const AcademicHierarchySelection.empty(),
       careers: const [],
       subjects: const [],
       professors: const [],
+      isLoadingCareers: false,
+      isLoadingSubjects: false,
+      isLoadingProfessors: false,
       clearErrorCareers: true,
       clearErrorSubjects: true,
       clearErrorProfessors: true,
@@ -471,10 +639,13 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
 
   /// Reinicia todo el estado a valores iniciales por defecto.
   void resetAll() {
+    _careersGen++;
+    _subjectsGen++;
+    _professorsGen++;
     state = const AcademicHierarchyState();
   }
 
-  // --- Métodos mutadores para integración con repositorios o datos mock ---
+  // --- Métodos mutadores para compatibilidad y pruebas directas ---
 
   void setUniversities(List<UniversityModel> list) {
     state = state.copyWith(universities: list);
