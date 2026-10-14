@@ -1,4 +1,4 @@
-const assert = require('node:assert/strict');
+﻿const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const CFB = require('cfb');
 const { Test } = require('@nestjs/testing');
@@ -27,7 +27,7 @@ const {
 
 // Uses the real HTTP controller, validators and use case with mocked persistence/storage.
 // Run after building both api-gateway and material-service (Node handles file-type ESM).
-test('Gateway → contrato HTTP real de Material', async (t) => {
+test('Gateway â†’ contrato HTTP real de Material', async (t) => {
   let material;
   let gateway;
   try {
@@ -90,7 +90,7 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
     } = {}) => {
       const body = new FormData();
       for (const [key, value] of Object.entries({
-        title: 'Álgebra & cálculo',
+        title: 'Ãlgebra & cÃ¡lculo',
         year: '2026',
         type: 'DOCUMENT',
         subjectId: 'subject-test',
@@ -118,7 +118,7 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
         });
         assert.equal(result.status, 201);
         assert.equal(result.body.isSimulatedResponse, false);
-        assert.equal(result.body.data.title, 'Álgebra & cálculo');
+        assert.equal(result.body.data.title, 'Ãlgebra & cÃ¡lculo');
         assert.equal(result.body.data.mimeType, 'application/pdf');
         assert.equal(result.body.data.fileSize, 100);
         assert.equal(result.body.data.status, 'PENDING_REVIEW');
@@ -220,7 +220,7 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
       },
     );
     await t.test(
-      'conserva 400 en metadatos inválidos y archivo ausente',
+      'conserva 400 en metadatos invÃ¡lidos y archivo ausente',
       async () => {
         assert.equal((await post()).status, 400);
         const result = await post({ fields: { year: 'abc' }, size: 100 });
@@ -228,8 +228,39 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
         assert.ok(Array.isArray(result.body.message));
       },
     );
-    await t.test(
-      'responde 502 controlado después de cerrar Material',
+    await t.test('propaga 413 de Material sin transformarlo a 500', async () => {
+      const body = new FormData();
+      body.set('title', 'Demo');
+      body.set('year', '2026');
+      body.set('type', 'DOCUMENT');
+      body.set('subjectId', 'subj');
+      const big = Buffer.alloc(16 * 1024 * 1024);
+      big.write('PDF');
+      body.set('file', new Blob([big], { type: 'application/pdf' }), 'demo.pdf');
+      const response = await fetch(base + '/api/v1/materials', {
+        method: 'POST',
+        body,
+      });
+      assert.ok(response.status !== 500, 'no debe ser 500');
+      assert.equal(response.status, 413);
+    });
+
+    await t.test('propaga 415 de Material sin transformarlo a 500', async () => {
+      const body = new FormData();
+      body.set('title', 'Demo');
+      body.set('year', '2026');
+      body.set('type', 'DOCUMENT');
+      body.set('subjectId', 'subj');
+      const buf = Buffer.from('texto');
+      body.set('file', new Blob([buf], { type: 'text/plain' }), 'demo.txt');
+      const response = await fetch(base + '/api/v1/materials', {
+        method: 'POST',
+        body,
+      });
+      assert.ok(response.status !== 500, 'no debe ser 500');
+      assert.equal(response.status, 415);
+    });    await t.test(
+      'responde 502 controlado despuÃ©s de cerrar Material',
       async () => {
         await material.close();
         const result = await post();
@@ -242,3 +273,4 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
     await material?.close();
   }
 });
+
