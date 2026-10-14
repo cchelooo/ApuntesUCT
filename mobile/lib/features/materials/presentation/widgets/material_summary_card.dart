@@ -3,6 +3,7 @@ import 'package:apuntesuct_mobile/features/materials/domain/models/material_summ
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_status.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_detail_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class MaterialSummaryCard extends StatelessWidget {
   final MaterialSummary material;
@@ -10,7 +11,18 @@ class MaterialSummaryCard extends StatelessWidget {
 
   const MaterialSummaryCard({super.key, required this.material, this.onTap});
 
+  /// Navegación por defecto a la ruta /materials/:id (issue #279).
+  ///
+  /// Usa go_router para que la URL cambie y [MaterialDetailRoute] resuelva
+  /// el detalle. Si no hay router en el árbol (tests aislados de widgets
+  /// con MaterialApp simple), cae al Navigator legacy con un detalle local.
   void _defaultNavigate(BuildContext context) {
+    try {
+      GoRouter.of(context).push('/materials/${material.id}');
+      return;
+    } catch (_) {
+      // Sin GoRouter disponible (test aislado): fallback legacy.
+    }
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => MaterialDetailScreen(

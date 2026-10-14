@@ -140,6 +140,9 @@ class ProfileScreen extends ConsumerWidget {
       case AppNavigationDestination.profile:
         // Ya estamos en perfil
         break;
+      case AppNavigationDestination.materials:
+        context.push('/materials');
+        break;
     }
   }
 
