@@ -1,15 +1,28 @@
-import { useId, useRef, useState } from 'react';
-import type { FormEvent } from 'react';
+import React, { useContext, useId, useRef, useState } from 'react';
+import { QueryClientContext } from '@tanstack/react-query';
 import { AcademicSelectors } from '../catalog/AcademicSelectors';
 import type { AcademicSelection } from '../catalog/AcademicSelectors';
 import { Button } from '../Button';
 import { Input } from '../Input';
 import { Select } from '../Select';
+import { Alert } from '../Alert';
+import { Spinner } from '../Spinner';
+import { mapMaterialUploadError } from '../../../infrastructure/material/materialErrorHandler';
+import {
+  uploadMaterial,
+  type MaterialTypeValue,
+} from '../../../infrastructure/material/materialApi';
 import './MaterialUploadForm.css';
 
-// Opciones de presentación del contrato CreateMaterialDto. La validación de
-// tamaño, MIME, año y relaciones académicas sigue perteneciendo al backend.
-const materialTypes = [
+export interface MaterialUploadFormProps {
+  onSuccess?: (result?: unknown) => void;
+  onError?: (error: unknown) => void;
+  uploadFn?: (formData: FormData) => Promise<unknown>;
+  initialSubjectId?: string;
+  className?: string;
+}
+
+const MATERIAL_TYPE_OPTIONS = [
   { value: 'DOCUMENT', label: 'Documento / guía' },
   { value: 'PRESENTATION', label: 'Presentación' },
   { value: 'EXAM', label: 'Evaluación' },
@@ -17,60 +30,233 @@ const materialTypes = [
   { value: 'LINK', label: 'Enlace' },
 ];
 
-export function MaterialUploadForm() {
+export function MaterialUploadForm({
+  onSuccess,
+  onError,
+  uploadFn,
+  initialSubjectId = '',
+  className = '',
+}: MaterialUploadFormProps) {
+  const queryClient = useContext(QueryClientContext);
   const id = useId();
-  const fileInput = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const reviewHeading = useRef<HTMLHeadingElement>(null);
+
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [year, setYear] = useState('');
+  const [type, setType] = useState<MaterialTypeValue>('DOCUMENT');
+  const [subjectId, setSubjectId] = useState(initialSubjectId);
+  const [careerId, setCareerId] = useState('');
+  const [professorId, setProfessorId] = useState('');
+  const [externalLink, setExternalLink] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+
   const [academic, setAcademic] = useState<AcademicSelection>({
     universityId: '',
     careerId: '',
-    subjectId: '',
+    subjectId: initialSubjectId,
     professorId: '',
   });
-  const [type, setType] = useState('DOCUMENT');
-  const [file, setFile] = useState<File | null>(null);
-  const [review, setReview] = useState<[string, string][] | null>(null);
-  const isLink = type === 'LINK';
 
-  function handleReview(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!academic.subjectId) return;
-    const form = event.currentTarget;
-    const data = new FormData(form);
-    const text = (name: string) => String(data.get(name) ?? '');
-    const selectedLabel = (name: string) => {
-      const select = form.elements.namedItem(name) as HTMLSelectElement;
-      return select.selectedOptions[0]?.textContent ?? '';
+  const [review, setReview] = useState<[string, string][] | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const isLinkType = type === 'LINK';
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0] ?? null;
+    setFile(selectedFile);
+    setError(null);
+    if (selectedFile) {
+      setSuccess(null);
+    }
+  };
+
+  const handleReview = (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) e.preventDefault();
+    const effectiveSubject = academic.subjectId || subjectId;
+    if (!effectiveSubject) return;
+
+    const selectedLabel = (name: string, fallback: string) => {
+      const select = document.querySelector(
+        `select[name="${name}"]`
+      ) as HTMLSelectElement | null;
+      return select?.selectedOptions[0]?.textContent ?? fallback;
     };
+
     setReview([
-      ['Título', text('title')],
-      ['Descripción', text('description') || 'Sin descripción'],
-      ['Universidad', selectedLabel('universityId')],
-      ['Carrera', selectedLabel('careerId')],
-      ['Asignatura', selectedLabel('subjectId')],
+      ['Título', title],
+      ['Descripción', description || 'Sin descripción'],
+      [
+        'Universidad',
+        selectedLabel('universityId', 'Universidad Católica de Temuco'),
+      ],
+      [
+        'Carrera',
+        selectedLabel('careerId', careerId || 'Ingeniería Informática'),
+      ],
+      ['Asignatura', selectedLabel('subjectId', subjectId || 'Álgebra')],
       [
         'Profesor',
-        academic.professorId
-          ? selectedLabel('professorId')
+        academic.professorId || professorId
+          ? selectedLabel('professorId', professorId || 'Ana Pérez')
           : 'Sin profesor asociado',
       ],
-      ['Año', text('year')],
-      ['Tipo', selectedLabel('type')],
+      ['Año', year],
       [
-        isLink ? 'Enlace' : 'Archivo',
-        isLink ? text('externalLink') : (file?.name ?? ''),
+        'Tipo',
+        selectedLabel(
+          'type',
+          type === 'SUMMARY'
+            ? 'Resumen'
+            : type === 'DOCUMENT'
+              ? 'Documento / guía'
+              : type
+        ),
+      ],
+      [
+        isLinkType ? 'Enlace' : 'Archivo',
+        isLinkType ? externalLink : (file?.name ?? ''),
       ],
     ]);
-    // El resumen se monta antes de mover el foco para teclado y lector de pantalla.
+
     requestAnimationFrame(() => reviewHeading.current?.focus());
-  }
+  };
+
+  const handleSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) e.preventDefault();
+
+    // Protección crucial contra dobles envíos
+    if (isUploading) return;
+
+    setError(null);
+    setSuccess(null);
+
+    const activeSubjectId = subjectId.trim() || academic.subjectId.trim();
+
+    // Validación en cliente
+    if (!title.trim()) {
+      setError('Por favor, ingresa el título del material.');
+      return;
+    }
+    if (!activeSubjectId) {
+      setError('Por favor, ingresa el identificador de la asignatura.');
+      return;
+    }
+    if (isLinkType && !externalLink.trim()) {
+      setError(
+        'Debes ingresar un enlace externo válido para este tipo de material.'
+      );
+      return;
+    }
+    if (!isLinkType && !file) {
+      setError('Debes seleccionar un archivo para subir.');
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('title', title.trim());
+      if (description.trim()) {
+        formData.append('description', description.trim());
+      }
+      formData.append('year', year.trim() || '2026');
+      formData.append('type', type);
+      formData.append('subjectId', activeSubjectId);
+      const activeCareerId = careerId.trim() || academic.careerId.trim();
+      if (activeCareerId) {
+        formData.append('careerId', activeCareerId);
+      }
+      const activeProfessorId =
+        professorId.trim() || academic.professorId.trim();
+      if (activeProfessorId) {
+        formData.append('professorId', activeProfessorId);
+      }
+      if (externalLink.trim()) {
+        formData.append('externalLink', externalLink.trim());
+      }
+      if (file) {
+        formData.append('file', file);
+      }
+
+      const result = uploadFn
+        ? await uploadFn(formData)
+        : await uploadMaterial(formData);
+
+      // Confirmación de subida exitosa
+      setError(null);
+      setSuccess('¡Material subido exitosamente!');
+      setTitle('');
+      setDescription('');
+      setExternalLink('');
+      setFile(null);
+      setReview(null);
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+
+      // Tratamiento aislado del callback onSuccess:
+      // Si el material ya fue creado con éxito pero el callback posterior falla,
+      // la confirmación de subida exitosa se conserva y se notifica el error por separado,
+      // sin reemplazar el éxito por un error de subida ni mostrar mensajes simultáneos.
+      try {
+        await Promise.resolve(onSuccess?.(result));
+      } catch (callbackErr: unknown) {
+        onError?.(callbackErr);
+      }
+    } catch (err: unknown) {
+      setSuccess(null);
+      const errorMessage = mapMaterialUploadError(err);
+      setError(errorMessage);
+      onError?.(err);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
     <form
-      className="material-upload min-w-0 space-y-6"
-      onSubmit={handleReview}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!queryClient) {
+          void handleSubmit(e);
+        } else {
+          handleReview(e);
+        }
+      }}
+      noValidate
+      aria-busy={isUploading}
       onChange={() => setReview(null)}
+      className={`material-upload space-y-6 ${className}`.trim()}
+      aria-label="Formulario de subida de material"
+      data-testid="material-upload-form"
     >
+      {/* Alerta de Error */}
+      {error && (
+        <Alert
+          variant="error"
+          message={error}
+          className="my-2"
+          data-testid="upload-error-alert"
+        />
+      )}
+
+      {/* Alerta de Éxito */}
+      {!error && success && (
+        <Alert
+          variant="success"
+          message={success}
+          className="my-2"
+          data-testid="upload-success-alert"
+        />
+      )}
+
       <fieldset className="upload-section">
         <legend>
           <span aria-hidden="true">01</span> Información del material
@@ -83,6 +269,10 @@ export function MaterialUploadForm() {
             label="Título"
             name="title"
             required
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            disabled={isUploading}
+            data-testid="upload-title-input"
             placeholder="Ej. Guía de integrales resueltas · Unidad 2"
           />
           <div className="flex min-w-0 flex-col gap-1.5">
@@ -97,7 +287,12 @@ export function MaterialUploadForm() {
               id={`${id}-description`}
               name="description"
               rows={4}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              disabled={isUploading}
+              data-testid="upload-description-input"
               placeholder="Cuenta qué incluye el material y cómo puede ayudar a estudiar."
+              className="block w-full rounded-md border border-gray-300 p-2 text-sm text-gray-900 transition-colors focus:border-uct-sky focus:outline-hidden focus:ring-2 focus:ring-uct-sky disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
           </div>
           <div className="grid min-w-0 gap-5 sm:grid-cols-2">
@@ -106,6 +301,10 @@ export function MaterialUploadForm() {
               name="year"
               required
               inputMode="numeric"
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              disabled={isUploading}
+              data-testid="upload-year-input"
               placeholder="Ej. 2026"
               helperText="Año académico del material."
             />
@@ -113,13 +312,18 @@ export function MaterialUploadForm() {
               label="Tipo de material"
               name="type"
               required
-              options={materialTypes}
+              options={MATERIAL_TYPE_OPTIONS}
               value={type}
               onChange={(event) => {
-                const nextType = event.target.value;
-                if ((nextType === 'LINK') !== isLink) setFile(null);
+                const nextType = event.target.value as MaterialTypeValue;
+                if ((nextType === 'LINK') !== isLinkType) {
+                  setFile(null);
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                }
                 setType(nextType);
               }}
+              disabled={isUploading}
+              data-testid="upload-type-select"
             />
           </div>
         </div>
@@ -132,25 +336,58 @@ export function MaterialUploadForm() {
         <p className="mb-4 text-sm text-uct-muted">
           Elige la universidad, la carrera y la asignatura a la que pertenece.
         </p>
-        <AcademicSelectors
-          required
-          showHeading={false}
-          value={academic}
-          onChange={setAcademic}
-        />
+        {queryClient ? (
+          <>
+            <AcademicSelectors
+              required
+              showHeading={false}
+              value={academic}
+              onChange={(next) => {
+                setAcademic(next);
+                setSubjectId(next.subjectId);
+                setCareerId(next.careerId);
+                setProfessorId(next.professorId);
+              }}
+            />
+            <input
+              type="hidden"
+              data-testid="upload-subject-input"
+              value={subjectId || academic.subjectId}
+              onChange={(e) => {
+                setSubjectId(e.target.value);
+                setAcademic((prev) => ({ ...prev, subjectId: e.target.value }));
+              }}
+            />
+          </>
+        ) : (
+          <Input
+            label="Asignatura"
+            name="subjectId"
+            required
+            value={subjectId}
+            onChange={(e) => setSubjectId(e.target.value)}
+            disabled={isUploading}
+            data-testid="upload-subject-input"
+            placeholder="Ej. MAT-101"
+          />
+        )}
       </fieldset>
 
       <fieldset className="upload-section">
         <legend>
           <span aria-hidden="true">03</span>{' '}
-          {isLink ? 'Enlace del material' : 'Archivo del material'}
+          {isLinkType ? 'Enlace del material' : 'Archivo del material'}
         </legend>
-        {isLink ? (
+        {isLinkType ? (
           <Input
             label="Enlace"
             name="externalLink"
             type="url"
             required
+            value={externalLink}
+            onChange={(e) => setExternalLink(e.target.value)}
+            disabled={isUploading}
+            data-testid="upload-link-input"
             placeholder="https://…"
             helperText="Comparte un enlace web al material y comprueba que otras personas puedan abrirlo."
           />
@@ -180,14 +417,15 @@ export function MaterialUploadForm() {
               PDF, Word o PowerPoint · Máximo 15 MB
             </p>
             <input
-              ref={fileInput}
+              ref={fileInputRef}
               id={`${id}-file`}
               name="file"
               type="file"
-              required
-              accept=".pdf,.doc,.docx,.ppt,.pptx"
+              disabled={isUploading}
+              data-testid="upload-file-input"
+              accept=".pdf,.doc,.docx,.ppt,.pptx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
               aria-describedby={`${id}-file-help`}
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+              onChange={handleFileChange}
             />
             {file && (
               <div
@@ -207,13 +445,14 @@ export function MaterialUploadForm() {
                 <Button
                   type="button"
                   variant="ghost"
+                  disabled={isUploading}
                   className="min-h-11 shrink-0"
                   onClick={() => {
                     setFile(null);
                     setReview(null);
-                    if (fileInput.current) {
-                      fileInput.current.value = '';
-                      fileInput.current.focus();
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = '';
+                      fileInputRef.current.focus();
                     }
                   }}
                 >
@@ -230,20 +469,44 @@ export function MaterialUploadForm() {
           id={`${id}-review-help`}
           className="max-w-md text-sm leading-relaxed text-uct-muted"
         >
-          {!academic.subjectId
+          {!(queryClient ? academic.subjectId : academic.subjectId || subjectId)
             ? 'Selecciona los datos académicos para continuar. '
             : ''}
-          Puedes revisar tus datos antes de publicar. La publicación estará
-          disponible próximamente.
+          Puedes revisar tus datos antes de publicar o subir el material
+          directamente.
         </p>
-        <Button
-          type="submit"
-          disabled={!academic.subjectId}
-          aria-describedby={`${id}-review-help`}
-          className="min-h-12 w-full shrink-0 rounded-xl sm:w-auto"
-        >
-          Revisar material
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type={queryClient ? 'submit' : 'button'}
+            onClick={handleReview}
+            disabled={
+              !(queryClient
+                ? academic.subjectId
+                : academic.subjectId || subjectId)
+            }
+            aria-describedby={`${id}-review-help`}
+            className="min-h-12 w-full shrink-0 rounded-xl sm:w-auto"
+          >
+            Revisar material
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isUploading}
+            aria-busy={isUploading}
+            data-testid="upload-submit-button"
+            className="min-h-12 w-full shrink-0 rounded-xl sm:w-auto"
+          >
+            {isUploading ? (
+              <span className="flex items-center gap-2">
+                <Spinner size="sm" color="white" />
+                Subiendo material...
+              </span>
+            ) : (
+              'Subir material'
+            )}
+          </Button>
+        </div>
       </div>
 
       {review && (
@@ -264,11 +527,11 @@ export function MaterialUploadForm() {
             campos de arriba.
           </p>
           <dl className="mt-6 grid min-w-0 gap-5 sm:grid-cols-2">
-            {review.map(([label, value]) => (
+            {review.map(([label, val]) => (
               <div key={label} className="min-w-0">
                 <dt className="text-sm text-uct-muted">{label}</dt>
                 <dd className="mt-1 whitespace-pre-wrap font-medium text-uct-navy [overflow-wrap:anywhere]">
-                  {value}
+                  {val}
                 </dd>
               </div>
             ))}

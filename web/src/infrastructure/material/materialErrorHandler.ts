@@ -1,29 +1,31 @@
 export interface MaterialApiError {
   status?: number;
+  statusCode?: number;
   message?: string;
   isNetworkError?: boolean;
   name?: string;
+  response?: { status?: number };
 }
+
+export type MaterialErrorContext = 'upload' | 'download' | 'general';
 
 /**
  * Mapea un error de la API de Materiales a un mensaje amigable en español.
  * Aplica para operaciones de subida y descarga de archivos.
  *
- * ALCANCE DE SUBIDA (PENDIENTE):
- * Aunque este mapeo está completamente preparado para manejar errores de subida
- * (como 413 Payload Too Large y 415 Unsupported Media Type), actualmente solo
- * se está utilizando en el flujo de descarga (MaterialDownloadButton).
- * La integración con la operación de subida queda pendiente para una próxima tarea,
- * cuando se implemente el componente respectivo de UI.
- *
- * Códigos de error manejados:
- * - 400: Solicitud incorrecta (ej. datos faltantes o inválidos)
- * - 401: No autorizado (sesión expirada o token inválido)
- * - 413: Archivo demasiado grande (Payload Too Large)
- * - 415: Tipo de medio no soportado (Unsupported Media Type)
- * - Errores de red o disponibilidad
+ * Contrato de errores para subida de archivos (Issue #243):
+ * - 400: Solicitud incorrecta (metadatos inválidos o faltantes)
+ * - 401: Requiere autenticación (informa necesidad de iniciar sesión para subir material)
+ * - 413: Archivo demasiado grande (informa explícitamente el límite máximo de 15 MB)
+ * - 415: Tipo de medio no soportado (detalla formatos admitidos: PDF, Word y PowerPoint)
+ * - 404: Material no encontrado (operaciones de consulta y descarga)
+ * - 500, 502, 503, 504: Errores temporales de disponibilidad del servidor
+ * - Errores de red o conectividad
  */
-export function mapMaterialError(error: unknown): string {
+export function mapMaterialError(
+  error: unknown,
+  context: MaterialErrorContext = 'upload'
+): string {
   // Verificamos si es un error tipado conocido (nuestra interfaz)
   const isMaterialApiError = (err: unknown): err is MaterialApiError => {
     return typeof err === 'object' && err !== null;
@@ -36,17 +38,26 @@ export function mapMaterialError(error: unknown): string {
     }
 
     const apiError = error as MaterialApiError;
-    const status = apiError.status;
+    const rawStatus =
+      apiError.status ?? apiError.statusCode ?? apiError.response?.status;
+    const status =
+      typeof rawStatus === 'number'
+        ? rawStatus
+        : typeof rawStatus === 'string'
+          ? parseInt(rawStatus, 10)
+          : undefined;
 
     switch (status) {
       case 400:
         return 'La solicitud es incorrecta. Por favor, revisa los datos e intenta de nuevo.';
       case 401:
-        return 'No tienes autorización para realizar esta acción. Por favor, inicia sesión nuevamente.';
+        return context === 'upload'
+          ? 'Debes iniciar sesión para subir material. Por favor, autentícate para continuar.'
+          : 'No tienes autorización para realizar esta acción. Por favor, inicia sesión nuevamente.';
       case 413:
-        return 'El archivo es demasiado grande. Por favor, selecciona un archivo de menor tamaño.';
+        return 'El archivo supera el tamaño máximo permitido de 15 MB. Por favor, selecciona un archivo de menor tamaño.';
       case 415:
-        return 'El formato del archivo no es soportado. Por favor, utiliza un formato válido.';
+        return 'El formato del archivo no es soportado. Formatos aceptados: PDF, Word (.doc, .docx) y PowerPoint (.ppt, .pptx).';
       case 404:
         return 'El material solicitado no fue encontrado.';
       case 500:
@@ -59,4 +70,11 @@ export function mapMaterialError(error: unknown): string {
 
   // Cualquier otra excepción genérica o inesperada al procesar (blob fail, json fail, etc)
   return 'Ha ocurrido un error inesperado al procesar el material. Por favor, intenta de nuevo.';
+}
+
+/**
+ * Función auxiliar específica para mapear errores en flujos de subida de archivos.
+ */
+export function mapMaterialUploadError(error: unknown): string {
+  return mapMaterialError(error, 'upload');
 }
