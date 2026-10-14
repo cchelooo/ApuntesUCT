@@ -37,18 +37,19 @@ Antes de regenerar `charts/`, el script copia los SVG anteriores a
 duplica filas en el CSV; reemplaza el snapshot del dia y el backup queda con
 los graficos inmediatamente anteriores a la ultima ejecucion.
 
-El sprint por defecto ahora es S2. Las ventanas tienen cuatro semanas:
+El sprint por defecto es S2. Las ventanas de S1 tienen cuatro semanas y las
+de S2 se extienden a cinco semanas:
 
 | Sprint | Equipo | Inicio | Término |
 |---|---|---|---|
 | S1 | INT2 | 2026-09-02 | 2026-09-30 |
 | S1 | INT4 | 2026-09-03 | 2026-10-01 |
-| S2 | INT2 | 2026-09-30 | 2026-10-28 |
-| S2 | INT4 | 2026-10-01 | 2026-10-29 |
+| S2 | INT2 | 2026-09-30 | 2026-11-04 |
+| S2 | INT4 | 2026-10-01 | 2026-11-05 |
 
-Las fechas de S2 se calculan sumando cuatro semanas al cierre de S1,
-conservando miércoles para INT2 y jueves para INT4. GitHub Projects contiene
-las cuatro semanas de tareas, pero no fechas oficiales de evaluación.
+S2 conserva miércoles para INT2 y jueves para INT4. Estas ventanas definen
+el horizonte de los gráficos y el cierre de la línea ideal. Las horas
+asignadas, usadas y restantes se obtienen de las tareas de GitHub Projects.
 
 Se conserva el historial de S1 en `docs/reports/burndown/s1/`. Para regenerar
 sus gráficos sin modificar el CSV histórico:
@@ -69,7 +70,7 @@ para evitar omitir tareas del Project.
 Si necesitas probar otro rango para todos los graficos, puedes sobreescribirlo:
 
 ```bash
-python3 tools/burndown/project_burndown.py all --sprint S2 --start-date 2026-10-01 --end-date 2026-10-29
+python3 tools/burndown/project_burndown.py all --sprint S2 --start-date 2026-10-01 --end-date 2026-11-05
 ```
 
 Ese override aplica el mismo rango a ambos equipos. El comando diario sin
