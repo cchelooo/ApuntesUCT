@@ -214,7 +214,7 @@ void main() {
       );
 
       // UCT → UFRO: la carrera UCT debe desaparecer del formulario,
-      // aunque el fallback de mocks la siga ofreciendo en la lista.
+      // y tampoco debe ofrecerse de nuevo para la universidad elegida.
       await selectOption(
         fieldLabel: 'Universidad Católica de Temuco',
         option: 'Universidad de La Frontera',
@@ -288,6 +288,8 @@ void main() {
         find.widgetWithText(TextFormField, 'https://...').first,
         'nota-valida',
       );
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.text('Subir material'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Subir material'));
