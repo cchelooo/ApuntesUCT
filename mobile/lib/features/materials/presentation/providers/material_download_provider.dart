@@ -1,15 +1,25 @@
-import 'dart:io';
-
 import 'package:apuntesuct_mobile/features/materials/data/dio_material_repository.dart';
+import 'package:apuntesuct_mobile/features/materials/data/material_file_handler.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_requests.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class DownloadResult {
+  final String materialId;
+  final String? versionId;
   final MaterialDownload download;
-  final String? savedPath;
+  final String savedPath;
 
-  const DownloadResult({required this.download, this.savedPath});
+  const DownloadResult({
+    required this.materialId,
+    this.versionId,
+    required this.download,
+    required this.savedPath,
+  });
 }
+
+final materialFileHandlerProvider = Provider<MaterialFileHandler>(
+  (_) => NativeMaterialFileHandler(),
+);
 
 class MaterialDownloadNotifier extends Notifier<AsyncValue<DownloadResult?>> {
   @override
@@ -31,25 +41,21 @@ class MaterialDownloadNotifier extends Notifier<AsyncValue<DownloadResult?>> {
         versionId: versionId,
       );
 
-      String? savedPath;
-      try {
-        final tempDir = Directory.systemTemp;
-        final file = File('${tempDir.path}/${downloadData.fileName}');
-        await file.writeAsBytes(downloadData.bytes, flush: true);
-        savedPath = file.path;
-      } catch (_) {
-        // En plataformas restringidas o pruebas unitarias se preservan los bytes
-      }
+      final savedPath = await ref
+          .read(materialFileHandlerProvider)
+          .save(downloadData);
 
       final result = DownloadResult(
+        materialId: materialId,
+        versionId: versionId,
         download: downloadData,
         savedPath: savedPath,
       );
 
-      state = AsyncData(result);
+      if (ref.mounted) state = AsyncData(result);
       return result;
     } catch (e, st) {
-      state = AsyncError(e, st);
+      if (ref.mounted) state = AsyncError(e, st);
       rethrow;
     }
   }

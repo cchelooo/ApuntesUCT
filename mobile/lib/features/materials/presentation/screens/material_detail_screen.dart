@@ -4,7 +4,7 @@ import 'package:apuntesuct_mobile/core/widgets/loading_state.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_detail_provider.dart';
-import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_download_provider.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_download_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -13,7 +13,7 @@ class MaterialDetailScreen extends StatelessWidget {
   final String? _explicitId;
 
   const MaterialDetailScreen({super.key, required MaterialDetail detail})
-    : _detail = detail,
+    : _detail = detail, // ignore: prefer_initializing_formals
       _explicitId = null;
 
   MaterialDetailScreen.byId({
@@ -355,69 +355,11 @@ class MaterialDetailScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 28),
-          Consumer(
-            builder: (context, ref, _) {
-              final downloadState = ref.watch(materialDownloadProvider);
-              final isDownloading = downloadState.isLoading;
-
-              return SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: FilledButton.icon(
-                  onPressed: isDownloading
-                      ? null
-                      : () async {
-                          final messenger = ScaffoldMessenger.of(context);
-                          try {
-                            final result = await ref
-                                .read(materialDownloadProvider.notifier)
-                                .download(
-                                  materialId,
-                                  versionId: currentVersion?.id,
-                                );
-
-                            if (result != null) {
-                              messenger.clearSnackBars();
-                              messenger.showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Descarga completada: ${result.download.fileName}',
-                                  ),
-                                  backgroundColor: Colors.green.shade700,
-                                ),
-                              );
-                            }
-                          } catch (_) {
-                            messenger.clearSnackBars();
-                            messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Error al descargar el material.',
-                                ),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        },
-                  icon: isDownloading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.download_rounded),
-                  label: Text(
-                    isDownloading
-                        ? 'Descargando material...'
-                        : 'Descargar Material',
-                  ),
-                ),
-              );
-            },
-          ),
+          if (summary.materialType.toUpperCase() != 'LINK')
+            MaterialDownloadActions(
+              materialId: materialId,
+              versionId: currentVersion?.id,
+            ),
         ],
       ),
     );

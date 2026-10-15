@@ -7,6 +7,8 @@ import 'package:apuntesuct_mobile/features/materials/domain/repositories/materia
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'material_detail_response.dart';
+
 final dioMaterialRepositoryProvider = Provider<MaterialRepository>((ref) {
   final apiClient = ref.watch(apiclientProvider);
   return DioMaterialRepository(apiClient);
@@ -26,7 +28,7 @@ class DioMaterialRepository implements MaterialRepository {
         final payload = data['data'] is Map<String, dynamic>
             ? data['data'] as Map<String, dynamic>
             : data;
-        return MaterialDetail.fromJson(payload);
+        return materialDetailFromResponse(payload);
       }
       throw const FormatException('Formato de respuesta inválido.');
     } on DioException {

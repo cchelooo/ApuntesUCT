@@ -161,6 +161,29 @@ flutter test test/features/auth/presentation/login_dio_test.dart
 flutter test --coverage
 ```
 
+### Descarga y apertura de materiales
+
+El detalle HTTP adapta `currentVersion`, `originalFilename` y `fileSize`
+(cadena decimal de bytes) del DTO de INT2. La descarga incluye `versionId`
+cuando existe una versión actual y respeta el nombre UTF-8 de `Content-Disposition`.
+
+En Android/iOS el archivo se guarda en un subdirectorio único de la caché privada
+de la aplicación. Después aparece **Abrir archivo**, que solicita al sistema un
+visor para el MIME recibido. Los fallos de guardado permiten reintentar la descarga;
+los de apertura conservan el archivo y permiten volver a abrirlo. Si falta un visor,
+se informa en pantalla. Los materiales `LINK` no muestran la acción de descarga.
+La caché es temporal: el sistema puede eliminarla y requerir otra descarga.
+
+Para comprobar los plugins reales en un emulador o simulador:
+
+```bash
+flutter test integration_test/material_download_native_test.dart -d <device-id>
+```
+
+Esta prueba usa transporte HTTP controlado con un PDF válido y un nombre con
+acentos; el guardado y la apertura sí pasan por los plugins nativos. Acepta y
+verifica el mensaje específico de ausencia de visor cuando corresponde.
+
 ### Limpieza y mantenimiento del proyecto
 
 Si experimentas problemas con paquetes o artefactos de compilación obsoletos:
