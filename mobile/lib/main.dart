@@ -5,6 +5,9 @@ import 'package:apuntesuct_mobile/core/theme/app_theme.dart';
 import 'package:apuntesuct_mobile/features/auth/presentation/login_screen.dart';
 import 'package:apuntesuct_mobile/features/auth/presentation/register_screen.dart';
 import 'package:apuntesuct_mobile/features/catalog/presentation/screens/catalog_screen.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_detail_route.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_discovery_screen.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_upload_screen.dart';
 import 'package:apuntesuct_mobile/features/profile/presentation/profile_screen.dart';
 import 'package:apuntesuct_mobile/providers/theme_mode_provider.dart';
 import 'package:apuntesuct_mobile/features/home/presentation/home_screen.dart';
@@ -49,6 +52,29 @@ final GoRouter appRouter = GoRouter(
       path: '/library',
       name: 'library',
       builder: (context, state) => const PendingScreen(title: 'Biblioteca'),
+    ),
+    // Módulo Materiales (issue #279). Convive con /catalog sin reemplazarlo.
+    GoRoute(
+      path: '/materials',
+      name: 'materials',
+      builder: (context, state) => const MaterialDiscoveryScreen(),
+      routes: [
+        GoRoute(
+          path: 'upload',
+          name: 'material-upload',
+          builder: (context, state) => const MaterialUploadScreen(),
+        ),
+        GoRoute(
+          // Declarada después de 'upload' para que /materials/upload no
+          // sea capturado como :id.
+          path: ':id',
+          name: 'material-detail',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return MaterialDetailRoute(materialId: id);
+          },
+        ),
+      ],
     ),
   ],
 );

@@ -7,3 +7,4 @@ export * from './SearchPage';
 export * from './LibraryPage';
 export * from './MaterialDetailPage';
 export * from './NotFoundPage';
+export * from './MaterialUploadPage';

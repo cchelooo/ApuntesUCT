@@ -76,6 +76,8 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
 
   Future<void> _loadInitial() async {
     final requestId = ++_activeRequestId;
+    // La nueva consulta ya no espera la página anterior que será descartada.
+    state = state.copyWith(isLoadingMore: false);
     final repo = ref.read(materialsRepositoryProvider);
     final targetQuery = state.query;
     final targetSubject = state.selectedSubject;

@@ -8,12 +8,24 @@ const { configureRoutes } = require('../dist/configure-routes');
 const {
   MaterialController,
 } = require('../../material-service/dist/presentation/controllers/material.controller');
+const {
+  CreateMaterial,
+} = require('../../material-service/dist/application/use-cases/create-material');
+const {
+  MaterialAuthorProvider,
+} = require('../../material-service/dist/infrastructure/auth/material-author.provider');
+const {
+  PrismaService,
+} = require('../../material-service/dist/infrastructure/prisma/prisma.service');
+const {
+  ObjectStorage,
+} = require('../../material-service/dist/application/ports/object-storage.port');
 const { setupApp } = require('../../material-service/dist/setup-app');
 const {
   HttpExceptionFilter,
 } = require('../../material-service/dist/infrastructure/filters/http-exception.filter');
 
-// Uses the real HTTP controller and validators. POST is still a stub; no database or storage.
+// Uses the real HTTP controller, validators and use case with mocked persistence/storage.
 // Run after building both api-gateway and material-service (Node handles file-type ESM).
 test('Gateway → contrato HTTP real de Material', async (t) => {
   let material;
@@ -21,6 +33,35 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
   try {
     const materialModule = await Test.createTestingModule({
       controllers: [MaterialController],
+      providers: [
+        CreateMaterial,
+        {
+          provide: MaterialAuthorProvider,
+          useValue: {
+            resolve: () => ({
+              id: '11111111-1111-4111-8111-111111111111',
+              universityId: null,
+            }),
+          },
+        },
+        {
+          provide: ObjectStorage,
+          useValue: { save: async () => ({ storageKey: 'private/test' }) },
+        },
+        {
+          provide: PrismaService,
+          useValue: {
+            materialType: { findFirst: async () => ({ id: 'type-id' }) },
+            material: {
+              create: async ({ data }) => ({
+                ...data,
+                id: 'material-id',
+                createdAt: new Date(),
+              }),
+            },
+          },
+        },
+      ],
     }).compile();
     material = materialModule.createNestApplication();
     setupApp(material);
@@ -76,7 +117,7 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
           mime: 'application/octet-stream',
         });
         assert.equal(result.status, 201);
-        assert.equal(result.body.isSimulatedResponse, true);
+        assert.equal(result.body.isSimulatedResponse, false);
         assert.equal(result.body.data.title, 'Álgebra & cálculo');
         assert.equal(result.body.data.mimeType, 'application/pdf');
         assert.equal(result.body.data.fileSize, 100);
@@ -157,14 +198,21 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
         assert.equal(typeof result.body.message, 'string');
       },
     );
-    await t.test('rechaza texto aunque declare MIME PDF con 415', async () => {
-      const result = await post({
-        size: 100,
-        content: 'contenido de texto falso',
-      });
-      assert.equal(result.status, 415);
-      assert.equal(result.body.statusCode, 415);
-    });
+    await t.test(
+      'rechaza texto aunque declare MIME PDF con 415 conservando el formato',
+      async () => {
+        const result = await post({
+          size: 100,
+          content: 'contenido de texto falso',
+        });
+        assert.equal(result.status, 415);
+        assert.equal(result.body.statusCode, 415);
+        assert.equal(result.body.error, 'Unsupported Media Type');
+        assert.equal(result.body.path, '/api/v1/materials');
+        assert.equal(typeof result.body.message, 'string');
+        assert.ok(result.body.message.length > 0);
+      },
+    );
     await t.test(
       'permite LINK sin archivo y rechaza LINK con archivo',
       async () => {
