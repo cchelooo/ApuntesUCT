@@ -21,11 +21,7 @@ enum _UploadSource { file, link }
 /// Tipo), valida 15 MB y formatos en el dispositivo y es desplazable con
 /// teclado abierto en pantallas pequeñas.
 class MaterialUploadScreen extends StatefulWidget {
-  const MaterialUploadScreen({
-    super.key,
-    this.pickFile,
-    this.onValidSubmit,
-  });
+  const MaterialUploadScreen({super.key, this.pickFile, this.onValidSubmit});
 
   /// Seam para tests: reemplaza el selector nativo sin usar MethodChannels.
   final Future<MaterialPickedFile?> Function()? pickFile;
@@ -73,13 +69,8 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
   }
 
   List<CareerModel> get _visibleCareers {
-    if (_university == null) return _allCareers;
-    final filtered = _allCareers
-        .where((c) => c.universityId == _university!.id)
-        .toList();
-    // Los mocks solo cubren UCT: si la universidad no tiene carreras
-    // mockeadas se muestran todas para no bloquear la maqueta.
-    return filtered.isEmpty ? _allCareers : filtered;
+    if (_university == null) return [];
+    return _allCareers.where((c) => c.universityId == _university!.id).toList();
   }
 
   Future<void> _pickFile() async {
@@ -180,10 +171,7 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Subir Material'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Subir Material'), centerTitle: true),
       body: SafeArea(
         child: SingleChildScrollView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -196,9 +184,8 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
               children: [
                 Text(
                   'Comparte tus apuntes',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: Theme.of(context).textTheme.headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -308,9 +295,9 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
                     textInputAction: TextInputAction.next,
                     validator: (v) =>
                         MaterialUploadValidation.validateExternalLink(
-                      v,
-                      required: true,
-                    ),
+                          v,
+                          required: true,
+                        ),
                   ),
                 ],
                 const SizedBox(height: 16),
@@ -337,9 +324,8 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
                 const SizedBox(height: 24),
                 Text(
                   'Clasificación académica',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -359,21 +345,14 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
                       .map(
                         (u) => DropdownMenuItem(
                           value: u,
-                          child: Text(
-                            u.name,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                          child: Text(u.name, overflow: TextOverflow.ellipsis),
                         ),
                       )
                       .toList(),
                   onChanged: (u) {
                     if (u?.id == _university?.id) return;
                     setState(() {
-                      // Cascada: todo lo elegido bajo otra universidad queda
-                      // obsoleto. La comparación es por universityId y no por
-                      // pertenencia a la lista visible, porque con mocks la
-                      // lista cae al fallback (todas) y conservaría una
-                      // carrera UCT bajo UFRO: clasificación incompatible.
+                      // Todo lo elegido bajo otra universidad queda obsoleto.
                       _university = u;
                       _career = null;
                       _subject = null;
@@ -390,28 +369,42 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
                   key: ValueKey('upload-career-${_university?.id}'),
                   initialValue: _career,
                   isExpanded: true,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Carrera',
-                    prefixIcon: Icon(Icons.school_outlined),
+                    prefixIcon: const Icon(Icons.school_outlined),
+                    helperText: _university == null
+                        ? 'Selecciona una universidad.'
+                        : _visibleCareers.isEmpty
+                        ? 'No hay carreras disponibles para esta universidad.'
+                        : null,
+                    helperMaxLines: 2,
                   ),
                   items: _visibleCareers
                       .map(
                         (c) => DropdownMenuItem(
                           value: c,
-                          child: Text(
-                            c.name,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                          child: Text(c.name, overflow: TextOverflow.ellipsis),
                         ),
                       )
                       .toList(),
-                  onChanged: (c) => setState(() => _career = c),
+                  onChanged: _visibleCareers.isEmpty
+                      ? null
+                      : (c) {
+                          if (c?.id == _career?.id) return;
+                          setState(() {
+                            _career = c;
+                            _subject = null;
+                            _professor = null;
+                          });
+                        },
                   validator: (v) =>
                       v == null ? 'La carrera es obligatoria.' : null,
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<SubjectModel>(
-                  key: ValueKey('upload-subject-${_university?.id}'),
+                  key: ValueKey(
+                    'upload-subject-${_university?.id}-${_career?.id}',
+                  ),
                   initialValue: _subject,
                   isExpanded: true,
                   decoration: const InputDecoration(
@@ -422,20 +415,27 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
                       .map(
                         (s) => DropdownMenuItem(
                           value: s,
-                          child: Text(
-                            s.name,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                          child: Text(s.name, overflow: TextOverflow.ellipsis),
                         ),
                       )
                       .toList(),
-                  onChanged: (s) => setState(() => _subject = s),
+                  onChanged: _career == null
+                      ? null
+                      : (s) {
+                          if (s?.id == _subject?.id) return;
+                          setState(() {
+                            _subject = s;
+                            _professor = null;
+                          });
+                        },
                   validator: (v) =>
                       v == null ? 'La asignatura es obligatoria.' : null,
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<ProfessorModel?>(
-                  key: ValueKey('upload-professor-${_university?.id}'),
+                  key: ValueKey(
+                    'upload-professor-${_university?.id}-${_career?.id}-${_subject?.id}',
+                  ),
                   initialValue: _professor,
                   isExpanded: true,
                   decoration: const InputDecoration(
@@ -450,14 +450,13 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
                     ..._professors.map(
                       (p) => DropdownMenuItem<ProfessorModel?>(
                         value: p,
-                        child: Text(
-                          p.name,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        child: Text(p.name, overflow: TextOverflow.ellipsis),
                       ),
                     ),
                   ],
-                  onChanged: (p) => setState(() => _professor = p),
+                  onChanged: _subject == null
+                      ? null
+                      : (p) => setState(() => _professor = p),
                 ),
                 const SizedBox(height: 16),
                 AppTextField(
@@ -510,9 +509,9 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
                     textInputAction: TextInputAction.done,
                     validator: (v) =>
                         MaterialUploadValidation.validateExternalLink(
-                      v,
-                      required: false,
-                    ),
+                          v,
+                          required: false,
+                        ),
                   ),
                 ],
                 const SizedBox(height: 24),
@@ -531,9 +530,7 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
                 // Espacio extra para que el teclado no tape el botón
                 // en pantallas pequeñas (320 × 568).
                 SizedBox(
-                  height: MediaQuery.viewInsetsOf(context).bottom > 0
-                      ? 24
-                      : 8,
+                  height: MediaQuery.viewInsetsOf(context).bottom > 0 ? 24 : 8,
                 ),
               ],
             ),
