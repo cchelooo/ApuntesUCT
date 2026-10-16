@@ -7,6 +7,7 @@ import {
   createMaterial,
   downloadMaterial,
   fetchMaterial,
+  isMaterialNotFound,
 } from '../../infrastructure/material/materialApi';
 
 export const materialQueryKeys = {
@@ -20,11 +21,16 @@ export const materialQueryKeys = {
 
 export { useMaterialsQuery } from './useMaterialsQuery';
 
+export const MATERIAL_DETAIL_RETRY_DELAY_MS = 500;
+
 export function useMaterialQuery(materialId: string) {
   return useQuery({
     queryKey: materialQueryKeys.detail(materialId),
     queryFn: ({ signal }) => fetchMaterial(materialId, signal),
     enabled: Boolean(materialId),
+    retry: (failureCount, error) =>
+      !isMaterialNotFound(error) && failureCount < 1,
+    retryDelay: MATERIAL_DETAIL_RETRY_DELAY_MS,
   });
 }
 

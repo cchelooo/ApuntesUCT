@@ -9,7 +9,7 @@ import {
   CatalogPage,
   SearchPage,
   LibraryPage,
-  MaterialDetailPage,
+  MaterialDetailRoute,
   NotFoundPage,
   MaterialUploadPage,
 } from '../presentation/pages';
@@ -26,7 +26,7 @@ export const router = createBrowserRouter([
       { path: 'search', element: <SearchPage /> },
       { path: 'library', element: <LibraryPage /> },
       { path: 'materials/upload', element: <MaterialUploadPage /> },
-      { path: 'material/:materialId', element: <MaterialDetailPage /> },
+      { path: 'material/:materialId', element: <MaterialDetailRoute /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
