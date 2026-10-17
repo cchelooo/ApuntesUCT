@@ -1,13 +1,21 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
+const { Readable } = require('node:stream');
 const CFB = require('cfb');
 const { Test } = require('@nestjs/testing');
 const { ConfigService } = require('@nestjs/config');
 const { AppModule } = require('../dist/app.module');
 const { configureRoutes } = require('../dist/configure-routes');
+const { corsOptions } = require('../dist/cors');
 const {
   MaterialController,
 } = require('../../material-service/dist/presentation/controllers/material.controller');
+const {
+  MaterialsController,
+} = require('../../material-service/dist/presentation/materials/materials.controller');
+const {
+  MaterialsService,
+} = require('../../material-service/dist/application/services/materials.service');
 const {
   CreateMaterial,
 } = require('../../material-service/dist/application/use-cases/create-material');
@@ -25,16 +33,31 @@ const {
   HttpExceptionFilter,
 } = require('../../material-service/dist/infrastructure/filters/http-exception.filter');
 
-// Uses the real HTTP controller, validators and use case with mocked persistence/storage.
+// Uses the real HTTP controllers, validators and use cases with mocked persistence/storage.
+// Reproduces the acceptance topology: clients only use the Gateway on 3000, which proxies
+// to Material on its reserved 3003 for both multipart uploads and binary downloads.
 // Run after building both api-gateway and material-service (Node handles file-type ESM).
 test('Gateway → contrato HTTP real de Material', async (t) => {
   let material;
   let gateway;
   try {
+    const binaryContent = Buffer.concat([
+      Buffer.from('%PDF-1.7\n'),
+      Buffer.from([0x00, 0x01, 0x7f, 0x80, 0xff, 0x0d, 0x0a, 0x42]),
+    ]);
+    let lastSavedBuffer = Buffer.alloc(0);
+    let materialRow = { id: '11111111-1111-4111-8111-111111111111' };
+    const versionRow = {
+      storageKey: 'private/calculo-v1',
+      mimeType: 'application/pdf',
+      originalFilename: 'cálculo.pdf',
+      fileSize: binaryContent.length,
+    };
     const materialModule = await Test.createTestingModule({
-      controllers: [MaterialController],
+      controllers: [MaterialController, MaterialsController],
       providers: [
         CreateMaterial,
+        MaterialsService,
         {
           provide: MaterialAuthorProvider,
           useValue: {
@@ -46,7 +69,15 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
         },
         {
           provide: ObjectStorage,
-          useValue: { save: async () => ({ storageKey: 'private/test' }) },
+          useValue: {
+            save: async (content) => {
+              lastSavedBuffer = Buffer.isBuffer(content)
+                ? content
+                : Buffer.from(content);
+              return { storageKey: 'private/test' };
+            },
+            get: async () => Readable.from([binaryContent]),
+          },
         },
         {
           provide: PrismaService,
@@ -58,7 +89,9 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
                 id: 'material-id',
                 createdAt: new Date(),
               }),
+              findFirst: async () => materialRow,
             },
+            materialVersion: { findFirst: async () => versionRow },
           },
         },
       ],
@@ -66,20 +99,21 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
     material = materialModule.createNestApplication();
     setupApp(material);
     material.useGlobalFilters(new HttpExceptionFilter());
-    await material.listen(0, '127.0.0.1');
-    const target = await material.getUrl();
+    // Material escucha en su puerto reservado; el Gateway usa ese valor por defecto.
+    await material.listen(3003, '127.0.0.1');
     const gatewayModule = await Test.createTestingModule({
       imports: [AppModule],
     })
       .overrideProvider(ConfigService)
-      .useValue({
-        get: (key) => (key === 'MATERIAL_SERVICE_URL' ? target : undefined),
-      })
+      .useValue({ get: () => undefined })
       .compile();
     gateway = gatewayModule.createNestApplication();
+    // Aplica la misma configuración CORS que producción (main.ts).
+    gateway.enableCors(corsOptions);
     configureRoutes(gateway);
-    await gateway.listen(0, '127.0.0.1');
-    const base = await gateway.getUrl();
+    // El cliente solo conoce el puerto 3000 del Gateway.
+    await gateway.listen(3000, '127.0.0.1');
+    const base = 'http://127.0.0.1:3000';
     const maxSize = 15 * 1024 * 1024;
     const post = async ({
       bytes,
@@ -122,6 +156,7 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
         assert.equal(result.body.data.mimeType, 'application/pdf');
         assert.equal(result.body.data.fileSize, 100);
         assert.equal(result.body.data.status, 'PENDING_REVIEW');
+        assert.equal(lastSavedBuffer.length, 100);
       },
     );
     const officeFile = (streams, zip = false) => {
@@ -163,12 +198,11 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
         if (zip)
           streams['[Content_Types].xml'] =
             `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Override PartName="/${Object.keys(streams)[0]}" ContentType="${mime}.main+xml"/></Types>`;
-        const result = await post({
-          bytes: officeFile(streams, zip),
-          mime: 'application/octet-stream',
-        });
+        const bytes = officeFile(streams, zip);
+        const result = await post({ bytes, mime: 'application/octet-stream' });
         assert.equal(result.status, 201);
         assert.equal(result.body.data.mimeType, mime);
+        assert.ok(lastSavedBuffer.equals(bytes));
       });
     }
     await t.test('rechaza XLS disfrazado de DOC y CFB corrupto', async () => {
@@ -187,6 +221,7 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
       const result = await post({ size: maxSize });
       assert.equal(result.status, 201);
       assert.equal(result.body.data.fileSize, maxSize);
+      assert.equal(lastSavedBuffer.length, maxSize);
     });
     await t.test(
       'devuelve 413 por un byte de exceso conservando el formato de error',
@@ -233,6 +268,134 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
         const result = await post({ fields: { year: 'abc' }, size: 100 });
         assert.equal(result.status, 400);
         assert.ok(Array.isArray(result.body.message));
+      },
+    );
+    await t.test(
+      'descarga el binario íntegro pasando por el Gateway',
+      async () => {
+        materialRow = { id: '11111111-1111-4111-8111-111111111111' };
+        const response = await fetch(
+          `${base}/api/v1/materials/11111111-1111-4111-8111-111111111111/download`,
+          { headers: { Origin: 'http://localhost:5173' } },
+        );
+        assert.equal(response.status, 200);
+        assert.equal(response.headers.get('content-type'), 'application/pdf');
+        assert.equal(
+          response.headers.get('content-disposition'),
+          `attachment; filename="calculo.pdf"; filename*=UTF-8''c%C3%A1lculo.pdf`,
+        );
+        assert.equal(
+          response.headers.get('content-length'),
+          String(binaryContent.length),
+        );
+        // La configuración CORS por defecto permite cualquier origen (*) y expone
+        // Content-Disposition para que Web/Mobile puedan leer el nombre del archivo.
+        assert.equal(response.headers.get('access-control-allow-origin'), '*');
+        const exposed =
+          response.headers.get('access-control-expose-headers') || '';
+        assert.ok(exposed.toLowerCase().includes('content-disposition'));
+        const received = Buffer.from(await response.arrayBuffer());
+        assert.ok(received.equals(binaryContent));
+      },
+    );
+    await t.test('propaga el 404 del material a través del Gateway', async () => {
+      materialRow = null;
+      const response = await fetch(
+        `${base}/api/v1/materials/22222222-2222-4222-8222-222222222222/download`,
+      );
+      assert.equal(response.status, 404);
+      assert.equal((await response.json()).statusCode, 404);
+    });
+    await t.test(
+      'rechaza un UUID inválido con 400 conservando el formato',
+      async () => {
+        const response = await fetch(`${base}/api/v1/materials/nope/download`);
+        assert.equal(response.status, 400);
+        assert.equal((await response.json()).statusCode, 400);
+      },
+    );
+    await t.test('preflight OPTIONS para subida conserva CORS', async () => {
+      const response = await fetch(`${base}/api/v1/materials`, {
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'http://localhost:5173',
+          'Access-Control-Request-Method': 'POST',
+          'Access-Control-Request-Headers': 'Authorization, Content-Type',
+        },
+      });
+      assert.ok(response.status === 200 || response.status === 204);
+      const allowHeaders =
+        response.headers.get('access-control-allow-headers') || '';
+      assert.ok(allowHeaders.toLowerCase().includes('authorization'));
+      assert.ok(allowHeaders.toLowerCase().includes('content-type'));
+    });
+    await t.test(
+      'conserva multipart y bytes en envío chunked sin Content-Length',
+      async () => {
+        const boundary = '----chunkedtest' + Date.now();
+        const content = '%PDF-1.4\nchunked-bytes-test';
+        const bodyText =
+          '--' +
+          boundary +
+          '\r\n' +
+          'Content-Disposition: form-data; name="title"\r\n\r\nChunked PDF\r\n' +
+          '--' +
+          boundary +
+          '\r\n' +
+          'Content-Disposition: form-data; name="year"\r\n\r\n2026\r\n' +
+          '--' +
+          boundary +
+          '\r\n' +
+          'Content-Disposition: form-data; name="type"\r\n\r\nDOCUMENT\r\n' +
+          '--' +
+          boundary +
+          '\r\n' +
+          'Content-Disposition: form-data; name="subjectId"\r\n\r\nSUBJ-CH\r\n' +
+          '--' +
+          boundary +
+          '\r\n' +
+          'Content-Disposition: form-data; name="file"; filename="chunked.pdf"\r\n' +
+          'Content-Type: application/pdf\r\n\r\n' +
+          content +
+          '\r\n' +
+          '--' +
+          boundary +
+          '--\r\n';
+        const body = Buffer.from(bodyText);
+        const http = await import('node:http');
+        const gatewayUrl = new URL(base);
+        const chunks = [];
+        for (let i = 0; i < body.length; i += 10)
+          chunks.push(body.slice(i, i + 10));
+        const resp = await new Promise((resolve, reject) => {
+          const r = http.request(
+            {
+              hostname: gatewayUrl.hostname,
+              port: gatewayUrl.port,
+              path: '/api/v1/materials',
+              method: 'POST',
+              headers: {
+                'Content-Type':
+                  'multipart/form-data; boundary=' + boundary,
+                'Transfer-Encoding': 'chunked',
+                Authorization: 'Bearer test-token',
+              },
+            },
+            (res) => {
+              let data = '';
+              res.on('data', (c) => (data += c));
+              res.on('end', () =>
+                resolve({ status: res.statusCode, body: data }),
+              );
+            },
+          );
+          r.on('error', reject);
+          for (const c of chunks) r.write(c);
+          r.end();
+        });
+        assert.equal(resp.status, 201);
+        assert.ok(Buffer.isBuffer(lastSavedBuffer));
+        assert.ok(lastSavedBuffer.equals(Buffer.from(content)));
       },
     );
     await t.test(
