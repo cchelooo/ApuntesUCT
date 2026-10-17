@@ -11,7 +11,6 @@ import type { RawMaterialPage } from './rawMaterial';
 import type { MaterialPage } from '../../domain/material/materialPage';
 
 export interface MaterialRequestOptions {
-  /** Passed by the caller; real authentication is still pending in backend. */
   accessToken?: string;
   signal?: AbortSignal;
 }
@@ -24,6 +23,32 @@ function getMaterialsUrl(path = ''): string {
   const baseUrl = envUrl ?? 'http://localhost:3000/api/v1';
 
   return `${baseUrl.replace(/\/+$/, '')}/materials${path}`;
+}
+
+export const DEFAULT_MATERIALS_PAGE_SIZE = 20;
+
+export type MaterialsParams = ListMaterialsParams;
+
+export class MaterialRequestError extends Error implements MaterialApiError {
+  status?: number;
+  isNetworkError?: boolean;
+
+  constructor(
+    message: string,
+    init: { status?: number; isNetworkError?: boolean }
+  ) {
+    super(message);
+    this.name = 'MaterialRequestError';
+    this.status = init.status;
+    this.isNetworkError = init.isNetworkError;
+  }
+}
+
+export function isMaterialNotFound(error: unknown): boolean {
+  return (
+    error instanceof MaterialRequestError &&
+    (error.status === 404 || error.status === 400)
+  );
 }
 
 async function throwApiError(response: Response): Promise<never> {
@@ -48,29 +73,12 @@ async function throwApiError(response: Response): Promise<never> {
     }
   }
 
-  throw new Error(
+  throw new MaterialRequestError(
     `Error al consultar Material Service (status ${response.status})${
       message ? `: ${message}` : ''
-    }`
+    }`,
+    { status: response.status }
   );
-}
-
-export const DEFAULT_MATERIALS_PAGE_SIZE = 20;
-
-export type MaterialsParams = ListMaterialsParams;
-export class MaterialRequestError extends Error implements MaterialApiError {
-  status?: number;
-  isNetworkError?: boolean;
-
-  constructor(
-    message: string,
-    init: { status?: number; isNetworkError?: boolean }
-  ) {
-    super(message);
-    this.name = 'MaterialRequestError';
-    this.status = init.status;
-    this.isNetworkError = init.isNetworkError;
-  }
 }
 
 function isRawMaterialPage(value: unknown): value is RawMaterialPage {
@@ -179,15 +187,11 @@ export async function uploadMaterial(
 
   if (!response.ok) {
     let errorMessage = `No se pudo subir el material (status ${response.status})`;
-    try {
-      const data = await response.json();
-      if (data && typeof data === 'object' && 'message' in data) {
-        errorMessage = Array.isArray(data.message)
-          ? data.message.join(', ')
-          : String(data.message);
-      }
-    } catch {
-      // Sin cuerpo JSON
+    const data: unknown = await response.json().catch(() => null);
+    if (data && typeof data === 'object' && 'message' in data) {
+      errorMessage = Array.isArray(data.message)
+        ? data.message.join(', ')
+        : String(data.message);
     }
 
     throw new MaterialRequestError(errorMessage, {
@@ -198,7 +202,10 @@ export async function uploadMaterial(
   return response.json();
 }
 
-/** Provisional route: backend has not published the detail contract yet. */
+export function buildMaterialDownloadUrl(materialId: string): string {
+  return getMaterialsUrl(`/${encodeURIComponent(materialId)}/download`);
+}
+
 export async function fetchMaterial(
   materialId: string,
   signal?: AbortSignal
@@ -257,11 +264,8 @@ export async function createMaterial(
   return (await response.json()) as CreateMaterialResponse;
 }
 
-/** Provisional route: return the response until backend defines the download format. */
 export async function downloadMaterial(materialId: string): Promise<Response> {
-  const response = await fetch(
-    getMaterialsUrl(`/${encodeURIComponent(materialId)}/download`)
-  );
+  const response = await fetch(buildMaterialDownloadUrl(materialId));
 
   if (!response.ok) {
     await throwApiError(response);

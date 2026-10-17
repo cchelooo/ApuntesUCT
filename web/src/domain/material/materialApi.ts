@@ -69,5 +69,16 @@ export interface CreateMaterialResponse {
   data: CreatedMaterial;
 }
 
-// Pending backend contract: do not assume that detail has the list shape.
-export type MaterialDetailResponse = unknown;
+export interface MaterialCurrentVersion {
+  id: string;
+  versionNumber: number;
+  originalFilename: string;
+  mimeType: string;
+  fileSize: string;
+  createdAt: string;
+}
+
+export interface MaterialDetailResponse extends MaterialSummary {
+  externalLink: string | null;
+  currentVersion: MaterialCurrentVersion | null;
+}
