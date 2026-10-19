@@ -1,4 +1,5 @@
-export type MaterialKind = 'DOCUMENT' | 'PRESENTATION' | 'LINK';
+export type MaterialKind =
+  'DOCUMENT' | 'PRESENTATION' | 'LINK' | 'EXAM' | 'SUMMARY';
 
 export interface MaterialSummary {
   id: string;
@@ -38,33 +39,46 @@ export interface CreateMaterialRequest {
   type: MaterialKind;
   subjectId: string;
   careerId?: string;
-  professor?: string;
+  professorId?: string;
   externalLink?: string;
   file?: File;
 }
 
 export interface CreatedMaterial {
+  status: 'PENDING_REVIEW';
+  universityId?: string | null;
   id: string;
   title: string;
-  description: string | null;
+  description?: string | null;
   year: string;
   type: MaterialKind;
   subjectId: string;
   careerId?: string | null;
-  professor?: string | null;
-  fileUrl: string | null;
-  fileSize: number | null;
-  mimeType: string | null;
-  externalLink: string | null;
+  professorId?: string | null;
+  fileUrl?: string | null;
+  fileSize?: number | null;
+  mimeType?: string | null;
+  externalLink?: string | null;
   createdAt: string;
 }
 
 export interface CreateMaterialResponse {
   status: 'success';
-  isSimulatedResponse?: boolean;
+  isSimulatedResponse: boolean;
   message: string;
   data: CreatedMaterial;
 }
 
-// The backend has not published a separate detail schema yet.
-export type MaterialDetailResponse = MaterialSummary;
+export interface MaterialCurrentVersion {
+  id: string;
+  versionNumber: number;
+  originalFilename: string;
+  mimeType: string;
+  fileSize: string;
+  createdAt: string;
+}
+
+export interface MaterialDetailResponse extends MaterialSummary {
+  externalLink: string | null;
+  currentVersion: MaterialCurrentVersion | null;
+}

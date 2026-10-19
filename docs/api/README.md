@@ -5,7 +5,7 @@ probar la API sin escribir código.
 
 | Archivo                               | Contenido                                                                                               |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `apuntesuct.postman_collection.json`  | Colección Postman v2.1 con 11 peticiones agrupadas en `API Gateway`, `Auth Service` y `Catalog Service` |
+| `apuntesuct.postman_collection.json`  | Colección Postman v2.1 con 23 peticiones agrupadas en `API Gateway`, `Auth Service` y `Catalog Service` |
 | `apuntesuct.postman_environment.json` | Environment `ApuntesUCT local` con las URLs y variables                                                 |
 
 ## Importar
@@ -26,10 +26,8 @@ seleccionar ambos archivos. Insomnia crea el environment y los request groups.
 | `mockEmail`                             | `estudiante@alu.uct.cl` | Login mock: acepta cualquier correo válido                                                                                                                                                                                                                            |
 | `mockPassword`                          | `demo`                  | Login mock: al menos un carácter no blanco                                                                                                                                                                                                                            |
 | `accessToken`                           | _(vacío)_               | **No está en el environment a propósito.** Lo rellena el test del login y vive solo en la colección: en Postman la variable de environment tiene prioridad sobre la de colección, así que si estuviera aquí (vacía) taparía el token y se enviaría `Bearer ` sin nada |
-| `universityId`, `careerId`, `subjectId` | UUID de ejemplo         | Sustituye por los ids reales de `GET /api/v1/catalog`                                                                                                                                                                                                                 |
-| `professorId`                           | UUID de ejemplo         | **No** viene en `GET /api/v1/catalog`: obténlo de `GET /api/v1/catalog/filter` sin filtros, en el array `professors` de cada asignatura                                                                                                                               |
-| `catalogYear`                           | `2026`                  | Parámetro `year` del filtro (responde `501`)                                                                                                                                                                                                                          |
-| `catalogType`                           | `apunte`                | Parámetro `type` del filtro (responde `501`)                                                                                                                                                                                                                          |
+| `universityId`, `careerId`, `subjectId` | UUID de ejemplo         | Sustituye por los ids reales de `GET /api/v1/catalog` o de los listados de selectores                                                                                                                                                                                 |
+| `professorId`                           | UUID de ejemplo         | **No** viene en `GET /api/v1/catalog`: obténlo de `GET /api/v1/catalog/professors?subjectId=…` o del array `professors` de cada asignatura en `GET /api/v1/catalog/filter` sin filtros                                                                                |
 
 ## Requisitos para ejecutar las peticiones
 
@@ -52,33 +50,39 @@ seleccionar ambos archivos. Insomnia crea el environment y los request groups.
   peticiones de login para que el token quede disponible: la variable
   `accessToken` se guarda **en la colección**, no en el environment, para que un
   valor vacío del environment no la sobrescriba.
-- **Filtro del catálogo**: el orden jerárquico es obligatorio
+- **Filtro del catálogo**: el orden jerárquico de 4 niveles es obligatorio
   (`universityId` → `careerId` → `subjectId` → `professorId`); sin el orden
   completo responde `400 Bad Request`.
+- **Listados de selectores académicos**: `GET /api/v1/catalog/universities`,
+  `/catalog/careers?universityId=`, `/catalog/subjects?careerId=` y
+  `/catalog/professors?subjectId=` devuelven entidades **activas** ordenadas por
+  nombre y son la fuente de ids para los selectores en cascada. El filtro
+  (`/catalog/filter`) los incluye como peticiones de la colección.
 - **`professorId`**: `GET /api/v1/catalog` devuelve el árbol
   universidad → carrera → asignatura, **sin profesores**. Los UUID de profesor se
-  obtienen de `GET /api/v1/catalog/filter` sin filtros, que responde las
-  asignaturas con su array `professors`.
-- **`year` y `type`**: responden `501 Not Implemented` porque dependen del módulo
-  de Recursos. La colección incluye una petición para comprobarlos.
+obtienen de `GET /api/v1/catalog/professors?subjectId=` o de
+  `GET /api/v1/catalog/filter` sin filtros, que responde las asignaturas con su
+  array `professors`.
+- **Alcance del dominio**: Catalog solo modela la jerarquía hasta Profesor. Los
+  metadatos de materiales (`year`, `type`) pertenecen a Material Service y la
+  búsqueda por año/tipo corresponde a Search Service, así que no forman parte del
+  contrato de Catalog (los parámetros ajenos se ignoran vía `whitelist`).
 - **Rutas proxeadas**: el gateway enruta `/api/v1/auth`, `/api/v1/catalog`,
   `/api/v1/materials` y `/api/v1/search` con middleware, así que no aparecen en
   su OpenAPI. El generador añade explícitamente las de Auth y Catalog (health,
-  login, catálogo y filtro): Material y Search todavía **no** están en la
-  colección, así que para probarlas hay que llamarlas por su cuenta contra el
-  gateway. Cualquiera de las rutas responde `502` si el servicio no responde. El
-  gateway solo reescribe el health de Auth (`/api/v1/auth/health` →
-  `/api/v1/health` en Auth); los healthchecks de Catalog, Material y Search están
-  en sus puertos directos, sin equivalente vía gateway. Sobre Material y Search
-  conviene distinguir: con `search-service` arriba, `GET /api/v1/search` responde
-  `200` con `results: []` porque su búsqueda sigue siendo un stub; con
-  `material-service` arriba, `GET /api/v1/materials` responde `200` con el
-  listado paginado (vacío si no hay datos). El `502` del gateway solo corresponde
-  al servicio caído.
-- **Parámetros del filtro**: todavía no están documentados en el OpenAPI del
-  Catalog Service (a `FilterCatalogDto` le faltan los `@ApiProperty`), así que el
-  generador los declara a mano. Al documentarlos en el DTO, la siguiente
-  exportación los tomaré del spec.
+  login, catálogo, filtro y listados de selectores); Material y Search todavía
+  **no** están en la colección, así que para probarlas hay que llamarlas por su
+  cuenta contra el gateway. Cualquiera de las rutas responde `502` si el servicio
+  no responde. El gateway solo reescribe el health de Auth
+  (`/api/v1/auth/health` → `/api/v1/health` en Auth); los healthchecks de Catalog,
+  Material y Search están en sus puertos directos, sin equivalente vía gateway.
+  Sobre Material y Search conviene distinguir: con `search-service` arriba,
+  `GET /api/v1/search` responde `200` con `results: []` porque su búsqueda sigue
+  siendo un stub; con `material-service` arriba, `GET /api/v1/materials` responde
+  `200` con el listado paginado (vacío si no hay datos). El `502` del gateway solo
+  corresponde al servicio caído.
+- **Parámetros del filtro**: `FilterCatalogDto` documenta los cuatro niveles con
+  `@ApiProperty`, así que la colección los toma directamente del OpenAPI.
 
 ## Regenerar la colección
 

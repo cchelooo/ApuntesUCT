@@ -165,8 +165,6 @@ Microservicio encargado de la estructura académica: Universidades, Carreras, As
   - `careerId` (UUID, opcional — requiere `universityId`)
   - `subjectId` (UUID, opcional — requiere `careerId`)
   - `professorId` (UUID, opcional — requiere `subjectId`)
-  - `year` (Int `2000-2100`, opcional — requiere `professorId`, actualmente *501 Not Implemented*)
-  - `type` (String, opcional — requiere `year`, actualmente *501 Not Implemented*)
 - **Comportamiento**:
   - Sin parámetros: Devuelve todas las asignaturas.
   - Con filtros válidos: Devuelve asignaturas coincidentes con sus relaciones (`career`, `university`, `professors`).
@@ -201,18 +199,18 @@ Microservicio encargado de la estructura académica: Universidades, Carreras, As
 
 ---
 
-### 3.2. Endpoints REST Individuales Requeridos para Selectores en Mobile
+### 3.2. Endpoints REST Individuales para Selectores en Mobile
 
-Para poblar dinámicamente los dropdowns en los filtros de búsqueda y el formulario de subida de material sin transferir árboles jerárquicos pesados, Mobile requiere (o solicita formalmente a INT2) los siguientes endpoints independientes:
+Para poblar dinámicamente los dropdowns en los filtros de búsqueda y el formulario de subida de material sin transferir árboles jerárquicos pesados, el Catalog Service expone los siguientes endpoints independientes (#221). Devuelven únicamente entidades **activas** ordenadas por nombre:
 
-| Método | Endpoint Requerido | Query / Params | Respuesta esperada | Modelo Mobile |
+| Método | Endpoint | Query / Params | Respuesta esperada | Modelo Mobile |
 |---|---|---|---|---|
 | **GET** | `/catalog/universities` | — | `UniversityModel[]` | `UniversityModel` |
 | **GET** | `/catalog/careers` | `?universityId=<uuid>` | `CareerModel[]` filtrado por universidad | `CareerModel` |
 | **GET** | `/catalog/subjects` | `?careerId=<uuid>` | `SubjectModel[]` filtrado por carrera | `SubjectModel` |
 | **GET** | `/catalog/professors` | `?subjectId=<uuid>` | `ProfessorModel[]` asociados a la asignatura | `ProfessorModel` |
 
-> 💡 **Estrategia de compatibilidad provisional**: Mientras Backend no exponga las rutas REST individuales arriba listadas, Mobile puede consumir `GET /catalog/filter` y extraer en memoria las listas únicas de Universidades, Carreras y Profesores a partir del árbol de asignaturas devuelto.
+> 💡 El filtro por el padre (`universityId`, `careerId`, `subjectId`) es **opcional**: sin él, el listado devuelve todas las entidades activas de ese nivel.
 
 ---
 
@@ -226,10 +224,10 @@ Para poblar dinámicamente los dropdowns en los filtros de búsqueda y el formul
 | **Auth** | POST | `/api/v1/auth/logout` | ⏳ Pendiente |  Limpieza local implementada | **P2 (Media)** |
 | **Auth** | POST | `/api/v1/auth/refresh` | ⏳ Pendiente |  Interceptor preparado | **P2 (Media)** |
 | **Catalog**| GET | `/api/v1/catalog/filter` |  Implementado (#71, #97) |  Consumo en Catálogo | **P0 (Crítica)** |
-| **Catalog**| GET | `/api/v1/catalog/universities` | ⏳ Solicitado (usar `/filter` alternativo)|  Modelo Dart definido | **P1 (Alta)** |
-| **Catalog**| GET | `/api/v1/catalog/careers` | ⏳ Solicitado (usar `/filter` alternativo)|  Modelo Dart definido | **P1 (Alta)** |
-| **Catalog**| GET | `/api/v1/catalog/subjects` | ⏳ Solicitado (usar `/filter` alternativo)|  Modelo Dart definido | **P1 (Alta)** |
-| **Catalog**| GET | `/api/v1/catalog/professors`| ⏳ Solicitado (usar `/filter` alternativo)|  Modelo Dart definido | **P1 (Alta)** |
+| **Catalog**| GET | `/api/v1/catalog/universities` |  Implementado (#221) |  Modelo Dart definido | **P1 (Alta)** |
+| **Catalog**| GET | `/api/v1/catalog/careers` |  Implementado (#221) |  Modelo Dart definido | **P1 (Alta)** |
+| **Catalog**| GET | `/api/v1/catalog/subjects` |  Implementado (#221) |  Modelo Dart definido | **P1 (Alta)** |
+| **Catalog**| GET | `/api/v1/catalog/professors`|  Implementado (#221) |  Modelo Dart definido | **P1 (Alta)** |
 
 ---
 
@@ -267,12 +265,23 @@ diferencia con la sección 5 es qué responden hoy con el servicio levantado.
   existe y responde `200`, pero la búsqueda desacoplada es trabajo en curso.
 - El healthcheck del servicio está en `http://localhost:3005/api/v1/health`.
 
-### Material Service — `/api/v1/materials` (enrutado, listado implementado)
+### Material Service — `/api/v1/materials` (enrutado, subida, listado y descarga implementados)
 - `GET /materials` — Listado paginado ya implementado (#318): devuelve
   `{ "items": [], "page": 1, "pageSize": 20, "total": 0 }` con la base vacía.
   Acepta `page` y `pageSize`; no hace búsqueda textual.
-- `POST /materials` — Subida multipart declarada como **stub** en el contrato del
-  servicio (máx. 15MB, PDF/Word/PPT, o `externalLink` para tipo `LINK`).
+- `GET /materials/:id/download` — Descarga ya implementada (#236): resuelve la
+  **última versión** publicada y la transmite como `StreamableFile` con
+  `Content-Type` del archivo y
+  `Content-Disposition: attachment; filename="<ASCII>"; filename*=UTF-8''<nombre original>`.
+  Acepta `versionId` (query, UUID opcional) para pedir una versión concreta.
+  - `id` inválido (no UUID) → `400`.
+  - Material inexistente/no publicado o versión inexistente → `404`.
+  - Almacenamiento no disponible → `503`.
+  - La clave interna de MinIO nunca viaja al cliente.
+- `POST /materials` — Subida multipart ya implementada (#233) y validada a través del
+  Gateway junto a la descarga binaria (#237): máx. 15MB, PDF/Word/PPT, o `externalLink`
+  para tipo `LINK`. El proxy conserva el cuerpo `multipart/form-data` y los binarios sin
+  alterarlos.
 - El healthcheck del servicio está en `http://localhost:3003/api/v1/health` y su
   Swagger en `http://localhost:3003/api/docs`.
 - El `502` del Gateway (`Material Service no disponible`) solo aparece cuando el

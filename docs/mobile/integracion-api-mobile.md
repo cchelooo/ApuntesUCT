@@ -2,6 +2,17 @@
 
 **INT2 → INT4 · Sprint 1** · Actualizado tras revisión de la entrega de INT4.
 
+> **Actualización de red de Sprint 2 (#272, 7 de octubre de 2026):** Catalog y
+> el listado básico de Material reutilizan `apiclientProvider`, con
+> `ApiConfig.gatewayBaseUrl` como única entrada HTTP. Mobile ya no lee
+> `CATALOG_SERVICE_URL`. La conexión real y los errores 502 se verificaron contra
+> Gateway, Catalog, Material y PostgreSQL temporales. Búsqueda sigue con fixtures;
+> los providers HTTP de Material están preparados para su integración en pantallas.
+> Consultar [`mobile/README.md`](../../mobile/README.md#configuración-de-red-y-conexión-con-api-gateway).
+> El resto de contratos y resultados
+> de Sprint 1 de esta guía conservan su carácter histórico, especialmente Auth;
+> no constituyen una revisión actual de todas las funcionalidades del Backend.
+
 > **Referencia de documentación:** rama actualizada con `main` (merge de `origin/main`), toma como referencia el commit `7d80289` (merge PR #187, script de seeding).
 >
 > Convención de estados usada en todo el documento:
@@ -25,11 +36,18 @@ El **API Gateway** (puerto `3000`) es la entrada prevista para los servicios de 
 | Dispositivo físico (misma red) | `http://<IP-LAN-del-host>:3000/api/v1` | define vía `--dart-define` |
 | Prioridad máxima | `--dart-define=API_GATEWAY_URL=...` | sección 7 |
 
-### 1.2 Excepción: el catálogo NO pasa por el gateway
+### 1.2 Catalog y Material mediante el Gateway (#272)
 
-**Mobile NO consulta el catálogo a través de `:3000`.** La app usa `ApiConfig.catalogBaseUrl` (por defecto `http://10.0.2.2:3002/api/v1` en emulador Android y `http://localhost:3002/api/v1` en local), es decir, **consulta directamente el Catalog Service en `:3002`**. El gateway ya enruta `/api/v1/catalog` (y `/api/v1/materials` y `/api/v1/search`, ver sección 8), pero Mobile mantiene la conexión directa por una decisión previa de su implementación, no por una limitación del gateway. El código de `api_config.dart` ya está preparado para migrar a `:3000`.
+`catalogApiClientProvider` y `materialApiClientProvider` reutilizan el cliente
+central del Gateway. Las peticiones conservan `/api/v1/catalog` y
+`/api/v1/materials`, respectivamente, sin acceder a puertos internos desde Mobile.
 
-Por lo tanto, **no es correcto afirmar que toda la comunicación actual pasa por `:3000`**: solo la de auth/salud; el catálogo es la excepción documentada.
+`DioMaterialListingRepository` implementa `MaterialListingRepository` (la parte
+de lectura de `MaterialRepository`) y consume el contrato paginado disponible:
+`GET /materials?page=1&pageSize=10` → `{ items, page, pageSize, total }`.
+`PUBLISHED` se muestra como «Publicado». No envía búsqueda o filtros a Material.
+Las demás operaciones abstractas de `MaterialRepository` se implementan en sus
+tareas; no se agregaron métodos HTTP que fallen con `UnimplementedError`.
 
 ### 1.3 CORS y Swagger
 
@@ -95,6 +113,7 @@ servicio incompleto. Con los servicios levantados:
 |---|---|---|
 | `GET /api/v1/search?q=datos` | `200` con `results: []` | El endpoint existe pero la búsqueda desacoplada es un stub |
 | `GET /api/v1/materials` | `200` con `items: []` | El listado paginado está implementado (#318); la base no tiene datos |
+| `GET /api/v1/materials/:id/download` | `200` con el archivo | Descarga implementada (#236); transmite la última versión o la de `?versionId=` |
 | `GET /api/v1/materials` con el servicio parado | `502` | Destino inalcanzable |
 
 ---
@@ -211,10 +230,8 @@ Devuelve la jerarquía **Universidad → Carreras → Asignaturas** (universidad
 | `careerId` | UUID | Nivel 2. Requiere `universityId` |
 | `subjectId` | UUID | Nivel 3. Requiere `careerId` |
 | `professorId` | UUID | Nivel 4. Requiere `subjectId` |
-| `year` | entero `2000–2100` | Nivel 5. Requiere `professorId` · § 501 |
-| `type` | string | Nivel 6. Requiere `year` · § 501 |
 
-**Orden obligatorio de niveles:** el filtrado es jerárquico; especificar un nivel sin su anterior devuelve `400`.
+**Orden obligatorio de niveles:** el filtrado es jerárquico y de **4 niveles**; especificar un nivel sin su anterior devuelve `400`. `year` y `type` **no** forman parte del contrato de Catalog: los metadatos de materiales son de Material Service y la búsqueda por año/tipo corresponde a Search Service.
 
 ```json
 {
@@ -225,16 +242,6 @@ Devuelve la jerarquía **Universidad → Carreras → Asignaturas** (universidad
 ```
 
 **Relaciones incluidas en cada asignatura devuelta:** `career` (con su `university`) y `professors`.
-
-**`year`/`type` → `501 Not Implemented` solo si pasan las validaciones previas:** un parámetro mal formado (p. ej., `year` fuera de `2000–2100`) responde `400`, y una secuencia jerárquica incompleta (p. ej., `year` sin `professorId`) también responde `400`. Recién cuando el formato y la secuencia son válidos, solicitar año o tipo produce `501` (depende del módulo de Recursos, pendiente de integración):
-
-```json
-{
-  "statusCode": 501,
-  "message": "Los filtros por Año y Tipo requieren el módulo de Recursos (Resource), el cual está pendiente de integración en la base de datos.",
-  "error": "Not Implemented"
-}
-```
 
 **Ejemplo de respuesta `200` (con filtros de niveles 1–4):** asignatura con sus relaciones `career`, `career.university` y `professors`.
 
@@ -286,6 +293,19 @@ Devuelve la jerarquía **Universidad → Carreras → Asignaturas** (universidad
 
 **Estado:** código implementado en `main`, compila. **HTTP no verificado** (requiere la base de datos del catálogo).
 
+### 3.6 Listados para selectores académicos (accesibles mediante Gateway, #221)
+
+Cuatro endpoints devuelven únicamente entidades **activas** ordenadas por nombre, con el filtro por padre como parámetro **opcional**. Alimentan los dropdowns en cascada (universidad → carrera → asignatura → profesor) sin descargar el árbol completo:
+
+| Método | Endpoint | Query opcional | Devuelve |
+|---|---|---|---|
+| `GET` | `/api/v1/catalog/universities` | — | Universidades activas |
+| `GET` | `/api/v1/catalog/careers` | `universityId` | Carreras activas (de esa universidad) |
+| `GET` | `/api/v1/catalog/subjects` | `careerId` | Asignaturas activas (de esa carrera) |
+| `GET` | `/api/v1/catalog/professors` | `subjectId` | Profesores activos (de esa asignatura) |
+
+Todos responden `200` con un arreglo JSON y `400` si el UUID del filtro es inválido.
+
 ---
 
 ## 4. Pendiente vs. Propuesta (no disponible hoy)
@@ -298,9 +318,9 @@ Devuelve la jerarquía **Universidad → Carreras → Asignaturas** (universidad
 | Recuperación de contraseña | **Pendiente/Propuesta** | Endpoints aún por definir |
 | Autenticación real (JWT firmado y autorización) | **Pendiente** | El login actual es mock (sección 3.3); el esquema final es JWT Bearer |
 | Paginación `page`/`limit` (`items`/`total`) | **Propuesta** | **No implementada** en los endpoints actuales de catálogo; si se requiere, debe proponerse y aprobarse el contrato |
-| `year`/`type` en `/catalog/filter` | Pendiente | `501` solo si la secuencia es válida; depende del módulo de Recursos |
-| Proxy Gateway → `/catalog` | Enrutado, no usado por Mobile | El gateway enruta `/api/v1/catalog`, pero Mobile sigue consultando el catálogo directo en `:3002` por decisión propia (sección 1.2) |
-| Endpoints de Material | **Parcial** | `/api/v1/materials` está enrutada (#222) y `material-service` (#311) ya expone el listado paginado (#318, `200` con `items: []`); el detalle, la subida real y el preview siguen pendientes |
+| `year`/`type` fuera de Catalog | **Resuelto (#221)** | No forman parte del contrato de Catalog: son de Material Service y la búsqueda por año/tipo de Search Service |
+| Proxy Gateway → `/catalog` | Usado por Mobile (#272) | `CatalogRepository` usa el cliente central del Gateway; no consulta `:3002` directamente (sección 1.2) |
+| Endpoints de Material | **Parcial** | `/api/v1/materials` está enrutada (#222); `material-service` (#311) expone el listado paginado (#318), la creación/subida real (#233) y la descarga `GET /api/v1/materials/:id/download` (#236, última versión o `?versionId=`); subida multipart y descarga binaria validadas a través del Gateway en el puerto 3000 (#237, `docs/reports/validacion-proxy-gateway-2026-10-12.md`); el detalle y el preview siguen pendientes |
 | Búsqueda en `/api/v1/search` | **Pendiente** | La ruta está enrutada (#222) y `search-service` existe (#305), pero `GET /api/v1/search?q=` devuelve un stub con `results: []` y `total: 0` |
 | Proxy Gateway → `/quality` | **Pendiente** | El gateway no enruta `/api/v1/quality` y el servicio sigue siendo un placeholder |
 
@@ -318,7 +338,7 @@ Devuelve la jerarquía **Universidad → Carreras → Asignaturas** (universidad
 
 ### 6.1 Catálogo (conectado al backend)
 
-- `CatalogRepository.getCatalog()` consulta `GET /catalog` contra **`ApiConfig.catalogBaseUrl` (`:3002`)**, directo al servicio (no al gateway).
+- `CatalogRepository.getCatalog()` consulta `GET /catalog` mediante el cliente central, con **`ApiConfig.gatewayBaseUrl` (`:3000`)**. El Gateway reenvía la petición al servicio.
 - Transforma el árbol (Universidad → Carreras → Asignaturas) en una **lista plana** de `CatalogItem` (`id`, `title` = asignatura, `author` = universidad, `subject` = carrera, `description`).
 - La **búsqueda por texto ocurre en el cliente**: `getCatalog(search:)` filtra en memoria sobre `title`/`author`/`subject` (normaliza a minúsculas y compara con `contains`). Cada cambio del buscador dispara la consulta y el filtrado local.
 - **Estados de interfaz** (`CatalogScreen`, with Riverpod `FutureProvider`):
@@ -348,35 +368,31 @@ Detalles de la implementación actual de Mobile:
 
 ## 7. Configuración de Mobile (`--dart-define`)
 
-Ambas URLs son configurables en tiempo de compilación (ver `mobile/lib/core/config/api_config.dart`). Sin `--dart-define` se usan los valores por defecto según plataforma. **Los comandos se ejecutan desde `mobile/`.**
+La única URL base es configurable en tiempo de compilación (ver `mobile/lib/core/config/api_config.dart`). Sin `--dart-define` se usan los valores por defecto según plataforma. **Los comandos se ejecutan desde `mobile/`.**
 
 | Variable | Puerto por defecto | Rol |
 |---|---|---|
-| `API_GATEWAY_URL` | `:3000/api/v1` | Gateway (auth y salud) |
-| `CATALOG_SERVICE_URL` | `:3002/api/v1` | Catálogo directo (excepción, sección 1.2) |
+| `API_GATEWAY_URL` | `:3000/api/v1` | Cliente central: Auth, salud, Catalog y listado de Material |
 
 **Ejemplo — Android Emulator:**
 
 ```bash
 flutter run \
-  --dart-define=API_GATEWAY_URL=http://10.0.2.2:3000/api/v1 \
-  --dart-define=CATALOG_SERVICE_URL=http://10.0.2.2:3002/api/v1
+  --dart-define=API_GATEWAY_URL=http://10.0.2.2:3000/api/v1
 ```
 
 **Ejemplo — escritorio/local:**
 
 ```bash
 flutter run \
-  --dart-define=API_GATEWAY_URL=http://localhost:3000/api/v1 \
-  --dart-define=CATALOG_SERVICE_URL=http://localhost:3002/api/v1
+  --dart-define=API_GATEWAY_URL=http://localhost:3000/api/v1
 ```
 
 **Ejemplo — dispositivo físico (misma red, IP LAN del host, p. ej. `192.168.1.50`):**
 
 ```bash
 flutter run \
-  --dart-define=API_GATEWAY_URL=http://192.168.1.50:3000/api/v1 \
-  --dart-define=CATALOG_SERVICE_URL=http://192.168.1.50:3002/api/v1
+  --dart-define=API_GATEWAY_URL=http://192.168.1.50:3000/api/v1
 ```
 
 ---
@@ -418,7 +434,7 @@ curl "http://localhost:3002/api/v1/catalog/filter?universityId=<uuid>&careerId=<
 | Gateway en vivo: `GET /api/v1/auth/health` (auth caído) | ✅ `502` `{"statusCode":502,"message":"Auth Service no disponible"}` — verifica el proxy y su formato de error |
 | Gateway en vivo: `POST /api/v1/auth/login` (auth caído) | ✅ `502` `{"statusCode":502,"message":"Auth Service no disponible"}` |
 | Gateway en vivo: spec JSON `GET /api/docs/gateway-json` | ✅ `200` `application/json` |
-| `POST /auth/login` → `200`, catálogo `/catalog` y `/catalog/filter` → `200/400/501`, salud de Auth → `200` | ⛔ **No verificado en vivo.** Requiere postgres (auth-db / catalog-db), no disponible en el entorno de elaboración. Los endpoints existen en `main`, compilan y quedan descritos desde su código. |
+| `POST /auth/login` → `200`, catálogo `/catalog` y `/catalog/filter` → `200/400`, salud de Auth → `200` | ⛔ **No verificado en vivo.** Requiere postgres (auth-db / catalog-db), no disponible en el entorno de elaboración. Los endpoints existen en `main`, compilan y quedan descritos desde su código. |
 
 ---
 

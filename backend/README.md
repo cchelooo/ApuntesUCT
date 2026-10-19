@@ -49,6 +49,13 @@ Cada bloque a continuación se ejecuta en una **terminal independiente**, siempr
 
 1. Levantar las dependencias de infraestructura (PostgreSQL + MinIO):
 
+Antes de usar Compose, copiar `.env.example` de la raíz a `.env` (si no existe)
+y completar `MINIO_ROOT_USER` y `MINIO_ROOT_PASSWORD` con valores propios.
+Compose exige estas variables; no se incluyen credenciales MinIO en el código.
+La contraseña debe tener al menos 8 caracteres. Los puertos de MinIO se publican
+solo en `127.0.0.1`. Para configurar el bucket privado y las credenciales de
+Material Service, ver [el adaptador de almacenamiento](material-service/README.md#adaptador-de-almacenamiento-minio-231).
+
 ```bash
 docker compose up -d
 ```
@@ -284,7 +291,7 @@ constancia explícita para priorizar su cierre antes de producción.
 | El gateway no enruta Quality | `/api/v1/quality` no pasa por el gateway; el servicio es un placeholder sin implementación | `api-gateway/README.md` |
 | Health de Catalog no enrutado por el gateway | `/api/v1/catalog/health` devuelve `404` porque Catalog excluye `health` del prefijo global; su health real es `http://localhost:3002/health` | `catalog-service/src/main.ts` |
 | Registro por el gateway | `/api/v1/auth/register` devuelve `404` hasta que se implemente el endpoint | `api-gateway/README.md` |
-| Filtros `year` y `type` del catálogo | Devuelven `501 Not Implemented`; dependen del módulo de Recursos | `catalog-service` (Swagger `http://localhost:3002/api/docs`) |
+| Descarga de Material ya implementada | Material gestiona archivos y versiones en MinIO y expone `GET /api/v1/materials/:id/download` (#236, última versión o `?versionId=`), ya no es un placeholder. Search sigue siendo un stub sin búsqueda desacoplada | `material-service/README.md` |
 | Paginación del catálogo | Los endpoints no implementan `page`/`limit` (propuesto, no implementado) | `docs/mobile/integracion-api-mobile.md` |
 | Autenticación en Mobile | El login ya consume el gateway mediante `DioAuthRepository`. `MockAuthRepository` queda para el modo demo (`--dart-define=AUTH_DEMO_MODE=true`) y como fallback de las operaciones que el backend aún no expone, como registro y logout | `mobile/lib/features/auth/data/` |
 | Swagger por servicio | Cada microservicio expone su propia especificación; no hay una spec unificada del ecosistema | índice `/api/docs` del gateway |

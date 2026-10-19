@@ -3,21 +3,18 @@ import { Request, Response } from 'express';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
-  catch(exception: unknown, host: ArgumentsHost) {
+  catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const status = exception instanceof HttpException
-      ? exception.getStatus()
-      : HttpStatus.INTERNAL_SERVER_ERROR;
-
-    const exceptionResponse = exception instanceof HttpException
-      ? exception.getResponse()
-      : null;
+    const status =
+      exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+    const exceptionResponse = exception instanceof HttpException ? exception.getResponse() : null;
 
     let message: string | string[] = 'Internal server error';
     let errorName = 'Internal Server Error';
+    let field: string | undefined;
 
     if (typeof exceptionResponse === 'string') {
       message = exceptionResponse;
@@ -34,12 +31,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
       if (typeof resObj.error === 'string' && resObj.error) {
         errorName = resObj.error;
       }
+      if (typeof resObj.field === 'string' && resObj.field) {
+        field = resObj.field;
+      }
     }
 
     response.status(status).json({
       statusCode: status,
       error: errorName,
-      message: message,
+      message,
+      ...(field !== undefined ? { field } : {}),
       timestamp: new Date().toISOString(),
       path: request.url,
     });
