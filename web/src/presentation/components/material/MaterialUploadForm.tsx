@@ -18,6 +18,7 @@ export interface MaterialUploadFormProps {
   onSuccess?: (result?: unknown) => void;
   onError?: (error: unknown) => void;
   uploadFn?: (formData: FormData) => Promise<unknown>;
+  accessToken?: string;
   initialSubjectId?: string;
   className?: string;
 }
@@ -34,6 +35,7 @@ export function MaterialUploadForm({
   onSuccess,
   onError,
   uploadFn,
+  accessToken,
   initialSubjectId = '',
   className = '',
 }: MaterialUploadFormProps) {
@@ -186,7 +188,7 @@ export function MaterialUploadForm({
 
       const result = uploadFn
         ? await uploadFn(formData)
-        : await uploadMaterial(formData);
+        : await uploadMaterial(formData, { accessToken });
 
       // Confirmación de subida exitosa
       setError(null);
