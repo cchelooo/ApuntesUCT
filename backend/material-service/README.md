@@ -466,3 +466,55 @@ cuatro tipos de archivo, LINK, los bytes almacenados, checksum, metadatos, autor
 validaciones, rechazo de tipos inactivos, fallo real de MinIO y rollback de la
 creación anidada. Elimina sus propios recursos al terminar. No modifica los datos
 del servicio ni requiere migrar el esquema de la aplicación para probarse.
+
+### Crear una nueva versión de archivo (#246)
+
+`POST /api/v1/materials/:id/versions` recibe `multipart/form-data` con un campo
+`file` obligatorio (PDF, Word o PowerPoint, hasta 15 MiB, con validación de contenido).
+Solo el autor del material puede agregar versiones. Usa el contexto temporal de
+`MaterialAuthorProvider`, disponible actualmente en desarrollo; los materiales
+`LINK` no admiten versiones de archivo.
+
+```bash
+curl -X POST "http://localhost:3003/api/v1/materials/$MATERIAL_ID/versions" \
+  -F "file=@apunte-actualizado.pdf"
+```
+
+Devuelve `201` con `id`, `materialId`, `versionNumber`, `originalFilename`,
+`mimeType`, `fileSize` (string), `createdBy` y `createdAt`. La clave interna del
+objeto no se expone. Cada carga crea un objeto independiente y una fila nueva;
+el nombre original puede repetirse sin sobrescribir archivos. Una transacción
+bloquea la fila del material antes de calcular el siguiente número, serializando
+cargas concurrentes. Se actualiza `updatedAt`; el estado y los metadatos del
+material se conservan. La descarga existente permite recuperar versiones previas
+con `GET /api/v1/materials/:id/download?versionId=:versionId`.
+
+Los errores incluyen `400` (UUID/archivo inválido o LINK), `401` (sin contexto de
+autor), `403` (otro autor), `404` (material inexistente), `413` (tamaño), `415`
+(formato) y `502` (almacenamiento). Ante rollback confirmado se intenta eliminar
+solo el objeto nuevo sin referencias; si el resultado de persistencia es incierto,
+se conserva y se registra la limpieza pendiente, como en la creación inicial.
+
+Prueba de concurrencia con PostgreSQL real y almacenamiento en memoria (crea y
+elimina un esquema temporal; no modifica los materiales existentes):
+
+```bash
+npm run build
+MATERIAL_TEST_DATABASE_URL='postgresql://usuario:clave@localhost:5436/material_db' \
+  node --test test/create-material-version.integration.cjs
+```
+
+Prueba HTTP con PostgreSQL **y MinIO reales**, usando el adaptador de producción:
+
+```bash
+npm run build
+# Configurar MATERIAL_TEST_DATABASE_URL y MINIO_ENDPOINT, MINIO_PORT,
+# MINIO_USE_SSL, MINIO_ACCESS_KEY, MINIO_SECRET_KEY en el entorno de prueba.
+MATERIAL_TEST_MINIO=1 node --test test/material-version-minio.integration.cjs
+```
+
+Requiere credenciales de prueba con permisos para crear y eliminar un bucket
+temporal. La prueba crea una versión inicial y envía dos cargas HTTP simultáneas
+con el mismo nombre de archivo; verifica números 1/2/3, claves distintas, checksum,
+contenido y tamaño en MinIO, descarga HTTP histórica y descarga de la última
+versión. Al finalizar elimina el bucket y el esquema propios, incluso ante fallos.

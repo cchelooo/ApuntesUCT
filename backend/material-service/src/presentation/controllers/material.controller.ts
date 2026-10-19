@@ -5,11 +5,6 @@ import {
   UploadedFile,
   UseInterceptors,
   Req,
-  ParseFilePipe,
-  MaxFileSizeValidator,
-  FileValidator,
-  PayloadTooLargeException,
-  UnsupportedMediaTypeException,
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -33,21 +28,7 @@ import { ErrorResponseDto } from '../dto/error-response.dto';
 import { CreateMaterialResponseDto } from '../dto/material-response.dto';
 import { CreateMaterial } from '../../application/use-cases/create-material';
 import { MaterialAuthorProvider } from '../../infrastructure/auth/material-author.provider';
-import { MaterialFileTypeValidator } from '../validators/material-file-type.validator';
-
-const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15 MiB: 15.728.640 bytes.
-
-/** Rechaza archivos vacíos antes del validador MIME; permite ausencia de archivo para LINK. */
-class EmptyFileValidator extends FileValidator<object> {
-  public isValid(file?: Express.Multer.File): boolean {
-    if (!file) return true;
-    return file.size > 0;
-  }
-
-  public buildErrorMessage(): string {
-    return 'El archivo adjunto está vacío (0 bytes) y no puede ser procesado.';
-  }
-}
+import { MAX_FILE_SIZE_BYTES, materialUploadPipe } from '../validators/material-upload.pipe';
 
 @ApiTags('Materials')
 @Controller('materials')
@@ -113,38 +94,7 @@ export class MaterialController {
   async createMaterial(
     @Req() req: Request,
     @Body() dto: CreateMaterialDto,
-    @UploadedFile(
-      new ParseFilePipe({
-        fileIsRequired: false,
-        validators: [
-          new EmptyFileValidator({}),
-          new MaxFileSizeValidator({ maxSize: MAX_FILE_SIZE_BYTES + 1 }),
-          new MaterialFileTypeValidator(),
-        ],
-        exceptionFactory: (error) => {
-          if (error.includes('vacío') || error.includes('empty')) {
-            return new BadRequestException(
-              'El archivo adjunto está vacío (0 bytes) y no puede ser procesado.',
-            );
-          }
-          if (error.includes('expected size') || error.includes('file size')) {
-            return new PayloadTooLargeException(
-              `El archivo excede el tamaño máximo permitido de 15 MB (${MAX_FILE_SIZE_BYTES} bytes).`,
-            );
-          }
-          if (
-            error.includes('expected type') ||
-            error.includes('file type') ||
-            error.includes('Tipo de archivo')
-          ) {
-            return new UnsupportedMediaTypeException(
-              'Tipo de archivo no admitido. Formatos válidos: PDF, Word (.doc, .docx) y PowerPoint (.ppt, .pptx).',
-            );
-          }
-          return new BadRequestException(error);
-        },
-      }),
-    )
+    @UploadedFile(materialUploadPipe())
     file?: Express.Multer.File,
   ) {
     // Validación adicional de archivo vacío.
