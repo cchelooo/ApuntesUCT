@@ -272,7 +272,9 @@ describe('materialApi', () => {
       vi.stubEnv('VITE_API_URL', 'https://api.example.test/api/v1');
       const fetchMock = vi.fn().mockResolvedValue(
         Response.json(
-          { message: 'El archivo supera el tamaño máximo permitido de 15 MB' },
+          {
+            message: 'El archivo supera el tamaño máximo permitido de 15 MB',
+          },
           { status: 413 }
         )
       );
@@ -291,12 +293,11 @@ describe('materialApi', () => {
 
     it('propaga MaterialRequestError con status 415 cuando el servidor responde Unsupported Media Type', async () => {
       vi.stubEnv('VITE_API_URL', 'https://api.example.test/api/v1');
-      const fetchMock = vi.fn().mockResolvedValue(
-        Response.json(
-          { message: 'Formato no admitido' },
-          { status: 415 }
-        )
-      );
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(
+          Response.json({ message: 'Formato no admitido' }, { status: 415 })
+        );
       vi.stubGlobal('fetch', fetchMock);
 
       const formData = new FormData();
@@ -312,7 +313,9 @@ describe('materialApi', () => {
 
     it('propaga MaterialRequestError con isNetworkError cuando ocurre un fallo de conectividad', async () => {
       vi.stubEnv('VITE_API_URL', 'https://api.example.test/api/v1');
-      const fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+      const fetchMock = vi
+        .fn()
+        .mockRejectedValue(new TypeError('Failed to fetch'));
       vi.stubGlobal('fetch', fetchMock);
 
       const formData = new FormData();
@@ -327,4 +330,3 @@ describe('materialApi', () => {
     });
   });
 });
-

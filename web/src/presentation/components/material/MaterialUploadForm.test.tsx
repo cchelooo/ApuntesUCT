@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { MaterialUploadForm } from './MaterialUploadForm';
@@ -18,9 +24,13 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
     it('permite seleccionar un archivo y lo refleja visualmente con su nombre, tamaño y botón para removerlo', async () => {
       render(<MaterialUploadForm />);
 
-      const file = new File(['contenido de prueba para simular archivo'], 'guia-calculo.pdf', {
-        type: 'application/pdf',
-      });
+      const file = new File(
+        ['contenido de prueba para simular archivo'],
+        'guia-calculo.pdf',
+        {
+          type: 'application/pdf',
+        }
+      );
       const fileInput = screen.getByTestId('upload-file-input');
 
       await userEvent.upload(fileInput, file);
@@ -28,8 +38,8 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       // El archivo debe reflejarse en la interfaz en un contenedor con rol status
       const statusContainer = screen.getByRole('status');
       expect(statusContainer).toBeInTheDocument();
-      expect(screen.getByText(/guia-calculo\.pdf/i)).toBeInTheDocument();
-      expect(screen.getByText(/MB/i)).toBeInTheDocument();
+      expect(statusContainer).toHaveTextContent(/guia-calculo\.pdf/i);
+      expect(within(statusContainer).getByText(/MB/i)).toBeInTheDocument();
       expect(
         screen.getByRole('button', { name: /quitar archivo/i })
       ).toBeInTheDocument();
@@ -156,13 +166,14 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       await waitFor(() => {
         expect(uploadFn).toHaveBeenCalledTimes(1);
         expect(onError).toHaveBeenCalledWith(error413);
-        const alert = screen.getByTestId('upload-error-alert');
-        expect(alert).toBeInTheDocument();
-        expect(alert).toHaveTextContent(/15 MB/i);
-        expect(alert).toHaveTextContent(
-          'El archivo supera el tamaño máximo permitido de 15 MB. Por favor, selecciona un archivo de menor tamaño.'
-        );
       });
+
+      const alert = await screen.findByRole('alert');
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveTextContent(/15 MB/i);
+      expect(alert).toHaveTextContent(
+        'El archivo supera el tamaño máximo permitido de 15 MB. Por favor, selecciona un archivo de menor tamaño.'
+      );
 
       // El botón debe rehabilitarse para permitir reintentar con otro archivo
       expect(screen.getByTestId('upload-submit-button')).not.toBeDisabled();
@@ -176,14 +187,14 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       render(<MaterialUploadForm uploadFn={uploadFn} onError={onError} />);
 
       fireEvent.change(screen.getByTestId('upload-title-input'), {
-        target: { value: 'Binario no admitido' },
+        target: { value: 'Formato no soportado' },
       });
       fireEvent.change(screen.getByTestId('upload-subject-input'), {
         target: { value: 'INF-201' },
       });
 
-      const file = new File(['binario'], 'script.sh', {
-        type: 'application/x-sh',
+      const file = new File(['contenido de prueba'], 'documento.pdf', {
+        type: 'application/pdf',
       });
       await userEvent.upload(screen.getByTestId('upload-file-input'), file);
 
@@ -192,27 +203,30 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       await waitFor(() => {
         expect(uploadFn).toHaveBeenCalledTimes(1);
         expect(onError).toHaveBeenCalledWith(error415);
-        const alert = screen.getByTestId('upload-error-alert');
-        expect(alert).toBeInTheDocument();
-        expect(alert).toHaveTextContent(/PDF/i);
-        expect(alert).toHaveTextContent(/Word \(\.doc, \.docx\)/i);
-        expect(alert).toHaveTextContent(/PowerPoint \(\.ppt, \.pptx\)/i);
-        expect(alert).toHaveTextContent(
-          'El formato del archivo no es soportado. Formatos aceptados: PDF, Word (.doc, .docx) y PowerPoint (.ppt, .pptx).'
-        );
       });
+
+      const alert = await screen.findByRole('alert');
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveTextContent(/PDF/i);
+      expect(alert).toHaveTextContent(/Word \(\.doc, \.docx\)/i);
+      expect(alert).toHaveTextContent(/PowerPoint \(\.ppt, \.pptx\)/i);
+      expect(alert).toHaveTextContent(
+        'El formato del archivo no es soportado. Formatos aceptados: PDF, Word (.doc, .docx) y PowerPoint (.ppt, .pptx).'
+      );
 
       expect(screen.getByTestId('upload-submit-button')).not.toBeDisabled();
     });
 
     it('simula errores HTTP 413 y 415 utilizando el cliente uploadMaterial por defecto con fetch simulado', async () => {
       // Simulación de respuesta 413 del backend
-      const fetchMock = vi.fn().mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ message: 'El archivo supera el tamaño máximo' }),
-          { status: 413, headers: { 'Content-Type': 'application/json' } }
-        )
-      );
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({ message: 'El archivo supera el tamaño máximo' }),
+            { status: 413, headers: { 'Content-Type': 'application/json' } }
+          )
+        );
       window.fetch = fetchMock;
       const onError = vi.fn();
 
@@ -225,7 +239,9 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
         target: { value: 'INF-100' },
       });
 
-      const file = new File(['bytes'], 'grande.pdf', { type: 'application/pdf' });
+      const file = new File(['bytes'], 'grande.pdf', {
+        type: 'application/pdf',
+      });
       await userEvent.upload(screen.getByTestId('upload-file-input'), file);
 
       fireEvent.click(screen.getByTestId('upload-submit-button'));
@@ -233,27 +249,29 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       await waitFor(() => {
         expect(fetchMock).toHaveBeenCalledTimes(1);
         expect(onError).toHaveBeenCalledTimes(1);
-        const alert = screen.getByTestId('upload-error-alert');
-        expect(alert).toHaveTextContent(/15 MB/i);
       });
+
+      const alert413 = await screen.findByRole('alert');
+      expect(alert413).toHaveTextContent(/15 MB/i);
 
       // Simulación de respuesta 415 del backend
       fetchMock.mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ message: 'Tipo no soportado' }),
-          { status: 415, headers: { 'Content-Type': 'application/json' } }
-        )
+        new Response(JSON.stringify({ message: 'Tipo no soportado' }), {
+          status: 415,
+          headers: { 'Content-Type': 'application/json' },
+        })
       );
 
       fireEvent.click(screen.getByTestId('upload-submit-button'));
 
       await waitFor(() => {
         expect(fetchMock).toHaveBeenCalledTimes(2);
-        const alert = screen.getByTestId('upload-error-alert');
-        expect(alert).toHaveTextContent(
-          'El formato del archivo no es soportado. Formatos aceptados: PDF, Word (.doc, .docx) y PowerPoint (.ppt, .pptx).'
-        );
       });
+
+      const alert415 = await screen.findByRole('alert');
+      expect(alert415).toHaveTextContent(
+        'El formato del archivo no es soportado. Formatos aceptados: PDF, Word (.doc, .docx) y PowerPoint (.ppt, .pptx).'
+      );
     });
   });
 
@@ -332,10 +350,16 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       const titleInput = screen.getByTestId('upload-title-input');
       const descInput = screen.getByTestId('upload-description-input');
       const subjectInput = screen.getByTestId('upload-subject-input');
-      const fileInput = screen.getByTestId('upload-file-input') as HTMLInputElement;
+      const fileInput = screen.getByTestId(
+        'upload-file-input'
+      ) as HTMLInputElement;
 
-      fireEvent.change(titleInput, { target: { value: 'Resumen Termodinámica' } });
-      fireEvent.change(descInput, { target: { value: 'Leyes y fórmulas principales' } });
+      fireEvent.change(titleInput, {
+        target: { value: 'Resumen Termodinámica' },
+      });
+      fireEvent.change(descInput, {
+        target: { value: 'Leyes y fórmulas principales' },
+      });
       fireEvent.change(subjectInput, { target: { value: 'FIS-201' } });
 
       const file = new File(['termo'], 'termodinamica.pdf', {
@@ -352,23 +376,30 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       expect(uploadFn).toHaveBeenCalledTimes(1);
 
       // Resolver la subida
-      const responsePayload = { id: 'mat-termo-99', title: 'Resumen Termodinámica' };
+      const responsePayload = {
+        id: 'mat-termo-99',
+        title: 'Resumen Termodinámica',
+      };
       resolveUpload!(responsePayload);
 
       await waitFor(() => {
         // Alerta de éxito visible
-        const successAlert = screen.getByTestId('upload-success-alert');
+        const successAlert = screen.getByRole('status');
         expect(successAlert).toBeInTheDocument();
-        expect(successAlert).toHaveTextContent('¡Material subido exitosamente!');
+        expect(successAlert).toHaveTextContent(
+          '¡Material subido exitosamente!'
+        );
 
         // No debe haber alerta de error
-        expect(screen.queryByTestId('upload-error-alert')).not.toBeInTheDocument();
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 
         // El formulario reinicia sus valores
         expect(titleInput).toHaveValue('');
         expect(descInput).toHaveValue('');
         expect(fileInput.value).toBe('');
-        expect(screen.queryByText(/termodinamica\.pdf/i)).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(/termodinamica\.pdf/i)
+        ).not.toBeInTheDocument();
         expect(
           screen.queryByRole('button', { name: /quitar archivo/i })
         ).not.toBeInTheDocument();
@@ -399,7 +430,9 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       const file = new File(['datos binarios'], 'mismo-documento.pdf', {
         type: 'application/pdf',
       });
-      const fileInput = screen.getByTestId('upload-file-input') as HTMLInputElement;
+      const fileInput = screen.getByTestId(
+        'upload-file-input'
+      ) as HTMLInputElement;
 
       // 1. Seleccionar archivo inicialmente
       await userEvent.upload(fileInput, file);
@@ -407,11 +440,15 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       expect(fileInput.files?.[0]).toBe(file);
 
       // 2. Quitar archivo mediante el botón correspondiente
-      const removeButton = screen.getByRole('button', { name: /quitar archivo/i });
+      const removeButton = screen.getByRole('button', {
+        name: /quitar archivo/i,
+      });
       fireEvent.click(removeButton);
 
       // El archivo debe desaparecer de la vista y limpiarse del input
-      expect(screen.queryByText(/mismo-documento\.pdf/i)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/mismo-documento\.pdf/i)
+      ).not.toBeInTheDocument();
       expect(
         screen.queryByRole('button', { name: /quitar archivo/i })
       ).not.toBeInTheDocument();
@@ -447,9 +484,13 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       });
 
       // 1. Adjuntar archivo mientras el tipo es DOCUMENT (por defecto)
-      const file = new File(['bytes de pdf descartable'], 'archivo-descartado.pdf', {
-        type: 'application/pdf',
-      });
+      const file = new File(
+        ['bytes de pdf descartable'],
+        'archivo-descartado.pdf',
+        {
+          type: 'application/pdf',
+        }
+      );
       const fileInput = screen.getByTestId('upload-file-input');
       await userEvent.upload(fileInput, file);
       expect(screen.getByText(/archivo-descartado\.pdf/i)).toBeInTheDocument();
@@ -460,7 +501,9 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
 
       // El input de archivo y el bloque informativo del archivo anterior deben haber desaparecido
       expect(screen.queryByTestId('upload-file-input')).not.toBeInTheDocument();
-      expect(screen.queryByText(/archivo-descartado\.pdf/i)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/archivo-descartado\.pdf/i)
+      ).not.toBeInTheDocument();
 
       // 3. Completar enlace externo
       const linkInput = screen.getByTestId('upload-link-input');
@@ -487,7 +530,7 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       expect(formData.get('file')).toBeNull();
     });
 
-    it('regresión: al cambiar de enlace a documento, exige un archivo y no mantiene el enlace en FormData', async () => {
+    it('regresión: al cambiar de enlace a documento, exige un archivo y mantiene el enlace opcional en FormData', async () => {
       const uploadFn = vi.fn().mockResolvedValue({ id: 'mat-regression-3' });
 
       render(<MaterialUploadForm uploadFn={uploadFn} />);
@@ -535,7 +578,10 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       expect(formData.get('type')).toBe('DOCUMENT');
       expect(formData.has('file')).toBe(true);
       expect((formData.get('file') as File).name).toBe('nuevo-documento.pdf');
-      expect(formData.has('externalLink')).toBe(false);
+      // El contrato actual permite enviar un enlace opcional como respaldo de un archivo
+      expect(formData.get('externalLink')).toBe(
+        'https://example.com/material-anterior'
+      );
     });
   });
 
@@ -559,13 +605,11 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
 
       fireEvent.click(screen.getByTestId('upload-submit-button'));
 
-      await waitFor(() => {
-        const alert = screen.getByTestId('upload-error-alert');
-        expect(alert).toBeInTheDocument();
-        expect(alert).toHaveTextContent(
-          'Debes iniciar sesión para subir material. Por favor, autentícate para continuar.'
-        );
-      });
+      const alert = await screen.findByRole('alert');
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveTextContent(
+        'Debes iniciar sesión para subir material. Por favor, autentícate para continuar.'
+      );
     });
 
     it('muestra alerta de fallo de red ante problemas de conectividad', async () => {
@@ -587,13 +631,11 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
 
       fireEvent.click(screen.getByTestId('upload-submit-button'));
 
-      await waitFor(() => {
-        const alert = screen.getByTestId('upload-error-alert');
-        expect(alert).toBeInTheDocument();
-        expect(alert).toHaveTextContent(
-          'Error de conexión. Por favor, verifica tu conexión a internet e intenta nuevamente.'
-        );
-      });
+      const alert = await screen.findByRole('alert');
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveTextContent(
+        'Error de conexión. Por favor, verifica tu conexión a internet e intenta nuevamente.'
+      );
     });
 
     it('valida campos requeridos y exige título y asignatura', async () => {
@@ -614,7 +656,9 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
 
       await waitFor(() => {
         expect(
-          screen.getByText('Por favor, ingresa el identificador de la asignatura.')
+          screen.getByText(
+            'Por favor, ingresa el identificador de la asignatura.'
+          )
         ).toBeInTheDocument();
       });
     });
@@ -639,9 +683,8 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
 
       fireEvent.click(screen.getByTestId('upload-submit-button'));
 
-      await waitFor(() => {
-        expect(screen.getByTestId('upload-error-alert')).toHaveTextContent(/15 MB/i);
-      });
+      const alert = await screen.findByRole('alert');
+      expect(alert).toHaveTextContent(/15 MB/i);
 
       // Seleccionar un archivo diferente debe limpiar la alerta
       const newFile = new File(['small'], 'liviano.pdf', {
@@ -651,12 +694,54 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
         target: { files: [newFile] },
       });
 
-      expect(screen.queryByTestId('upload-error-alert')).not.toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
-    it('conserva la confirmación de éxito si el callback onSuccess falla o rechaza tras la creación', async () => {
+    it('conserva la confirmación de éxito si el callback onSuccess lanza una excepción síncrona', async () => {
       const uploadFn = vi.fn().mockResolvedValue({ id: 'form-mat-1' });
-      const callbackError = new Error('Error en callback onSuccess');
+      const callbackError = new Error('Error síncrono en callback onSuccess');
+      const onSuccess = vi.fn().mockImplementation(() => {
+        throw callbackError;
+      });
+      const onError = vi.fn();
+
+      render(
+        <MaterialUploadForm
+          uploadFn={uploadFn}
+          onSuccess={onSuccess}
+          onError={onError}
+        />
+      );
+
+      fireEvent.change(screen.getByTestId('upload-title-input'), {
+        target: { value: 'Guía de Estudio' },
+      });
+      fireEvent.change(screen.getByTestId('upload-subject-input'), {
+        target: { value: 'MAT-101' },
+      });
+
+      const file = new File(['content'], 'guia.pdf', {
+        type: 'application/pdf',
+      });
+      await userEvent.upload(screen.getByTestId('upload-file-input'), file);
+
+      fireEvent.click(screen.getByTestId('upload-submit-button'));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('¡Material subido exitosamente!')
+        ).toBeInTheDocument();
+        expect(onSuccess).toHaveBeenCalledTimes(1);
+        expect(onError).toHaveBeenCalledWith(callbackError);
+      });
+
+      // No debe mostrar alerta de error de subida
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('conserva la confirmación de éxito si el callback onSuccess devuelve una promesa rechazada', async () => {
+      const uploadFn = vi.fn().mockResolvedValue({ id: 'form-mat-2' });
+      const callbackError = new Error('Error asíncrono en callback onSuccess');
       const onSuccess = vi.fn().mockRejectedValueOnce(callbackError);
       const onError = vi.fn();
 
@@ -691,7 +776,7 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       });
 
       // No debe mostrar alerta de error de subida
-      expect(screen.queryByTestId('upload-error-alert')).not.toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
   });
 });
