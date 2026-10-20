@@ -68,8 +68,7 @@ void main() {
       );
     });
 
-    test('título sin mínimo: solo exige no vacío (contrato @IsNotEmpty)',
-        () {
+    test('título sin mínimo: solo exige no vacío (contrato @IsNotEmpty)', () {
       expect(MaterialUploadValidation.validateTitle('AB'), isNull);
       expect(MaterialUploadValidation.validateTitle('X'), isNull);
       expect(MaterialUploadValidation.validateTitle('  '), isNotNull);
@@ -121,15 +120,14 @@ void main() {
         tester.view.resetDevicePixelRatio();
       });
       await tester.pumpWidget(
-        MaterialApp(
-          home: MaterialUploadScreen(pickFile: pickFile),
-        ),
+        MaterialApp(home: MaterialUploadScreen(pickFile: pickFile)),
       );
       await tester.pumpAndSettle();
     }
 
-    testWidgets('muestra fuente, metadatos en orden oficial y botón',
-        (tester) async {
+    testWidgets('muestra fuente, metadatos en orden oficial y botón', (
+      tester,
+    ) async {
       await pumpScreen(tester);
 
       for (final label in [
@@ -144,8 +142,11 @@ void main() {
         'Tipo',
         'Subir material',
       ]) {
-        expect(find.text(label, findRichText: true), findsWidgets,
-            reason: 'Falta: $label');
+        expect(
+          find.text(label, findRichText: true),
+          findsWidgets,
+          reason: 'Falta: $label',
+        );
       }
 
       // Orden oficial: la posición vertical debe ser creciente.
@@ -165,8 +166,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('envío vacío exige archivo, título, año y clasificación',
-        (tester) async {
+    testWidgets('envío vacío exige archivo, título, año y clasificación', (
+      tester,
+    ) async {
       await pumpScreen(tester);
 
       await tester.ensureVisible(find.text('Subir material'));
@@ -183,8 +185,9 @@ void main() {
       expect(find.text('El tipo es obligatorio.'), findsOneWidget);
     });
 
-    testWidgets('cambiar universidad limpia la carrera incompatible',
-        (tester) async {
+    testWidgets('cambiar universidad limpia la carrera incompatible', (
+      tester,
+    ) async {
       await pumpScreen(tester);
 
       Future<void> selectOption({
@@ -208,10 +211,7 @@ void main() {
         fieldLabel: 'Carrera',
         option: 'Ingeniería Civil en Informática',
       );
-      expect(
-        find.text('Ingeniería Civil en Informática'),
-        findsOneWidget,
-      );
+      expect(find.text('Ingeniería Civil en Informática'), findsOneWidget);
 
       // UCT → UFRO: la carrera UCT debe desaparecer del formulario,
       // y tampoco debe ofrecerse de nuevo para la universidad elegida.
@@ -219,15 +219,11 @@ void main() {
         fieldLabel: 'Universidad Católica de Temuco',
         option: 'Universidad de La Frontera',
       );
-      expect(
-        find.text('Ingeniería Civil en Informática'),
-        findsNothing,
-      );
+      expect(find.text('Ingeniería Civil en Informática'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('muestra nombre y tamaño del archivo elegido',
-        (tester) async {
+    testWidgets('muestra nombre y tamaño del archivo elegido', (tester) async {
       await pumpScreen(
         tester,
         pickFile: () async => MaterialPickedFile(
@@ -298,14 +294,11 @@ void main() {
       expect(find.textContaining('URL válida'), findsOneWidget);
     });
 
-    testWidgets('es usable en 320 × 568 con teclado simulado',
-        (tester) async {
+    testWidgets('es usable en 320 × 568 con teclado simulado', (tester) async {
       await pumpScreen(tester, surface: const Size(320, 568));
 
       // Simula teclado abierto: el scroll debe absorber el inset.
-      tester.view.viewInsets = const FakeViewPadding(
-        bottom: 300,
-      );
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
       addTearDown(() => tester.view.viewInsets = FakeViewPadding.zero);
       await tester.pumpAndSettle();
 
