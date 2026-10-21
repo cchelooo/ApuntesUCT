@@ -1,7 +1,7 @@
 # Burndown S2
 
 Primer snapshot guardado: 2026-10-03.
-Ultimo snapshot: 2026-10-19.
+Ultimo snapshot: 2026-10-20.
 Corte del 19-10 registrado el 20-10-2026 con los datos actuales de GitHub Projects, por actualización diferida.
 No se reconstruyen horas de dias sin snapshot.
 
@@ -20,7 +20,7 @@ Las tareas con `Equipo = Compartido` quedan fuera del burndown de equipos e inte
 | Equipo | Items | Horas asignadas | Horas usadas | Horas restantes | Horas excedidas | Grafico |
 |---|---:|---:|---:|---:|---:|---|
 | INT2 | 50 | 120 | 57.9 | 67.5 | 5.4 | [ver (2026-09-30 a 2026-11-04)](charts/team-int2.svg) |
-| INT4 | 32 | 80 | 35 | 46 | 1 | [ver (2026-10-01 a 2026-11-05)](charts/team-int4.svg) |
+| INT4 | 32 | 80 | 35.5 | 45.5 | 1 | [ver (2026-10-01 a 2026-11-05)](charts/team-int4.svg) |
 
 ## Integrantes
 
@@ -35,7 +35,7 @@ Las tareas con `Equipo = Compartido` quedan fuera del burndown de equipos e inte
 | INT4 | Eduardo Escares | 8 | 20 | 6 | 14 | 0 | [ver (2026-10-01 a 2026-11-05)](charts/member-eduardoscrs.svg) |
 | INT4 | Marcelo Santana | 8 | 20 | 11 | 9 | 0 | [ver (2026-10-01 a 2026-11-05)](charts/member-cchelooo.svg) |
 | INT4 | Nelson Quiñinao Isla | 8 | 20 | 7 | 13 | 0 | [ver (2026-10-01 a 2026-11-05)](charts/member-anker04.svg) |
-| INT4 | Yaninna Alvarez | 8 | 20 | 11 | 10 | 1 | [ver (2026-10-01 a 2026-11-05)](charts/member-yaninna137.svg) |
+| INT4 | Yaninna Alvarez | 8 | 20 | 11.5 | 9.5 | 1 | [ver (2026-10-01 a 2026-11-05)](charts/member-yaninna137.svg) |
 
 ## Uso diario
 
