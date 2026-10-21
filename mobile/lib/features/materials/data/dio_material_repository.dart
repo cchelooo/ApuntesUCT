@@ -8,6 +8,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'material_detail_response.dart';
+import 'material_upload_response.dart';
 
 final dioMaterialRepositoryProvider = Provider<MaterialRepository>((ref) {
   final apiClient = ref.watch(apiclientProvider);
@@ -58,9 +59,77 @@ class DioMaterialRepository implements MaterialRepository {
     }
   }
 
+  /// Subida real vía gateway: POST /materials multipart/form-data (#285).
+  ///
+  /// Campos según CreateMaterialDto: title, description?, year (YYYY como
+  /// texto), type, subjectId, careerId?, professorId?, externalLink? y el
+  /// archivo en el campo `file`. Retorna el detalle del 201 en estado
+  /// PENDING_REVIEW. Los errores HTTP llegan como [DioException] con el
+  /// [ApiException] del interceptor en `error`.
   @override
   Future<MaterialDetail> upload(UploadMaterialRequest request) async {
-    throw UnimplementedError();
+    try {
+      final formData = FormData();
+      formData.fields.addAll([
+        MapEntry('title', request.title),
+        if (request.description != null &&
+            request.description!.trim().isNotEmpty)
+          MapEntry('description', request.description!.trim()),
+        MapEntry('year', request.year.toString()),
+        MapEntry('type', request.type),
+        MapEntry('subjectId', request.subject.id),
+        MapEntry('careerId', request.career.id),
+        if (request.professor != null)
+          MapEntry('professorId', request.professor!.id),
+      ]);
+
+      final source = request.source;
+      switch (source) {
+        case LocalMaterialFile():
+          formData.files.add(
+            MapEntry(
+              'file',
+              MultipartFile.fromBytes(
+                source.bytes,
+                filename: source.fileName,
+                contentType: DioMediaType.parse(source.mimeType),
+              ),
+            ),
+          );
+          if (request.backupLink != null) {
+            formData.fields.add(
+              MapEntry('externalLink', request.backupLink.toString()),
+            );
+          }
+        case ExternalMaterialLink():
+          formData.fields.add(
+            MapEntry('externalLink', source.url.toString()),
+          );
+      }
+
+      final response = await _apiClient.dio.post(
+        '/materials',
+        data: formData,
+        options: Options(
+          // Sin boundary: Dio lo genera para el multipart.
+          contentType: 'multipart/form-data',
+          // Subir 15 MB puede superar los 10 s por defecto.
+          sendTimeout: const Duration(seconds: 60),
+        ),
+      );
+
+      final data = response.data;
+      final Map<String, dynamic> payload;
+      if (data is Map<String, dynamic>) {
+        final inner = data['data'];
+        payload = inner is Map<String, dynamic> ? inner : data;
+      } else {
+        throw const FormatException('Formato de respuesta inválido.');
+      }
+      return materialDetailFromUploadResponse(payload);
+    } on DioException {
+      rethrow;
+    }
   }
 
   @override

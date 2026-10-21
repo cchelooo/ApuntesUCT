@@ -4,6 +4,7 @@ import 'package:apuntesuct_mobile/models/professor_model.dart';
 import 'package:apuntesuct_mobile/models/subject_model.dart';
 import 'package:apuntesuct_mobile/models/university_model.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Finder field<T>() => find.byType(DropdownButtonFormField<T>);
@@ -22,7 +23,10 @@ Future<void> mount(WidgetTester tester, double width) async {
   tester.view.physicalSize = Size(width, 844);
   addTearDown(tester.view.resetDevicePixelRatio);
   addTearDown(tester.view.resetPhysicalSize);
-  await tester.pumpWidget(const MaterialApp(home: MaterialUploadScreen()));
+  // #285: la pantalla es ConsumerStatefulWidget (lee materialUploadProvider).
+  await tester.pumpWidget(
+    const ProviderScope(child: MaterialApp(home: MaterialUploadScreen())),
+  );
   await tester.pumpAndSettle();
 }
 

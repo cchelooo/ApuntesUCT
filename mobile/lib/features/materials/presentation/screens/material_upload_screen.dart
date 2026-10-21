@@ -1,8 +1,10 @@
-import 'dart:typed_data';
-
 import 'package:apuntesuct_mobile/core/widgets/app_primary_button.dart';
 import 'package:apuntesuct_mobile/core/widgets/app_text_field.dart';
 import 'package:apuntesuct_mobile/core/widgets/form_error_banner.dart';
+import 'package:apuntesuct_mobile/features/materials/domain/models/academic_reference.dart';
+import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
+import 'package:apuntesuct_mobile/features/materials/domain/models/material_requests.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_upload_provider.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/validation/material_upload_validation.dart';
 import 'package:apuntesuct_mobile/models/career_model.dart';
 import 'package:apuntesuct_mobile/models/professor_model.dart';
@@ -10,31 +12,30 @@ import 'package:apuntesuct_mobile/models/subject_model.dart';
 import 'package:apuntesuct_mobile/models/university_model.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 enum _UploadSource { file, link }
 
-/// Formulario de subida de material (issue #280).
+/// Formulario de subida de material (issues #280 y #285).
 ///
-/// Maqueta desacoplada del endpoint real (la integración llega en #285):
-/// captura archivo o enlace + título, descripción y clasificación académica
+/// Captura archivo o enlace + título, descripción y clasificación académica
 /// en el orden oficial (Universidad, Carrera, Asignatura, Profesor, Año,
-/// Tipo), valida 15 MB y formatos en el dispositivo y es desplazable con
+/// Tipo), valida 15 MB y formatos en el dispositivo y envía multipart real
+/// a POST /materials vía [materialUploadProvider]. Es desplazable con
 /// teclado abierto en pantallas pequeñas.
-class MaterialUploadScreen extends StatefulWidget {
-  const MaterialUploadScreen({super.key, this.pickFile, this.onValidSubmit});
+class MaterialUploadScreen extends ConsumerStatefulWidget {
+  const MaterialUploadScreen({super.key, this.pickFile});
 
   /// Seam para tests: reemplaza el selector nativo sin usar MethodChannels.
   final Future<MaterialPickedFile?> Function()? pickFile;
 
-  /// Callback de maqueta tras validación OK (por defecto muestra SnackBar).
-  /// En #285 se reemplaza por el envío multipart real.
-  final void Function()? onValidSubmit;
-
   @override
-  State<MaterialUploadScreen> createState() => _MaterialUploadScreenState();
+  ConsumerState<MaterialUploadScreen> createState() =>
+      _MaterialUploadScreenState();
 }
 
-class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
+class _MaterialUploadScreenState extends ConsumerState<MaterialUploadScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
@@ -47,6 +48,10 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
   String? _fileError;
   String? _formError;
   bool _submittedOk = false;
+
+  /// Fuente enviada en la subida confirmada: se muestra en la confirmación
+  /// (el 201 no trae nombre de archivo ni enlace).
+  MaterialSource? _lastSource;
 
   final List<UniversityModel> _universities = UniversityModel.mockList();
   final List<CareerModel> _allCareers = CareerModel.mockList();
@@ -61,6 +66,7 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
 
   @override
   void dispose() {
+    _scrollCtrl.dispose();
     _titleCtrl.dispose();
     _descCtrl.dispose();
     _linkCtrl.dispose();
@@ -107,8 +113,10 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
   }
 
   /// Selector nativo compatible con Android/iOS (file_picker 13).
-  /// No lee los bytes en la maqueta: basta nombre y tamaño para validar
-  /// (el multipart real llega en #285 y ahí se leerá el contenido).
+  ///
+  /// Lee los bytes reales para el multipart de #285. Si el tamaño ya
+  /// excede el límite no se lee el contenido: la validación lo rechaza.
+  /// Un fallo de lectura lanza y [_pickFile] lo convierte en [_fileError].
   Future<MaterialPickedFile?> _defaultPickFile() async {
     final f = await FilePicker.pickFile(
       type: FileType.custom,
@@ -116,23 +124,37 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
     );
     if (f == null) return null;
     final size = f.lengthSync() ?? await f.length() ?? 0;
+    final mimeType = MaterialUploadValidation.mimeForExtension(
+      MaterialUploadValidation.extensionOf(f.name),
+    );
+    if (size > MaterialUploadValidation.maxFileSizeBytes ||
+        !MaterialUploadValidation.allowedExtensions.contains(
+          MaterialUploadValidation.extensionOf(f.name),
+        )) {
+      return MaterialPickedFile(
+        fileName: f.name,
+        sizeBytes: size,
+        mimeType: mimeType,
+      );
+    }
+    final bytes = await f.readAsBytes();
     return MaterialPickedFile(
       fileName: f.name,
-      sizeBytes: size,
-      mimeType: MaterialUploadValidation.mimeForExtension(
-        MaterialUploadValidation.extensionOf(f.name),
-      ),
-      bytes: Uint8List(0),
+      sizeBytes: bytes.length,
+      mimeType: mimeType,
+      bytes: bytes,
     );
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     final fieldsOk = _formKey.currentState?.validate() ?? false;
 
     String? fileError;
     if (_source == _UploadSource.file) {
       if (_picked == null) {
         fileError = 'Selecciona un archivo.';
+      } else if (_picked!.bytes.isEmpty) {
+        fileError = 'No fue posible leer el archivo. Intenta de nuevo.';
       } else {
         fileError = MaterialUploadValidation.validatePickedFile(
           fileName: _picked!.fileName,
@@ -154,29 +176,132 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
 
     if (!fieldsOk || fileError != null || cross != null) return;
 
-    setState(() => _submittedOk = true);
-    if (widget.onValidSubmit != null) {
-      widget.onValidSubmit!();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Maqueta: formulario válido. El envío real se conecta en #285.',
-          ),
-        ),
-      );
+    final university = _university;
+    final career = _career;
+    final subject = _subject;
+    final typeCode = _typeCode;
+    if (university == null ||
+        career == null ||
+        subject == null ||
+        typeCode == null) {
+      return;
     }
+
+    final linkText = _linkCtrl.text.trim();
+    final request = UploadMaterialRequest(
+      title: _titleCtrl.text.trim(),
+      description: _descCtrl.text.trim().isEmpty
+          ? null
+          : _descCtrl.text.trim(),
+      university: AcademicReference(
+        id: university.id,
+        name: university.name,
+      ),
+      career: AcademicReference(id: career.id, name: career.name),
+      subject: AcademicReference(id: subject.id, name: subject.name),
+      professor: _professor == null
+          ? null
+          : AcademicReference(id: _professor!.id, name: _professor!.name),
+      year: int.parse(_yearCtrl.text.trim()),
+      type: typeCode,
+      source: _source == _UploadSource.file
+          ? LocalMaterialFile(
+              fileName: _picked!.fileName,
+              mimeType: _picked!.mimeType,
+              bytes: _picked!.bytes,
+            )
+          : ExternalMaterialLink(Uri.parse(linkText)),
+      backupLink: _source == _UploadSource.file && linkText.isNotEmpty
+          ? Uri.tryParse(linkText)
+          : null,
+    );
+
+    final ok = await ref
+        .read(materialUploadProvider.notifier)
+        .upload(request);
+    if (!mounted) return;
+    if (ok) {
+      // Éxito confirmado: se guarda la fuente enviada para mostrarla y
+      // se limpia el formulario. Ante un error no se limpia nada.
+      _handleSuccess(request);
+    } else {
+      setState(() => _submittedOk = false);
+    }
+    await _scrollToTop();
+  }
+
+  /// Limpia solo los campos del formulario (sin tocar el provider).
+  void _clearFields() {
+    _titleCtrl.clear();
+    _descCtrl.clear();
+    _linkCtrl.clear();
+    _yearCtrl.clear();
+    _formKey.currentState?.reset();
+    setState(() {
+      _source = _UploadSource.file;
+      _picked = null;
+      _isPicking = false;
+      _fileError = null;
+      _formError = null;
+      _university = null;
+      _career = null;
+      _subject = null;
+      _professor = null;
+      _typeCode = null;
+    });
+  }
+
+  void _handleSuccess(UploadMaterialRequest request) {
+    _clearFields();
+    setState(() {
+      _lastSource = request.source;
+      _submittedOk = true;
+    });
+  }
+
+  final _scrollCtrl = ScrollController();
+
+  Future<void> _scrollToTop() async {
+    if (!_scrollCtrl.hasClients) return;
+    await _scrollCtrl.animateTo(
+      0,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
+  /// Vuelve al formulario vacío tras un éxito (o descarta el estado).
+  void _resetForm() {
+    _clearFields();
+    ref.read(materialUploadProvider.notifier).reset();
+    setState(() {
+      _submittedOk = false;
+      _lastSource = null;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final upload = ref.watch(materialUploadProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Subir Material'), centerTitle: true),
       body: SafeArea(
         child: SingleChildScrollView(
+          controller: _scrollCtrl,
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Form(
+          child: _submittedOk &&
+                  upload.created != null &&
+                  _lastSource != null
+              // Confirmación de subida aceptada: muestra el detalle
+              // devuelto por el 201 en vez del formulario (ya limpio).
+              ? _UploadSuccessView(
+                  created: upload.created!,
+                  source: _lastSource!,
+                  onHome: () => context.go('/'),
+                  onAgain: _resetForm,
+                )
+              : Form(
             key: _formKey,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             child: Column(
@@ -194,8 +319,9 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 20),
-                FormErrorBanner(message: _formError),
-                if (_submittedOk) _SuccessBanner(),
+                FormErrorBanner(
+                  message: _formError ?? upload.errorMessage,
+                ),
                 const AppFieldLabel(label: 'Fuente del material'),
                 const SizedBox(height: 6),
                 SegmentedButton<_UploadSource>(
@@ -516,14 +642,17 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
                 ],
                 const SizedBox(height: 24),
                 AppPrimaryButton(
-                  label: 'Subir material',
+                  label: upload.isUploading
+                      ? 'Subiendo…'
+                      : 'Subir material',
                   icon: Icons.cloud_upload_outlined,
-                  onPressed: _submit,
+                  isLoading: upload.isUploading,
+                  onPressed: upload.isUploading ? null : _submit,
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Maqueta #280: valida en el dispositivo; '
-                  'el envío real se conecta en #285.',
+                  'El material queda en revisión tras el envío '
+                  'a Material Service.',
                   style: Theme.of(context).textTheme.bodySmall,
                   textAlign: TextAlign.center,
                 ),
@@ -541,31 +670,180 @@ class _MaterialUploadScreenState extends State<MaterialUploadScreen> {
   }
 }
 
-class _SuccessBanner extends StatelessWidget {
+String _typeLabel(String code) {
+  for (final t in MaterialUploadValidation.materialTypes) {
+    if (t.code == code) return t.label;
+  }
+  return code;
+}
+
+/// Confirmación de subida aceptada: informa que el material fue recibido y
+/// representa su estado inicial PENDING_REVIEW sin afirmar publicación.
+///
+/// Muestra el detalle devuelto por el 201 (el GET :id solo sirve materiales
+/// PUBLISHED, por eso no se navega al detalle remoto todavía) y ofrece
+/// volver al inicio o subir otro material. El formulario ya quedó limpio.
+class _UploadSuccessView extends StatelessWidget {
+  const _UploadSuccessView({
+    required this.created,
+    required this.source,
+    required this.onHome,
+    required this.onAgain,
+  });
+
+  final MaterialDetail created;
+  final MaterialSource source;
+  final VoidCallback onHome;
+  final VoidCallback onAgain;
+
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final summary = created.summary;
+
+    final sourceLine = switch (source) {
+      LocalMaterialFile f =>
+        'Archivo · ${f.fileName} · '
+            '${MaterialUploadValidation.formatBytes(f.bytes.length)}',
+      ExternalMaterialLink l => 'Enlace · ${l.url}',
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 8),
+        Icon(
+          Icons.check_circle,
+          size: 64,
+          color: colorScheme.primary,
+        ),
+        const SizedBox(height: 16),
+        Text(
+          '¡Material recibido!',
+          style: theme.textTheme.headlineSmall
+              ?.copyWith(fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Tu material fue registrado correctamente y quedó en revisión.',
+          style: theme.textTheme.bodyMedium,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: colorScheme.secondaryContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.hourglass_top_outlined,
+                color: colorScheme.onSecondaryContainer,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      summary.reviewStatus.label,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSecondaryContainer,
+                      ),
+                    ),
+                    Text(
+                      'Estado: ${summary.status}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSecondaryContainer,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Todavía no es visible en el catálogo: '
+          'aparecerá cuando pase la revisión.',
+          style: theme.textTheme.bodySmall,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 16),
+        Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _DetailRow(label: 'Título', value: summary.title),
+                _DetailRow(
+                  label: 'Tipo',
+                  value: _typeLabel(summary.materialType),
+                ),
+                if (summary.academicYear != null)
+                  _DetailRow(
+                    label: 'Año',
+                    value: summary.academicYear.toString(),
+                  ),
+                _DetailRow(label: 'Asignatura', value: summary.subjectName),
+                _DetailRow(label: 'Fuente', value: sourceLine),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        AppPrimaryButton(
+          label: 'Volver al inicio',
+          icon: Icons.home_outlined,
+          onPressed: onHome,
+        ),
+        const SizedBox(height: 8),
+        TextButton.icon(
+          onPressed: onAgain,
+          icon: const Icon(Icons.add_outlined),
+          label: const Text('Subir otro material'),
+        ),
+      ],
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.check_circle_outline,
-            size: 20,
-            color: colorScheme.onPrimaryContainer,
+          SizedBox(
+            width: 96,
+            child: Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
-          const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Maqueta: formulario válido. El envío real se conecta en #285.',
-              style: TextStyle(color: colorScheme.onPrimaryContainer),
+              value,
+              style: theme.textTheme.bodyMedium,
             ),
           ),
         ],
