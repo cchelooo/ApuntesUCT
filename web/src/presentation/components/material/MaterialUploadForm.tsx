@@ -148,6 +148,10 @@ export function MaterialUploadForm({
       setError('Por favor, ingresa el identificador de la asignatura.');
       return;
     }
+    if (!year.trim()) {
+      setError('Por favor, ingresa el año del material.');
+      return;
+    }
     if (isLinkType && !externalLink.trim()) {
       setError(
         'Debes ingresar un enlace externo válido para este tipo de material.'
@@ -167,7 +171,7 @@ export function MaterialUploadForm({
       if (description.trim()) {
         formData.append('description', description.trim());
       }
-      formData.append('year', year.trim() || '2026');
+      formData.append('year', year.trim());
       formData.append('type', type);
       formData.append('subjectId', activeSubjectId);
       const activeCareerId = careerId.trim() || academic.careerId.trim();
