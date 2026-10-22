@@ -5,6 +5,59 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { MaterialUploadForm } from './MaterialUploadForm';
 
+vi.mock('../../../application/catalog/useCatalogUniversitiesQuery', () => ({
+  useCatalogUniversitiesQuery: () => ({
+    data: [{ id: 'university-real', name: 'Universidad de prueba' }],
+    isLoading: false,
+    error: null,
+  }),
+}));
+
+vi.mock('../../../application/catalog/useCatalogCareersQuery', () => ({
+  useCatalogCareersQuery: (universityId?: string) => ({
+    data: universityId
+      ? [{ id: 'career-real', name: 'Carrera de prueba' }]
+      : [],
+    isLoading: false,
+    error: null,
+  }),
+}));
+
+vi.mock('../../../application/catalog/useCatalogSubjectsByCareerQuery', () => ({
+  useCatalogSubjectsByCareerQuery: (careerId?: string) => ({
+    data: careerId
+      ? [{ id: 'subject-real', name: 'Asignatura de prueba' }]
+      : [],
+    isLoading: false,
+    error: null,
+  }),
+}));
+
+vi.mock('../../../application/catalog/useCatalogProfessorsQuery', () => ({
+  useCatalogProfessorsQuery: (subjectId?: string) => ({
+    data: subjectId
+      ? [{ id: 'professor-real', name: 'Profesor de prueba' }]
+      : [],
+    isLoading: false,
+    error: null,
+  }),
+}));
+
+async function selectAcademic() {
+  await userEvent.selectOptions(
+    screen.getByLabelText('Universidad'),
+    'university-real'
+  );
+  await userEvent.selectOptions(
+    screen.getByLabelText('Carrera'),
+    'career-real'
+  );
+  await userEvent.selectOptions(
+    screen.getByLabelText('Asignatura'),
+    'subject-real'
+  );
+}
+
 describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)', () => {
   beforeEach(() => {
     window.fetch = vi.fn();
@@ -28,9 +81,11 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
     fireEvent.change(screen.getByTestId('upload-title-input'), {
       target: { value: 'Guía de Estudio Cálculo' },
     });
-    fireEvent.change(screen.getByTestId('upload-subject-input'), {
-      target: { value: 'MAT-101' },
-    });
+    await selectAcademic();
+    await userEvent.selectOptions(
+      screen.getByLabelText('Profesor'),
+      'professor-real'
+    );
     fireEvent.change(screen.getByTestId('upload-year-input'), {
       target: { value: '2026' },
     });
@@ -52,6 +107,10 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
     expect(submitButton).toBeDisabled();
     expect(submitButton).toHaveTextContent(/subiendo material/i);
     expect(uploadFn).toHaveBeenCalledTimes(1);
+    const submittedData = uploadFn.mock.calls[0][0] as FormData;
+    expect(submittedData.get('subjectId')).toBe('subject-real');
+    expect(submittedData.get('careerId')).toBe('career-real');
+    expect(submittedData.get('professorId')).toBe('professor-real');
 
     // Intento de doble envío mientras está activo: no debe volver a llamar a uploadFn
     fireEvent.click(submitButton);
@@ -77,9 +136,7 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
     fireEvent.change(screen.getByTestId('upload-title-input'), {
       target: { value: 'Libro muy pesado' },
     });
-    fireEvent.change(screen.getByTestId('upload-subject-input'), {
-      target: { value: 'INF-201' },
-    });
+    await selectAcademic();
     fireEvent.change(screen.getByTestId('upload-year-input'), {
       target: { value: '2026' },
     });
@@ -112,9 +169,7 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
     fireEvent.change(screen.getByTestId('upload-title-input'), {
       target: { value: 'Archivo no soportado' },
     });
-    fireEvent.change(screen.getByTestId('upload-subject-input'), {
-      target: { value: 'INF-201' },
-    });
+    await selectAcademic();
     fireEvent.change(screen.getByTestId('upload-year-input'), {
       target: { value: '2026' },
     });
@@ -146,9 +201,7 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
     fireEvent.change(screen.getByTestId('upload-title-input'), {
       target: { value: 'Apunte anónimo' },
     });
-    fireEvent.change(screen.getByTestId('upload-subject-input'), {
-      target: { value: 'INF-201' },
-    });
+    await selectAcademic();
     fireEvent.change(screen.getByTestId('upload-year-input'), {
       target: { value: '2026' },
     });
@@ -177,9 +230,7 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
     fireEvent.change(screen.getByTestId('upload-title-input'), {
       target: { value: 'Apunte' },
     });
-    fireEvent.change(screen.getByTestId('upload-subject-input'), {
-      target: { value: 'INF-201' },
-    });
+    await selectAcademic();
     fireEvent.change(screen.getByTestId('upload-year-input'), {
       target: { value: '2026' },
     });
@@ -203,6 +254,9 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
   it('valida campos requeridos y exige archivo si el tipo es documento', async () => {
     render(<MaterialUploadForm />);
 
+    expect(screen.getByTestId('upload-submit-button')).toBeDisabled();
+    await selectAcademic();
+    expect(screen.getByTestId('upload-submit-button')).toBeEnabled();
     fireEvent.click(screen.getByTestId('upload-submit-button'));
 
     await waitFor(() => {
@@ -219,9 +273,7 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
     fireEvent.change(screen.getByTestId('upload-title-input'), {
       target: { value: 'Guía de Estudio' },
     });
-    fireEvent.change(screen.getByTestId('upload-subject-input'), {
-      target: { value: 'MAT-101' },
-    });
+    await selectAcademic();
     await userEvent.upload(
       screen.getByTestId('upload-file-input'),
       new File(['content'], 'guia.pdf', { type: 'application/pdf' })
@@ -247,9 +299,7 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
     fireEvent.change(screen.getByTestId('upload-title-input'), {
       target: { value: 'Guía de Estudio' },
     });
-    fireEvent.change(screen.getByTestId('upload-subject-input'), {
-      target: { value: 'MAT-101' },
-    });
+    await selectAcademic();
     fireEvent.change(screen.getByTestId('upload-year-input'), {
       target: { value: '2026' },
     });
@@ -286,9 +336,7 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
     fireEvent.change(screen.getByTestId('upload-title-input'), {
       target: { value: 'Libro muy pesado' },
     });
-    fireEvent.change(screen.getByTestId('upload-subject-input'), {
-      target: { value: 'INF-201' },
-    });
+    await selectAcademic();
     fireEvent.change(screen.getByTestId('upload-year-input'), {
       target: { value: '2026' },
     });
@@ -338,9 +386,7 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
     fireEvent.change(screen.getByTestId('upload-title-input'), {
       target: { value: 'Guía de Estudio' },
     });
-    fireEvent.change(screen.getByTestId('upload-subject-input'), {
-      target: { value: 'MAT-101' },
-    });
+    await selectAcademic();
     fireEvent.change(screen.getByTestId('upload-year-input'), {
       target: { value: '2026' },
     });
@@ -398,9 +444,7 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
     fireEvent.change(screen.getByTestId('upload-title-input'), {
       target: { value: 'Guía de Estudio Avanzada' },
     });
-    fireEvent.change(screen.getByTestId('upload-subject-input'), {
-      target: { value: 'MAT-102' },
-    });
+    await selectAcademic();
     fireEvent.change(screen.getByTestId('upload-year-input'), {
       target: { value: '2026' },
     });

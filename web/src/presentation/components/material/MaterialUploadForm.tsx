@@ -1,5 +1,4 @@
-import React, { useContext, useId, useRef, useState } from 'react';
-import { QueryClientContext } from '@tanstack/react-query';
+import React, { useId, useRef, useState } from 'react';
 import { AcademicSelectors } from '../catalog/AcademicSelectors';
 import type { AcademicSelection } from '../catalog/AcademicSelectors';
 import { Button } from '../Button';
@@ -19,7 +18,6 @@ export interface MaterialUploadFormProps {
   onError?: (error: unknown) => void;
   uploadFn?: (formData: FormData) => Promise<unknown>;
   accessToken?: string;
-  initialSubjectId?: string;
   className?: string;
 }
 
@@ -36,10 +34,8 @@ export function MaterialUploadForm({
   onError,
   uploadFn,
   accessToken,
-  initialSubjectId = '',
   className = '',
 }: MaterialUploadFormProps) {
-  const queryClient = useContext(QueryClientContext);
   const id = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const reviewHeading = useRef<HTMLHeadingElement>(null);
@@ -48,16 +44,13 @@ export function MaterialUploadForm({
   const [description, setDescription] = useState('');
   const [year, setYear] = useState('');
   const [type, setType] = useState<MaterialTypeValue>('DOCUMENT');
-  const [subjectId, setSubjectId] = useState(initialSubjectId);
-  const [careerId, setCareerId] = useState('');
-  const [professorId, setProfessorId] = useState('');
   const [externalLink, setExternalLink] = useState('');
   const [file, setFile] = useState<File | null>(null);
 
   const [academic, setAcademic] = useState<AcademicSelection>({
     universityId: '',
     careerId: '',
-    subjectId: initialSubjectId,
+    subjectId: '',
     professorId: '',
   });
 
@@ -67,6 +60,9 @@ export function MaterialUploadForm({
   const [success, setSuccess] = useState<string | null>(null);
 
   const isLinkType = type === 'LINK';
+  const hasAcademicSelection = Boolean(
+    academic.universityId && academic.careerId && academic.subjectId
+  );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] ?? null;
@@ -79,10 +75,12 @@ export function MaterialUploadForm({
 
   const handleReview = (e?: React.FormEvent | React.MouseEvent) => {
     if (e) e.preventDefault();
-    const effectiveSubject = academic.subjectId || subjectId;
-    if (!effectiveSubject) return;
+    if (!hasAcademicSelection) {
+      setError('Selecciona universidad, carrera y asignatura para continuar.');
+      return;
+    }
 
-    const selectedLabel = (name: string, fallback: string) => {
+    const selectedLabel = (name: string, fallback = '') => {
       const select = document.querySelector(
         `select[name="${name}"]`
       ) as HTMLSelectElement | null;
@@ -92,19 +90,13 @@ export function MaterialUploadForm({
     setReview([
       ['Título', title],
       ['Descripción', description || 'Sin descripción'],
-      [
-        'Universidad',
-        selectedLabel('universityId', 'Universidad Católica de Temuco'),
-      ],
-      [
-        'Carrera',
-        selectedLabel('careerId', careerId || 'Ingeniería Informática'),
-      ],
-      ['Asignatura', selectedLabel('subjectId', subjectId || 'Álgebra')],
+      ['Universidad', selectedLabel('universityId')],
+      ['Carrera', selectedLabel('careerId')],
+      ['Asignatura', selectedLabel('subjectId')],
       [
         'Profesor',
-        academic.professorId || professorId
-          ? selectedLabel('professorId', professorId || 'Ana Pérez')
+        academic.professorId
+          ? selectedLabel('professorId')
           : 'Sin profesor asociado',
       ],
       ['Año', year],
@@ -137,15 +129,15 @@ export function MaterialUploadForm({
     setError(null);
     setSuccess(null);
 
-    const activeSubjectId = subjectId.trim() || academic.subjectId.trim();
+    const activeSubjectId = academic.subjectId.trim();
 
     // Validación en cliente
     if (!title.trim()) {
       setError('Por favor, ingresa el título del material.');
       return;
     }
-    if (!activeSubjectId) {
-      setError('Por favor, ingresa el identificador de la asignatura.');
+    if (!academic.universityId || !academic.careerId || !activeSubjectId) {
+      setError('Selecciona universidad, carrera y asignatura para continuar.');
       return;
     }
     if (!year.trim()) {
@@ -174,14 +166,9 @@ export function MaterialUploadForm({
       formData.append('year', year.trim());
       formData.append('type', type);
       formData.append('subjectId', activeSubjectId);
-      const activeCareerId = careerId.trim() || academic.careerId.trim();
-      if (activeCareerId) {
-        formData.append('careerId', activeCareerId);
-      }
-      const activeProfessorId =
-        professorId.trim() || academic.professorId.trim();
-      if (activeProfessorId) {
-        formData.append('professorId', activeProfessorId);
+      formData.append('careerId', academic.careerId);
+      if (academic.professorId) {
+        formData.append('professorId', academic.professorId);
       }
       if (externalLink.trim()) {
         formData.append('externalLink', externalLink.trim());
@@ -230,11 +217,7 @@ export function MaterialUploadForm({
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (!queryClient) {
-          void handleSubmit(e);
-        } else {
-          handleReview(e);
-        }
+        handleReview(e);
       }}
       noValidate
       aria-busy={isUploading}
@@ -342,41 +325,12 @@ export function MaterialUploadForm({
         <p className="mb-4 text-sm text-uct-muted">
           Elige la universidad, la carrera y la asignatura a la que pertenece.
         </p>
-        {queryClient ? (
-          <>
-            <AcademicSelectors
-              required
-              showHeading={false}
-              value={academic}
-              onChange={(next) => {
-                setAcademic(next);
-                setSubjectId(next.subjectId);
-                setCareerId(next.careerId);
-                setProfessorId(next.professorId);
-              }}
-            />
-            <input
-              type="hidden"
-              data-testid="upload-subject-input"
-              value={subjectId || academic.subjectId}
-              onChange={(e) => {
-                setSubjectId(e.target.value);
-                setAcademic((prev) => ({ ...prev, subjectId: e.target.value }));
-              }}
-            />
-          </>
-        ) : (
-          <Input
-            label="Asignatura"
-            name="subjectId"
-            required
-            value={subjectId}
-            onChange={(e) => setSubjectId(e.target.value)}
-            disabled={isUploading}
-            data-testid="upload-subject-input"
-            placeholder="Ej. MAT-101"
-          />
-        )}
+        <AcademicSelectors
+          required
+          showHeading={false}
+          value={academic}
+          onChange={setAcademic}
+        />
       </fieldset>
 
       <fieldset className="upload-section">
@@ -475,7 +429,7 @@ export function MaterialUploadForm({
           id={`${id}-review-help`}
           className="max-w-md text-sm leading-relaxed text-uct-muted"
         >
-          {!(queryClient ? academic.subjectId : academic.subjectId || subjectId)
+          {!hasAcademicSelection
             ? 'Selecciona los datos académicos para continuar. '
             : ''}
           Puedes revisar tus datos antes de publicar o subir el material
@@ -483,13 +437,9 @@ export function MaterialUploadForm({
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <Button
-            type={queryClient ? 'submit' : 'button'}
+            type="submit"
             onClick={handleReview}
-            disabled={
-              !(queryClient
-                ? academic.subjectId
-                : academic.subjectId || subjectId)
-            }
+            disabled={!hasAcademicSelection}
             aria-describedby={`${id}-review-help`}
             className="min-h-12 w-full shrink-0 rounded-xl sm:w-auto"
           >
@@ -498,7 +448,7 @@ export function MaterialUploadForm({
           <Button
             type="button"
             onClick={handleSubmit}
-            disabled={isUploading}
+            disabled={isUploading || !hasAcademicSelection}
             aria-busy={isUploading}
             data-testid="upload-submit-button"
             className="min-h-12 w-full shrink-0 rounded-xl sm:w-auto"

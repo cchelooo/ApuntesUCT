@@ -14,6 +14,20 @@ describe('MaterialUploadButton - Feedback y prevención de dobles envíos (#243)
     vi.restoreAllMocks();
   });
 
+  it('no permite subir el archivo si falta el ID de asignatura', async () => {
+    render(<MaterialUploadButton />);
+
+    const file = new File(['content'], 'resumen.pdf', {
+      type: 'application/pdf',
+    });
+    await userEvent.upload(screen.getByTestId('file-upload-input'), file);
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Selecciona una asignatura antes de subir el material.'
+    );
+    expect(window.fetch).not.toHaveBeenCalled();
+  });
+
   it('evita dobles envíos deshabilitando el botón mientras la subida está activa', async () => {
     let resolveUpload: (val: unknown) => void;
     const uploadPromise = new Promise((resolve) => {

@@ -36,7 +36,7 @@ export function MaterialUploadButton({
   onSuccess,
   onError,
   uploadFn,
-  subjectId = 'default-subject',
+  subjectId = '',
   title,
   year = '2026',
   type = 'DOCUMENT',
@@ -55,6 +55,11 @@ export function MaterialUploadButton({
     if (!file) return;
 
     if (isUploading) return; // Prevenir doble envío
+    if (!uploadFn && !subjectId.trim()) {
+      setError('Selecciona una asignatura antes de subir el material.');
+      event.target.value = '';
+      return;
+    }
 
     setIsUploading(true);
     setError(null);
