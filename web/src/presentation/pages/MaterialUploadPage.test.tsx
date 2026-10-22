@@ -50,12 +50,12 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function setup() {
+function setup(accessToken?: string) {
   const user = userEvent.setup();
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <MaterialUploadPage />
+        <MaterialUploadPage accessToken={accessToken} />
       </MemoryRouter>
     </QueryClientProvider>
   );
@@ -78,6 +78,67 @@ async function fillMetadata(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('Formulario de subida de material', () => {
+  it('envía archivo y metadatos al Gateway como multipart y confirma la respuesta', async () => {
+    const user = setup('test-token');
+    await fillMetadata(user);
+    const file = new File(['apuntes'], 'resumen.pdf', {
+      type: 'application/pdf',
+    });
+    await user.upload(screen.getByLabelText('Selecciona tu archivo'), file);
+
+    vi.mocked(fetch).mockImplementation(async (_input, init) => {
+      if (init?.method === 'POST') {
+        return Response.json({
+          status: 'success',
+          isSimulatedResponse: false,
+          message: 'Material registrado',
+          data: {
+            id: 'material-1',
+            title: 'Guía de álgebra',
+            description: 'Ejercicios de matrices',
+            year: '2026',
+            type: 'DOCUMENT',
+            status: 'PENDING_REVIEW',
+            subjectId: 's1',
+            professorId: null,
+            careerId: 'c1',
+            universityId: null,
+            fileUrl: null,
+            fileSize: file.size,
+            mimeType: file.type,
+            externalLink: null,
+            createdAt: '2026-10-19T12:00:00.000Z',
+          },
+        });
+      }
+
+      return Response.json([]);
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Subir material' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText('¡Material subido exitosamente!')
+      ).toBeInTheDocument()
+    );
+
+    const [, options] = vi
+      .mocked(fetch)
+      .mock.calls.find(([, init]) => init?.method === 'POST')!;
+    expect(options?.headers).toEqual({ Authorization: 'Bearer test-token' });
+    expect(options?.headers).not.toHaveProperty('Content-Type');
+    expect(options?.body).toBeInstanceOf(FormData);
+    const body = options?.body as FormData;
+    expect(body.get('title')).toBe('Guía de álgebra');
+    expect(body.get('description')).toBe('Ejercicios de matrices');
+    expect(body.get('year')).toBe('2026');
+    expect(body.get('type')).toBe('DOCUMENT');
+    expect(body.get('subjectId')).toBe('s1');
+    expect(body.get('careerId')).toBe('c1');
+    expect(body.get('file')).toBe(file);
+  });
+
   it('permite completar metadatos y revisar un archivo sin publicar', async () => {
     const user = setup();
     expect(

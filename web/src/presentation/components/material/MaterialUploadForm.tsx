@@ -17,6 +17,7 @@ export interface MaterialUploadFormProps {
   onSuccess?: (result?: unknown) => void;
   onError?: (error: unknown) => void;
   uploadFn?: (formData: FormData) => Promise<unknown>;
+  accessToken?: string;
   className?: string;
 }
 
@@ -32,6 +33,7 @@ export function MaterialUploadForm({
   onSuccess,
   onError,
   uploadFn,
+  accessToken,
   className = '',
 }: MaterialUploadFormProps) {
   const id = useId();
@@ -138,6 +140,10 @@ export function MaterialUploadForm({
       setError('Selecciona universidad, carrera y asignatura para continuar.');
       return;
     }
+    if (!year.trim()) {
+      setError('Por favor, ingresa el año del material.');
+      return;
+    }
     if (isLinkType && !externalLink.trim()) {
       setError(
         'Debes ingresar un enlace externo válido para este tipo de material.'
@@ -157,7 +163,7 @@ export function MaterialUploadForm({
       if (description.trim()) {
         formData.append('description', description.trim());
       }
-      formData.append('year', year.trim() || '2026');
+      formData.append('year', year.trim());
       formData.append('type', type);
       formData.append('subjectId', activeSubjectId);
       formData.append('careerId', academic.careerId);
@@ -173,7 +179,7 @@ export function MaterialUploadForm({
 
       const result = uploadFn
         ? await uploadFn(formData)
-        : await uploadMaterial(formData);
+        : await uploadMaterial(formData, { accessToken });
 
       // Confirmación de subida exitosa
       setError(null);

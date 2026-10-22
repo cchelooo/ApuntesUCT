@@ -123,6 +123,9 @@ alternativo cuando falta esta configuración.
   `professorId` y admite DOCUMENT, PRESENTATION, EXAM, SUMMARY y LINK. El navegador
   establece el Content-Type y su boundary. Si se proporciona un token, se envía
   como Bearer; el cliente no obtiene credenciales de almacenamiento global.
+- La vista `/materials/upload` envía los metadatos y el archivo con el mismo
+  contrato multipart. Puede recibir un `accessToken` opcional; el flujo de login
+  actual no lo persiste ni lo conecta automáticamente.
 - `useCreateMaterialMutation(accessToken?)` invalida las consultas de materiales
   al completar la creación. La integración real con Auth sigue pendiente en
   backend; el token simulado de login no habilita la creación.

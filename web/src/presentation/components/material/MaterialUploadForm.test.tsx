@@ -86,6 +86,9 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
       screen.getByLabelText('Profesor'),
       'professor-real'
     );
+    fireEvent.change(screen.getByTestId('upload-year-input'), {
+      target: { value: '2026' },
+    });
 
     const file = new File(['dummy content'], 'guia.pdf', {
       type: 'application/pdf',
@@ -134,6 +137,9 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
       target: { value: 'Libro muy pesado' },
     });
     await selectAcademic();
+    fireEvent.change(screen.getByTestId('upload-year-input'), {
+      target: { value: '2026' },
+    });
 
     const file = new File(['large content'], 'libro.pdf', {
       type: 'application/pdf',
@@ -164,6 +170,9 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
       target: { value: 'Archivo no soportado' },
     });
     await selectAcademic();
+    fireEvent.change(screen.getByTestId('upload-year-input'), {
+      target: { value: '2026' },
+    });
 
     const file = new File(['unsupported'], 'corrupted.pdf', {
       type: 'application/pdf',
@@ -193,6 +202,9 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
       target: { value: 'Apunte anónimo' },
     });
     await selectAcademic();
+    fireEvent.change(screen.getByTestId('upload-year-input'), {
+      target: { value: '2026' },
+    });
 
     const file = new File(['content'], 'apunte.pdf', {
       type: 'application/pdf',
@@ -219,6 +231,9 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
       target: { value: 'Apunte' },
     });
     await selectAcademic();
+    fireEvent.change(screen.getByTestId('upload-year-input'), {
+      target: { value: '2026' },
+    });
 
     const file = new File(['content'], 'apunte.pdf', {
       type: 'application/pdf',
@@ -251,6 +266,27 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
     });
   });
 
+  it('impide subir el material cuando falta el año', async () => {
+    const uploadFn = vi.fn();
+    render(<MaterialUploadForm uploadFn={uploadFn} />);
+
+    fireEvent.change(screen.getByTestId('upload-title-input'), {
+      target: { value: 'Guía de Estudio' },
+    });
+    await selectAcademic();
+    await userEvent.upload(
+      screen.getByTestId('upload-file-input'),
+      new File(['content'], 'guia.pdf', { type: 'application/pdf' })
+    );
+
+    fireEvent.click(screen.getByTestId('upload-submit-button'));
+
+    expect(
+      await screen.findByText('Por favor, ingresa el año del material.')
+    ).toBeInTheDocument();
+    expect(uploadFn).not.toHaveBeenCalled();
+  });
+
   it('establece el atributo aria-busy en el formulario y en el botón durante la subida', async () => {
     let resolveUpload: (val: unknown) => void;
     const uploadPromise = new Promise((resolve) => {
@@ -264,6 +300,9 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
       target: { value: 'Guía de Estudio' },
     });
     await selectAcademic();
+    fireEvent.change(screen.getByTestId('upload-year-input'), {
+      target: { value: '2026' },
+    });
 
     const file = new File(['content'], 'guia.pdf', {
       type: 'application/pdf',
@@ -298,6 +337,9 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
       target: { value: 'Libro muy pesado' },
     });
     await selectAcademic();
+    fireEvent.change(screen.getByTestId('upload-year-input'), {
+      target: { value: '2026' },
+    });
 
     const file = new File(['large content'], 'libro.pdf', {
       type: 'application/pdf',
@@ -345,6 +387,9 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
       target: { value: 'Guía de Estudio' },
     });
     await selectAcademic();
+    fireEvent.change(screen.getByTestId('upload-year-input'), {
+      target: { value: '2026' },
+    });
 
     const file = new File(['content'], 'guia.pdf', {
       type: 'application/pdf',
@@ -400,6 +445,9 @@ describe('MaterialUploadForm - Feedback de subida y contrato de errores (#243)',
       target: { value: 'Guía de Estudio Avanzada' },
     });
     await selectAcademic();
+    fireEvent.change(screen.getByTestId('upload-year-input'), {
+      target: { value: '2026' },
+    });
 
     const file = new File(['content'], 'guia.pdf', {
       type: 'application/pdf',
