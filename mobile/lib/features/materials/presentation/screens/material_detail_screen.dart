@@ -60,57 +60,67 @@ class MaterialDetailScreen extends StatelessWidget {
               title: const Text('Detalle del Material'),
               centerTitle: true,
             ),
-            body: detailAsync.when(
-              loading: () {
-                if (localDetail != null &&
-                    localDetail.summary.title.isNotEmpty) {
-                  return _buildBody(context, localDetail);
-                }
-                return const LoadingState(
-                  message: 'Cargando información del material...',
-                );
-              },
-              error: (error, _) {
-                if (error.isNotFound) {
+            body: Builder(
+              builder: (context) {
+                // 1. Si la petición falló, mostramos el error sin importar si había resumen previo
+                if (detailAsync.hasError) {
+                  final error = detailAsync.error;
+                  if (error.isNotFound) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const EmptyState(
+                              title: 'Material no encontrado',
+                              subtitle:
+                                  'El material solicitado no existe o fue eliminado del catálogo.',
+                            ),
+                            const SizedBox(height: 20),
+                            FilledButton.icon(
+                              onPressed: () => Navigator.of(context).pop(),
+                              icon: const Icon(Icons.arrow_back),
+                              label: const Text('Volver al catálogo'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
                   return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const EmptyState(
-                            title: 'Material no encontrado',
-                            subtitle: 'El material solicitado no existe o fue eliminado del catálogo.',
-                          ),
-                          const SizedBox(height: 20),
-                          FilledButton.icon(
-                            onPressed: () => Navigator.of(context).pop(),
-                            icon: const Icon(Icons.arrow_back),
-                            label: const Text('Volver al catálogo'),
-                          ),
-                        ],
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: ErrorState(
+                        message:
+                            'No fue posible cargar el material. Verifica tu conexión.',
+                        onRetry: () =>
+                            ref.invalidate(materialDetailProvider(materialId)),
                       ),
                     ),
                   );
                 }
 
-                if (localDetail != null &&
-                    localDetail.summary.title.isNotEmpty) {
-                  return _buildBody(context, localDetail);
+                // 2. Si está cargando y hay un resumen local disponible, lo muestra como placeholder
+                if (detailAsync.isLoading) {
+                  if (localDetail != null &&
+                      localDetail.summary.title.isNotEmpty) {
+                    return _buildBody(context, localDetail);
+                  }
+                  return const LoadingState(
+                    message: 'Cargando información del material...',
+                  );
                 }
 
-                return Center(
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: ErrorState(
-                      message: 'No fue posible cargar el material. Verifica tu conexión.',
-                      onRetry: () =>
-                          ref.invalidate(materialDetailProvider(materialId)),
-                    ),
-                  ),
-                );
+                // 3. Cuando los datos llegan con éxito
+                final loadedDetail = detailAsync.value;
+                if (loadedDetail != null) {
+                  return _buildBody(context, loadedDetail);
+                }
+
+                return _buildBody(context, localDetail ?? detail);
               },
-              data: (loadedDetail) => _buildBody(context, loadedDetail),
             ),
           );
         },
@@ -216,7 +226,7 @@ class MaterialDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Subido por ${summary.authorName} • ${summary.careerName}',
+            'Subido por ${summary.authorName}\n${summary.careerName}',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: colorScheme.outline,
             ),

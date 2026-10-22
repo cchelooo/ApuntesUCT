@@ -5,6 +5,7 @@ import 'package:apuntesuct_mobile/core/network/api_client.dart';
 import 'package:apuntesuct_mobile/core/widgets/empty_state.dart';
 import 'package:apuntesuct_mobile/core/widgets/error_state.dart';
 import 'package:apuntesuct_mobile/core/widgets/loading_state.dart';
+import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_detail_screen.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -223,5 +224,58 @@ void main() {
 
       expect(find.text('Certamen 2 Resuelto - Álgebra'), findsOneWidget);
     });
+    testWidgets(
+      'Error de red con initialSummary muestra ErrorState y permite reintentar',
+      (WidgetTester tester) async {
+        final dio = Dio();
+        dio.httpClientAdapter = MockHttpAdapter((options) {
+          return ResponseBody.fromString(
+            jsonEncode({'statusCode': 500, 'message': 'Internal Server Error'}),
+            500,
+            headers: {
+              Headers.contentTypeHeader: [Headers.jsonContentType],
+            },
+          );
+        });
+
+        final apiClient = ApiClient(customDio: dio);
+
+        const initialSummary = MaterialSummary(
+          id: 'mat_con_resumen',
+          title: 'Resumen Previo de Tarjeta',
+          description: 'Descripción básica',
+          authorName: 'Autor Previo',
+          academicYear: 2026,
+          materialType: 'guia',
+          status: 'aprobado',
+          downloadCount: 5,
+          rating: 4.5,
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [apiclientProvider.overrideWithValue(apiClient)],
+            child: MaterialApp(
+              home: MaterialDetailScreen.byId(
+                materialId: 'mat_con_resumen',
+                initialSummary: initialSummary,
+              ),
+            ),
+          ),
+        );
+
+        // Primer frame: monta el widget y muestra resumen local en loading
+        await tester.pump();
+        // Espera a que termine la petición HTTP con error 500 y se reconstruya el árbol
+        await tester.pumpAndSettle();
+
+        expect(find.byType(ErrorState), findsOneWidget);
+        expect(
+          find.text('No fue posible cargar el material. Verifica tu conexión.'),
+          findsOneWidget,
+        );
+        expect(find.text('Reintentar'), findsOneWidget);
+      },
+    );
   });
 }

@@ -47,6 +47,7 @@ class DiscoveryMaterialsState {
     String? selectedSubject,
     bool clearSubject = false,
     String? errorMessage,
+    bool clearError = false,
   }) {
     return DiscoveryMaterialsState(
       items: items ?? this.items,
@@ -58,7 +59,7 @@ class DiscoveryMaterialsState {
       selectedSubject: clearSubject
           ? null
           : (selectedSubject ?? this.selectedSubject),
-      errorMessage: errorMessage,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
 }
@@ -76,8 +77,7 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
 
   Future<void> _loadInitial() async {
     final requestId = ++_activeRequestId;
-    // La nueva consulta ya no espera la página anterior que será descartada.
-    state = state.copyWith(isLoadingMore: false);
+    state = state.copyWith(isLoadingMore: false, clearError: true);
     final repo = ref.read(materialsRepositoryProvider);
     final targetQuery = state.query;
     final targetSubject = state.selectedSubject;
@@ -90,7 +90,7 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
         pageSize: pageSize,
       );
 
-      // Si se disparó otra búsqueda o filtro mientras esperaba, ignorar respuesta vieja
+      // Criterio 1: Descartar respuestas de peticiones obsoletas
       if (requestId != _activeRequestId) return;
 
       state = state.copyWith(
@@ -98,13 +98,14 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
         isLoading: false,
         page: 1,
         hasMore: results.length >= pageSize,
-        errorMessage: null,
+        clearError: true,
       );
-    } catch (e) {
+    } catch (_) {
+      // Criterio 3: Manejo controlado de fallos (sin excepciones no controladas)
       if (requestId != _activeRequestId) return;
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Error al cargar materiales disponibles.',
+        errorMessage: 'Error al cargar materiales disponibles. Verifica tu conexión.',
       );
     }
   }
@@ -112,7 +113,7 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
   Future<void> setQuery(String newQuery) async {
     final clean = newQuery.trim();
     if (state.query == clean) return;
-    state = state.copyWith(query: clean, isLoading: true, page: 1);
+    state = state.copyWith(query: clean, isLoading: true, page: 1, clearError: true);
     await _loadInitial();
   }
 
@@ -122,12 +123,24 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
       clearSubject: subject == null,
       isLoading: true,
       page: 1,
+      clearError: true,
+    );
+    await _loadInitial();
+  }
+
+  Future<void> clearFilters() async {
+    state = state.copyWith(
+      query: '',
+      clearSubject: true,
+      isLoading: true,
+      page: 1,
+      clearError: true,
     );
     await _loadInitial();
   }
 
   Future<void> refresh() async {
-    state = state.copyWith(isLoading: true, page: 1);
+    state = state.copyWith(isLoading: true, page: 1, clearError: true);
     await _loadInitial();
   }
 
@@ -149,11 +162,15 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
         pageSize: pageSize,
       );
 
-      // Si la búsqueda cambió mientras cargaba la siguiente página, descartar
+      // Criterio 1: Descartar si el contexto de búsqueda cambió mientras se cargaba la página
       if (requestId != _activeRequestId) return;
 
+      // Criterio 2: Cargar más no duplica materiales (garantizar unicidad por id)
+      final existingIds = state.items.map((m) => m.id).toSet();
+      final uniqueNewItems = nextItems.where((m) => !existingIds.contains(m.id)).toList();
+
       state = state.copyWith(
-        items: [...state.items, ...nextItems],
+        items: [...state.items, ...uniqueNewItems],
         page: nextPage,
         hasMore: nextItems.length >= pageSize,
         isLoadingMore: false,
