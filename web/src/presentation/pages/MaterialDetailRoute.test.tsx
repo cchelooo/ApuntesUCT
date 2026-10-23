@@ -125,7 +125,12 @@ describe('MaterialDetailRoute', () => {
     mockApi(() => json(contract()));
     renderRoute(`/material/${MATERIAL_ID}`);
 
-    await screen.findByText('Certamen 1');
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /descargar material/i })
+      ).toBeEnabled();
+    });
+
     const button = screen.getByRole('button', {
       name: /descargar material/i,
     });
