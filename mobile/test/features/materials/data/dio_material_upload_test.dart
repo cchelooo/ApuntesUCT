@@ -151,49 +151,46 @@ void main() {
       expect(detail.summary.id, 'mat-900');
     });
 
-    test(
-      'propaga el 413 del backend con el ApiException del interceptor',
-      () async {
-        final dio = Dio()
-          ..interceptors.add(
-            InterceptorsWrapper(
-              onRequest: (options, handler) {
-                // Simula lo que el ErrorInterceptor real produce en
-                // producción y verifica que el repositorio lo propaga.
-                handler.reject(
-                  DioException(
+    test('convierte el 413 del backend en ApiException', () async {
+      final dio = Dio()
+        ..interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              // Simula lo que el ErrorInterceptor real produce en
+              // producción y verifica que el repositorio lo propaga.
+              handler.reject(
+                DioException(
+                  requestOptions: options,
+                  type: DioExceptionType.badResponse,
+                  response: Response(
                     requestOptions: options,
-                    type: DioExceptionType.badResponse,
-                    response: Response(
-                      requestOptions: options,
-                      statusCode: 413,
-                      data: {'message': 'El archivo excede el tamaño máximo.'},
-                    ),
-                    error: ApiException(
-                      message: 'El archivo excede el tamaño máximo.',
-                      statusCode: 413,
-                    ),
+                    statusCode: 413,
+                    data: {'message': 'El archivo excede el tamaño máximo.'},
                   ),
-                  true,
-                );
-              },
-            ),
-          );
-        final repository = DioMaterialRepository(ApiClient(customDio: dio));
+                  error: ApiException(
+                    message: 'El archivo excede el tamaño máximo.',
+                    statusCode: 413,
+                  ),
+                ),
+                true,
+              );
+            },
+          ),
+        );
+      final repository = DioMaterialRepository(ApiClient(customDio: dio));
 
-        Object? caught;
-        try {
-          await repository.upload(fileRequest());
-        } catch (e) {
-          caught = e;
-        }
+      Object? caught;
+      try {
+        await repository.upload(fileRequest());
+      } catch (e) {
+        caught = e;
+      }
 
-        expect(caught, isA<DioException>());
-        final api = (caught as DioException).error;
-        expect(api, isA<ApiException>());
-        expect((api as ApiException).statusCode, 413);
-        expect(api.message, contains('excede'));
-      },
-    );
+      // El repositorio de main propaga ApiException (ya no DioException).
+      expect(caught, isA<ApiException>());
+      final api = caught as ApiException;
+      expect(api.statusCode, 413);
+      expect(api.message, contains('excede'));
+    });
   });
 }

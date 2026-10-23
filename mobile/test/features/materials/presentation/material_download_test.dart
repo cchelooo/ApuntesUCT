@@ -52,7 +52,12 @@ class Repository extends DioMaterialRepository {
   String? requestedVersion;
   Future<MaterialDownload> Function()? response;
   @override
-  Future<MaterialDownload> download(String id, {String? versionId}) {
+  Future<MaterialDownload> download(
+    String id, {
+    String? versionId,
+    CancelToken? cancelToken,
+    ProgressCallback? onReceiveProgress,
+  }) {
     calls++;
     requestedVersion = versionId;
     return response?.call() ?? Future.value(downloadData);
