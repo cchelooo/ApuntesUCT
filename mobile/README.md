@@ -65,6 +65,32 @@ La aplicación móvil utiliza el **API Gateway** (`:3000`) como única entrada H
 
 La pantalla de búsqueda continúa usando `MockMaterialsRepository`: esta tarea prepara la conexión del listado básico, sin conectar búsqueda/filtros al endpoint de Material ni implementar subida, detalle, descarga o versionado.
 
+### Search: preparación Mobile (#275)
+
+`searchRepositoryProvider` comparte `apiclientProvider` con Catalog y Material.
+`DioSearchRepository` solo consume `GET /search` con `q` si hay texto activo,
+recortando espacios exteriores. No usa el puerto de Search ni consulta Material
+como sustituto.
+
+El contrato actual de INT2 es un **stub** (`query`, `results: []`, `total: 0`,
+`message`). El adaptador lo reconoce mediante `SearchContractPendingException`;
+no devuelve una página vacía que sugiera una búsqueda real. Una respuesta no
+acordada produce un error visible. Los errores HTTP conservan código y mensaje.
+Las consultas con filtros activos o paginación no predeterminada se rechazan
+antes del HTTP, evitando ignorar silenciosamente parte de la solicitud.
+
+`materialSearchControllerProvider` ofrece carga, datos/error y control de
+respuestas obsoletas. Una consulta nueva limpia resultados y paginación;
+las respuestas antiguas no alteran el estado actual. El controlador está
+preparado para páginas del dominio interno, verificadas con un repositorio
+controlado, **sin atribuir ese formato al JSON de INT2**.
+
+Pendiente cuando INT2 publique #248–#251: mapear los DTOs de resultados, definir
+filtros, orden, página/límite/total y fin de resultados según OpenAPI, y completar
+sus pruebas de contrato. No hay nombres de parámetros supuestos en Mobile.
+Este avance no conecta la pantalla de descubrimiento ni permite cerrar #275
+como integración completa de Search.
+
 Las URLs base se resuelven mediante la clase `ApiConfig` (`lib/core/config/api_config.dart`) y pueden ser parametrizadas en tiempo de compilación con `--dart-define`.
 
 ### Variables de configuración disponibles
