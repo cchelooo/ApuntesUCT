@@ -56,6 +56,11 @@ class DioMaterialRepository implements MaterialRepository {
           filename: fileName,
           contentType: DioMediaType.parse(mimeType),
         );
+        // Enlace de respaldo opcional junto al archivo (#285: el backend lo
+        // acepta y el formulario lo ofrece).
+        if (request.backupLink != null) {
+          fields['externalLink'] = request.backupLink.toString();
+        }
       case ExternalMaterialLink(:final url):
         if (request.type != 'LINK') {
           throw ArgumentError(
@@ -69,7 +74,13 @@ class DioMaterialRepository implements MaterialRepository {
       final response = await _apiClient.dio.post<dynamic>(
         '/materials',
         data: FormData.fromMap(fields),
-        options: Options(contentType: Headers.multipartFormDataContentType),
+        options: Options(
+          contentType: Headers.multipartFormDataContentType,
+          // Subir 15 MB puede superar los 10 s por defecto; el 201 también
+          // puede tardar en red lenta (H8).
+          sendTimeout: const Duration(seconds: 60),
+          receiveTimeout: const Duration(seconds: 30),
+        ),
         cancelToken: cancelToken,
         onSendProgress: onSendProgress,
       );
