@@ -63,7 +63,30 @@ La aplicación móvil utiliza el **API Gateway** (`:3000`) como única entrada H
 
 `materialListingRepositoryProvider` consume `GET /materials?page=...&pageSize=...` y `materialListProvider(page)` expone carga, datos y error. El listado interpreta el estado `PUBLISHED` del Backend. Tanto este repositorio como el de Catalog se pueden reemplazar por un fake mediante overrides de Riverpod.
 
-La pantalla de búsqueda continúa usando `MockMaterialsRepository`: esta tarea prepara la conexión del listado básico, sin conectar búsqueda/filtros al endpoint de Material ni implementar subida, detalle, descarga o versionado.
+`materialRepositoryProvider` utiliza `DioMaterialRepository` y el mismo cliente
+central para listado y subida. La subida envía `multipart/form-data` a
+`/materials` con los campos publicados en OpenAPI: `title`, `description`,
+`year`, `type`, `subjectId`, `careerId`, `professorId`, `externalLink` y `file`,
+según archivo o enlace. `universityId` lo deriva Backend y no se envía.
+
+El POST publicado persiste el material en `PENDING_REVIEW` y devuelve
+`isSimulatedResponse: false`. Mobile conserva ese indicador para distinguir una
+respuesta simulada en entornos antiguos. No utiliza `fileUrl` para descargar.
+Los errores conservan códigos y mensajes, incluidas listas de validación NestJS.
+Cada intento reconstruye el multipart; no se reintenta un POST automáticamente.
+
+Detalle y descarga usan `GET /materials/:id` y `GET /materials/:id/download`
+(con `versionId` opcional). El detalle adapta `currentVersion`, cuyo tamaño es
+una cadena decimal; la descarga conserva bytes, MIME y nombre UTF-8.
+`POST /materials/:id/versions` envía solo `file` y conserva la numeración recibida.
+Las operaciones concretas admiten cancelación y las transferencias, progreso.
+Todo pasa por el cliente central y Gateway, sin recurrir a puertos de servicios.
+Las pruebas de contrato no necesitan Docker ni crean datos reales.
+
+La pantalla de descubrimiento continúa usando `MockMaterialsRepository`.
+Estos adaptadores no demuestran que ese listado esté integrado con Search.
+La subida permanece pendiente de revisión: no es descargable mediante el
+endpoint público hasta que el material esté publicado.
 
 Las URLs base se resuelven mediante la clase `ApiConfig` (`lib/core/config/api_config.dart`) y pueden ser parametrizadas en tiempo de compilación con `--dart-define`.
 
@@ -212,6 +235,25 @@ flutter test --dart-define=RUN_GATEWAY_SMOKE=true \
   --dart-define=API_GATEWAY_URL=http://localhost:3000/api/v1 \
   test/integration/gateway_live_test.dart
 ```
+
+El contrato de subida tiene una comprobación HTTP optativa en
+`test/integration/material_upload_live_test.dart`. **Crea registros reales**;
+usarla solo con PostgreSQL/MinIO desechables, Catalog con referencias existentes
+y contexto de autor configurado en Material. Los identificadores deben
+corresponder a una carrera y asignatura relacionadas. Un PDF válido es necesario
+para activar el caso de archivo. Sin estos parámetros las pruebas se omiten.
+
+```bash
+flutter test --dart-define=RUN_MATERIAL_UPLOAD_SMOKE=true \
+  --dart-define=API_GATEWAY_URL=http://localhost:3000/api/v1 \
+  --dart-define=MATERIAL_TEST_SUBJECT_ID=<uuid-asignatura> \
+  --dart-define=MATERIAL_TEST_CAREER_ID=<uuid-carrera> \
+  --dart-define=MATERIAL_TEST_PDF_PATH=<ruta-pdf-valido> \
+  test/integration/material_upload_live_test.dart
+```
+
+Comprueba creación FILE/LINK con `isSimulatedResponse: false` y rechazo `415`.
+No es una prueba de autenticación real ni sustituye la prueba del almacenamiento.
 
 ### Limpieza y mantenimiento del proyecto
 
