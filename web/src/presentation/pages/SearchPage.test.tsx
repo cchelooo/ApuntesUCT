@@ -3,9 +3,15 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  SEARCH_SORT_OPTIONS,
+  type SearchSort,
+} from '../../domain/search/search';
 import { SearchPage } from './SearchPage';
 
 const GATEWAY = 'https://gateway.test/api/v1';
+const PAGE_SIZE = 20;
+const TOTAL = 41;
 const fetchMock = vi.fn();
 
 function json(body: unknown, status = 200) {
@@ -27,10 +33,26 @@ function mockApi(search: (url: URL) => Response) {
   });
 }
 
+function mockPagedApi() {
+  mockApi((url) => {
+    const page = Number(url.searchParams.get('page'));
+    return json({
+      items: [result(`m-${page}`, `Página ${page}`)],
+      page,
+      pageSize: PAGE_SIZE,
+      total: TOTAL,
+    });
+  });
+}
+
 function searchCalls(): URL[] {
   return fetchMock.mock.calls
     .map((call) => new URL(String(call[0])))
     .filter((url) => url.pathname.endsWith('/search'));
+}
+
+function lastCall(): URL {
+  return searchCalls().at(-1)!;
 }
 
 function renderPage(path = '/search?q=algebra') {
@@ -45,6 +67,9 @@ function renderPage(path = '/search?q=algebra') {
     </QueryClientProvider>
   );
 }
+
+const previousButton = () => screen.getByRole('button', { name: 'Anterior' });
+const nextButton = () => screen.getByRole('button', { name: 'Siguiente' });
 
 describe('SearchPage', () => {
   beforeEach(() => {
@@ -68,72 +93,147 @@ describe('SearchPage', () => {
       json({
         items: [result('real-uuid-1', 'Guía de álgebra')],
         page: 1,
-        pageSize: 20,
+        pageSize: PAGE_SIZE,
         total: 1,
       })
     );
     renderPage();
 
     expect(await screen.findByText('Guía de álgebra')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Guía de álgebra/ })).toHaveAttribute(
-      'href',
-      '/material/real-uuid-1'
-    );
+    expect(
+      screen.getByRole('link', { name: /Guía de álgebra/ })
+    ).toHaveAttribute('href', '/material/real-uuid-1');
     const [first] = searchCalls();
     expect(first.searchParams.get('q')).toBe('algebra');
     expect(first.searchParams.get('sort')).toBe('relevance');
     expect(first.searchParams.get('page')).toBe('1');
   });
 
-  it('envía el criterio de ordenamiento elegido al backend y vuelve a la página 1', async () => {
-    mockApi(() =>
-      json({ items: [result('a', 'Uno')], page: 1, pageSize: 20, total: 1 })
-    );
-    renderPage('/search?q=algebra&page=2');
-    await screen.findByText('Uno');
+  describe('paginación', () => {
+    it('avanza de página pidiendo la siguiente al backend', async () => {
+      mockPagedApi();
+      renderPage();
 
-    await userEvent.selectOptions(screen.getByLabelText('Ordenar por'), 'recent');
+      await screen.findByText('Página 1');
+      await userEvent.click(nextButton());
 
-    await vi.waitFor(() => {
-      const last = searchCalls().at(-1)!;
-      expect(last.searchParams.get('sort')).toBe('recent');
-      expect(last.searchParams.get('page')).toBe('1');
+      expect(await screen.findByText('Página 2')).toBeInTheDocument();
+      expect(lastCall().searchParams.get('page')).toBe('2');
+    });
+
+    it('retrocede de página pidiendo la anterior al backend', async () => {
+      mockPagedApi();
+      renderPage('/search?q=algebra&page=2');
+
+      await screen.findByText('Página 2');
+      await vi.waitFor(() => expect(previousButton()).toBeEnabled());
+      await userEvent.click(previousButton());
+
+      expect(await screen.findByText('Página 1')).toBeInTheDocument();
+      expect(lastCall().searchParams.get('page')).toBe('1');
+      expect(screen.queryByText('Página 2')).not.toBeInTheDocument();
+    });
+
+    it('en la primera página no permite retroceder', async () => {
+      mockPagedApi();
+      renderPage();
+
+      await screen.findByText('Página 1');
+      expect(screen.getByText(/Página 1 de 3/)).toBeInTheDocument();
+      await vi.waitFor(() => expect(nextButton()).toBeEnabled());
+      expect(previousButton()).toBeDisabled();
+
+      const callsBefore = searchCalls().length;
+      await userEvent.click(previousButton());
+      expect(searchCalls()).toHaveLength(callsBefore);
+    });
+
+    it('en la última página no permite avanzar', async () => {
+      mockPagedApi();
+      renderPage('/search?q=algebra&page=3');
+
+      await screen.findByText('Página 3');
+      expect(screen.getByText(/Página 3 de 3/)).toBeInTheDocument();
+      await vi.waitFor(() => expect(previousButton()).toBeEnabled());
+      expect(nextButton()).toBeDisabled();
+
+      const callsBefore = searchCalls().length;
+      await userEvent.click(nextButton());
+      expect(searchCalls()).toHaveLength(callsBefore);
+    });
+
+    it('recorre ida y vuelta toda la lista respetando ambos límites', async () => {
+      mockPagedApi();
+      renderPage();
+
+      await screen.findByText('Página 1');
+      await vi.waitFor(() => expect(nextButton()).toBeEnabled());
+      await userEvent.click(nextButton());
+      await screen.findByText('Página 2');
+      await vi.waitFor(() => expect(nextButton()).toBeEnabled());
+      await userEvent.click(nextButton());
+      await screen.findByText('Página 3');
+      await vi.waitFor(() => expect(previousButton()).toBeEnabled());
+      expect(nextButton()).toBeDisabled();
+
+      await userEvent.click(previousButton());
+      await screen.findByText('Página 2');
+      await vi.waitFor(() => expect(previousButton()).toBeEnabled());
+      await userEvent.click(previousButton());
+      await screen.findByText('Página 1');
+      await vi.waitFor(() => expect(nextButton()).toBeEnabled());
+      expect(previousButton()).toBeDisabled();
+
+      expect(searchCalls().map((url) => url.searchParams.get('page'))).toEqual([
+        '1',
+        '2',
+        '3',
+        '2',
+        '1',
+      ]);
     });
   });
 
-  it('avanza de página pidiendo la siguiente al backend', async () => {
-    mockApi((url) =>
-      url.searchParams.get('page') === '2'
-        ? json({
-            items: [result('p2', 'Página dos')],
-            page: 2,
-            pageSize: 20,
-            total: 21,
-          })
-        : json({
-            items: [result('p1', 'Página uno')],
-            page: 1,
-            pageSize: 20,
-            total: 21,
-          })
+  describe('ordenamiento', () => {
+    it.each(SEARCH_SORT_OPTIONS.map((option) => option.value))(
+      'envía sort=%s al backend y vuelve a la página 1',
+      async (sort: SearchSort) => {
+        mockPagedApi();
+        const initial: SearchSort = sort === 'title' ? 'recent' : 'title';
+        renderPage(`/search?q=algebra&sort=${initial}&page=2`);
+
+        await screen.findByText('Página 2');
+        expect(lastCall().searchParams.get('sort')).toBe(initial);
+        expect(lastCall().searchParams.get('page')).toBe('2');
+
+        await userEvent.selectOptions(
+          screen.getByLabelText('Ordenar por'),
+          sort
+        );
+
+        expect(await screen.findByText('Página 1')).toBeInTheDocument();
+        expect(lastCall().searchParams.get('sort')).toBe(sort);
+        expect(lastCall().searchParams.get('page')).toBe('1');
+        expect(lastCall().searchParams.get('q')).toBe('algebra');
+      }
     );
-    renderPage();
 
-    await screen.findByText('Página uno');
-    expect(screen.getByRole('button', { name: 'Anterior' })).toBeDisabled();
-
-    await userEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
-
-    expect(await screen.findByText('Página dos')).toBeInTheDocument();
-    expect(searchCalls().at(-1)!.searchParams.get('page')).toBe('2');
+    it('ofrece exactamente las cuatro opciones de ordenamiento', () => {
+      mockPagedApi();
+      renderPage();
+      const select = screen.getByLabelText('Ordenar por');
+      const values = Array.from(
+        select.querySelectorAll('option'),
+        (option) => (option as HTMLOptionElement).value
+      );
+      expect(values).toEqual(['relevance', 'recent', 'year_desc', 'title']);
+    });
   });
 
   it('muestra el estado vacío con el stub actual de Search', async () => {
     mockApi(() => json({ query: 'algebra', results: [], total: 0 }));
     renderPage();
-    expect(
-      await screen.findByText(/Sin resultados para/)
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Sin resultados para/)).toBeInTheDocument();
   });
 
   it('muestra el error y permite reintentar', async () => {
