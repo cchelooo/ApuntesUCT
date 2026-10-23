@@ -12,6 +12,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../upload_catalog_harness.dart' show testBdId, testIciId, testUctId;
+
 class _FakeMaterialRepository implements MaterialRepository {
   UploadMaterialRequest? lastRequest;
   Future<MaterialDetail> Function(UploadMaterialRequest request)? onUpload;
@@ -37,10 +39,8 @@ class _FakeMaterialRepository implements MaterialRepository {
       throw UnimplementedError();
 
   @override
-  Future<MaterialDownload> download(
-    String materialId, {
-    String? versionId,
-  }) => throw UnimplementedError();
+  Future<MaterialDownload> download(String materialId, {String? versionId}) =>
+      throw UnimplementedError();
 
   @override
   Future<MaterialVersion> createVersion(
@@ -51,9 +51,9 @@ class _FakeMaterialRepository implements MaterialRepository {
 
 UploadMaterialRequest _request() => UploadMaterialRequest(
   title: 'Guía de prueba',
-  university: AcademicReference(id: 'uct-main-uuid'),
-  career: AcademicReference(id: 'inf-uct-uuid'),
-  subject: AcademicReference(id: 'subj-bd-uuid'),
+  university: AcademicReference(id: testUctId),
+  career: AcademicReference(id: testIciId),
+  subject: AcademicReference(id: testBdId),
   year: 2026,
   type: 'DOCUMENT',
   source: LocalMaterialFile(
@@ -68,9 +68,7 @@ void main() {
     test('éxito deja el detalle creado y retorna true', () async {
       final fake = _FakeMaterialRepository();
       final container = ProviderContainer(
-        overrides: [
-          dioMaterialRepositoryProvider.overrideWithValue(fake),
-        ],
+        overrides: [dioMaterialRepositoryProvider.overrideWithValue(fake)],
       );
       addTearDown(container.dispose);
 
@@ -98,9 +96,7 @@ void main() {
           ),
         );
       final container = ProviderContainer(
-        overrides: [
-          dioMaterialRepositoryProvider.overrideWithValue(fake),
-        ],
+        overrides: [dioMaterialRepositoryProvider.overrideWithValue(fake)],
       );
       addTearDown(container.dispose);
 
@@ -115,21 +111,62 @@ void main() {
       expect(state.created, isNull);
     });
 
+    test('tabla statusCode → mensaje de error (H7)', () async {
+      final cases = <({Object error, String contains})>[
+        (
+          error: ApiException(message: 'subjectId inválido.', statusCode: 400),
+          contains: 'subjectId inválido.',
+        ),
+        (error: ApiException(message: 'x', statusCode: 401), contains: 'autor'),
+        (
+          error: ApiException(message: 'x', statusCode: 415),
+          contains: 'Formato',
+        ),
+        (
+          error: ApiException(message: 'x', statusCode: 502),
+          contains: 'no está disponible',
+        ),
+        (
+          // Sin ApiException (timeout/red): mensaje genérico de red.
+          error: DioException(
+            requestOptions: RequestOptions(),
+            type: DioExceptionType.connectionTimeout,
+          ),
+          contains: 'No fue posible subir',
+        ),
+      ];
+
+      for (final c in cases) {
+        final fake = _FakeMaterialRepository()
+          ..onUpload = (_) async => throw c.error;
+        final container = ProviderContainer(
+          overrides: [dioMaterialRepositoryProvider.overrideWithValue(fake)],
+        );
+        addTearDown(container.dispose);
+
+        final ok = await container
+            .read(materialUploadProvider.notifier)
+            .upload(_request());
+
+        expect(ok, isFalse, reason: 'error: ${c.error}');
+        expect(
+          container.read(materialUploadProvider).errorMessage,
+          contains(c.contains),
+          reason: 'error: ${c.error}',
+        );
+      }
+    });
+
     test('reset vuelve a idle tras éxito o error', () async {
       final fake = _FakeMaterialRepository()
-        ..onUpload = (_) async => throw DioException(
-          requestOptions: RequestOptions(),
-        );
+        ..onUpload = (_) async =>
+            throw DioException(requestOptions: RequestOptions());
       final container = ProviderContainer(
-        overrides: [
-          dioMaterialRepositoryProvider.overrideWithValue(fake),
-        ],
+        overrides: [dioMaterialRepositoryProvider.overrideWithValue(fake)],
       );
       addTearDown(container.dispose);
 
-      await container
-          .read(materialUploadProvider.notifier)
-          .upload(_request());
+      await container.read(materialUploadProvider.notifier).upload(_request());
       expect(container.read(materialUploadProvider).hasError, isTrue);
 
       container.read(materialUploadProvider.notifier).reset();

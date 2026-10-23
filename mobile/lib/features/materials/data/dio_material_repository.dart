@@ -102,9 +102,7 @@ class DioMaterialRepository implements MaterialRepository {
             );
           }
         case ExternalMaterialLink():
-          formData.fields.add(
-            MapEntry('externalLink', source.url.toString()),
-          );
+          formData.fields.add(MapEntry('externalLink', source.url.toString()));
       }
 
       final response = await _apiClient.dio.post(
@@ -113,8 +111,10 @@ class DioMaterialRepository implements MaterialRepository {
         options: Options(
           // Sin boundary: Dio lo genera para el multipart.
           contentType: 'multipart/form-data',
-          // Subir 15 MB puede superar los 10 s por defecto.
+          // Subir 15 MB puede superar los 10 s por defecto; el 201 también
+          // puede tardar en red lenta (H8).
           sendTimeout: const Duration(seconds: 60),
+          receiveTimeout: const Duration(seconds: 30),
         ),
       );
 

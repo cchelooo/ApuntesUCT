@@ -6,7 +6,11 @@ import 'package:apuntesuct_mobile/features/materials/domain/models/material_requ
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../presentation/upload_catalog_harness.dart'
+    show isCatalogUuid, testBdId, testIciId, testUctId;
+
 /// Respuesta 201 mínima según CreateMaterialResponseDto (issue #285).
+/// Usa UUID reales de Catalog: los ficticios (`subj-bd-uuid`) caen en 400.
 Map<String, dynamic> canned201({
   String id = 'mat-900',
   String title = 'Guía de prueba',
@@ -21,10 +25,10 @@ Map<String, dynamic> canned201({
     'year': '2026',
     'type': 'DOCUMENT',
     'status': 'PENDING_REVIEW',
-    'subjectId': 'subj-bd-uuid',
-    'careerId': 'inf-uct-uuid',
+    'subjectId': testBdId,
+    'careerId': testIciId,
     'professorId': null,
-    'universityId': 'uct-main-uuid',
+    'universityId': testUctId,
     'fileUrl': null,
     'fileSize': 3,
     'mimeType': 'application/pdf',
@@ -39,9 +43,9 @@ UploadMaterialRequest fileRequest({
 }) => UploadMaterialRequest(
   title: 'Guía de prueba',
   description: 'Descripción de prueba.',
-  university: AcademicReference(id: 'uct-main-uuid'),
-  career: AcademicReference(id: 'inf-uct-uuid'),
-  subject: AcademicReference(id: 'subj-bd-uuid'),
+  university: AcademicReference(id: testUctId),
+  career: AcademicReference(id: testIciId),
+  subject: AcademicReference(id: testBdId),
   year: 2026,
   type: 'DOCUMENT',
   source: LocalMaterialFile(
@@ -87,8 +91,10 @@ void main() {
       expect(fields['description'], 'Descripción de prueba.');
       expect(fields['year'], '2026');
       expect(fields['type'], 'DOCUMENT');
-      expect(fields['subjectId'], 'subj-bd-uuid');
-      expect(fields['careerId'], 'inf-uct-uuid');
+      expect(fields['subjectId'], testBdId);
+      expect(fields['careerId'], testIciId);
+      expect(isCatalogUuid(fields['subjectId'] as String), isTrue);
+      expect(isCatalogUuid(fields['careerId'] as String), isTrue);
       expect(fields['externalLink'], 'https://drive.example.com/x');
 
       expect(captured!.files, hasLength(1));
@@ -127,9 +133,9 @@ void main() {
 
       final request = UploadMaterialRequest(
         title: 'Enlace de prueba',
-        university: AcademicReference(id: 'uct-main-uuid'),
-        career: AcademicReference(id: 'inf-uct-uuid'),
-        subject: AcademicReference(id: 'subj-bd-uuid'),
+        university: AcademicReference(id: testUctId),
+        career: AcademicReference(id: testIciId),
+        subject: AcademicReference(id: testBdId),
         year: 2026,
         type: 'LINK',
         source: ExternalMaterialLink(Uri.parse('https://example.com/a')),
@@ -145,49 +151,49 @@ void main() {
       expect(detail.summary.id, 'mat-900');
     });
 
-    test('propaga el 413 del backend con el ApiException del interceptor',
-        () async {
-      final dio = Dio()
-        ..interceptors.add(
-          InterceptorsWrapper(
-            onRequest: (options, handler) {
-              // Simula lo que el ErrorInterceptor real produce en
-              // producción y verifica que el repositorio lo propaga.
-              handler.reject(
-                DioException(
-                  requestOptions: options,
-                  type: DioExceptionType.badResponse,
-                  response: Response(
+    test(
+      'propaga el 413 del backend con el ApiException del interceptor',
+      () async {
+        final dio = Dio()
+          ..interceptors.add(
+            InterceptorsWrapper(
+              onRequest: (options, handler) {
+                // Simula lo que el ErrorInterceptor real produce en
+                // producción y verifica que el repositorio lo propaga.
+                handler.reject(
+                  DioException(
                     requestOptions: options,
-                    statusCode: 413,
-                    data: {
-                      'message': 'El archivo excede el tamaño máximo.',
-                    },
+                    type: DioExceptionType.badResponse,
+                    response: Response(
+                      requestOptions: options,
+                      statusCode: 413,
+                      data: {'message': 'El archivo excede el tamaño máximo.'},
+                    ),
+                    error: ApiException(
+                      message: 'El archivo excede el tamaño máximo.',
+                      statusCode: 413,
+                    ),
                   ),
-                  error: ApiException(
-                    message: 'El archivo excede el tamaño máximo.',
-                    statusCode: 413,
-                  ),
-                ),
-                true,
-              );
-            },
-          ),
-        );
-      final repository = DioMaterialRepository(ApiClient(customDio: dio));
+                  true,
+                );
+              },
+            ),
+          );
+        final repository = DioMaterialRepository(ApiClient(customDio: dio));
 
-      Object? caught;
-      try {
-        await repository.upload(fileRequest());
-      } catch (e) {
-        caught = e;
-      }
+        Object? caught;
+        try {
+          await repository.upload(fileRequest());
+        } catch (e) {
+          caught = e;
+        }
 
-      expect(caught, isA<DioException>());
-      final api = (caught as DioException).error;
-      expect(api, isA<ApiException>());
-      expect((api as ApiException).statusCode, 413);
-      expect(api.message, contains('excede'));
-    });
+        expect(caught, isA<DioException>());
+        final api = (caught as DioException).error;
+        expect(api, isA<ApiException>());
+        expect((api as ApiException).statusCode, 413);
+        expect(api.message, contains('excede'));
+      },
+    );
   });
 }

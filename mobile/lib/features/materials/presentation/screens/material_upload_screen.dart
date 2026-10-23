@@ -4,6 +4,7 @@ import 'package:apuntesuct_mobile/core/widgets/form_error_banner.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/academic_reference.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_requests.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_catalog_selectors_provider.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_upload_provider.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/validation/material_upload_validation.dart';
 import 'package:apuntesuct_mobile/models/career_model.dart';
@@ -49,14 +50,10 @@ class _MaterialUploadScreenState extends ConsumerState<MaterialUploadScreen> {
   String? _formError;
   bool _submittedOk = false;
 
-  /// Fuente enviada en la subida confirmada: se muestra en la confirmación
-  /// (el 201 no trae nombre de archivo ni enlace).
-  MaterialSource? _lastSource;
-
-  final List<UniversityModel> _universities = UniversityModel.mockList();
-  final List<CareerModel> _allCareers = CareerModel.mockList();
-  final List<SubjectModel> _subjects = SubjectModel.mockList();
-  final List<ProfessorModel> _professors = ProfessorModel.mockList();
+  /// Request de la subida confirmada: la confirmación muestra sus nombres
+  /// académicos y fuente, porque el 201 solo trae IDs (sin nombres) y la
+  /// descarga aún no existe (el detalle remoto solo sirve PUBLISHED).
+  UploadMaterialRequest? _lastRequest;
 
   UniversityModel? _university;
   CareerModel? _career;
@@ -72,11 +69,6 @@ class _MaterialUploadScreenState extends ConsumerState<MaterialUploadScreen> {
     _linkCtrl.dispose();
     _yearCtrl.dispose();
     super.dispose();
-  }
-
-  List<CareerModel> get _visibleCareers {
-    if (_university == null) return [];
-    return _allCareers.where((c) => c.universityId == _university!.id).toList();
   }
 
   Future<void> _pickFile() async {
@@ -190,13 +182,8 @@ class _MaterialUploadScreenState extends ConsumerState<MaterialUploadScreen> {
     final linkText = _linkCtrl.text.trim();
     final request = UploadMaterialRequest(
       title: _titleCtrl.text.trim(),
-      description: _descCtrl.text.trim().isEmpty
-          ? null
-          : _descCtrl.text.trim(),
-      university: AcademicReference(
-        id: university.id,
-        name: university.name,
-      ),
+      description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+      university: AcademicReference(id: university.id, name: university.name),
       career: AcademicReference(id: career.id, name: career.name),
       subject: AcademicReference(id: subject.id, name: subject.name),
       professor: _professor == null
@@ -216,9 +203,7 @@ class _MaterialUploadScreenState extends ConsumerState<MaterialUploadScreen> {
           : null,
     );
 
-    final ok = await ref
-        .read(materialUploadProvider.notifier)
-        .upload(request);
+    final ok = await ref.read(materialUploadProvider.notifier).upload(request);
     if (!mounted) return;
     if (ok) {
       // Éxito confirmado: se guarda la fuente enviada para mostrarla y
@@ -254,7 +239,7 @@ class _MaterialUploadScreenState extends ConsumerState<MaterialUploadScreen> {
   void _handleSuccess(UploadMaterialRequest request) {
     _clearFields();
     setState(() {
-      _lastSource = request.source;
+      _lastRequest = request;
       _submittedOk = true;
     });
   }
@@ -276,13 +261,38 @@ class _MaterialUploadScreenState extends ConsumerState<MaterialUploadScreen> {
     ref.read(materialUploadProvider.notifier).reset();
     setState(() {
       _submittedOk = false;
-      _lastSource = null;
+      _lastRequest = null;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final upload = ref.watch(materialUploadProvider);
+    // Selectores con UUID reales de Catalog (#287): cada nivel depende del
+    // anterior y con padre nulo resuelven `[]` sin red (dropdown deshabilitado).
+    // Se usa hasError/isLoading + pattern matching en vez de `when`: un refresh
+    // fallido queda como AsyncLoading con el error adjunto y `when` lo
+    // trataría como carga, ocultando el mensaje y el reintento.
+    final universities = ref.watch(uploadUniversitiesProvider);
+    final universityItems = switch (universities) {
+      AsyncData(:final value) => value,
+      _ => const <UniversityModel>[],
+    };
+    final careers = ref.watch(uploadCareersProvider(_university?.id));
+    final careerItems = switch (careers) {
+      AsyncData(:final value) => value,
+      _ => const <CareerModel>[],
+    };
+    final subjects = ref.watch(uploadSubjectsProvider(_career?.id));
+    final subjectItems = switch (subjects) {
+      AsyncData(:final value) => value,
+      _ => const <SubjectModel>[],
+    };
+    final professors = ref.watch(uploadProfessorsProvider(_subject?.id));
+    final professorItems = switch (professors) {
+      AsyncData(:final value) => value,
+      _ => const <ProfessorModel>[],
+    };
     return Scaffold(
       appBar: AppBar(title: const Text('Subir Material'), centerTitle: true),
       body: SafeArea(
@@ -290,380 +300,518 @@ class _MaterialUploadScreenState extends ConsumerState<MaterialUploadScreen> {
           controller: _scrollCtrl,
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: _submittedOk &&
-                  upload.created != null &&
-                  _lastSource != null
+          child: _submittedOk && upload.created != null && _lastRequest != null
               // Confirmación de subida aceptada: muestra el detalle
               // devuelto por el 201 en vez del formulario (ya limpio).
               ? _UploadSuccessView(
                   created: upload.created!,
-                  source: _lastSource!,
+                  request: _lastRequest!,
                   onHome: () => context.go('/'),
                   onAgain: _resetForm,
                 )
               : Form(
-            key: _formKey,
-            autovalidateMode: AutovalidateMode.onUserInteraction,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Comparte tus apuntes',
-                  style: Theme.of(context).textTheme.headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Sube un archivo (PDF, Word o PowerPoint, máx. 15 MB) o '
-                  'un enlace externo, con su clasificación académica.',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 20),
-                FormErrorBanner(
-                  message: _formError ?? upload.errorMessage,
-                ),
-                const AppFieldLabel(label: 'Fuente del material'),
-                const SizedBox(height: 6),
-                SegmentedButton<_UploadSource>(
-                  segments: const [
-                    ButtonSegment(
-                      value: _UploadSource.file,
-                      label: Text('Archivo'),
-                      icon: Icon(Icons.upload_file_outlined),
-                    ),
-                    ButtonSegment(
-                      value: _UploadSource.link,
-                      label: Text('Enlace'),
-                      icon: Icon(Icons.link_outlined),
-                    ),
-                  ],
-                  selected: {_source},
-                  onSelectionChanged: (selection) {
-                    setState(() {
-                      _source = selection.first;
-                      _formError = null;
-                    });
-                    // Revalida el enlace (obligatorio ↔ opcional según fuente).
-                    _formKey.currentState?.validate();
-                  },
-                ),
-                const SizedBox(height: 16),
-                if (_source == _UploadSource.file) ...[
-                  OutlinedButton.icon(
-                    onPressed: _isPicking ? null : _pickFile,
-                    icon: _isPicking
-                        ? const SizedBox.square(
-                            dimension: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.folder_open_outlined),
-                    label: Text(
-                      _picked == null
-                          ? 'Seleccionar archivo (PDF, Word, PPT · máx. 15 MB)'
-                          : 'Cambiar archivo',
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (_picked != null)
-                    Card(
-                      margin: EdgeInsets.zero,
-                      child: ListTile(
-                        leading: const Icon(Icons.description_outlined),
-                        title: Text(
-                          _picked!.fileName,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          MaterialUploadValidation.formatBytes(
-                            _picked!.sizeBytes,
+                  key: _formKey,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Comparte tus apuntes',
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Sube un archivo (PDF, Word o PowerPoint, máx. 15 MB) o '
+                        'un enlace externo, con su clasificación académica.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 20),
+                      FormErrorBanner(
+                        message: _formError ?? upload.errorMessage,
+                      ),
+                      const AppFieldLabel(label: 'Fuente del material'),
+                      const SizedBox(height: 6),
+                      SegmentedButton<_UploadSource>(
+                        segments: const [
+                          ButtonSegment(
+                            value: _UploadSource.file,
+                            label: Text('Archivo'),
+                            icon: Icon(Icons.upload_file_outlined),
+                          ),
+                          ButtonSegment(
+                            value: _UploadSource.link,
+                            label: Text('Enlace'),
+                            icon: Icon(Icons.link_outlined),
+                          ),
+                        ],
+                        selected: {_source},
+                        onSelectionChanged: (selection) {
+                          setState(() {
+                            _source = selection.first;
+                            _formError = null;
+                          });
+                          // Revalida el enlace (obligatorio ↔ opcional según fuente).
+                          _formKey.currentState?.validate();
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      if (_source == _UploadSource.file) ...[
+                        OutlinedButton.icon(
+                          onPressed: _isPicking ? null : _pickFile,
+                          icon: _isPicking
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.folder_open_outlined),
+                          label: Text(
+                            _picked == null
+                                ? 'Seleccionar archivo (PDF, Word, PPT · máx. 15 MB)'
+                                : 'Cambiar archivo',
                           ),
                         ),
-                        trailing: IconButton(
-                          tooltip: 'Quitar archivo',
-                          icon: const Icon(Icons.close_outlined),
-                          onPressed: () => setState(() {
-                            _picked = null;
-                            _fileError = null;
-                          }),
-                        ),
-                      ),
-                    ),
-                  if (_fileError != null) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 18,
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _fileError!,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.error,
+                        const SizedBox(height: 8),
+                        if (_picked != null)
+                          Card(
+                            margin: EdgeInsets.zero,
+                            child: ListTile(
+                              leading: const Icon(Icons.description_outlined),
+                              title: Text(
+                                _picked!.fileName,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(
+                                MaterialUploadValidation.formatBytes(
+                                  _picked!.sizeBytes,
+                                ),
+                              ),
+                              trailing: IconButton(
+                                tooltip: 'Quitar archivo',
+                                icon: const Icon(Icons.close_outlined),
+                                onPressed: () => setState(() {
+                                  _picked = null;
+                                  _fileError = null;
+                                }),
+                              ),
                             ),
                           ),
+                        if (_fileError != null) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                size: 18,
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _fileError!,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ] else ...[
+                        AppTextField(
+                          controller: _linkCtrl,
+                          label: 'Enlace externo',
+                          hint: 'https://...',
+                          icon: Icons.link_outlined,
+                          keyboardType: TextInputType.url,
+                          textInputAction: TextInputAction.next,
+                          validator: (v) =>
+                              MaterialUploadValidation.validateExternalLink(
+                                v,
+                                required: true,
+                              ),
                         ),
                       ],
-                    ),
-                  ],
-                ] else ...[
-                  AppTextField(
-                    controller: _linkCtrl,
-                    label: 'Enlace externo',
-                    hint: 'https://...',
-                    icon: Icons.link_outlined,
-                    keyboardType: TextInputType.url,
-                    textInputAction: TextInputAction.next,
-                    validator: (v) =>
-                        MaterialUploadValidation.validateExternalLink(
-                          v,
-                          required: true,
-                        ),
-                  ),
-                ],
-                const SizedBox(height: 16),
-                AppTextField(
-                  controller: _titleCtrl,
-                  label: 'Título',
-                  hint: 'Guía de ejercicios resueltos',
-                  icon: Icons.title_outlined,
-                  textCapitalization: TextCapitalization.sentences,
-                  textInputAction: TextInputAction.next,
-                  validator: MaterialUploadValidation.validateTitle,
-                ),
-                const SizedBox(height: 16),
-                AppTextField(
-                  controller: _descCtrl,
-                  label: 'Descripción (opcional)',
-                  hint: 'Qué contiene y a quién le sirve',
-                  icon: Icons.description_outlined,
-                  textCapitalization: TextCapitalization.sentences,
-                  textInputAction: TextInputAction.newline,
-                  minLines: 2,
-                  maxLines: 4,
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Clasificación académica',
-                  style: Theme.of(context).textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'En el orden oficial: universidad, carrera, asignatura, '
-                  'profesor, año y tipo.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<UniversityModel>(
-                  initialValue: _university,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Universidad',
-                    prefixIcon: Icon(Icons.account_balance_outlined),
-                  ),
-                  items: _universities
-                      .map(
-                        (u) => DropdownMenuItem(
-                          value: u,
-                          child: Text(u.name, overflow: TextOverflow.ellipsis),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (u) {
-                    if (u?.id == _university?.id) return;
-                    setState(() {
-                      // Todo lo elegido bajo otra universidad queda obsoleto.
-                      _university = u;
-                      _career = null;
-                      _subject = null;
-                      _professor = null;
-                    });
-                  },
-                  validator: (v) =>
-                      v == null ? 'La universidad es obligatoria.' : null,
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<CareerModel>(
-                  // Sin `value:` en Flutter 3.47 (solo initialValue): la key
-                  // fuerza el reseteo visual cuando la cascada limpia.
-                  key: ValueKey('upload-career-${_university?.id}'),
-                  initialValue: _career,
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    labelText: 'Carrera',
-                    prefixIcon: const Icon(Icons.school_outlined),
-                    helperText: _university == null
-                        ? 'Selecciona una universidad.'
-                        : _visibleCareers.isEmpty
-                        ? 'No hay carreras disponibles para esta universidad.'
-                        : null,
-                    helperMaxLines: 2,
-                  ),
-                  items: _visibleCareers
-                      .map(
-                        (c) => DropdownMenuItem(
-                          value: c,
-                          child: Text(c.name, overflow: TextOverflow.ellipsis),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: _visibleCareers.isEmpty
-                      ? null
-                      : (c) {
-                          if (c?.id == _career?.id) return;
-                          setState(() {
-                            _career = c;
-                            _subject = null;
-                            _professor = null;
-                          });
-                        },
-                  validator: (v) =>
-                      v == null ? 'La carrera es obligatoria.' : null,
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<SubjectModel>(
-                  key: ValueKey(
-                    'upload-subject-${_university?.id}-${_career?.id}',
-                  ),
-                  initialValue: _subject,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Asignatura',
-                    prefixIcon: Icon(Icons.book_outlined),
-                  ),
-                  items: _subjects
-                      .map(
-                        (s) => DropdownMenuItem(
-                          value: s,
-                          child: Text(s.name, overflow: TextOverflow.ellipsis),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: _career == null
-                      ? null
-                      : (s) {
-                          if (s?.id == _subject?.id) return;
-                          setState(() {
-                            _subject = s;
-                            _professor = null;
-                          });
-                        },
-                  validator: (v) =>
-                      v == null ? 'La asignatura es obligatoria.' : null,
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<ProfessorModel?>(
-                  key: ValueKey(
-                    'upload-professor-${_university?.id}-${_career?.id}-${_subject?.id}',
-                  ),
-                  initialValue: _professor,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Profesor (opcional)',
-                    prefixIcon: Icon(Icons.person_outline),
-                  ),
-                  items: [
-                    const DropdownMenuItem<ProfessorModel?>(
-                      value: null,
-                      child: Text('Sin especificar'),
-                    ),
-                    ..._professors.map(
-                      (p) => DropdownMenuItem<ProfessorModel?>(
-                        value: p,
-                        child: Text(p.name, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        controller: _titleCtrl,
+                        label: 'Título',
+                        hint: 'Guía de ejercicios resueltos',
+                        icon: Icons.title_outlined,
+                        textCapitalization: TextCapitalization.sentences,
+                        textInputAction: TextInputAction.next,
+                        validator: MaterialUploadValidation.validateTitle,
                       ),
-                    ),
-                  ],
-                  onChanged: _subject == null
-                      ? null
-                      : (p) => setState(() => _professor = p),
-                ),
-                const SizedBox(height: 16),
-                AppTextField(
-                  controller: _yearCtrl,
-                  label: 'Año',
-                  hint: '2026',
-                  icon: Icons.calendar_today_outlined,
-                  keyboardType: TextInputType.number,
-                  textInputAction: TextInputAction.next,
-                  maxLength: 4,
-                  validator: MaterialUploadValidation.validateYear,
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: _typeCode,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Tipo',
-                    prefixIcon: Icon(Icons.category_outlined),
-                  ),
-                  items: MaterialUploadValidation.materialTypes
-                      .map(
-                        (t) => DropdownMenuItem(
-                          value: t.code,
-                          child: Text(t.label),
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        controller: _descCtrl,
+                        label: 'Descripción (opcional)',
+                        hint: 'Qué contiene y a quién le sirve',
+                        icon: Icons.description_outlined,
+                        textCapitalization: TextCapitalization.sentences,
+                        textInputAction: TextInputAction.newline,
+                        minLines: 2,
+                        maxLines: 4,
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Clasificación académica',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'En el orden oficial: universidad, carrera, asignatura, '
+                        'profesor, año y tipo.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<UniversityModel>(
+                        // La key incluye hasValue para descartar un error de carga
+                        // obsoleto cuando el reintento trae datos.
+                        key: ValueKey(
+                          'upload-university-${universities.hasValue}',
                         ),
-                      )
-                      .toList(),
-                  onChanged: (t) => setState(() {
-                    _typeCode = t;
-                    _formError = null;
-                  }),
-                  validator: (v) =>
-                      v == null ? 'El tipo es obligatorio.' : null,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'El tipo Enlace externo exige enlace y no admite archivo. '
-                  'Los demás exigen archivo (máx. 15 MB).',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                if (_source == _UploadSource.file) ...[
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    controller: _linkCtrl,
-                    label: 'Enlace de respaldo (opcional)',
-                    hint: 'https://...',
-                    icon: Icons.link_outlined,
-                    keyboardType: TextInputType.url,
-                    textInputAction: TextInputAction.done,
-                    validator: (v) =>
-                        MaterialUploadValidation.validateExternalLink(
-                          v,
-                          required: false,
+                        initialValue: _university,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: 'Universidad',
+                          prefixIcon: const Icon(
+                            Icons.account_balance_outlined,
+                          ),
+                          helperText: universities.hasError
+                              ? 'No se pudieron cargar las universidades.'
+                              : universities.isLoading
+                              ? 'Cargando universidades…'
+                              : null,
+                          helperMaxLines: 2,
                         ),
+                        items: universityItems
+                            .map(
+                              (u) => DropdownMenuItem(
+                                value: u,
+                                child: Text(
+                                  u.name,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged:
+                            universities.hasError || universityItems.isEmpty
+                            ? null
+                            : (u) {
+                                if (u?.id == _university?.id) return;
+                                setState(() {
+                                  // Todo lo elegido bajo otra universidad queda
+                                  // obsoleto.
+                                  _university = u;
+                                  _career = null;
+                                  _subject = null;
+                                  _professor = null;
+                                });
+                              },
+                        // El error de carga también va en el validador: una vez que
+                        // el formulario valida, el errorText oculta el helperText.
+                        validator: (v) {
+                          if (universities.hasError) {
+                            return 'No se pudieron cargar las universidades.';
+                          }
+                          return v == null
+                              ? 'La universidad es obligatoria.'
+                              : null;
+                        },
+                      ),
+                      if (universities.hasError) ...[
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: () =>
+                                ref.invalidate(uploadUniversitiesProvider),
+                            icon: const Icon(Icons.refresh_outlined),
+                            label: const Text('Reintentar'),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<CareerModel>(
+                        // Sin `value:` en Flutter 3.47 (solo initialValue): la key
+                        // fuerza el reseteo visual cuando la cascada limpia.
+                        key: ValueKey(
+                          'upload-career-${_university?.id}-${careers.hasValue}',
+                        ),
+                        initialValue: _career,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: 'Carrera',
+                          prefixIcon: const Icon(Icons.school_outlined),
+                          helperText: _university == null
+                              ? 'Selecciona una universidad.'
+                              : careers.hasError
+                              ? 'No se pudieron cargar las carreras.'
+                              : careers.isLoading
+                              ? 'Cargando carreras…'
+                              : careerItems.isEmpty
+                              ? 'No hay carreras disponibles para esta universidad.'
+                              : null,
+                          helperMaxLines: 2,
+                        ),
+                        items: careerItems
+                            .map(
+                              (c) => DropdownMenuItem(
+                                value: c,
+                                child: Text(
+                                  c.name,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged:
+                            _university == null ||
+                                careers.hasError ||
+                                careers.isLoading ||
+                                careerItems.isEmpty
+                            ? null
+                            : (c) {
+                                if (c?.id == _career?.id) return;
+                                setState(() {
+                                  _career = c;
+                                  _subject = null;
+                                  _professor = null;
+                                });
+                              },
+                        validator: (v) {
+                          if (careers.hasError) {
+                            return 'No se pudieron cargar las carreras.';
+                          }
+                          return v == null
+                              ? 'La carrera es obligatoria.'
+                              : null;
+                        },
+                      ),
+                      if (careers.hasError && _university != null) ...[
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: () => ref.invalidate(
+                              uploadCareersProvider(_university?.id),
+                            ),
+                            icon: const Icon(Icons.refresh_outlined),
+                            label: const Text('Reintentar'),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<SubjectModel>(
+                        key: ValueKey(
+                          'upload-subject-${_university?.id}-${_career?.id}-'
+                          '${subjects.hasValue}',
+                        ),
+                        initialValue: _subject,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: 'Asignatura',
+                          prefixIcon: const Icon(Icons.book_outlined),
+                          helperText: _career == null
+                              ? 'Selecciona una carrera.'
+                              : subjects.hasError
+                              ? 'No se pudieron cargar las asignaturas.'
+                              : subjects.isLoading
+                              ? 'Cargando asignaturas…'
+                              : subjectItems.isEmpty
+                              ? 'No hay asignaturas disponibles para esta carrera.'
+                              : null,
+                          helperMaxLines: 2,
+                        ),
+                        items: subjectItems
+                            .map(
+                              (s) => DropdownMenuItem(
+                                value: s,
+                                child: Text(
+                                  s.name,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged:
+                            _career == null ||
+                                subjects.hasError ||
+                                subjects.isLoading ||
+                                subjectItems.isEmpty
+                            ? null
+                            : (s) {
+                                if (s?.id == _subject?.id) return;
+                                setState(() {
+                                  _subject = s;
+                                  _professor = null;
+                                });
+                              },
+                        validator: (v) {
+                          if (subjects.hasError) {
+                            return 'No se pudieron cargar las asignaturas.';
+                          }
+                          return v == null
+                              ? 'La asignatura es obligatoria.'
+                              : null;
+                        },
+                      ),
+                      if (subjects.hasError && _career != null) ...[
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: () => ref.invalidate(
+                              uploadSubjectsProvider(_career?.id),
+                            ),
+                            icon: const Icon(Icons.refresh_outlined),
+                            label: const Text('Reintentar'),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<ProfessorModel?>(
+                        key: ValueKey(
+                          'upload-professor-${_university?.id}-${_career?.id}-${_subject?.id}',
+                        ),
+                        initialValue: _professor,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: 'Profesor (opcional)',
+                          prefixIcon: const Icon(Icons.person_outline),
+                          helperText: _subject == null
+                              ? null
+                              : professors.hasError
+                              ? 'No se pudieron cargar los profesores.'
+                              : professors.isLoading
+                              ? 'Cargando profesores…'
+                              : null,
+                          helperMaxLines: 2,
+                        ),
+                        items: [
+                          const DropdownMenuItem<ProfessorModel?>(
+                            value: null,
+                            child: Text('Sin especificar'),
+                          ),
+                          ...professorItems.map(
+                            (p) => DropdownMenuItem<ProfessorModel?>(
+                              value: p,
+                              child: Text(
+                                p.name,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ],
+                        onChanged:
+                            _subject == null ||
+                                professors.hasError ||
+                                professors.isLoading
+                            ? null
+                            : (p) => setState(() => _professor = p),
+                      ),
+                      if (professors.hasError && _subject != null) ...[
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: () => ref.invalidate(
+                              uploadProfessorsProvider(_subject?.id),
+                            ),
+                            icon: const Icon(Icons.refresh_outlined),
+                            label: const Text('Reintentar'),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        controller: _yearCtrl,
+                        label: 'Año',
+                        hint: '2026',
+                        icon: Icons.calendar_today_outlined,
+                        keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.next,
+                        maxLength: 4,
+                        validator: MaterialUploadValidation.validateYear,
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        initialValue: _typeCode,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Tipo',
+                          prefixIcon: Icon(Icons.category_outlined),
+                        ),
+                        items: MaterialUploadValidation.materialTypes
+                            .map(
+                              (t) => DropdownMenuItem(
+                                value: t.code,
+                                child: Text(t.label),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (t) => setState(() {
+                          _typeCode = t;
+                          _formError = null;
+                        }),
+                        validator: (v) =>
+                            v == null ? 'El tipo es obligatorio.' : null,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'El tipo Enlace externo exige enlace y no admite archivo. '
+                        'Los demás exigen archivo (máx. 15 MB).',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      if (_source == _UploadSource.file) ...[
+                        const SizedBox(height: 16),
+                        AppTextField(
+                          controller: _linkCtrl,
+                          label: 'Enlace de respaldo (opcional)',
+                          hint: 'https://...',
+                          icon: Icons.link_outlined,
+                          keyboardType: TextInputType.url,
+                          textInputAction: TextInputAction.done,
+                          validator: (v) =>
+                              MaterialUploadValidation.validateExternalLink(
+                                v,
+                                required: false,
+                              ),
+                        ),
+                      ],
+                      const SizedBox(height: 24),
+                      AppPrimaryButton(
+                        label: upload.isUploading
+                            ? 'Subiendo…'
+                            : 'Subir material',
+                        icon: Icons.cloud_upload_outlined,
+                        isLoading: upload.isUploading,
+                        onPressed: upload.isUploading ? null : _submit,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'El material queda en revisión tras el envío '
+                        'a Material Service.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                        textAlign: TextAlign.center,
+                      ),
+                      // Espacio extra para que el teclado no tape el botón
+                      // en pantallas pequeñas (320 × 568).
+                      SizedBox(
+                        height: MediaQuery.viewInsetsOf(context).bottom > 0
+                            ? 24
+                            : 8,
+                      ),
+                    ],
                   ),
-                ],
-                const SizedBox(height: 24),
-                AppPrimaryButton(
-                  label: upload.isUploading
-                      ? 'Subiendo…'
-                      : 'Subir material',
-                  icon: Icons.cloud_upload_outlined,
-                  isLoading: upload.isUploading,
-                  onPressed: upload.isUploading ? null : _submit,
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  'El material queda en revisión tras el envío '
-                  'a Material Service.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                  textAlign: TextAlign.center,
-                ),
-                // Espacio extra para que el teclado no tape el botón
-                // en pantallas pequeñas (320 × 568).
-                SizedBox(
-                  height: MediaQuery.viewInsetsOf(context).bottom > 0 ? 24 : 8,
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );
@@ -686,13 +834,13 @@ String _typeLabel(String code) {
 class _UploadSuccessView extends StatelessWidget {
   const _UploadSuccessView({
     required this.created,
-    required this.source,
+    required this.request,
     required this.onHome,
     required this.onAgain,
   });
 
   final MaterialDetail created;
-  final MaterialSource source;
+  final UploadMaterialRequest request;
   final VoidCallback onHome;
   final VoidCallback onAgain;
 
@@ -702,7 +850,8 @@ class _UploadSuccessView extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final summary = created.summary;
 
-    final sourceLine = switch (source) {
+    // Nombres del request enviado: el 201 solo trae IDs (H1).
+    final sourceLine = switch (request.source) {
       LocalMaterialFile f =>
         'Archivo · ${f.fileName} · '
             '${MaterialUploadValidation.formatBytes(f.bytes.length)}',
@@ -713,16 +862,13 @@ class _UploadSuccessView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 8),
-        Icon(
-          Icons.check_circle,
-          size: 64,
-          color: colorScheme.primary,
-        ),
+        Icon(Icons.check_circle, size: 64, color: colorScheme.primary),
         const SizedBox(height: 16),
         Text(
           '¡Material recibido!',
-          style: theme.textTheme.headlineSmall
-              ?.copyWith(fontWeight: FontWeight.bold),
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
@@ -793,7 +939,10 @@ class _UploadSuccessView extends StatelessWidget {
                     label: 'Año',
                     value: summary.academicYear.toString(),
                   ),
-                _DetailRow(label: 'Asignatura', value: summary.subjectName),
+                _DetailRow(
+                  label: 'Asignatura',
+                  value: request.subject.name ?? request.subject.id,
+                ),
                 _DetailRow(label: 'Fuente', value: sourceLine),
               ],
             ),
@@ -840,12 +989,7 @@ class _DetailRow extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: theme.textTheme.bodyMedium,
-            ),
-          ),
+          Expanded(child: Text(value, style: theme.textTheme.bodyMedium)),
         ],
       ),
     );
