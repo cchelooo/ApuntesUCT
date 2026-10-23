@@ -91,6 +91,21 @@ sus pruebas de contrato. No hay nombres de parámetros supuestos en Mobile.
 Este avance no conecta la pantalla de descubrimiento ni permite cerrar #275
 como integración completa de Search.
 
+### Pruebas Search: primera parte de #276
+
+```bash
+flutter test test/features/materials/data/search_request_contract_test.dart
+```
+
+Esta entrega parcial comprueba método, URL completa por Gateway, codificación de
+texto, omisión de campos inactivos, cancelación y rechazo local de filtros o
+paginación sin contrato. No necesita backend y solo reconoce el stub actual.
+
+Queda para la segunda parte: consultas con filtros simples/combinados y
+orden/paginación **reales** conforme al futuro OpenAPI, mapeo de resultados,
+resultados vacíos reales, errores `502` y cambios de campos importantes de
+respuesta. No se ha terminado #276 ni se debe cerrar con este avance.
+
 Las URLs base se resuelven mediante la clase `ApiConfig` (`lib/core/config/api_config.dart`) y pueden ser parametrizadas en tiempo de compilación con `--dart-define`.
 
 ### Variables de configuración disponibles
