@@ -1,4 +1,22 @@
 @materialBaseUrl = http://localhost:3003/api/v1
+@catalogBaseUrl = http://localhost:3002/api/v1
+
+# UUID ilustrativos. Antes de enviar un POST, reemplázalos por los IDs reales
+# devueltos por Catalog: asignatura activa, carrera de esa asignatura y profesor
+# activo vinculado a ella. Un UUID con formato válido no garantiza existencia.
+@subjectId = 33333333-3333-4333-8333-333333333333
+@careerId = 22222222-2222-4222-8222-222222222222
+@professorId = 44444444-4444-4444-8444-444444444444
+
+# MATERIAL_LOCAL_UNIVERSITY_ID pertenece al contexto de autor del servicio.
+# Si está configurado, debe ser el UUID real de la universidad de la asignatura.
+# Reinicia Material si cambias esa variable en su .env.
+
+### Consultar referencias existentes: universidad -> carrera -> asignatura
+GET {{catalogBaseUrl}}/catalog
+
+### Consultar profesores activos vinculados a la asignatura seleccionada
+GET {{catalogBaseUrl}}/catalog/professors?subjectId={{subjectId}}
 
 ### Primera página (page=1, pageSize=20 por defecto)
 GET {{materialBaseUrl}}/materials
@@ -17,3 +35,41 @@ GET {{materialBaseUrl}}/materials?page=0
 
 ### Búsqueda no admitida: 400 (corresponde a Search Service)
 GET {{materialBaseUrl}}/materials?q=calculo
+
+### Crear un enlace real con referencias académicas compatibles
+# Requiere contexto local de autor habilitado, migraciones y tipos locales activos.
+# Catalog debe estar disponible. Sustituye los UUID de las variables por IDs reales.
+# subjectId es obligatorio; careerId y professorId son opcionales, pero se validan
+# cuando se envían. Referencias inválidas: 400 con field; Catalog no disponible: 502.
+POST {{materialBaseUrl}}/materials
+Content-Type: multipart/form-data; boundary=material-boundary
+
+--material-boundary
+Content-Disposition: form-data; name="title"
+
+Clase grabada
+--material-boundary
+Content-Disposition: form-data; name="year"
+
+2026
+--material-boundary
+Content-Disposition: form-data; name="type"
+
+LINK
+--material-boundary
+Content-Disposition: form-data; name="subjectId"
+
+{{subjectId}}
+--material-boundary
+Content-Disposition: form-data; name="careerId"
+
+{{careerId}}
+--material-boundary
+Content-Disposition: form-data; name="professorId"
+
+{{professorId}}
+--material-boundary
+Content-Disposition: form-data; name="externalLink"
+
+https://example.com/clase
+--material-boundary--

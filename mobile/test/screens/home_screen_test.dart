@@ -178,7 +178,10 @@ void main() {
       await tester.pageBack();
       await tester.pumpAndSettle();
 
-      // "Ranking" -> Búsqueda
+      // "Ranking" -> Búsqueda (con scroll: la sección Materiales de #279
+      // desplaza el contenido y el botón puede quedar bajo el fold).
+      await tester.ensureVisible(find.text('Ranking'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Ranking'));
       await tester.pumpAndSettle();
       expect(find.text('Búsqueda pendiente'), findsOneWidget);

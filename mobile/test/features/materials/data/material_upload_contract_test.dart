@@ -24,8 +24,8 @@ void main() {
   }) => UploadMaterialRequest(
     title: 'Título con tildes: álgebra',
     university: AcademicReference(id: 'university-test'),
-    career: AcademicReference(id: 'career-test'),
-    subject: AcademicReference(id: 'subject-test'),
+    career: AcademicReference(id: '55555555-5555-4555-8555-555555555555'),
+    subject: AcademicReference(id: '44444444-4444-4444-8444-444444444444'),
     year: 2026,
     type: type,
     source: source,
@@ -106,8 +106,14 @@ void main() {
     expect(utf8.decode(parts['title']!.bytes), 'Título con tildes: álgebra');
     expect(utf8.decode(parts['year']!.bytes), '2026');
     expect(utf8.decode(parts['type']!.bytes), 'DOCUMENT');
-    expect(utf8.decode(parts['subjectId']!.bytes), 'subject-test');
-    expect(utf8.decode(parts['careerId']!.bytes), 'career-test');
+    expect(
+      utf8.decode(parts['subjectId']!.bytes),
+      '44444444-4444-4444-8444-444444444444',
+    );
+    expect(
+      utf8.decode(parts['careerId']!.bytes),
+      '55555555-5555-4555-8555-555555555555',
+    );
   });
 
   test(

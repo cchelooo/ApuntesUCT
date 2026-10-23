@@ -69,22 +69,24 @@ central para listado y subida. La subida envía `multipart/form-data` a
 `year`, `type`, `subjectId`, `careerId`, `professorId`, `externalLink` y `file`,
 según archivo o enlace. `universityId` lo deriva Backend y no se envía.
 
-El POST actual es un stub: `MaterialDetail.isSimulatedResponse` conserva su
-indicador. Una respuesta con `true` **no demuestra persistencia en PostgreSQL
-ni MinIO**. Se mapean año, tamaño, MIME y enlace; no se inventan versiones ni se
-utiliza `fileUrl` como destino de descarga. El adaptador conserva códigos y
-mensajes de error, incluidas las listas de validación de NestJS, y admite
-`CancelToken` y `onSendProgress` al llamar a `DioMaterialRepository.upload`.
+El POST publicado persiste el material en `PENDING_REVIEW` y devuelve
+`isSimulatedResponse: false`. Mobile conserva ese indicador para distinguir una
+respuesta simulada en entornos antiguos. No utiliza `fileUrl` para descargar.
+Los errores conservan códigos y mensajes, incluidas listas de validación NestJS.
 Cada intento reconstruye el multipart; no se reintenta un POST automáticamente.
 
-Detalle (#235), descarga (#236/#237) y versionado tienen placeholders explícitos
-que lanzan `ApiException` explicando el contrato pendiente, sin peticiones HTTP
-ni resultados ficticios. Se completarán cuando INT2 publique sus contratos.
-La #273 sigue pendiente de esos contratos y de la validación integrada real.
+Detalle y descarga usan `GET /materials/:id` y `GET /materials/:id/download`
+(con `versionId` opcional). El detalle adapta `currentVersion`, cuyo tamaño es
+una cadena decimal; la descarga conserva bytes, MIME y nombre UTF-8.
+`POST /materials/:id/versions` envía solo `file` y conserva la numeración recibida.
+Las operaciones concretas admiten cancelación y las transferencias, progreso.
+Todo pasa por el cliente central y Gateway, sin recurrir a puertos de servicios.
+Las pruebas de contrato no necesitan Docker ni crean datos reales.
 
-La pantalla de búsqueda continúa usando `MockMaterialsRepository`. Este
-repositorio no conecta todavía las pantallas de subida/detalle/descarga ni
-traslada la búsqueda y los filtros de Search al listado de Material.
+La pantalla de descubrimiento continúa usando `MockMaterialsRepository`.
+Estos adaptadores no demuestran que ese listado esté integrado con Search.
+La subida permanece pendiente de revisión: no es descargable mediante el
+endpoint público hasta que el material esté publicado.
 
 Las URLs base se resuelven mediante la clase `ApiConfig` (`lib/core/config/api_config.dart`) y pueden ser parametrizadas en tiempo de compilación con `--dart-define`.
 
@@ -182,6 +184,29 @@ flutter test test/features/auth/presentation/login_dio_test.dart
 flutter test --coverage
 ```
 
+### Descarga y apertura de materiales
+
+El detalle HTTP adapta `currentVersion`, `originalFilename` y `fileSize`
+(cadena decimal de bytes) del DTO de INT2. La descarga incluye `versionId`
+cuando existe una versión actual y respeta el nombre UTF-8 de `Content-Disposition`.
+
+En Android/iOS el archivo se guarda en un subdirectorio único de la caché privada
+de la aplicación. Después aparece **Abrir archivo**, que solicita al sistema un
+visor para el MIME recibido. Los fallos de guardado permiten reintentar la descarga;
+los de apertura conservan el archivo y permiten volver a abrirlo. Si falta un visor,
+se informa en pantalla. Los materiales `LINK` no muestran la acción de descarga.
+La caché es temporal: el sistema puede eliminarla y requerir otra descarga.
+
+Para comprobar los plugins reales en un emulador o simulador:
+
+```bash
+flutter test integration_test/material_download_native_test.dart -d <device-id>
+```
+
+Esta prueba usa transporte HTTP controlado con un PDF válido y un nombre con
+acentos; el guardado y la apertura sí pasan por los plugins nativos. Acepta y
+verifica el mensaje específico de ausencia de visor cuando corresponde.
+
 ### Comprobación HTTP con Backend real (opcional)
 
 El archivo `test/integration/gateway_live_test.dart` se omite en la ejecución
@@ -212,19 +237,23 @@ flutter test --dart-define=RUN_GATEWAY_SMOKE=true \
 ```
 
 El contrato de subida tiene una comprobación HTTP optativa en
-`test/integration/material_upload_live_test.dart`. Se ejecuta únicamente contra
-un Gateway y el controlador POST stub de Material en un entorno de pruebas:
+`test/integration/material_upload_live_test.dart`. **Crea registros reales**;
+usarla solo con PostgreSQL/MinIO desechables, Catalog con referencias existentes
+y contexto de autor configurado en Material. Los identificadores deben
+corresponder a una carrera y asignatura relacionadas. Un PDF válido es necesario
+para activar el caso de archivo. Sin estos parámetros las pruebas se omiten.
 
 ```bash
 flutter test --dart-define=RUN_MATERIAL_UPLOAD_SMOKE=true \
   --dart-define=API_GATEWAY_URL=http://localhost:3000/api/v1 \
+  --dart-define=MATERIAL_TEST_SUBJECT_ID=<uuid-asignatura> \
+  --dart-define=MATERIAL_TEST_CAREER_ID=<uuid-carrera> \
+  --dart-define=MATERIAL_TEST_PDF_PATH=<ruta-pdf-valido> \
   test/integration/material_upload_live_test.dart
 ```
 
-Comprueba multipart con archivo/enlace y conservación del error `415`. Exige
-`isSimulatedResponse: true`; no demuestra persistencia ni autenticación real.
-Cuando INT2 integre creación real, esta prueba debe adaptarse a un entorno con
-PostgreSQL/MinIO desechables antes de volver a activarla.
+Comprueba creación FILE/LINK con `isSimulatedResponse: false` y rechazo `415`.
+No es una prueba de autenticación real ni sustituye la prueba del almacenamiento.
 
 ### Limpieza y mantenimiento del proyecto
 

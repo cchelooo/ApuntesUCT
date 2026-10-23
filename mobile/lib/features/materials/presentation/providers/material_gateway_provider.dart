@@ -10,7 +10,7 @@ final materialApiClientProvider = Provider<ApiClient>((ref) {
   return ref.watch(apiclientProvider);
 });
 
-/// Listado/subida publicados; las otras operaciones señalan el contrato pendiente.
+/// Operaciones de Material mediante el cliente central del Gateway.
 final materialRepositoryProvider = Provider<MaterialRepository>((ref) {
   return DioMaterialRepository(ref.watch(materialApiClientProvider));
 });

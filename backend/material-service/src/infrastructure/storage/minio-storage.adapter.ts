@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
-import { Client } from 'minio';
+import type { Readable } from 'node:stream';
+import { Client, S3Error } from 'minio';
 import {
+  ObjectNotFoundError,
   ObjectStorage,
   ObjectStorageError,
   StoredObject,
@@ -19,12 +21,7 @@ export class MinioStorageAdapter extends ObjectStorage {
 
   async save(content: Buffer, contentType: string): Promise<StoredObject> {
     try {
-      // Inicialización diferida: los endpoints de consulta no requieren MinIO.
-      if (!this.connection) {
-        const options = readMinioConfig(this.config);
-        this.connection = { client: new Client(options.client), bucket: options.bucket };
-      }
-      const { client, bucket } = this.connection;
+      const { client, bucket } = this.getConnection();
       const storageKey = `materials/${randomUUID()}`;
       await client.putObject(bucket, storageKey, content, content.length, {
         'Content-Type': contentType,
@@ -34,5 +31,38 @@ export class MinioStorageAdapter extends ObjectStorage {
       // Los errores del SDK pueden incluir endpoint, bucket y datos de la petición.
       throw new ObjectStorageError();
     }
+  }
+
+  async get(storageKey: string): Promise<Readable> {
+    try {
+      const { client, bucket } = this.getConnection();
+      return await client.getObject(bucket, storageKey);
+    } catch (error) {
+      if (error instanceof S3Error) {
+        const { code } = error;
+        if (code === 'NoSuchKey' || code === 'NoSuchBucket' || code === 'NotFound') {
+          throw new ObjectNotFoundError();
+        }
+      }
+      throw new ObjectStorageError();
+    }
+  }
+
+  async remove(storageKey: string): Promise<void> {
+    try {
+      const { client, bucket } = this.getConnection();
+      await client.removeObject(bucket, storageKey);
+    } catch {
+      throw new ObjectStorageError();
+    }
+  }
+
+  private getConnection() {
+    // Inicialización diferida: los endpoints de consulta no requieren MinIO.
+    if (!this.connection) {
+      const options = readMinioConfig(this.config);
+      this.connection = { client: new Client(options.client), bucket: options.bucket };
+    }
+    return this.connection;
   }
 }

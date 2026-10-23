@@ -30,9 +30,9 @@ void main() {
     title: 'Apuntes de álgebra',
     description: 'Ejercicios resueltos',
     university: AcademicReference(id: 'university-test'),
-    career: AcademicReference(id: 'career-test'),
-    subject: AcademicReference(id: 'subject-test'),
-    professor: AcademicReference(id: 'professor-test'),
+    career: AcademicReference(id: '55555555-5555-4555-8555-555555555555'),
+    subject: AcademicReference(id: '44444444-4444-4444-8444-444444444444'),
+    professor: AcademicReference(id: '66666666-6666-4666-8666-666666666666'),
     year: 2026,
     type: type,
     source: source ?? file,
@@ -62,7 +62,7 @@ void main() {
     final detail = await container
         .read(materialRepositoryProvider)
         .upload(request());
-    expect(detail.isSimulatedResponse, isTrue);
+    expect(detail.isSimulatedResponse, isFalse);
     expect(
       adapter.requests.single.uri.toString(),
       'https://central.example.test/api/v1/materials',
@@ -98,9 +98,9 @@ void main() {
         'description': 'Ejercicios resueltos',
         'year': '2026',
         'type': 'DOCUMENT',
-        'subjectId': 'subject-test',
-        'careerId': 'career-test',
-        'professorId': 'professor-test',
+        'subjectId': '44444444-4444-4444-8444-444444444444',
+        'careerId': '55555555-5555-4555-8555-555555555555',
+        'professorId': '66666666-6666-4666-8666-666666666666',
       });
       expect(form.files.single.key, 'file');
       expect(form.files.single.value.filename, 'apuntes.pdf');
@@ -111,32 +111,29 @@ void main() {
     },
   );
 
-  test(
-    'mapea el DTO público sin ocultar que el servidor devuelve un stub',
-    () async {
-      final detail = await repository(MaterialHttpAdapter(fixture()))
-          .upload(request());
-      expect(detail.summary.academicYear, 2026);
-      expect(detail.summary.reviewStatus, MaterialStatus.pendingReview);
-      expect(detail.summary.subject!.id, 'subject-test');
-      expect(detail.summary.subject!.name, isNull);
-      expect(detail.mimeType, 'application/pdf');
-      expect(detail.fileSizeBytes, 26);
-      expect(detail.isSimulatedResponse, isTrue);
-      expect(detail.toJson()['isSimulatedResponse'], isTrue);
-      expect(detail.versions, isEmpty);
-      expect(detail.currentVersion, isNull);
-      expect(detail.downloadUrl, isEmpty);
-    },
-  );
+  test('mapea el DTO público persistido en estado PENDING_REVIEW', () async {
+    final detail = await repository(MaterialHttpAdapter(fixture()))
+        .upload(request());
+    expect(detail.summary.academicYear, 2026);
+    expect(detail.summary.reviewStatus, MaterialStatus.pendingReview);
+    expect(detail.summary.subject!.id, '44444444-4444-4444-8444-444444444444');
+    expect(detail.summary.subject!.name, isNull);
+    expect(detail.mimeType, 'application/pdf');
+    expect(detail.fileSizeBytes, 26);
+    expect(detail.isSimulatedResponse, isFalse);
+    expect(detail.toJson()['isSimulatedResponse'], isFalse);
+    expect(detail.versions, isEmpty);
+    expect(detail.currentVersion, isNull);
+    expect(detail.downloadUrl, isEmpty);
+  });
 
   test(
-    'conserva false cuando la respuesta declara persistencia real',
+    'conserva true si un entorno antiguo declara respuesta simulada',
     () async {
-      final response = fixture()..['isSimulatedResponse'] = false;
+      final response = fixture()..['isSimulatedResponse'] = true;
       final detail = await repository(MaterialHttpAdapter(response))
           .upload(request());
-      expect(detail.isSimulatedResponse, isFalse);
+      expect(detail.isSimulatedResponse, isTrue);
     },
   );
 
@@ -308,31 +305,6 @@ void main() {
         ),
         throwsArgumentError,
       );
-      expect(adapter.requests, isEmpty);
-    },
-  );
-
-  test(
-    'operaciones sin contrato explican el placeholder y no envían HTTP',
-    () async {
-      final adapter = MaterialHttpAdapter(null);
-      final repo = repository(adapter);
-      for (final operation in [
-        repo.getDetail('id'),
-        repo.download('id'),
-        repo.createVersion('id', file),
-      ]) {
-        await expectLater(
-          operation,
-          throwsA(
-            isA<ApiException>().having(
-              (e) => e.message,
-              'message',
-              contains('contrato'),
-            ),
-          ),
-        );
-      }
       expect(adapter.requests, isEmpty);
     },
   );

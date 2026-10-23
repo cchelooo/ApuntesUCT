@@ -4,8 +4,16 @@ import 'package:dio/dio.dart';
 
 /// Transporte controlado: captura el stream enviado sin acceder a la red.
 class MaterialHttpAdapter implements HttpClientAdapter {
-  MaterialHttpAdapter(this.response, {this.status = 201, this.failure});
+  MaterialHttpAdapter(
+    this.response, {
+    this.status = 201,
+    this.failure,
+    this.bytes,
+    this.headers,
+  });
   final Object? response;
+  final List<int>? bytes;
+  final Map<String, List<String>>? headers;
   final int status;
   final DioExceptionType? failure;
   final requests = <RequestOptions>[];
@@ -26,6 +34,9 @@ class MaterialHttpAdapter implements HttpClientAdapter {
         [],
         (all, chunk) => all..addAll(chunk),
       );
+    }
+    if (bytes != null) {
+      return ResponseBody.fromBytes(bytes!, status, headers: headers ?? {});
     }
     return ResponseBody.fromString(
       jsonEncode(response),

@@ -1,12 +1,20 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { Client } from 'minio';
-import { ObjectStorage, ObjectStorageError } from '../../application/ports/object-storage.port';
+import { Readable } from 'node:stream';
+import { Client, S3Error } from 'minio';
+import {
+  ObjectNotFoundError,
+  ObjectStorage,
+  ObjectStorageError,
+} from '../../application/ports/object-storage.port';
 import { MinioStorageAdapter } from './minio-storage.adapter';
 import { StorageModule } from './storage.module';
 import { readMinioConfig } from './minio.config';
 
-jest.mock('minio', () => ({ Client: jest.fn() }));
+jest.mock('minio', () => ({
+  Client: jest.fn(),
+  S3Error: jest.requireActual('minio').S3Error,
+}));
 
 const settings = {
   MINIO_ENDPOINT: 'storage.internal',
@@ -19,11 +27,17 @@ const settings = {
 
 describe('MinioStorageAdapter', () => {
   const putObject = jest.fn();
+  const removeObject = jest.fn();
+  const getObject = jest.fn();
   let storage: ObjectStorage;
 
   beforeEach(async () => {
+    removeObject.mockReset().mockResolvedValue(undefined);
     putObject.mockReset().mockResolvedValue({ etag: 'etag' });
-    jest.mocked(Client).mockImplementation(() => ({ putObject }) as unknown as Client);
+    getObject.mockReset();
+    jest
+      .mocked(Client)
+      .mockImplementation(() => ({ putObject, removeObject, getObject }) as unknown as Client);
     const module = await Test.createTestingModule({ imports: [StorageModule] })
       .overrideProvider(ConfigService)
       .useValue(new ConfigService(settings))
@@ -68,6 +82,16 @@ describe('MinioStorageAdapter', () => {
     );
   });
 
+  it('elimina del bucket configurado sin depender de una subida previa', async () => {
+    await storage.remove('materials/uuid');
+    expect(removeObject).toHaveBeenCalledWith('private-materials', 'materials/uuid');
+  });
+
+  it('oculta detalles internos cuando falla el borrado', async () => {
+    removeObject.mockRejectedValue(new Error('private endpoint secret'));
+    await expect(storage.remove('materials/uuid')).rejects.toEqual(new ObjectStorageError());
+  });
+
   it('permite instanciar sin configuración pero rechaza guardar sin credenciales', async () => {
     const adapter = new MinioStorageAdapter(
       new ConfigService({ ...settings, MINIO_SECRET_KEY: '' }),
@@ -76,6 +100,30 @@ describe('MinioStorageAdapter', () => {
       new ObjectStorageError(),
     );
     expect(putObject).not.toHaveBeenCalled();
+  });
+
+  it('lee el objeto por su clave interna devolviendo el stream exacto', async () => {
+    const content = Buffer.from('%PDF-1.7\ntest');
+    getObject.mockResolvedValue(Readable.from([content]));
+    const stream = await storage.get('materials/1f1c67b4-9c02-4524-b86a-716f5ca1d3c4');
+    expect(getObject).toHaveBeenCalledWith('private-materials', 'materials/1f1c67b4-9c02-4524-b86a-716f5ca1d3c4');
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) chunks.push(chunk);
+    expect(Buffer.concat(chunks)).toEqual(content);
+  });
+
+  it('convierte NoSuchKey en ObjectNotFoundError sin exponer la clave', async () => {
+    const missing = new S3Error('offline');
+    missing.code = 'NoSuchKey';
+    getObject.mockRejectedValue(missing);
+    await expect(storage.get('materials/desaparecido')).rejects.toEqual(
+      new ObjectNotFoundError(),
+    );
+  });
+
+  it('oculta errores de conexión o permisos como ObjectStorageError', async () => {
+    getObject.mockRejectedValue(new S3Error('AccessDenied'));
+    await expect(storage.get('materials/1')).rejects.toEqual(new ObjectStorageError());
   });
 });
 
