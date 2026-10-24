@@ -1,0 +1,205 @@
+import 'dart:typed_data';
+
+import 'package:apuntesuct_mobile/core/errors/api_exception.dart';
+import 'package:apuntesuct_mobile/features/materials/data/dio_material_repository.dart';
+import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
+import 'package:apuntesuct_mobile/features/materials/domain/models/material_page.dart';
+import 'package:apuntesuct_mobile/features/materials/domain/models/material_requests.dart';
+import 'package:apuntesuct_mobile/features/materials/domain/models/material_version.dart';
+import 'package:apuntesuct_mobile/features/materials/domain/repositories/material_repository.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/validation/material_upload_validation.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_version_upload_sheet.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/material.dart' hide MaterialPage;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+class _FakeVersionRepository implements MaterialRepository {
+  var calls = 0;
+  String? lastMaterialId;
+  LocalMaterialFile? lastFile;
+  Future<MaterialVersion> Function(
+    String materialId,
+    LocalMaterialFile file,
+  )? onCreate;
+
+  @override
+  Future<MaterialVersion> createVersion(
+    String materialId,
+    MaterialSource source, {
+    CancelToken? cancelToken,
+    ProgressCallback? onSendProgress,
+  }) async {
+    calls++;
+    final file = source as LocalMaterialFile;
+    lastMaterialId = materialId;
+    lastFile = file;
+    onSendProgress?.call(file.bytes.length ~/ 2, file.bytes.length);
+    if (onCreate != null) return onCreate!(materialId, file);
+    return MaterialVersion(
+      id: 'ver-3',
+      materialId: materialId,
+      versionNumber: 3,
+      originalFileName: file.fileName,
+      mimeType: file.mimeType,
+      fileSizeBytes: file.bytes.length,
+      createdAt: DateTime.utc(2026, 10, 21),
+    );
+  }
+
+  @override
+  Future<MaterialDetail> getDetail(String materialId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<MaterialPage> list({int page = 1, int pageSize = 10}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<MaterialDetail> upload(UploadMaterialRequest request) =>
+      throw UnimplementedError();
+
+  @override
+  Future<MaterialDownload> download(
+    String materialId, {
+    String? versionId,
+  }) => throw UnimplementedError();
+}
+
+Future<void> _pumpSheet(
+  WidgetTester tester,
+  _FakeVersionRepository fake, {
+  Future<MaterialPickedFile?> Function()? pickFile,
+  int? currentVersionNumber = 2,
+}) async {
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        dioMaterialRepositoryProvider.overrideWithValue(fake),
+      ],
+      child: MaterialApp(
+        home: Scaffold(
+          body: MaterialVersionUploadSheet(
+            materialId: 'mat-1',
+            currentVersionNumber: currentVersionNumber,
+            pickFile:
+                pickFile ??
+                () async => MaterialPickedFile(
+                  fileName: 'guia-v3.pdf',
+                  sizeBytes: 3,
+                  mimeType: 'application/pdf',
+                  bytes: Uint8List.fromList(const [1, 2, 3]),
+                ),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+void main() {
+  group('MaterialVersionUploadSheet widget (#292)', () {
+    testWidgets('flujo completo: archivo, confirmación, éxito sin duplicar',
+        (tester) async {
+      final fake = _FakeVersionRepository()
+        ..onCreate = (_, file) async {
+          // Retrasa la respuesta para observar el estado de subida.
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+          return MaterialVersion(
+            id: 'ver-3',
+            materialId: 'mat-1',
+            versionNumber: 3,
+            originalFileName: file.fileName,
+            mimeType: file.mimeType,
+            fileSizeBytes: file.bytes.length,
+          );
+        };
+      await _pumpSheet(tester, fake);
+
+      // Explica que la anterior no se elimina y la versión destino.
+      expect(find.textContaining('no se elimina'), findsOneWidget);
+      expect(find.textContaining('v3'), findsWidgets);
+
+      await tester.tap(find.textContaining('Seleccionar archivo'));
+      await tester.pumpAndSettle();
+      expect(find.text('guia-v3.pdf'), findsOneWidget);
+
+      // Confirmación explícita antes de enviar.
+      final confirm = find.text('Confirmar subida de v3');
+      expect(confirm, findsOneWidget);
+      await tester.tap(confirm);
+      await tester.pump();
+      // Mientras sube: progreso visible y sin botón de envío (no duplica).
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      expect(find.text('Confirmar subida de v3'), findsNothing);
+      await tester.pumpAndSettle();
+
+      expect(fake.calls, 1);
+      expect(fake.lastMaterialId, 'mat-1');
+      expect(fake.lastFile?.fileName, 'guia-v3.pdf');
+      expect(fake.lastFile?.bytes, [1, 2, 3]);
+      expect(find.text('Versión v3 creada'), findsOneWidget);
+      expect(find.textContaining('sigue en el historial'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('rechaza formato no permitido y bloquea confirmación',
+        (tester) async {
+      final fake = _FakeVersionRepository();
+      await _pumpSheet(
+        tester,
+        fake,
+        pickFile: () async => MaterialPickedFile(
+          fileName: 'virus.exe',
+          sizeBytes: 1024,
+          mimeType: 'application/octet-stream',
+        ),
+      );
+
+      await tester.tap(find.textContaining('Seleccionar archivo'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Formato no permitido'), findsOneWidget);
+      expect(fake.calls, 0);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('error 403 muestra mensaje y permite reintentar', (
+      tester,
+    ) async {
+      final fake = _FakeVersionRepository()
+        ..onCreate = (_, _) async => throw ApiException(
+          message: 'Solo el autor del material puede subir una nueva versión.',
+          statusCode: 403,
+        );
+      await _pumpSheet(tester, fake);
+
+      await tester.tap(find.textContaining('Seleccionar archivo'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Confirmar subida de v3'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Solo el autor'), findsOneWidget);
+      expect(find.text('Versión v3 creada'), findsNothing);
+      // El archivo se conserva para reintentar.
+      expect(find.text('guia-v3.pdf'), findsOneWidget);
+
+      fake.onCreate = null;
+      await tester.tap(find.text('Confirmar subida de v3'));
+      await tester.pumpAndSettle();
+
+      expect(fake.calls, 2);
+      expect(find.text('Versión v3 creada'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('sin versiones previas propone v1', (tester) async {
+      final fake = _FakeVersionRepository();
+      await _pumpSheet(tester, fake, currentVersionNumber: null);
+
+      expect(find.textContaining('v1'), findsWidgets);
+      expect(tester.takeException(), isNull);
+    });
+  });
+}

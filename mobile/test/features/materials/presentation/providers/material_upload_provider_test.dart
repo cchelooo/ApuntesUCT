@@ -45,8 +45,10 @@ class _FakeMaterialRepository implements MaterialRepository {
   @override
   Future<MaterialVersion> createVersion(
     String materialId,
-    MaterialSource source,
-  ) => throw UnimplementedError();
+    MaterialSource source, {
+    CancelToken? cancelToken,
+    ProgressCallback? onSendProgress,
+  }) => throw UnimplementedError();
 }
 
 UploadMaterialRequest _request() => UploadMaterialRequest(

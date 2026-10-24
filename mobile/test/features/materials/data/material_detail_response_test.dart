@@ -94,4 +94,93 @@ void main() {
       expect(() => materialDetailFromResponse(payload), throwsFormatException);
     });
   }
+
+  Map<String, dynamic> versionEntry({
+    required String id,
+    required int number,
+    required String date,
+  }) => {
+    'id': id,
+    'versionNumber': number,
+    'originalFilename': 'Guía v$number.pdf',
+    'mimeType': 'application/pdf',
+    'fileSize': '${1000 + number}',
+    'createdAt': date,
+  };
+
+  test('Conserva el historial completo con la actual identificada (#293)', () {
+    final v1 = versionEntry(
+      id: 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaa1',
+      number: 1,
+      date: '2026-09-01T10:00:00.000Z',
+    );
+    final v2 = versionEntry(
+      id: 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaa2',
+      number: 2,
+      date: '2026-10-14T12:00:00.000Z',
+    );
+    final result = materialDetailFromResponse({
+      ...detail(),
+      'currentVersion': v2,
+      'versions': [v2, v1],
+    });
+
+    expect(result.versions, hasLength(2));
+    expect(result.versions[0].versionNumber, 2);
+    expect(result.versions[1].versionNumber, 1);
+    expect(result.currentVersion, isNotNull);
+    expect(result.currentVersion!.id, v2['id']);
+    expect(
+      result.currentVersion!.createdAt?.toIso8601String(),
+      contains('2026-10-14'),
+    );
+    expect(
+      result.versions[1].createdAt?.toIso8601String(),
+      contains('2026-09-01'),
+    );
+    expect(result.fileSizeBytes, 1002);
+  });
+
+  test(
+    'La actual se resuelve por id aunque el historial venga desordenado',
+    () {
+      final v1 = versionEntry(
+        id: 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaa1',
+        number: 1,
+        date: '2026-09-01T10:00:00.000Z',
+      );
+      final v2 = versionEntry(
+        id: 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaa2',
+        number: 2,
+        date: '2026-10-14T12:00:00.000Z',
+      );
+      final result = materialDetailFromResponse({
+        ...detail(),
+        'currentVersion': v2,
+        'versions': [v1, v2],
+      });
+
+      expect(result.currentVersion, isNotNull);
+      expect(result.currentVersion!.versionNumber, 2);
+    },
+  );
+
+  test('Omite entradas corruptas del historial sin perder la actual', () {
+    final v2 = versionEntry(
+      id: 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaa2',
+      number: 2,
+      date: '2026-10-14T12:00:00.000Z',
+    );
+    final result = materialDetailFromResponse({
+      ...detail(),
+      'currentVersion': v2,
+      'versions': [
+        {'id': 'corrupta'},
+        v2,
+      ],
+    });
+
+    expect(result.versions, hasLength(1));
+    expect(result.currentVersion!.versionNumber, 2);
+  });
 }

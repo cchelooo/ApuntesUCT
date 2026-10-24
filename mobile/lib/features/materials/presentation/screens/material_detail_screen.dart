@@ -5,6 +5,8 @@ import 'package:apuntesuct_mobile/features/materials/domain/models/material_deta
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_detail_provider.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_download_actions.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_version_history.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_version_upload_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -355,11 +357,27 @@ class MaterialDetailScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 28),
-          if (summary.materialType.toUpperCase() != 'LINK')
+          if (summary.materialType.toUpperCase() != 'LINK') ...[
             MaterialDownloadActions(
               materialId: materialId,
               versionId: currentVersion?.id,
             ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => MaterialVersionUploadSheet(
+                  materialId: materialId,
+                  currentVersionNumber: currentVersion?.versionNumber,
+                ),
+              ),
+              icon: const Icon(Icons.upload_file_outlined),
+              label: const Text('Subir nueva versión'),
+            ),
+          ],
+          const SizedBox(height: 28),
+          MaterialVersionHistory(materialId: materialId, detail: data),
         ],
       ),
     );
