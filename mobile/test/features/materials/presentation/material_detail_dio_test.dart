@@ -37,6 +37,7 @@ void main() {
     'title': 'Certamen 2 Resuelto - Álgebra',
     'description': 'Pauta oficial de corrección y desarrollo paso a paso.',
     'authorName': 'Valentina Soto',
+    'subjectId': '44444444-4444-4444-8444-444444444444',
     'subjectName': 'Álgebra Lineal',
     'careerName': 'Ingeniería Civil Informática',
     'fileType': 'pdf',
@@ -51,6 +52,14 @@ void main() {
     'fileSizeBytes': 1048576,
     'tags': ['Álgebra', 'Certamen'],
     'viewCount': 120,
+    'currentVersion': {
+      'id': 'ver_1',
+      'versionNumber': 1,
+      'originalFilename': 'certamen2_algebra.pdf',
+      'mimeType': 'application/pdf',
+      'fileSize': '1048576',
+      'createdAt': '2026-10-05T14:00:00.000Z',
+    },
     'currentVersionId': 'ver_1',
     'versions': [
       {

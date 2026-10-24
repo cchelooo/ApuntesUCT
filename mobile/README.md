@@ -63,7 +63,30 @@ La aplicación móvil utiliza el **API Gateway** (`:3000`) como única entrada H
 
 `materialListingRepositoryProvider` consume `GET /materials?page=...&pageSize=...` y `materialListProvider(page)` expone carga, datos y error. El listado interpreta el estado `PUBLISHED` del Backend. Tanto este repositorio como el de Catalog se pueden reemplazar por un fake mediante overrides de Riverpod.
 
-La pantalla de búsqueda continúa usando `MockMaterialsRepository`: esta tarea prepara la conexión del listado básico, sin conectar búsqueda/filtros al endpoint de Material ni implementar subida, detalle, descarga o versionado.
+`materialRepositoryProvider` utiliza `DioMaterialRepository` y el mismo cliente
+central para listado y subida. La subida envía `multipart/form-data` a
+`/materials` con los campos publicados en OpenAPI: `title`, `description`,
+`year`, `type`, `subjectId`, `careerId`, `professorId`, `externalLink` y `file`,
+según archivo o enlace. `universityId` lo deriva Backend y no se envía.
+
+El POST publicado persiste el material en `PENDING_REVIEW` y devuelve
+`isSimulatedResponse: false`. Mobile conserva ese indicador para distinguir una
+respuesta simulada en entornos antiguos. No utiliza `fileUrl` para descargar.
+Los errores conservan códigos y mensajes, incluidas listas de validación NestJS.
+Cada intento reconstruye el multipart; no se reintenta un POST automáticamente.
+
+Detalle y descarga usan `GET /materials/:id` y `GET /materials/:id/download`
+(con `versionId` opcional). El detalle adapta `currentVersion`, cuyo tamaño es
+una cadena decimal; la descarga conserva bytes, MIME y nombre UTF-8.
+`POST /materials/:id/versions` envía solo `file` y conserva la numeración recibida.
+Las operaciones concretas admiten cancelación y las transferencias, progreso.
+Todo pasa por el cliente central y Gateway, sin recurrir a puertos de servicios.
+Las pruebas de contrato no necesitan Docker ni crean datos reales.
+
+La pantalla de descubrimiento continúa usando `MockMaterialsRepository`.
+Estos adaptadores no demuestran que ese listado esté integrado con Search.
+La subida permanece pendiente de revisión: no es descargable mediante el
+endpoint público hasta que el material esté publicado.
 
 ### Search: preparación Mobile (#275)
 
@@ -91,20 +114,38 @@ sus pruebas de contrato. No hay nombres de parámetros supuestos en Mobile.
 Este avance no conecta la pantalla de descubrimiento ni permite cerrar #275
 como integración completa de Search.
 
-### Pruebas Search: primera parte de #276
+### Pruebas de Search: contrato disponible (#276)
 
 ```bash
-flutter test test/features/materials/data/search_request_contract_test.dart
+flutter test test/features/materials/data/search_request_contract_test.dart \
+  test/features/materials/data/search_response_contract_test.dart
 ```
 
-Esta entrega parcial comprueba método, URL completa por Gateway, codificación de
-texto, omisión de campos inactivos, cancelación y rechazo local de filtros o
-paginación sin contrato. No necesita backend y solo reconoce el stub actual.
+Las 39 pruebas no necesitan backend. Cubren método, URL completa por Gateway,
+codificación de texto, omisión de campos inactivos, cancelación y rechazo local
+de filtros o paginación sin contrato. También verifican la respuesta vacía del
+stub, propagación del `502` público del Gateway hasta el estado de la interfaz,
+reintento, fallos de conexión/timeout y cambios de campos o tipos de respuesta.
+El fixture de respuesta conserva el JSON publicado por `SearchController` y no
+se construye con las constantes del adaptador Mobile.
 
-Queda para la segunda parte: consultas con filtros simples/combinados y
-orden/paginación **reales** conforme al futuro OpenAPI, mapeo de resultados,
-resultados vacíos reales, errores `502` y cambios de campos importantes de
-respuesta. No se ha terminado #276 ni se debe cerrar con este avance.
+Una respuesta `results: []` del servicio actual significa **integración
+pendiente**, no una búsqueda real sin coincidencias. Las pruebas lo comprueban
+para evitar una confirmación falsa de integración.
+
+Estado de los criterios de #276 al revisar el contrato publicado:
+
+| Criterio | Cobertura y pendiente |
+|---|---|
+| Método, ruta y query exactos | Cubiertos para `GET /search` y `q`. |
+| Filtro individual, combinado y paginación | Cubierto su rechazo local; el transporte real espera los nombres, tipos y reglas de INT2. |
+| Respuesta sin resultados | Cubierto el stub vacío como integración pendiente; falta el DTO de una búsqueda real sin coincidencias. |
+| `502` utilizable por la interfaz | Cubierto código, mensaje, cuerpo, ausencia de fallback y reintento. |
+| Cambios de campos contractuales importantes | Cubiertas omisiones, tipos incompatibles, renombrado y respuestas desconocidas del contrato actual. |
+
+La cobertura del contrato disponible está completa. **#276 permanece pendiente
+de #248–#251** para probar filtros, orden, paginación y resultados reales según
+su futuro OpenAPI. No se inventan DTOs ni parámetros y no se modifica INT2.
 
 Las URLs base se resuelven mediante la clase `ApiConfig` (`lib/core/config/api_config.dart`) y pueden ser parametrizadas en tiempo de compilación con `--dart-define`.
 
@@ -253,6 +294,25 @@ flutter test --dart-define=RUN_GATEWAY_SMOKE=true \
   --dart-define=API_GATEWAY_URL=http://localhost:3000/api/v1 \
   test/integration/gateway_live_test.dart
 ```
+
+El contrato de subida tiene una comprobación HTTP optativa en
+`test/integration/material_upload_live_test.dart`. **Crea registros reales**;
+usarla solo con PostgreSQL/MinIO desechables, Catalog con referencias existentes
+y contexto de autor configurado en Material. Los identificadores deben
+corresponder a una carrera y asignatura relacionadas. Un PDF válido es necesario
+para activar el caso de archivo. Sin estos parámetros las pruebas se omiten.
+
+```bash
+flutter test --dart-define=RUN_MATERIAL_UPLOAD_SMOKE=true \
+  --dart-define=API_GATEWAY_URL=http://localhost:3000/api/v1 \
+  --dart-define=MATERIAL_TEST_SUBJECT_ID=<uuid-asignatura> \
+  --dart-define=MATERIAL_TEST_CAREER_ID=<uuid-carrera> \
+  --dart-define=MATERIAL_TEST_PDF_PATH=<ruta-pdf-valido> \
+  test/integration/material_upload_live_test.dart
+```
+
+Comprueba creación FILE/LINK con `isSimulatedResponse: false` y rechazo `415`.
+No es una prueba de autenticación real ni sustituye la prueba del almacenamiento.
 
 ### Limpieza y mantenimiento del proyecto
 
