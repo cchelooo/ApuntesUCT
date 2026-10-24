@@ -88,7 +88,7 @@ Estos adaptadores no demuestran que ese listado esté integrado con Search.
 La subida permanece pendiente de revisión: no es descargable mediante el
 endpoint público hasta que el material esté publicado.
 
-### Search: preparación Mobile (#275)
+### Search mediante Gateway
 
 `searchRepositoryProvider` comparte `apiclientProvider` con Catalog y Material.
 `DioSearchRepository` solo consume `GET /search` con `q` si hay texto activo,
@@ -108,44 +108,18 @@ las respuestas antiguas no alteran el estado actual. El controlador está
 preparado para páginas del dominio interno, verificadas con un repositorio
 controlado, **sin atribuir ese formato al JSON de INT2**.
 
-Pendiente cuando INT2 publique #248–#251: mapear los DTOs de resultados, definir
-filtros, orden, página/límite/total y fin de resultados según OpenAPI, y completar
-sus pruebas de contrato. No hay nombres de parámetros supuestos en Mobile.
-Este avance no conecta la pantalla de descubrimiento ni permite cerrar #275
-como integración completa de Search.
-
-### Pruebas de Search: contrato disponible (#276)
+### Pruebas de Search
 
 ```bash
 flutter test test/features/materials/data/search_request_contract_test.dart \
   test/features/materials/data/search_response_contract_test.dart
 ```
 
-Las 39 pruebas no necesitan backend. Cubren método, URL completa por Gateway,
-codificación de texto, omisión de campos inactivos, cancelación y rechazo local
-de filtros o paginación sin contrato. También verifican la respuesta vacía del
-stub, propagación del `502` público del Gateway hasta el estado de la interfaz,
-reintento, fallos de conexión/timeout y cambios de campos o tipos de respuesta.
-El fixture de respuesta conserva el JSON publicado por `SearchController` y no
-se construye con las constantes del adaptador Mobile.
-
-Una respuesta `results: []` del servicio actual significa **integración
-pendiente**, no una búsqueda real sin coincidencias. Las pruebas lo comprueban
-para evitar una confirmación falsa de integración.
-
-Estado de los criterios de #276 al revisar el contrato publicado:
-
-| Criterio | Cobertura y pendiente |
-|---|---|
-| Método, ruta y query exactos | Cubiertos para `GET /search` y `q`. |
-| Filtro individual, combinado y paginación | Cubierto su rechazo local; el transporte real espera los nombres, tipos y reglas de INT2. |
-| Respuesta sin resultados | Cubierto el stub vacío como integración pendiente; falta el DTO de una búsqueda real sin coincidencias. |
-| `502` utilizable por la interfaz | Cubierto código, mensaje, cuerpo, ausencia de fallback y reintento. |
-| Cambios de campos contractuales importantes | Cubiertas omisiones, tipos incompatibles, renombrado y respuestas desconocidas del contrato actual. |
-
-La cobertura del contrato disponible está completa. **#276 permanece pendiente
-de #248–#251** para probar filtros, orden, paginación y resultados reales según
-su futuro OpenAPI. No se inventan DTOs ni parámetros y no se modifica INT2.
+Estas pruebas utilizan transporte controlado y no necesitan backend. Verifican
+las solicitudes por Gateway, la codificación del texto, la omisión de campos
+inactivos, la cancelación, los errores HTTP y la validación de respuestas.
+El fixture reproduce el JSON del endpoint disponible y es independiente de las
+constantes del adaptador Mobile.
 
 Las URLs base se resuelven mediante la clase `ApiConfig` (`lib/core/config/api_config.dart`) y pueden ser parametrizadas en tiempo de compilación con `--dart-define`.
 

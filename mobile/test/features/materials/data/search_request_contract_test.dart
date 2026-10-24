@@ -7,7 +7,7 @@ import 'package:apuntesuct_mobile/features/materials/domain/models/material_requ
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Primera parte de #276: solicitudes del único contrato público actual.
+/// Solicitudes del contrato público de Search.
 /// Las respuestas son el stub; no representan resultados reales de búsqueda.
 class SearchRequestAdapter implements HttpClientAdapter {
   SearchRequestAdapter(this.expectedText);
