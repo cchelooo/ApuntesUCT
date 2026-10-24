@@ -82,4 +82,11 @@ export class MaterialDetailDto {
     description: 'Versión con mayor versionNumber. Un material LINK sin archivo devuelve null.',
   })
   currentVersion!: MaterialCurrentVersionDto | null;
+
+  @ApiProperty({
+    type: () => [MaterialCurrentVersionDto],
+    description:
+      'Historial completo ordenado por versionNumber descendente. Incluye la versión actual; vacío para enlaces sin archivo.',
+  })
+  versions!: MaterialCurrentVersionDto[];
 }

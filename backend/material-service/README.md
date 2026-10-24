@@ -130,6 +130,29 @@ El proxy de `/api/v1/materials` en API Gateway corresponde a #222. Esta tarea
 expone el endpoint en el puerto de Material Service (`3003`). Hay ejemplos
 manuales en `backend/http/materials.http`.
 
+## Consulta de versiones (#247)
+
+`GET /api/v1/materials/:id` devuelve los metadatos del material publicado junto con:
+
+- `currentVersion`: la versión con mayor `versionNumber`.
+- `versions`: historial completo, incluida la actual, ordenado por `versionNumber`
+  descendente (no por fecha de creación).
+
+Cada versión incluye `id`, `versionNumber`, `originalFilename`, `mimeType`,
+`fileSize` (bytes como cadena decimal para preservar BigInt) y `createdAt` (ISO 8601).
+No se exponen claves, checksums ni rutas de almacenamiento. El detalle solo consulta
+PostgreSQL; no necesita Catalog ni MinIO.
+
+Un material `LINK` sin archivo devuelve `currentVersion: null` y `versions: []`.
+Un documento sin versiones o un material inexistente/no publicado devuelve `404`.
+Un identificador mal formado devuelve `400`.
+
+Para descargar la actual, usa `GET /api/v1/materials/:id/download`. Para una
+versión del historial, usa `GET /api/v1/materials/:id/download?versionId=<versions[i].id>`.
+Una versión inexistente o perteneciente a otro material devuelve `404` sin acceder
+al almacenamiento. Ambas descargas pasan por Material Service; API Gateway
+retransmite las mismas rutas bajo `/api/v1/materials`.
+
 ## Descarga de materiales (#236)
 
 `GET /api/v1/materials/:id/download` descarga el archivo de la **última versión** del
@@ -517,4 +540,21 @@ Requiere credenciales de prueba con permisos para crear y eliminar un bucket
 temporal. La prueba crea una versión inicial y envía dos cargas HTTP simultáneas
 con el mismo nombre de archivo; verifica números 1/2/3, claves distintas, checksum,
 contenido y tamaño en MinIO, descarga HTTP histórica y descarga de la última
-versión. Al finalizar elimina el bucket y el esquema propios, incluso ante fallos.
+versión. También comprueba el historial completo en orden descendente (aunque
+las fechas tengan otro orden), la identificación de la versión actual y los `404`
+para versiones inexistentes o pertenecientes a otro material. Al finalizar elimina
+el bucket y el esquema propios, incluso ante fallos.
+
+Para ejecutar el mismo flujo a través del API Gateway real, compila ambos servicios
+y activa la opción siguiente desde `backend/material-service`, con las mismas
+variables de conexión configuradas:
+
+```bash
+npm run build
+npm run build --workspace=api-gateway
+MATERIAL_TEST_MINIO=1 MATERIAL_TEST_GATEWAY=1 \
+  node --test test/material-version-minio.integration.cjs
+```
+
+El Gateway y Material Service usan puertos temporales locales durante la prueba;
+no es necesario arrancarlos por separado.
