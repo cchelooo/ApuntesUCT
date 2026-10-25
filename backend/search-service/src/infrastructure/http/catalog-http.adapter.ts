@@ -5,22 +5,22 @@ import {
   SubjectAcademicContext,
 } from '../../application/ports/catalog.port';
 import { getJson } from './http-client';
+import { isInteger, isNonEmptyString, isRecord } from './payload-validators';
 
 const CATALOG_SERVICE = 'Catalog Service';
 
-interface CatalogSubjectPayload {
-  id: string;
-  name: string;
-  code?: string | null;
-  semester?: number | null;
-  careerId?: string | null;
-  career?: {
-    id?: string;
-    name?: string;
-    universityId?: string | null;
-    university?: { id?: string; name?: string } | null;
-  } | null;
-  professors?: Array<{ id: string; name: string }> | null;
+function invalidResponse(message: string, cause?: unknown): DependencyError {
+  return new DependencyError(CATALOG_SERVICE, 'invalid-response', message, {
+    cause,
+  });
+}
+
+function isProfessor(value: unknown): value is { id: string; name: string } {
+  return (
+    isRecord(value) &&
+    isNonEmptyString(value.id) &&
+    isNonEmptyString(value.name)
+  );
 }
 
 @Injectable()
@@ -30,46 +30,80 @@ export class CatalogHttpAdapter extends CatalogPort {
 
   async getAcademicContext(): Promise<SubjectAcademicContext[]> {
     const url = new URL('/api/v1/catalog/filter', this.baseUrl);
-    const payload = await getJson<CatalogSubjectPayload[]>(
-      url.toString(),
-      CATALOG_SERVICE,
-    );
+    const payload = await getJson<unknown>(url.toString(), CATALOG_SERVICE);
 
-    if (
-      !Array.isArray(payload) ||
-      payload.some(
-        (subject) =>
-          !subject ||
-          typeof subject.id !== 'string' ||
-          typeof subject.name !== 'string',
-      )
-    ) {
-      throw new DependencyError(
-        CATALOG_SERVICE,
-        'invalid-response',
-        'Catalog Service devolvió un formato inesperado',
+    if (!Array.isArray(payload)) {
+      throw invalidResponse(
+        'Catalog Service devolvió un formato inesperado para el catálogo',
       );
     }
 
-    return payload.map((subject) => this.toAcademicContext(subject));
+    try {
+      return payload.map((subject) => this.toAcademicContext(subject));
+    } catch (error) {
+      if (error instanceof DependencyError) {
+        throw error;
+      }
+
+      throw invalidResponse(
+        'Catalog Service devolvió un formato inesperado para el catálogo',
+        error,
+      );
+    }
   }
 
-  private toAcademicContext(
-    subject: CatalogSubjectPayload,
-  ): SubjectAcademicContext {
+  private toAcademicContext(subject: unknown): SubjectAcademicContext {
+    if (
+      !isRecord(subject) ||
+      !isNonEmptyString(subject.id) ||
+      !isNonEmptyString(subject.name) ||
+      !isNonEmptyString(subject.code) ||
+      !isInteger(subject.semester)
+    ) {
+      throw invalidResponse(
+        'Catalog Service devolvió una asignatura con campos inválidos',
+      );
+    }
+
+    const career = subject.career;
+    if (
+      !isRecord(career) ||
+      !isNonEmptyString(career.id) ||
+      !isNonEmptyString(career.name)
+    ) {
+      throw invalidResponse(
+        'Catalog Service devolvió una carrera con campos inválidos',
+      );
+    }
+
+    const university = career.university;
+    if (
+      !isRecord(university) ||
+      !isNonEmptyString(university.id) ||
+      !isNonEmptyString(university.name)
+    ) {
+      throw invalidResponse(
+        'Catalog Service devolvió una universidad con campos inválidos',
+      );
+    }
+
+    const professors = subject.professors;
+    if (!Array.isArray(professors) || !professors.every(isProfessor)) {
+      throw invalidResponse(
+        'Catalog Service devolvió profesores con campos inválidos',
+      );
+    }
+
     return {
       subjectId: subject.id,
       subjectName: subject.name,
-      subjectCode: subject.code ?? null,
-      semester: subject.semester ?? null,
-      careerId: subject.career?.id ?? subject.careerId ?? null,
-      careerName: subject.career?.name ?? null,
-      universityId:
-        subject.career?.university?.id ??
-        subject.career?.universityId ??
-        null,
-      universityName: subject.career?.university?.name ?? null,
-      professors: (subject.professors ?? []).map((professor) => ({
+      subjectCode: subject.code,
+      semester: subject.semester,
+      careerId: career.id,
+      careerName: career.name,
+      universityId: university.id,
+      universityName: university.name,
+      professors: professors.map((professor) => ({
         id: professor.id,
         name: professor.name,
       })),

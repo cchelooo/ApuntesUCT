@@ -1,5 +1,6 @@
 import {
   BadGatewayException,
+  BadRequestException,
   HttpException,
   Injectable,
   ServiceUnavailableException,
@@ -120,14 +121,32 @@ export class SearchService {
   }
 
   private toHttpException(error: unknown): HttpException {
-    if (error instanceof DependencyError) {
-      return error.failure === 'invalid-response'
-        ? new BadGatewayException(error.message)
-        : new ServiceUnavailableException(error.message);
+    if (!(error instanceof DependencyError)) {
+      return new ServiceUnavailableException(
+        'Un servicio dependiente no está disponible',
+      );
     }
 
-    return new ServiceUnavailableException(
-      'Un servicio dependiente no está disponible',
-    );
+    if (error.failure === 'invalid-response') {
+      return new BadGatewayException(error.message);
+    }
+
+    if (error.failure === 'upstream-error') {
+      if (error.status === 400 || error.status === 422) {
+        return new BadRequestException(
+          `La solicitud de búsqueda no es válida para ${error.service}`,
+        );
+      }
+
+      if (
+        error.status !== undefined &&
+        error.status >= 400 &&
+        error.status < 500
+      ) {
+        return new BadGatewayException(error.message);
+      }
+    }
+
+    return new ServiceUnavailableException(error.message);
   }
 }

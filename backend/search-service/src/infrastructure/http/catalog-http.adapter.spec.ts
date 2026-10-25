@@ -3,6 +3,32 @@ import { CatalogHttpAdapter } from './catalog-http.adapter';
 
 const fetchMock = jest.fn();
 
+const validSubject = (overrides: Record<string, unknown> = {}) => ({
+  id: 'subject-1',
+  name: 'Estructuras de Datos',
+  code: 'INF-201',
+  semester: 3,
+  careerId: 'career-1',
+  career: {
+    id: 'career-1',
+    name: 'Ingeniería Civil Informática',
+    universityId: 'university-1',
+    university: {
+      id: 'university-1',
+      name: 'Universidad Católica de Temuco',
+    },
+  },
+  professors: [{ id: 'professor-1', name: 'Ada Lovelace' }],
+  ...overrides,
+});
+
+const respondWith = (body: unknown) =>
+  fetchMock.mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => body,
+  });
+
 describe('CatalogHttpAdapter', () => {
   beforeEach(() => {
     process.env.CATALOG_SERVICE_URL = 'http://catalog.test:3002';
@@ -15,27 +41,7 @@ describe('CatalogHttpAdapter', () => {
   });
 
   it('consulta el filtro de Catalog y normaliza el contexto académico', async () => {
-    fetchMock.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => [
-        {
-          id: 'subject-1',
-          name: 'Estructuras de Datos',
-          code: 'INF-201',
-          semester: 3,
-          career: {
-            id: 'career-1',
-            name: 'Ingeniería Civil Informática',
-            university: {
-              id: 'university-1',
-              name: 'Universidad Católica de Temuco',
-            },
-          },
-          professors: [{ id: 'professor-1', name: 'Ada Lovelace' }],
-        },
-      ],
-    });
+    respondWith([validSubject()]);
 
     const context = await new CatalogHttpAdapter().getAcademicContext();
 
@@ -87,15 +93,61 @@ describe('CatalogHttpAdapter', () => {
     });
   });
 
-  it('lanza DependencyError cuando el formato no es una lista de asignaturas', async () => {
-    fetchMock.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ subjects: [] }),
+  it('lanza DependencyError invalid-response cuando el formato no es una lista', async () => {
+    respondWith({ subjects: [] });
+
+    await expect(
+      new CatalogHttpAdapter().getAcademicContext(),
+    ).rejects.toMatchObject({
+      failure: 'invalid-response',
     });
+  });
+
+  it('lanza DependencyError invalid-response cuando professors no es una lista', async () => {
+    respondWith([validSubject({ professors: {} })]);
 
     await expect(
       new CatalogHttpAdapter().getAcademicContext(),
     ).rejects.toBeInstanceOf(DependencyError);
+  });
+
+  it('lanza DependencyError invalid-response cuando un profesor tiene tipos inválidos', async () => {
+    respondWith([
+      validSubject({ professors: [{ id: 1, name: 'Ada Lovelace' }] }),
+    ]);
+
+    await expect(
+      new CatalogHttpAdapter().getAcademicContext(),
+    ).rejects.toMatchObject({
+      failure: 'invalid-response',
+    });
+  });
+
+  it('lanza DependencyError invalid-response cuando falta la universidad anidada', async () => {
+    respondWith([
+      validSubject({
+        career: {
+          id: 'career-1',
+          name: 'Ingeniería Civil Informática',
+          university: {},
+        },
+      }),
+    ]);
+
+    await expect(
+      new CatalogHttpAdapter().getAcademicContext(),
+    ).rejects.toMatchObject({
+      failure: 'invalid-response',
+    });
+  });
+
+  it('lanza DependencyError invalid-response cuando semester no es entero', async () => {
+    respondWith([validSubject({ semester: '3' })]);
+
+    await expect(
+      new CatalogHttpAdapter().getAcademicContext(),
+    ).rejects.toMatchObject({
+      failure: 'invalid-response',
+    });
   });
 });

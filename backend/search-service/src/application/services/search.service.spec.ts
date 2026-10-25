@@ -1,5 +1,6 @@
 import {
   BadGatewayException,
+  BadRequestException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { SearchQueryDto } from '../dtos/search-query.dto';
@@ -201,6 +202,45 @@ describe('SearchService', () => {
 
     await expect(service.search(searchQuery())).rejects.toBeInstanceOf(
       BadGatewayException,
+    );
+  });
+
+  it('responde 400 cuando Material rechaza la paginación solicitada', async () => {
+    material.error = new DependencyError(
+      'Material Service',
+      'upstream-error',
+      'Material Service respondió con estado 400',
+      { status: 400 },
+    );
+
+    await expect(
+      service.search(searchQuery({ page: 2147483647, pageSize: 100 })),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('responde 502 cuando un servicio responde 4xx distinto de una solicitud inválida', async () => {
+    material.error = new DependencyError(
+      'Material Service',
+      'upstream-error',
+      'Material Service respondió con estado 403',
+      { status: 403 },
+    );
+
+    await expect(service.search(searchQuery())).rejects.toBeInstanceOf(
+      BadGatewayException,
+    );
+  });
+
+  it('responde 503 cuando un servicio responde 5xx', async () => {
+    material.error = new DependencyError(
+      'Material Service',
+      'upstream-error',
+      'Material Service respondió con estado 500',
+      { status: 500 },
+    );
+
+    await expect(service.search(searchQuery())).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
     );
   });
 

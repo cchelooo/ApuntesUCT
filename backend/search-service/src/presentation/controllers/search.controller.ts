@@ -39,6 +39,11 @@ export class SearchController {
     type: SearchResponseDto,
   })
   @ApiResponse({
+    status: 400,
+    description:
+      'La paginación solicitada no es válida para el servicio de materiales.',
+  })
+  @ApiResponse({
     status: 502,
     description: 'Un servicio dependiente devolvió una respuesta inválida.',
   })

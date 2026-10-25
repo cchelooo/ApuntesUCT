@@ -7,29 +7,57 @@ import {
   MaterialPort,
 } from '../../application/ports/material.port';
 import { getJson } from './http-client';
+import {
+  isInteger,
+  isIsoDateString,
+  isNonEmptyString,
+  isNullableString,
+  isRecord,
+} from './payload-validators';
 
 const MATERIAL_SERVICE = 'Material Service';
 
-interface MaterialItemPayload {
-  id: string;
-  title: string;
-  description?: string | null;
-  materialType?: string | null;
-  academicYear?: number | null;
-  verified?: boolean | null;
-  subjectId?: string | null;
-  careerId?: string | null;
-  universityId?: string | null;
-  professorId?: string | null;
-  createdAt?: string | null;
-  updatedAt?: string | null;
+function invalidResponse(message: string, cause?: unknown): DependencyError {
+  return new DependencyError(MATERIAL_SERVICE, 'invalid-response', message, {
+    cause,
+  });
 }
 
-interface MaterialPagePayload {
-  items: MaterialItemPayload[];
-  page: number;
-  pageSize: number;
-  total: number;
+function toCandidate(item: unknown): MaterialCandidate {
+  if (
+    !isRecord(item) ||
+    !isNonEmptyString(item.id) ||
+    !isNonEmptyString(item.title) ||
+    !isNullableString(item.description) ||
+    !isNonEmptyString(item.materialType) ||
+    !isInteger(item.academicYear) ||
+    typeof item.verified !== 'boolean' ||
+    !isNonEmptyString(item.subjectId) ||
+    !isNullableString(item.careerId) ||
+    !isNullableString(item.universityId) ||
+    !isNullableString(item.professorId) ||
+    !isIsoDateString(item.createdAt) ||
+    !isIsoDateString(item.updatedAt)
+  ) {
+    throw invalidResponse(
+      'Material Service devolvió un material con campos inválidos',
+    );
+  }
+
+  return {
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    materialType: item.materialType,
+    academicYear: item.academicYear,
+    verified: item.verified,
+    subjectId: item.subjectId,
+    careerId: item.careerId,
+    universityId: item.universityId,
+    professorId: item.professorId,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+  };
 }
 
 @Injectable()
@@ -42,53 +70,40 @@ export class MaterialHttpAdapter extends MaterialPort {
     url.searchParams.set('page', String(query.page));
     url.searchParams.set('pageSize', String(query.pageSize));
 
-    const payload = await getJson<MaterialPagePayload>(
-      url.toString(),
-      MATERIAL_SERVICE,
-    );
+    const payload = await getJson<unknown>(url.toString(), MATERIAL_SERVICE);
 
     if (
-      !payload ||
+      !isRecord(payload) ||
       !Array.isArray(payload.items) ||
-      typeof payload.page !== 'number' ||
-      typeof payload.pageSize !== 'number' ||
-      typeof payload.total !== 'number' ||
-      payload.items.some(
-        (item) =>
-          !item ||
-          typeof item.id !== 'string' ||
-          typeof item.title !== 'string',
-      )
+      !isInteger(payload.page) ||
+      payload.page < 1 ||
+      !isInteger(payload.pageSize) ||
+      payload.pageSize < 1 ||
+      payload.pageSize > 100 ||
+      !isInteger(payload.total) ||
+      payload.total < 0
     ) {
-      throw new DependencyError(
-        MATERIAL_SERVICE,
-        'invalid-response',
-        'Material Service devolvió un formato inesperado',
+      throw invalidResponse(
+        'Material Service devolvió una página con campos inválidos',
       );
     }
 
-    return {
-      items: payload.items.map((item) => this.toCandidate(item)),
-      page: payload.page,
-      pageSize: payload.pageSize,
-      total: payload.total,
-    };
-  }
+    try {
+      return {
+        items: payload.items.map((item) => toCandidate(item)),
+        page: payload.page,
+        pageSize: payload.pageSize,
+        total: payload.total,
+      };
+    } catch (error) {
+      if (error instanceof DependencyError) {
+        throw error;
+      }
 
-  private toCandidate(item: MaterialItemPayload): MaterialCandidate {
-    return {
-      id: item.id,
-      title: item.title,
-      description: item.description ?? null,
-      materialType: item.materialType ?? null,
-      academicYear: item.academicYear ?? null,
-      verified: item.verified ?? false,
-      subjectId: item.subjectId ?? null,
-      careerId: item.careerId ?? null,
-      universityId: item.universityId ?? null,
-      professorId: item.professorId ?? null,
-      createdAt: item.createdAt ?? null,
-      updatedAt: item.updatedAt ?? null,
-    };
+      throw invalidResponse(
+        'Material Service devolvió un formato inesperado para el listado',
+        error,
+      );
+    }
   }
 }
