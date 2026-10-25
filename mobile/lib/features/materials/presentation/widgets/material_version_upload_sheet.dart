@@ -40,9 +40,37 @@ class _MaterialVersionUploadSheetState
   bool _isPicking = false;
   String? _fileError;
 
-  int get _nextVersion => (widget.currentVersionNumber ?? 0) + 1;
+  /// Número de la última versión creada en esta hoja: al subir "otra", la
+  /// propuesta avanza (v3 → v4) aunque el detalle aún no se haya refrescado.
+  int? _createdVersionNumber;
+
+  /// La confirmación solo se muestra por una subida de ESTA hoja: al reabrir
+  /// para una versión B, el éxito de la versión A no aparece sin haber
+  /// subido nada (aunque el provider aún lo conserve).
+  bool _completedHere = false;
+
+  /// El error solo se muestra tras un intento de ESTA hoja.
+  bool _attemptedHere = false;
+
+  int get _nextVersion =>
+      (_createdVersionNumber ?? widget.currentVersionNumber ?? 0) + 1;
+
+  @override
+  void initState() {
+    super.initState();
+    // Limpia un resultado anterior (versión A) al reabrir para la versión B.
+    // Si hay una subida en curso se conserva y se sigue mostrando su progreso.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final upload = ref.read(materialVersionUploadProvider);
+      if (!upload.isUploading) {
+        ref.read(materialVersionUploadProvider.notifier).reset();
+      }
+    });
+  }
 
   Future<void> _pickFile() async {
+    ref.read(materialVersionUploadProvider.notifier).reset();
     setState(() {
       _isPicking = true;
       _fileError = null;
@@ -99,6 +127,7 @@ class _MaterialVersionUploadSheetState
       setState(() => _fileError = invalid);
       return;
     }
+    setState(() => _attemptedHere = true);
     await ref
         .read(materialVersionUploadProvider.notifier)
         .uploadVersion(
@@ -113,6 +142,18 @@ class _MaterialVersionUploadSheetState
 
   @override
   Widget build(BuildContext context) {
+    // Un éxito que complete en segundo plano (hoja cerrada y reabierta
+    // durante la subida) también cuenta como completado aquí.
+    ref.listen<MaterialVersionUploadState>(materialVersionUploadProvider, (
+      _,
+      next,
+    ) {
+      if (!mounted || !next.isSuccess || next.created == null) return;
+      setState(() {
+        _createdVersionNumber = next.created!.versionNumber;
+        _completedHere = true;
+      });
+    });
     final upload = ref.watch(materialVersionUploadProvider);
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
 
@@ -132,7 +173,7 @@ class _MaterialVersionUploadSheetState
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            if (upload.created != null && upload.isSuccess)
+            if (upload.created != null && upload.isSuccess && _completedHere)
               _SuccessBody(
                 versionNumber: upload.created!.versionNumber,
                 fileName: _picked?.fileName,
@@ -142,6 +183,8 @@ class _MaterialVersionUploadSheetState
                   setState(() {
                     _picked = null;
                     _fileError = null;
+                    _completedHere = false;
+                    _attemptedHere = false;
                   });
                 },
               )
@@ -158,7 +201,9 @@ class _MaterialVersionUploadSheetState
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),
-              FormErrorBanner(message: upload.errorMessage),
+              FormErrorBanner(
+                message: _attemptedHere ? upload.errorMessage : null,
+              ),
               OutlinedButton.icon(
                 onPressed: (_isPicking || upload.isUploading)
                     ? null

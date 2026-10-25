@@ -18,10 +18,8 @@ class _FakeVersionRepository implements MaterialRepository {
   var calls = 0;
   String? lastMaterialId;
   LocalMaterialFile? lastFile;
-  Future<MaterialVersion> Function(
-    String materialId,
-    LocalMaterialFile file,
-  )? onCreate;
+  Future<MaterialVersion> Function(String materialId, LocalMaterialFile file)?
+  onCreate;
 
   @override
   Future<MaterialVersion> createVersion(
@@ -60,10 +58,8 @@ class _FakeVersionRepository implements MaterialRepository {
       throw UnimplementedError();
 
   @override
-  Future<MaterialDownload> download(
-    String materialId, {
-    String? versionId,
-  }) => throw UnimplementedError();
+  Future<MaterialDownload> download(String materialId, {String? versionId}) =>
+      throw UnimplementedError();
 }
 
 Future<void> _pumpSheet(
@@ -74,9 +70,7 @@ Future<void> _pumpSheet(
 }) async {
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [
-        dioMaterialRepositoryProvider.overrideWithValue(fake),
-      ],
+      overrides: [dioMaterialRepositoryProvider.overrideWithValue(fake)],
       child: MaterialApp(
         home: Scaffold(
           body: MaterialVersionUploadSheet(
@@ -100,8 +94,9 @@ Future<void> _pumpSheet(
 
 void main() {
   group('MaterialVersionUploadSheet widget (#292)', () {
-    testWidgets('flujo completo: archivo, confirmación, éxito sin duplicar',
-        (tester) async {
+    testWidgets('flujo completo: archivo, confirmación, éxito sin duplicar', (
+      tester,
+    ) async {
       final fake = _FakeVersionRepository()
         ..onCreate = (_, file) async {
           // Retrasa la respuesta para observar el estado de subida.
@@ -144,8 +139,9 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('rechaza formato no permitido y bloquea confirmación',
-        (tester) async {
+    testWidgets('rechaza formato no permitido y bloquea confirmación', (
+      tester,
+    ) async {
       final fake = _FakeVersionRepository();
       await _pumpSheet(
         tester,
@@ -199,6 +195,87 @@ void main() {
       await _pumpSheet(tester, fake, currentVersionNumber: null);
 
       expect(find.textContaining('v1'), findsWidgets);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('reabrir no muestra la confirmación anterior sin subir', (
+      tester,
+    ) async {
+      final fake = _FakeVersionRepository();
+      final container = ProviderContainer(
+        overrides: [dioMaterialRepositoryProvider.overrideWithValue(fake)],
+      );
+      addTearDown(container.dispose);
+
+      var openings = 0;
+      Future<void> openSheet() async {
+        // Key distinta por apertura: cerrar el modal hace dispose y
+        // reabrir crea un State nuevo (igual que en producción).
+        openings++;
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              home: Scaffold(
+                body: MaterialVersionUploadSheet(
+                  key: ValueKey('sheet-$openings'),
+                  materialId: 'mat-1',
+                  currentVersionNumber: 2,
+                  pickFile: () async => MaterialPickedFile(
+                    fileName: 'guia-v3.pdf',
+                    sizeBytes: 3,
+                    mimeType: 'application/pdf',
+                    bytes: Uint8List.fromList(const [1, 2, 3]),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+      }
+
+      // Sube la versión A.
+      await openSheet();
+      await tester.tap(find.textContaining('Seleccionar archivo'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Confirmar subida de v3'));
+      await tester.pumpAndSettle();
+      expect(find.text('Versión v3 creada'), findsOneWidget);
+
+      // Cierra (en producción: pop del modal) y reabre para la versión
+      // B: re-montar equivale a cerrar+reabrir porque el provider del
+      // contenedor compartido conserva el éxito de A.
+      await openSheet();
+
+      expect(find.text('Versión v3 creada'), findsNothing);
+      expect(find.textContaining('Seleccionar archivo'), findsOneWidget);
+      expect(fake.calls, 1);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('tras crear v3, subir otra propone v4', (tester) async {
+      final fake = _FakeVersionRepository();
+      await _pumpSheet(tester, fake);
+
+      await tester.tap(find.textContaining('Seleccionar archivo'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Confirmar subida de v3'));
+      await tester.pumpAndSettle();
+      expect(find.text('Versión v3 creada'), findsOneWidget);
+
+      await tester.tap(find.text('Subir otra versión'));
+      await tester.pumpAndSettle();
+
+      // La propuesta avanza aunque el detalle aún no se haya refrescado.
+      expect(find.text('Confirmar subida de v4'), findsOneWidget);
+
+      await tester.tap(find.textContaining('Seleccionar archivo'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Confirmar subida de v4'));
+      await tester.pumpAndSettle();
+
+      expect(fake.calls, 2);
       expect(tester.takeException(), isNull);
     });
   });
