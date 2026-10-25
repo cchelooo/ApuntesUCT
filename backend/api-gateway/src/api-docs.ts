@@ -1,6 +1,10 @@
 import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import {
+  DocumentBuilder,
+  SwaggerModule,
+  type OpenAPIObject,
+} from '@nestjs/swagger';
 
 interface DocsService {
   name: string;
@@ -47,13 +51,218 @@ function renderDocsIndex(services: DocsService[]): string {
         <tbody>${rows}</tbody>
       </table>
       <p>Quality Service todavía no está enrutado por el gateway. Material y Search sí lo
-      están y responden con su implementación actual: <code>/api/v1/materials</code> devuelve el listado paginado de materiales
-      (vacío si no hay datos), y <code>/api/v1/search</code> responde <code>200</code> con resultados vacíos
-      porque la búsqueda sigue siendo un stub. El <code>502</code> del gateway corresponde al
-      servicio caído, no al endpoint pendiente.</p>
+      están: <code>/api/v1/materials</code> devuelve el listado paginado de materiales y
+      <code>/api/v1/search</code> compone esos materiales con el contexto académico de
+      Catalog. Las rutas públicas son las del Gateway (puerto 3000); Web y Mobile no
+      necesitan conocer el puerto <code>3005</code> de Search. El <code>502</code>
+      corresponde al servicio caído (o a una dependencia con respuesta inválida) y el
+      <code>503</code> a una dependencia de Search no disponible.</p>
     </main>
   </body>
 </html>`;
+}
+
+const SEARCH_PATH = '/api/v1/search';
+
+const SEARCH_SCHEMAS: NonNullable<OpenAPIObject['components']>['schemas'] = {
+  ErrorResponse: {
+    type: 'object',
+    required: ['statusCode', 'message'],
+    properties: {
+      statusCode: { type: 'integer' },
+      message: {
+        oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }],
+      },
+      error: { type: 'string' },
+    },
+  },
+  SearchProfessor: {
+    type: 'object',
+    required: ['id', 'name'],
+    properties: {
+      id: { type: 'string' },
+      name: { type: 'string' },
+    },
+  },
+  SearchSubjectContext: {
+    type: 'object',
+    required: [
+      'subjectId',
+      'subjectName',
+      'subjectCode',
+      'semester',
+      'careerId',
+      'careerName',
+      'universityId',
+      'universityName',
+      'professors',
+    ],
+    properties: {
+      subjectId: { type: 'string' },
+      subjectName: { type: 'string' },
+      subjectCode: { type: 'string', nullable: true },
+      semester: { type: 'integer', nullable: true },
+      careerId: { type: 'string', nullable: true },
+      careerName: { type: 'string', nullable: true },
+      universityId: { type: 'string', nullable: true },
+      universityName: { type: 'string', nullable: true },
+      professors: {
+        type: 'array',
+        items: { $ref: '#/components/schemas/SearchProfessor' },
+      },
+    },
+  },
+  SearchResult: {
+    type: 'object',
+    required: [
+      'id',
+      'title',
+      'description',
+      'materialType',
+      'academicYear',
+      'verified',
+      'subjectId',
+      'careerId',
+      'universityId',
+      'professorId',
+      'subjectName',
+      'careerName',
+      'universityName',
+      'createdAt',
+      'updatedAt',
+    ],
+    properties: {
+      id: { type: 'string' },
+      title: { type: 'string' },
+      description: { type: 'string', nullable: true },
+      materialType: { type: 'string', nullable: true },
+      academicYear: { type: 'integer', nullable: true },
+      verified: { type: 'boolean' },
+      subjectId: { type: 'string', nullable: true },
+      careerId: { type: 'string', nullable: true },
+      universityId: { type: 'string', nullable: true },
+      professorId: { type: 'string', nullable: true },
+      subjectName: { type: 'string', nullable: true },
+      careerName: { type: 'string', nullable: true },
+      universityName: { type: 'string', nullable: true },
+      createdAt: { type: 'string', format: 'date-time', nullable: true },
+      updatedAt: { type: 'string', format: 'date-time', nullable: true },
+    },
+  },
+  SearchResponse: {
+    type: 'object',
+    required: ['query', 'page', 'pageSize', 'total', 'results', 'context'],
+    properties: {
+      query: { type: 'string', nullable: true },
+      page: { type: 'integer' },
+      pageSize: { type: 'integer' },
+      total: { type: 'integer' },
+      results: {
+        type: 'array',
+        items: { $ref: '#/components/schemas/SearchResult' },
+      },
+      context: {
+        type: 'array',
+        items: { $ref: '#/components/schemas/SearchSubjectContext' },
+      },
+    },
+  },
+};
+
+/** Documenta la ruta pública de Search sin obligar a consultar el puerto 3005. */
+function addSearchDocumentation(document: OpenAPIObject): void {
+  document.paths[SEARCH_PATH] = {
+    get: {
+      tags: ['Search'],
+      summary: 'Buscar materiales y recursos',
+      description:
+        'Compone el listado paginado de Material con el contexto académico resuelto por Catalog. ' +
+        'La respuesta conserva el contrato público de Search.',
+      parameters: [
+        {
+          name: 'q',
+          in: 'query',
+          required: false,
+          description:
+            'Término de búsqueda textual. Se devuelve en el campo `query` de la respuesta.',
+          schema: { type: 'string', maxLength: 200 },
+          example: 'Estructuras de Datos',
+        },
+        {
+          name: 'page',
+          in: 'query',
+          required: false,
+          description: 'Página solicitada, comenzando en 1.',
+          schema: {
+            type: 'integer',
+            default: 1,
+            minimum: 1,
+            maximum: 2147483647,
+          },
+          example: 1,
+        },
+        {
+          name: 'pageSize',
+          in: 'query',
+          required: false,
+          description: 'Cantidad de resultados por página (máximo 100).',
+          schema: {
+            type: 'integer',
+            default: 20,
+            minimum: 1,
+            maximum: 100,
+          },
+          example: 20,
+        },
+      ],
+      responses: {
+        '200': {
+          description:
+            'Materiales candidatos con su contexto académico.',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/SearchResponse' },
+            },
+          },
+        },
+        '400': {
+          description:
+            'Parámetros de consulta inválidos o paginación rechazada por Material Service.',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
+            },
+          },
+        },
+        '502': {
+          description:
+            'Search Service no está disponible o una dependencia devolvió una respuesta inválida.',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
+            },
+          },
+        },
+        '503': {
+          description:
+            'Una dependencia de Search (Catalog o Material) no está disponible.',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
+            },
+          },
+        },
+      },
+    },
+  };
+
+  document.components = {
+    ...document.components,
+    schemas: {
+      ...document.components?.schemas,
+      ...SEARCH_SCHEMAS,
+    },
+  };
 }
 
 export function setupApiDocs(
@@ -69,6 +278,7 @@ export function setupApiDocs(
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
+  addSearchDocumentation(document);
   SwaggerModule.setup('api/docs/gateway', app, document);
 
   const services: DocsService[] = [

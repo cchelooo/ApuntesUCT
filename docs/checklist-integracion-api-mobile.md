@@ -253,17 +253,26 @@ En caso de indisponibilidad de microservicios (por ejemplo si Auth Service está
 
 ---
 
-## 6. Endpoints en Rutas por Gateway (alcanzables pero aún sin implementar)
+## 6. Endpoints en Rutas por Gateway
 
 Estas rutas **ya están enrutadas por el Gateway** (#222) y sus servicios están
 integrados en `main` (#311 y #305), así que Mobile puede llamar a `:3000`. La
 diferencia con la sección 5 es qué responden hoy con el servicio levantado.
 
-### Search Service — `/api/v1/search` (enrutado, responde stub)
-- `GET /search?q=` — Búsqueda global. Hoy devuelve
-  `{ "query": ..., "results": [], "total": 0, "message": ... }`: el servicio
-  existe y responde `200`, pero la búsqueda desacoplada es trabajo en curso.
-- El healthcheck del servicio está en `http://localhost:3005/api/v1/health`.
+### Search Service — `/api/v1/search` (enrutado e implementado)
+- `GET /search?q=&page=&pageSize=` — Búsqueda compuesta (#250): Material aporta
+  los candidatos y Catalog resuelve el contexto académico. Devuelve
+  `{ "query": ..., "page": 1, "pageSize": 20, "total": ..., "results": [...], "context": [...] }`.
+  `q` se refleja en `query`; `page` y `pageSize` se reenvían a Material (máx. 100).
+- Errores controlados: `400` por parámetros o paginación inválidos (incluido el
+  rechazo de Material), `502` si una dependencia devuelve un payload inválido y
+  `503` si Catalog o Material no están disponibles. Si Search está caído, el
+  Gateway responde `502` con `Search Service no disponible`.
+- Web/Mobile consumen `/api/v1/search` en `:3000`; no necesitan conocer el puerto
+  `3005` ni consultar el Swagger de Search directamente.
+- El healthcheck del servicio está en `http://localhost:3005/api/v1/health` y su
+  Swagger en `http://localhost:3005/api/docs` (también documentado en
+  `/api/docs/gateway`).
 
 ### Material Service — `/api/v1/materials` (enrutado, subida, listado y descarga implementados)
 - `GET /materials` — Listado paginado ya implementado (#318): devuelve
