@@ -46,7 +46,7 @@ export function HomePage() {
           </div>
         </section>
 
-        {/* Sección: Materiales recientes / básicos (Material Service) */}
+        {/* Sección: Materiales recientes / compartidos por la comunidad */}
         <section
           aria-labelledby="recent-materials-heading"
           className="space-y-4"
@@ -60,8 +60,7 @@ export function HomePage() {
                 Materiales recientes
               </h2>
               <p className="text-sm text-catalog-ink/60">
-                Aportes básicos de la comunidad consumidos desde Material
-                Service.
+                Materiales compartidos por la comunidad.
               </p>
             </div>
             <Link
@@ -101,18 +100,17 @@ export function HomePage() {
               className="rounded-xs border border-dashed border-catalog-line bg-catalog-paperMuted px-6 py-10 text-center"
             >
               <p className="font-display text-base font-semibold text-catalog-ink sm:text-lg">
-                Aún no hay materiales registrados
+                Aún no hay materiales publicados
               </p>
               <p className="mx-auto mt-1 max-w-md text-sm text-catalog-ink/60">
-                Sé el primero en compartir guías, apuntes o evaluaciones con tus
-                compañeros.
+                Comparte guías, apuntes o evaluaciones con tus compañeros.
               </p>
               <div className="mt-4">
                 <Link
                   to="/materials/upload"
                   className="inline-flex items-center justify-center rounded-md bg-uct-blue px-4 py-2 text-sm font-semibold text-white hover:bg-uct-blueDark"
                 >
-                  Subir primer material
+                  Subir material
                 </Link>
               </div>
             </div>
@@ -128,7 +126,7 @@ export function HomePage() {
           )}
         </section>
 
-        {/* Sección: Mejor calificados / Reputación (Preparada para Quality Service) */}
+        {/* Sección: Mejor calificados / Reputación */}
         <section aria-labelledby="top-rated-heading" className="space-y-4">
           <div className="flex items-baseline justify-between border-b border-catalog-line pb-2">
             <div className="flex items-center gap-3">
@@ -139,7 +137,7 @@ export function HomePage() {
                 Mejores calificados
               </h2>
               <span className="rounded-xs border border-catalog-line bg-catalog-paperMuted px-2 py-0.5 text-xs font-medium text-catalog-ink/60">
-                Quality Service
+                Próximamente
               </span>
             </div>
           </div>
@@ -151,11 +149,11 @@ export function HomePage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-1">
                 <h3 className="font-display text-base font-semibold text-catalog-ink">
-                  Sección preparada para Quality Service
+                  Las calificaciones estarán disponibles próximamente
                 </h3>
                 <p className="max-w-2xl text-sm leading-relaxed text-catalog-ink/70">
                   Las calificaciones, reseñas y el posicionamiento por
-                  reputación se integrarán con Quality Service. No se simulan
+                  reputación estarán disponibles próximamente. No se simulan
                   estrellas ni algoritmos artificiales de ranking en el cliente
                   web.
                 </p>
