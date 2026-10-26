@@ -221,5 +221,57 @@ void main() {
         expect(find.text('Cálculo I'), findsWidgets);
       },
     );
+
+    testWidgets(
+      'Cambiar de universidad y aplicar sin asignatura limpia el filtro de asignatura previo (#327)',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(buildScreen());
+        await tester.pumpAndSettle();
+
+        // 1. Abrir modal y seleccionar UCT -> Informática -> Cálculo I
+        await tester.tap(find.byIcon(Icons.tune_rounded));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('filter_university_dropdown')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Universidad Católica de Temuco').last);
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('filter_career_dropdown')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Ingeniería Civil en Informática').last);
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('filter_subject_dropdown')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.textContaining('Cálculo I').last);
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(find.byKey(const Key('filter_apply_button')));
+        await tester.tap(find.byKey(const Key('filter_apply_button')));
+        await tester.pumpAndSettle();
+
+        // Filtro aplicado: 1 material
+        expect(find.byType(MaterialSummaryCard), findsOneWidget);
+
+        // 2. Abrir modal de nuevo y cambiar universidad a UFRO (resetea cascada de asignatura)
+        await tester.tap(find.byIcon(Icons.tune_rounded));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('filter_university_dropdown')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Universidad de La Frontera').last);
+        await tester.pumpAndSettle();
+
+        // 3. Aplicar SIN seleccionar asignatura
+        await tester.ensureVisible(find.byKey(const Key('filter_apply_button')));
+        await tester.tap(find.byKey(const Key('filter_apply_button')));
+        await tester.pumpAndSettle();
+
+        // El filtro de asignatura previo debe haberse limpiado y mostrar todos los materiales (2)
+        expect(find.byType(MaterialSummaryCard), findsNWidgets(2));
+        expect(find.textContaining('Asignatura: Cálculo I'), findsNothing);
+      },
+    );
   });
 }
