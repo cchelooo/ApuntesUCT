@@ -224,8 +224,7 @@ class _MaterialDiscoveryScreenState
 
     if (state.items.isEmpty) {
       final isFiltered = state.isSearchActive;
-      final queryText =
-          state.query.isNotEmpty ? ' para "${state.query}"' : '';
+      final queryText = state.query.isNotEmpty ? ' para "${state.query}"' : '';
       final subjectText = state.selectedSubject != null
           ? ' en "${state.selectedSubject}"'
           : '';

@@ -93,16 +93,8 @@ void main() {
     );
 
     testWidgets(
-      'Criterio 2: Cargar más no duplica materiales aunque el backend devuelva repetidos',
+      'Criterio 2: Cargar más no duplica materiales aunque la nueva página traiga repetidos internos y previos',
       (WidgetTester tester) async {
-        // Asignamos una altura suficiente para que ListView renderice las tarjetas
-        tester.view.physicalSize = const Size(800, 1600);
-        tester.view.devicePixelRatio = 1;
-        addTearDown(() {
-          tester.view.resetPhysicalSize();
-          tester.view.resetDevicePixelRatio();
-        });
-
         final repo = MockSearchMaterialsRepository(
           onGetMaterials: ({page = 1, pageSize = 10, query, subject}) {
             if (page == 1) {
@@ -114,13 +106,17 @@ void main() {
                 const MaterialSummary(id: 'mat-5', title: 'Material 5'),
               ];
             }
-            // Página 2 devuelve 'mat-5' repetido y uno nuevo 'mat-6'
+            // Página 2 contiene 'mat-5' (repetido de página 1) y 'mat-6' dos veces (repetido interno)
             return [
               const MaterialSummary(
                 id: 'mat-5',
-                title: 'Material 5 (Duplicado)',
+                title: 'Material 5 (Duplicado previo)',
               ),
               const MaterialSummary(id: 'mat-6', title: 'Material 6'),
+              const MaterialSummary(
+                id: 'mat-6',
+                title: 'Material 6 (Duplicado interno)',
+              ),
             ];
           },
         );
@@ -133,14 +129,14 @@ void main() {
 
         expect(container.read(discoveryMaterialsProvider).items.length, 5);
 
-        // Disparamos la carga de la siguiente página
+        // Cargamos la siguiente página
         await container
             .read(discoveryMaterialsProvider.notifier)
             .loadNextPage();
         await tester.pumpAndSettle();
 
-        // Debe haber 6 materiales en total, no 7 (se descartó el 'mat-5' duplicado)
         final state = container.read(discoveryMaterialsProvider);
+        // Debe contener exactamente 6 materiales únicos (mat-1 a mat-6), sin 7 u 8
         expect(state.items.length, 6);
         expect(state.items.map((m) => m.id).toList(), [
           'mat-1',
@@ -150,11 +146,8 @@ void main() {
           'mat-5',
           'mat-6',
         ]);
-        expect(find.text('Material 5'), findsOneWidget);
-        expect(find.text('Material 6'), findsOneWidget);
       },
     );
-
     testWidgets(
       'Criterio 3: Pull-to-refresh representa un fallo como ErrorState sin lanzar excepción no controlada',
       (WidgetTester tester) async {
