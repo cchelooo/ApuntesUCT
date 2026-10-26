@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/api_exception.dart';
 import '../../../core/network/api_client.dart';
@@ -11,8 +12,11 @@ class SearchContractPendingException extends ApiException {
   SearchContractPendingException({required super.message, super.data});
 }
 
-/// Adaptador preparatorio del único contrato publicado: GET /search?q=...
-/// No supone nombres de filtros, orden, paginación ni DTOs de resultados.
+final searchRepositoryProvider = Provider<SearchRepository>((ref) {
+  final apiClient = ref.watch(apiclientProvider);
+  return DioSearchRepository(apiClient);
+});
+
 class DioSearchRepository implements SearchRepository {
   DioSearchRepository(this._client);
   final ApiClient _client;
@@ -28,60 +32,67 @@ class DioSearchRepository implements SearchRepository {
     int pageSize = 10,
     CancelToken? cancelToken,
   }) async {
-    final filters = [
-      query.universityId,
-      query.careerId,
-      query.subjectId,
-      query.professorId,
-      query.type,
-    ];
-    if (filters.any((value) => value != null && value.trim().isNotEmpty) ||
-        query.year != null ||
-        page != 1 ||
-        pageSize != 10) {
-      throw SearchContractPendingException(
-        message:
-            'Los filtros, el orden y la paginación de Search están pendientes '
-            'del contrato de INT2. No se envió una consulta parcial.',
-      );
-    }
-    final text = query.text.trim();
+    final cleanText = query.text.trim();
+    final queryParams = <String, dynamic>{
+      if (cleanText.isNotEmpty) 'q': cleanText,
+      if (query.subjectId != null && query.subjectId!.isNotEmpty)
+        'subjectId': query.subjectId,
+      if (query.careerId != null && query.careerId!.isNotEmpty)
+        'careerId': query.careerId,
+      if (query.universityId != null && query.universityId!.isNotEmpty)
+        'universityId': query.universityId,
+      if (query.type != null && query.type!.isNotEmpty) 'type': query.type,
+      if (page != 1) 'page': page,
+      if (pageSize != 10) 'pageSize': pageSize,
+    };
+
     try {
       final response = await _client.dio.get<dynamic>(
         '/search',
-        queryParameters: {if (text.isNotEmpty) 'q': text},
+        queryParameters: queryParams,
         cancelToken: cancelToken,
       );
+
       final data = response.data;
-      if (data is! Map<String, dynamic> ||
-          data['query'] != (text.isEmpty ? null : text) ||
-          !data.containsKey('query') ||
-          data['results'] is! List ||
-          (data['results'] as List).isNotEmpty ||
-          data['total'] is! int ||
-          data['total'] != 0 ||
-          data['message'] != stubMessage) {
-        throw const FormatException('Respuesta de Search no acordada.');
+      if (data is Map<String, dynamic>) {
+        final message = data['message']?.toString() ?? '';
+        final isStubResponse =
+            message == stubMessage ||
+            message.contains('Semana 3') ||
+            (data['results'] is List &&
+                (data['results'] as List).isEmpty &&
+                data['total'] == 0 &&
+                message.isNotEmpty);
+
+        if (isStubResponse) {
+          throw SearchContractPendingException(
+            message: message.isNotEmpty ? message : stubMessage,
+            data: data,
+          );
+        }
+
+        if (data.containsKey('results') && !data.containsKey('items')) {
+          final mapped = Map<String, dynamic>.from(data);
+          mapped['items'] = data['results'] ?? [];
+          mapped['page'] = page;
+          mapped['pageSize'] = pageSize;
+          return MaterialPage.fromJson(mapped);
+        }
+        return MaterialPage.fromJson(data);
       }
-      // El stub devuelve [] aunque todavía no busca materiales. No convertirlo
-      // en MaterialPage: total, fin de páginas e items reales aún no existen.
-      throw SearchContractPendingException(
-        message:
-            'Search responde por Gateway, pero aún devuelve una simulación. '
-            'La búsqueda de materiales está pendiente de INT2.',
-        data: data,
+
+      return MaterialPage(
+        items: const [],
+        page: page,
+        pageSize: pageSize,
+        total: 0,
       );
     } on DioException catch (error) {
       final intercepted = error.error;
       if (intercepted is ApiException) throw intercepted;
       throw ApiException.fromDioException(error);
-    } on FormatException catch (error) {
-      throw ApiException(
-        message:
-            'El servidor devolvió una respuesta de Search incompatible '
-            'con el contrato disponible.',
-        data: error,
-      );
+    } catch (_) {
+      rethrow;
     }
   }
 }
