@@ -130,6 +130,29 @@ El proxy de `/api/v1/materials` en API Gateway corresponde a #222. Esta tarea
 expone el endpoint en el puerto de Material Service (`3003`). Hay ejemplos
 manuales en `backend/http/materials.http`.
 
+## Consulta de versiones (#247)
+
+`GET /api/v1/materials/:id` devuelve los metadatos del material publicado junto con:
+
+- `currentVersion`: la versión con mayor `versionNumber`.
+- `versions`: historial completo, incluida la actual, ordenado por `versionNumber`
+  descendente (no por fecha de creación).
+
+Cada versión incluye `id`, `versionNumber`, `originalFilename`, `mimeType`,
+`fileSize` (bytes como cadena decimal para preservar BigInt) y `createdAt` (ISO 8601).
+No se exponen claves, checksums ni rutas de almacenamiento. El detalle solo consulta
+PostgreSQL; no necesita Catalog ni MinIO.
+
+Un material `LINK` sin archivo devuelve `currentVersion: null` y `versions: []`.
+Un documento sin versiones o un material inexistente/no publicado devuelve `404`.
+Un identificador mal formado devuelve `400`.
+
+Para descargar la actual, usa `GET /api/v1/materials/:id/download`. Para una
+versión del historial, usa `GET /api/v1/materials/:id/download?versionId=<versions[i].id>`.
+Una versión inexistente o perteneciente a otro material devuelve `404` sin acceder
+al almacenamiento. Ambas descargas pasan por Material Service; API Gateway
+retransmite las mismas rutas bajo `/api/v1/materials`.
+
 ## Descarga de materiales (#236)
 
 `GET /api/v1/materials/:id/download` descarga el archivo de la **última versión** del
@@ -466,3 +489,72 @@ cuatro tipos de archivo, LINK, los bytes almacenados, checksum, metadatos, autor
 validaciones, rechazo de tipos inactivos, fallo real de MinIO y rollback de la
 creación anidada. Elimina sus propios recursos al terminar. No modifica los datos
 del servicio ni requiere migrar el esquema de la aplicación para probarse.
+
+### Crear una nueva versión de archivo (#246)
+
+`POST /api/v1/materials/:id/versions` recibe `multipart/form-data` con un campo
+`file` obligatorio (PDF, Word o PowerPoint, hasta 15 MiB, con validación de contenido).
+Solo el autor del material puede agregar versiones. Usa el contexto temporal de
+`MaterialAuthorProvider`, disponible actualmente en desarrollo; los materiales
+`LINK` no admiten versiones de archivo.
+
+```bash
+curl -X POST "http://localhost:3003/api/v1/materials/$MATERIAL_ID/versions" \
+  -F "file=@apunte-actualizado.pdf"
+```
+
+Devuelve `201` con `id`, `materialId`, `versionNumber`, `originalFilename`,
+`mimeType`, `fileSize` (string), `createdBy` y `createdAt`. La clave interna del
+objeto no se expone. Cada carga crea un objeto independiente y una fila nueva;
+el nombre original puede repetirse sin sobrescribir archivos. Una transacción
+bloquea la fila del material antes de calcular el siguiente número, serializando
+cargas concurrentes. Se actualiza `updatedAt`; el estado y los metadatos del
+material se conservan. La descarga existente permite recuperar versiones previas
+con `GET /api/v1/materials/:id/download?versionId=:versionId`.
+
+Los errores incluyen `400` (UUID/archivo inválido o LINK), `401` (sin contexto de
+autor), `403` (otro autor), `404` (material inexistente), `413` (tamaño), `415`
+(formato) y `502` (almacenamiento). Ante rollback confirmado se intenta eliminar
+solo el objeto nuevo sin referencias; si el resultado de persistencia es incierto,
+se conserva y se registra la limpieza pendiente, como en la creación inicial.
+
+Prueba de concurrencia con PostgreSQL real y almacenamiento en memoria (crea y
+elimina un esquema temporal; no modifica los materiales existentes):
+
+```bash
+npm run build
+MATERIAL_TEST_DATABASE_URL='postgresql://usuario:clave@localhost:5436/material_db' \
+  node --test test/create-material-version.integration.cjs
+```
+
+Prueba HTTP con PostgreSQL **y MinIO reales**, usando el adaptador de producción:
+
+```bash
+npm run build
+# Configurar MATERIAL_TEST_DATABASE_URL y MINIO_ENDPOINT, MINIO_PORT,
+# MINIO_USE_SSL, MINIO_ACCESS_KEY, MINIO_SECRET_KEY en el entorno de prueba.
+MATERIAL_TEST_MINIO=1 node --test test/material-version-minio.integration.cjs
+```
+
+Requiere credenciales de prueba con permisos para crear y eliminar un bucket
+temporal. La prueba crea una versión inicial y envía dos cargas HTTP simultáneas
+con el mismo nombre de archivo; verifica números 1/2/3, claves distintas, checksum,
+contenido y tamaño en MinIO, descarga HTTP histórica y descarga de la última
+versión. También comprueba el historial completo en orden descendente (aunque
+las fechas tengan otro orden), la identificación de la versión actual y los `404`
+para versiones inexistentes o pertenecientes a otro material. Al finalizar elimina
+el bucket y el esquema propios, incluso ante fallos.
+
+Para ejecutar el mismo flujo a través del API Gateway real, compila ambos servicios
+y activa la opción siguiente desde `backend/material-service`, con las mismas
+variables de conexión configuradas:
+
+```bash
+npm run build
+npm run build --workspace=api-gateway
+MATERIAL_TEST_MINIO=1 MATERIAL_TEST_GATEWAY=1 \
+  node --test test/material-version-minio.integration.cjs
+```
+
+El Gateway y Material Service usan puertos temporales locales durante la prueba;
+no es necesario arrancarlos por separado.

@@ -98,6 +98,16 @@ describe('GET /materials/:id - detalle', () => {
       externalLink: null,
       createdAt: DATE.toISOString(),
       updatedAt: DATE.toISOString(),
+      versions: [
+        {
+          id: VERSION_ID,
+          versionNumber: 3,
+          originalFilename: 'apuntes.pdf',
+          mimeType: 'application/pdf',
+          fileSize: '15728640',
+          createdAt: DATE.toISOString(),
+        },
+      ],
       currentVersion: {
         id: VERSION_ID,
         versionNumber: 3,
@@ -116,7 +126,7 @@ describe('GET /materials/:id - detalle', () => {
       expect.objectContaining({
         where: { id: MATERIAL_ID, status: 'PUBLISHED' },
         select: expect.objectContaining({
-          versions: expect.objectContaining({ orderBy: { versionNumber: 'desc' }, take: 1 }),
+          versions: expect.objectContaining({ orderBy: { versionNumber: 'desc' } }),
         }),
       }),
     );
@@ -144,6 +154,19 @@ describe('GET /materials/:id - detalle', () => {
       .expect(200);
     expect(body.currentVersion.id).toBe(VERSION_ID);
     expect(body.currentVersion.versionNumber).toBe(3);
+    expect(body.versions.map((item: { versionNumber: number }) => item.versionNumber)).toEqual([
+      3, 1,
+    ]);
+    expect(body.currentVersion).toEqual(body.versions[0]);
+    expect(body.versions[1]).toEqual({
+      id: older.id,
+      versionNumber: 1,
+      originalFilename: older.originalFilename,
+      mimeType: older.mimeType,
+      fileSize: older.fileSize.toString(),
+      createdAt: older.createdAt.toISOString(),
+    });
+    expect(JSON.stringify(body)).not.toMatch(/storageKey|checksum|private-key/);
   });
 
   it('devuelve 404 para un UUID inexistente', async () => {
@@ -180,6 +203,7 @@ describe('GET /materials/:id - detalle', () => {
     expect(body.materialType).toBe('LINK');
     expect(body.externalLink).toBe('https://example.com/apunte');
     expect(body.currentVersion).toBeNull();
+    expect(body.versions).toEqual([]);
   });
 
   it('devuelve 404 para un documento que no tiene versión', async () => {
@@ -195,6 +219,7 @@ describe('GET /materials/:id - detalle', () => {
       .get(`/api/v1/materials/${MATERIAL_ID}`)
       .expect(200);
     expect(body.currentVersion.fileSize).toBe('9007199254740993');
+    expect(body.versions[0].fileSize).toBe('9007199254740993');
   });
 
   it('conserva la ruta de descarga y su stream', async () => {
@@ -220,5 +245,9 @@ describe('GET /materials/:id - detalle', () => {
       'string',
     );
     expect(body.components.schemas.MaterialDetailDto.properties.currentVersion.nullable).toBe(true);
+    expect(body.components.schemas.MaterialDetailDto.properties.versions).toMatchObject({
+      type: 'array',
+      items: { $ref: '#/components/schemas/MaterialCurrentVersionDto' },
+    });
   });
 });

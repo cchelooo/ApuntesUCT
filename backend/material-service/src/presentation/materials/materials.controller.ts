@@ -33,7 +33,7 @@ export class MaterialsController {
 
   @Get(':id/download')
   @ApiOperation({
-    summary: 'Descargar la última versión publicada de un material',
+    summary: 'Descargar la versión actual o una versión específica de un material',
     description:
       'Resuelve internamente la versión (la de mayor versionNumber, o la indicada en versionId) y streama el archivo desde MinIO. La clave de almacenamiento nunca se expone.',
   })
@@ -58,9 +58,9 @@ export class MaterialsController {
 
   @Get(':id')
   @ApiOperation({
-    summary: 'Obtener detalle de un material publicado y su versión actual',
+    summary: 'Obtener detalle de un material publicado y su historial de versiones',
     description:
-      'Solo materiales PUBLISHED. currentVersion corresponde al mayor versionNumber y es null para enlaces sin archivo. fileSize es una cadena decimal de bytes. No expone claves ni rutas de almacenamiento.',
+      'Solo materiales PUBLISHED. versions contiene el historial completo por versionNumber descendente. currentVersion corresponde a su primer elemento; para enlaces sin archivo devuelve null y versions vacío. fileSize es una cadena decimal de bytes. No expone claves ni rutas de almacenamiento.',
   })
   @ApiOkResponse({ type: MaterialDetailDto })
   @ApiBadRequestResponse({ description: 'El identificador no es un UUID válido.' })
