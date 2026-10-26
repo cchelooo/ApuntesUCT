@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:apuntesuct_mobile/core/errors/api_exception.dart';
+import 'package:apuntesuct_mobile/core/widgets/app_primary_button.dart';
 import 'package:apuntesuct_mobile/features/materials/data/dio_material_repository.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_page.dart';
@@ -20,6 +21,7 @@ class _FakeVersionRepository implements MaterialRepository {
   var calls = 0;
   String? lastMaterialId;
   LocalMaterialFile? lastFile;
+  CancelToken? lastCancelToken;
   Future<MaterialVersion> Function(String materialId, LocalMaterialFile file)?
   onCreate;
 
@@ -34,6 +36,7 @@ class _FakeVersionRepository implements MaterialRepository {
     final file = source as LocalMaterialFile;
     lastMaterialId = materialId;
     lastFile = file;
+    lastCancelToken = cancelToken;
     onSendProgress?.call(file.bytes.length ~/ 2, file.bytes.length);
     if (onCreate != null) return onCreate!(materialId, file);
     return MaterialVersion(
@@ -282,7 +285,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('subida de A en curso no contamina la hoja de B al terminar', (
+    testWidgets('subida de A en curso bloquea la hoja de B hasta terminar', (
       tester,
     ) async {
       final gate = Completer<MaterialVersion>();
@@ -336,21 +339,37 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // B propone su propia v6, sin progreso ni confirmación ajena.
-      expect(find.text('Confirmar subida de v6'), findsOneWidget);
+      // B está bloqueada: aviso + cancelación ajena, confirmación
+      // deshabilitada (el botón existe pero sin onPressed), sin progreso
+      // ni confirmación ajena.
+      AppPrimaryButton confirmButton() => tester.widget<AppPrimaryButton>(
+        find.widgetWithText(AppPrimaryButton, 'Confirmar subida de v6'),
+      );
+      expect(confirmButton().onPressed, isNull);
+      expect(
+        find.textContaining('subida en curso en otro material'),
+        findsOneWidget,
+      );
+      expect(find.text('Cancelar subida en curso'), findsOneWidget);
       expect(find.byType(LinearProgressIndicator), findsNothing);
       expect(find.textContaining('creada'), findsNothing);
 
-      // Termina A: B sigue intacta aunque no subió nada ahí.
+      // Termina A: B se desbloquea y sigue intacta (no subió nada ahí).
       gate.complete(
         MaterialVersion(id: 'ver-4', materialId: 'mat-A', versionNumber: 4),
       );
       expect(await futureA, isTrue);
       await tester.pumpAndSettle();
 
-      expect(find.text('Confirmar subida de v6'), findsOneWidget);
+      expect(
+        find.textContaining('subida en curso en otro material'),
+        findsNothing,
+      );
       expect(find.textContaining('creada'), findsNothing);
-      expect(find.byType(LinearProgressIndicator), findsNothing);
+      // Al elegir archivo, la confirmación de B ya se habilita.
+      await tester.tap(find.textContaining('Seleccionar archivo'));
+      await tester.pumpAndSettle();
+      expect(confirmButton().onPressed, isNotNull);
       expect(
         container.read(materialVersionUploadProvider('mat-A')).isSuccess,
         isTrue,
@@ -359,6 +378,94 @@ void main() {
         container.read(materialVersionUploadProvider('mat-B')).isIdle,
         isTrue,
       );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('cancelar la subida en curso desde B desbloquea la hoja', (
+      tester,
+    ) async {
+      final gate = Completer<MaterialVersion>();
+      final fake = _FakeVersionRepository();
+      fake.onCreate = (materialId, file) async {
+        if (materialId != 'mat-A') {
+          return MaterialVersion(
+            id: 'ver-6',
+            materialId: materialId,
+            versionNumber: 6,
+          );
+        }
+        final token = fake.lastCancelToken;
+        if (token != null) {
+          await Future.any([gate.future, token.whenCancel]);
+          if (token.isCancelled) {
+            throw DioException(
+              requestOptions: RequestOptions(),
+              type: DioExceptionType.cancel,
+            );
+          }
+        } else {
+          await gate.future;
+        }
+        return MaterialVersion(
+          id: 'ver-4',
+          materialId: materialId,
+          versionNumber: 4,
+        );
+      };
+      final container = ProviderContainer(
+        overrides: [dioMaterialRepositoryProvider.overrideWithValue(fake)],
+      );
+      addTearDown(container.dispose);
+
+      final futureA = container
+          .read(materialVersionUploadProvider('mat-A').notifier)
+          .uploadVersion(
+            'mat-A',
+            LocalMaterialFile(
+              fileName: 'a-v4.pdf',
+              mimeType: 'application/pdf',
+              bytes: const [1, 2, 3],
+            ),
+          );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: MaterialVersionUploadSheet(
+                materialId: 'mat-B',
+                currentVersionNumber: 5,
+                pickFile: () async => MaterialPickedFile(
+                  fileName: 'b-v6.pdf',
+                  sizeBytes: 3,
+                  mimeType: 'application/pdf',
+                  bytes: Uint8List.fromList(const [1, 2, 3]),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Confirmar subida de v6'), findsOneWidget);
+      await tester.tap(find.text('Cancelar subida en curso'));
+      await tester.pumpAndSettle();
+
+      // La cancelación libera el bloqueo y B queda habilitada.
+      expect(await futureA, isFalse);
+      expect(
+        find.textContaining('subida en curso en otro material'),
+        findsNothing,
+      );
+      await tester.tap(find.textContaining('Seleccionar archivo'));
+      await tester.pumpAndSettle();
+      final confirm = tester.widget<AppPrimaryButton>(
+        find.widgetWithText(AppPrimaryButton, 'Confirmar subida de v6'),
+      );
+      expect(confirm.onPressed, isNotNull);
+      expect(find.textContaining('creada'), findsNothing);
       expect(tester.takeException(), isNull);
     });
   });

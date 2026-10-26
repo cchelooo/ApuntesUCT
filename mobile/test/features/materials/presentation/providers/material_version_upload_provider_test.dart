@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:apuntesuct_mobile/core/errors/api_exception.dart';
 import 'package:apuntesuct_mobile/features/materials/data/dio_material_repository.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_page.dart';
@@ -210,14 +212,17 @@ void main() {
       );
     });
 
-    test('el estado está aislado por material (A no contamina a B)', () async {
+    test('bloquea otra subida global hasta que termina la primera', () async {
+      final gate = Completer<MaterialVersion>();
       final fake = _FakeVersionRepository()
-        ..onCreate = (materialId, file) async {
-          await Future<void>.delayed(const Duration(milliseconds: 50));
-          return MaterialVersion(
-            id: 'ver-$materialId',
-            materialId: materialId,
-            versionNumber: materialId == 'mat-A' ? 4 : 6,
+        ..onCreate = (materialId, _) {
+          if (materialId == 'mat-A') return gate.future;
+          return Future.value(
+            MaterialVersion(
+              id: 'ver-b',
+              materialId: materialId,
+              versionNumber: 6,
+            ),
           );
         };
       final container = ProviderContainer(
@@ -225,25 +230,32 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      // Subidas concurrentes en materiales distintos no se bloquean.
-      final results = await Future.wait([
-        container
-            .read(materialVersionUploadProvider('mat-A').notifier)
-            .uploadVersion('mat-A', _file()),
-        container
-            .read(materialVersionUploadProvider('mat-B').notifier)
-            .uploadVersion('mat-B', _file()),
-      ]);
+      final futureA = container
+          .read(materialVersionUploadProvider('mat-A').notifier)
+          .uploadVersion('mat-A', _file());
 
-      expect(results, [true, true]);
-      expect(fake.calls, 2);
+      // B se rechaza mientras A sigue en vuelo (una sola subida a la vez).
+      final blocked = await container
+          .read(materialVersionUploadProvider('mat-B').notifier)
+          .uploadVersion('mat-B', _file());
+      expect(blocked, isFalse);
+      expect(fake.calls, 1);
       expect(
-        container
-            .read(materialVersionUploadProvider('mat-A'))
-            .created
-            ?.versionNumber,
-        4,
+        container.read(materialVersionUploadProvider('mat-B')).isIdle,
+        isTrue,
       );
+
+      gate.complete(
+        MaterialVersion(id: 'ver-4', materialId: 'mat-A', versionNumber: 4),
+      );
+      expect(await futureA, isTrue);
+
+      // Tras terminar A, B ya puede subir.
+      final okB = await container
+          .read(materialVersionUploadProvider('mat-B').notifier)
+          .uploadVersion('mat-B', _file());
+      expect(okB, isTrue);
+      expect(fake.calls, 2);
       expect(
         container
             .read(materialVersionUploadProvider('mat-B'))
@@ -251,6 +263,27 @@ void main() {
             ?.versionNumber,
         6,
       );
+    });
+
+    test('un fallo libera el bloqueo global', () async {
+      final fake = _FakeVersionRepository()
+        ..onCreate = (_, _) async =>
+            throw ApiException(message: 'x', statusCode: 500);
+      final container = ProviderContainer(
+        overrides: [dioMaterialRepositoryProvider.overrideWithValue(fake)],
+      );
+      addTearDown(container.dispose);
+
+      final okA = await container
+          .read(materialVersionUploadProvider('mat-A').notifier)
+          .uploadVersion('mat-A', _file());
+      expect(okA, isFalse);
+
+      final okB = await container
+          .read(materialVersionUploadProvider('mat-B').notifier)
+          .uploadVersion('mat-B', _file());
+      expect(okB, isFalse);
+      expect(fake.calls, 2);
     });
   });
 }

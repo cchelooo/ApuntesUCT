@@ -6,6 +6,32 @@ import 'package:apuntesuct_mobile/features/materials/presentation/providers/mate
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+/// Bloqueo global de subidas de versión (#292): solo una subida a la vez
+/// en toda la app. Si hay una subida en curso para álgebra, la hoja de
+/// integración no permite iniciar otra hasta que termine o se cancele.
+/// Contiene el [materialId] dueño de la subida en curso, o null si libre.
+class MaterialVersionUploadLock extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  /// Reserva la subida para [materialId]. Retorna false si otro material
+  /// ya tiene una subida en curso.
+  bool tryClaim(String materialId) {
+    if (state != null && state != materialId) return false;
+    state = materialId;
+    return true;
+  }
+
+  void release(String materialId) {
+    if (state == materialId) state = null;
+  }
+}
+
+final materialVersionUploadLockProvider =
+    NotifierProvider<MaterialVersionUploadLock, String?>(
+      MaterialVersionUploadLock.new,
+    );
+
 /// Estado de la subida de una nueva versión (#292).
 class MaterialVersionUploadState {
   final bool isUploading;
@@ -88,9 +114,15 @@ class MaterialVersionUploadNotifier
 
   /// Envía [file] como nueva versión de [materialId]. Retorna true si quedó
   /// creada (201) y refresca el detalle para mostrar el historial al día.
-  /// Los llamados concurrentes se ignoran (sin duplicar versiones).
+  /// Los llamados concurrentes se ignoran (sin duplicar versiones) y solo
+  /// se permite una subida a la vez en toda la app (bloqueo global).
   Future<bool> uploadVersion(String materialId, LocalMaterialFile file) async {
     if (state.isUploading) return false;
+    if (!ref
+        .read(materialVersionUploadLockProvider.notifier)
+        .tryClaim(materialId)) {
+      return false;
+    }
 
     final cancelToken = CancelToken();
     _cancelToken = cancelToken;
@@ -120,6 +152,11 @@ class MaterialVersionUploadNotifier
       return false;
     } finally {
       _cancelToken = null;
+      if (ref.mounted) {
+        ref
+            .read(materialVersionUploadLockProvider.notifier)
+            .release(materialId);
+      }
     }
   }
 
@@ -135,7 +172,8 @@ class MaterialVersionUploadNotifier
 
 /// Estado de subida aislado por material: cada material tiene su propia
 /// instancia (family por [materialId]), así la subida de A nunca contamina
-/// la hoja de B (progreso, éxito o error ajenos).
+/// la hoja de B (progreso, éxito o error ajenos). Además rige el bloqueo
+/// global [materialVersionUploadLockProvider]: una sola subida a la vez.
 final materialVersionUploadProvider =
     NotifierProvider.family<
       MaterialVersionUploadNotifier,

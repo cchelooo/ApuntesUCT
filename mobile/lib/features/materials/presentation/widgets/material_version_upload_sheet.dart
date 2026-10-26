@@ -12,7 +12,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Flujo: elegir archivo → confirmar (la versión anterior no se elimina) →
 /// progreso → éxito/error. El botón de envío se deshabilita mientras sube
 /// para no duplicar versiones. El repositorio valida tipo LINK y el backend
-/// exige autoría (403 si no es el autor).
+/// exige autoría (403 si no es el autor). Solo una subida a la vez en toda
+/// la app: si otro material tiene una en curso, esta hoja se bloquea hasta
+/// que termine o se cancele (con botón para cancelarla).
 class MaterialVersionUploadSheet extends ConsumerStatefulWidget {
   const MaterialVersionUploadSheet({
     required this.materialId,
@@ -130,6 +132,10 @@ class _MaterialVersionUploadSheetState
       setState(() => _fileError = invalid);
       return;
     }
+    // Solo una subida a la vez en toda la app: si otro material tiene una
+    // en curso, esta hoja no inicia nada hasta que termine o se cancele.
+    final lockedBy = ref.read(materialVersionUploadLockProvider);
+    if (lockedBy != null && lockedBy != widget.materialId) return;
     setState(() => _attemptedHere = true);
     final ok = await ref
         .read(materialVersionUploadProvider(widget.materialId).notifier)
@@ -159,6 +165,10 @@ class _MaterialVersionUploadSheetState
   @override
   Widget build(BuildContext context) {
     final upload = ref.watch(materialVersionUploadProvider(widget.materialId));
+    // Otro material con subida en curso bloquea esta hoja: no se puede
+    // iniciar nada aquí hasta que termine o se cancele aquella.
+    final lockedBy = ref.watch(materialVersionUploadLockProvider);
+    final blockedByOther = lockedBy != null && lockedBy != widget.materialId;
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
 
     return SafeArea(
@@ -213,8 +223,32 @@ class _MaterialVersionUploadSheetState
               FormErrorBanner(
                 message: _attemptedHere ? upload.errorMessage : null,
               ),
+              if (blockedByOther) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.hourglass_top_outlined),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Hay una subida en curso en otro material. '
+                        'Espera a que termine o cancélala para subir aquí.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
+                TextButton.icon(
+                  onPressed: () => ref
+                      .read(materialVersionUploadProvider(lockedBy).notifier)
+                      .cancel(),
+                  icon: const Icon(Icons.cancel_outlined),
+                  label: const Text('Cancelar subida en curso'),
+                ),
+                const SizedBox(height: 8),
+              ],
               OutlinedButton.icon(
-                onPressed: (_isPicking || upload.isUploading)
+                onPressed: (_isPicking || upload.isUploading || blockedByOther)
                     ? null
                     : _pickFile,
                 icon: _isPicking
@@ -289,7 +323,7 @@ class _MaterialVersionUploadSheetState
                 AppPrimaryButton(
                   label: 'Confirmar subida de v$_nextVersion',
                   icon: Icons.cloud_upload_outlined,
-                  onPressed: _fileValid ? _submit : null,
+                  onPressed: (_fileValid && !blockedByOther) ? _submit : null,
                 ),
                 const SizedBox(height: 4),
                 TextButton(
