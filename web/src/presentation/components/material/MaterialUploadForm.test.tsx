@@ -11,7 +11,60 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { MaterialUploadForm } from './MaterialUploadForm';
 
-describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => {
+vi.mock('../../../application/catalog/useCatalogUniversitiesQuery', () => ({
+  useCatalogUniversitiesQuery: () => ({
+    data: [{ id: 'university-real', name: 'Universidad de prueba' }],
+    isLoading: false,
+    error: null,
+  }),
+}));
+
+vi.mock('../../../application/catalog/useCatalogCareersQuery', () => ({
+  useCatalogCareersQuery: (universityId?: string) => ({
+    data: universityId
+      ? [{ id: 'career-real', name: 'Carrera de prueba' }]
+      : [],
+    isLoading: false,
+    error: null,
+  }),
+}));
+
+vi.mock('../../../application/catalog/useCatalogSubjectsByCareerQuery', () => ({
+  useCatalogSubjectsByCareerQuery: (careerId?: string) => ({
+    data: careerId
+      ? [{ id: 'subject-real', name: 'Asignatura de prueba' }]
+      : [],
+    isLoading: false,
+    error: null,
+  }),
+}));
+
+vi.mock('../../../application/catalog/useCatalogProfessorsQuery', () => ({
+  useCatalogProfessorsQuery: (subjectId?: string) => ({
+    data: subjectId
+      ? [{ id: 'professor-real', name: 'Profesor de prueba' }]
+      : [],
+    isLoading: false,
+    error: null,
+  }),
+}));
+
+async function selectAcademic() {
+  await userEvent.selectOptions(
+    screen.getByLabelText('Universidad'),
+    'university-real'
+  );
+  await userEvent.selectOptions(
+    screen.getByLabelText('Carrera'),
+    'career-real'
+  );
+  await userEvent.selectOptions(
+    screen.getByLabelText('Asignatura'),
+    'subject-real'
+  );
+}
+
+describe('MaterialUploadForm - Cobertura de pruebas, contratos y regresión (#243, #244)', () => {
   beforeEach(() => {
     window.fetch = vi.fn();
   });
@@ -60,14 +113,16 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       fireEvent.change(screen.getByTestId('upload-description-input'), {
         target: { value: 'Ejercicios prácticos con soluciones paso a paso' },
       });
+      await selectAcademic();
+      await userEvent.selectOptions(
+        screen.getByLabelText('Profesor'),
+        'professor-real'
+      );
       fireEvent.change(screen.getByTestId('upload-year-input'), {
         target: { value: '2026' },
       });
       fireEvent.change(screen.getByTestId('upload-type-select'), {
         target: { value: 'DOCUMENT' },
-      });
-      fireEvent.change(screen.getByTestId('upload-subject-input'), {
-        target: { value: 'MAT-204' },
       });
 
       const file = new File(['contenido binario simulado'], 'ecuaciones.pdf', {
@@ -84,7 +139,7 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
         expect(uploadFn).toHaveBeenCalledTimes(1);
       });
 
-      // Validar contrato estricto de FormData
+      // Validar contrato estricto de FormData con los IDs del catálogo simulado
       const formData = uploadFn.mock.calls[0][0] as FormData;
       expect(formData).toBeInstanceOf(FormData);
       expect(formData.get('title')).toBe('Guía de Ecuaciones Diferenciales');
@@ -93,7 +148,9 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       );
       expect(formData.get('year')).toBe('2026');
       expect(formData.get('type')).toBe('DOCUMENT');
-      expect(formData.get('subjectId')).toBe('MAT-204');
+      expect(formData.get('subjectId')).toBe('subject-real');
+      expect(formData.get('careerId')).toBe('career-real');
+      expect(formData.get('professorId')).toBe('professor-real');
 
       // Validar que el archivo entregado en el FormData es el seleccionado
       const sentFile = formData.get('file') as File;
@@ -112,8 +169,9 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       fireEvent.change(screen.getByTestId('upload-title-input'), {
         target: { value: 'Videotutorial de Integrales' },
       });
-      fireEvent.change(screen.getByTestId('upload-subject-input'), {
-        target: { value: 'MAT-101' },
+      await selectAcademic();
+      fireEvent.change(screen.getByTestId('upload-year-input'), {
+        target: { value: '2026' },
       });
       fireEvent.change(screen.getByTestId('upload-type-select'), {
         target: { value: 'LINK' },
@@ -132,7 +190,11 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       });
 
       const formData = uploadFn.mock.calls[0][0] as FormData;
+      expect(formData.get('title')).toBe('Videotutorial de Integrales');
       expect(formData.get('type')).toBe('LINK');
+      expect(formData.get('subjectId')).toBe('subject-real');
+      expect(formData.get('careerId')).toBe('career-real');
+      expect(formData.get('year')).toBe('2026');
       expect(formData.get('externalLink')).toBe(
         'https://youtube.com/watch?v=integrales'
       );
@@ -152,8 +214,9 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       fireEvent.change(screen.getByTestId('upload-title-input'), {
         target: { value: 'Libro pesado' },
       });
-      fireEvent.change(screen.getByTestId('upload-subject-input'), {
-        target: { value: 'INF-201' },
+      await selectAcademic();
+      fireEvent.change(screen.getByTestId('upload-year-input'), {
+        target: { value: '2026' },
       });
 
       const file = new File(['archivo muy pesado'], 'libro-100mb.pdf', {
@@ -189,8 +252,9 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       fireEvent.change(screen.getByTestId('upload-title-input'), {
         target: { value: 'Formato no soportado' },
       });
-      fireEvent.change(screen.getByTestId('upload-subject-input'), {
-        target: { value: 'INF-201' },
+      await selectAcademic();
+      fireEvent.change(screen.getByTestId('upload-year-input'), {
+        target: { value: '2026' },
       });
 
       const file = new File(['contenido de prueba'], 'documento.pdf', {
@@ -235,8 +299,9 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       fireEvent.change(screen.getByTestId('upload-title-input'), {
         target: { value: 'Material por defecto fetch' },
       });
-      fireEvent.change(screen.getByTestId('upload-subject-input'), {
-        target: { value: 'INF-100' },
+      await selectAcademic();
+      fireEvent.change(screen.getByTestId('upload-year-input'), {
+        target: { value: '2026' },
       });
 
       const file = new File(['bytes'], 'grande.pdf', {
@@ -288,8 +353,9 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       fireEvent.change(screen.getByTestId('upload-title-input'), {
         target: { value: 'Guía de Estudio' },
       });
-      fireEvent.change(screen.getByTestId('upload-subject-input'), {
-        target: { value: 'MAT-101' },
+      await selectAcademic();
+      fireEvent.change(screen.getByTestId('upload-year-input'), {
+        target: { value: '2026' },
       });
 
       const file = new File(['contenido'], 'guia.pdf', {
@@ -314,7 +380,6 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       expect(submitButton).toHaveTextContent(/subiendo material/i);
       expect(submitButton).toHaveAttribute('aria-busy', 'true');
       expect(form).toHaveAttribute('aria-busy', 'true');
-      expect(screen.getByTestId('upload-title-input')).toBeDisabled();
 
       // Clics adicionales e intentos de re-envío mientras está la promesa pendiente
       fireEvent.click(submitButton);
@@ -349,7 +414,6 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
 
       const titleInput = screen.getByTestId('upload-title-input');
       const descInput = screen.getByTestId('upload-description-input');
-      const subjectInput = screen.getByTestId('upload-subject-input');
       const fileInput = screen.getByTestId(
         'upload-file-input'
       ) as HTMLInputElement;
@@ -360,7 +424,10 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       fireEvent.change(descInput, {
         target: { value: 'Leyes y fórmulas principales' },
       });
-      fireEvent.change(subjectInput, { target: { value: 'FIS-201' } });
+      await selectAcademic();
+      fireEvent.change(screen.getByTestId('upload-year-input'), {
+        target: { value: '2026' },
+      });
 
       const file = new File(['termo'], 'termodinamica.pdf', {
         type: 'application/pdf',
@@ -423,8 +490,9 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       fireEvent.change(screen.getByTestId('upload-title-input'), {
         target: { value: 'Guía de Álgebra Lineal' },
       });
-      fireEvent.change(screen.getByTestId('upload-subject-input'), {
-        target: { value: 'MAT-102' },
+      await selectAcademic();
+      fireEvent.change(screen.getByTestId('upload-year-input'), {
+        target: { value: '2026' },
       });
 
       const file = new File(['datos binarios'], 'mismo-documento.pdf', {
@@ -469,6 +537,8 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       const sentFile = formData.get('file') as File;
       expect(sentFile).toBeTruthy();
       expect(sentFile.name).toBe('mismo-documento.pdf');
+      expect(formData.get('subjectId')).toBe('subject-real');
+      expect(formData.get('careerId')).toBe('career-real');
     });
 
     it('regresión: al cambiar de tipo documento a enlace, descarta el archivo previo y no lo envía en FormData', async () => {
@@ -479,8 +549,9 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       fireEvent.change(screen.getByTestId('upload-title-input'), {
         target: { value: 'Recurso Web de Programación' },
       });
-      fireEvent.change(screen.getByTestId('upload-subject-input'), {
-        target: { value: 'INF-101' },
+      await selectAcademic();
+      fireEvent.change(screen.getByTestId('upload-year-input'), {
+        target: { value: '2026' },
       });
 
       // 1. Adjuntar archivo mientras el tipo es DOCUMENT (por defecto)
@@ -538,8 +609,9 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       fireEvent.change(screen.getByTestId('upload-title-input'), {
         target: { value: 'Guía de Ejercicios' },
       });
-      fireEvent.change(screen.getByTestId('upload-subject-input'), {
-        target: { value: 'MAT-101' },
+      await selectAcademic();
+      fireEvent.change(screen.getByTestId('upload-year-input'), {
+        target: { value: '2026' },
       });
 
       // Cambiar a LINK y escribir enlace
@@ -585,7 +657,7 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
     });
   });
 
-  describe('Robustez de errores y validaciones adicionales', () => {
+  describe('Robustez de errores y validaciones adicionales (#243, #244)', () => {
     it('muestra alerta informando la necesidad de autenticación ante un error 401 (Unauthorized)', async () => {
       const uploadFn = vi.fn().mockRejectedValueOnce({ status: 401 });
 
@@ -594,8 +666,9 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       fireEvent.change(screen.getByTestId('upload-title-input'), {
         target: { value: 'Apunte anónimo' },
       });
-      fireEvent.change(screen.getByTestId('upload-subject-input'), {
-        target: { value: 'INF-201' },
+      await selectAcademic();
+      fireEvent.change(screen.getByTestId('upload-year-input'), {
+        target: { value: '2026' },
       });
 
       const file = new File(['content'], 'apunte.pdf', {
@@ -620,8 +693,9 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       fireEvent.change(screen.getByTestId('upload-title-input'), {
         target: { value: 'Apunte' },
       });
-      fireEvent.change(screen.getByTestId('upload-subject-input'), {
-        target: { value: 'INF-201' },
+      await selectAcademic();
+      fireEvent.change(screen.getByTestId('upload-year-input'), {
+        target: { value: '2026' },
       });
 
       const file = new File(['content'], 'apunte.pdf', {
@@ -638,27 +712,34 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       );
     });
 
-    it('valida campos requeridos y exige título y asignatura', async () => {
+    it('impide enviar cuando falta la selección académica requerida', () => {
+      render(<MaterialUploadForm />);
+      expect(screen.getByTestId('upload-submit-button')).toBeDisabled();
+    });
+
+    it('valida campos requeridos: exige título y año tras completar selección académica', async () => {
       render(<MaterialUploadForm />);
 
-      fireEvent.click(screen.getByTestId('upload-submit-button'));
+      expect(screen.getByTestId('upload-submit-button')).toBeDisabled();
+      await selectAcademic();
+      expect(screen.getByTestId('upload-submit-button')).toBeEnabled();
 
+      // 1. Falta título
+      fireEvent.click(screen.getByTestId('upload-submit-button'));
       await waitFor(() => {
         expect(
           screen.getByText('Por favor, ingresa el título del material.')
         ).toBeInTheDocument();
       });
 
+      // 2. Falta año
       fireEvent.change(screen.getByTestId('upload-title-input'), {
         target: { value: 'Título presente' },
       });
       fireEvent.click(screen.getByTestId('upload-submit-button'));
-
       await waitFor(() => {
         expect(
-          screen.getByText(
-            'Por favor, ingresa el identificador de la asignatura.'
-          )
+          screen.getByText('Por favor, ingresa el año del material.')
         ).toBeInTheDocument();
       });
     });
@@ -671,8 +752,9 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       fireEvent.change(screen.getByTestId('upload-title-input'), {
         target: { value: 'Libro muy pesado' },
       });
-      fireEvent.change(screen.getByTestId('upload-subject-input'), {
-        target: { value: 'INF-201' },
+      await selectAcademic();
+      fireEvent.change(screen.getByTestId('upload-year-input'), {
+        target: { value: '2026' },
       });
 
       const file = new File(['large content'], 'libro.pdf', {
@@ -697,9 +779,13 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
-    it('conserva la confirmación de éxito si el callback onSuccess lanza una excepción síncrona', async () => {
-      const uploadFn = vi.fn().mockResolvedValue({ id: 'form-mat-1' });
-      const callbackError = new Error('Error síncrono en callback onSuccess');
+    it('conserva la confirmación de éxito y no muestra error de subida si el callback onSuccess falla de forma síncrona tras la creación', async () => {
+      let resolveUpload: (val: unknown) => void;
+      const uploadPromise = new Promise((resolve) => {
+        resolveUpload = resolve;
+      });
+      const uploadFn = vi.fn().mockImplementation(() => uploadPromise);
+      const callbackError = new Error('Error en onSuccess síncrono');
       const onSuccess = vi.fn().mockImplementation(() => {
         throw callbackError;
       });
@@ -716,32 +802,50 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       fireEvent.change(screen.getByTestId('upload-title-input'), {
         target: { value: 'Guía de Estudio' },
       });
-      fireEvent.change(screen.getByTestId('upload-subject-input'), {
-        target: { value: 'MAT-101' },
+      await selectAcademic();
+      fireEvent.change(screen.getByTestId('upload-year-input'), {
+        target: { value: '2026' },
       });
 
       const file = new File(['content'], 'guia.pdf', {
         type: 'application/pdf',
       });
-      await userEvent.upload(screen.getByTestId('upload-file-input'), file);
+      const fileInput = screen.getByTestId('upload-file-input');
+      await userEvent.upload(fileInput, file);
 
-      fireEvent.click(screen.getByTestId('upload-submit-button'));
+      const submitBtn = screen.getByTestId('upload-submit-button');
+      fireEvent.click(submitBtn);
 
+      expect(submitBtn).toBeDisabled();
+      expect(submitBtn).toHaveTextContent(/subiendo material/i);
+      expect(uploadFn).toHaveBeenCalledTimes(1);
+
+      // Resuelve la subida exitosa del material
+      resolveUpload!({ id: 'form-mat-1' });
+
+      // La confirmación de subida exitosa debe conservarse
       await waitFor(() => {
         expect(
           screen.getByText('¡Material subido exitosamente!')
         ).toBeInTheDocument();
+        expect(screen.getByRole('status')).toBeInTheDocument();
         expect(onSuccess).toHaveBeenCalledTimes(1);
-        expect(onError).toHaveBeenCalledWith(callbackError);
       });
 
-      // No debe mostrar alerta de error de subida
+      // No debe reemplazar el éxito por un error de subida ni mostrar mensajes de error simultáneos
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+      // Se notifica el fallo del callback a onError por separado
+      expect(onError).toHaveBeenCalledWith(callbackError);
     });
 
-    it('conserva la confirmación de éxito si el callback onSuccess devuelve una promesa rechazada', async () => {
-      const uploadFn = vi.fn().mockResolvedValue({ id: 'form-mat-2' });
-      const callbackError = new Error('Error asíncrono en callback onSuccess');
+    it('conserva la confirmación de éxito y no muestra error de subida si el callback onSuccess retorna una promesa rechazada tras la creación', async () => {
+      let resolveUpload: (val: unknown) => void;
+      const uploadPromise = new Promise((resolve) => {
+        resolveUpload = resolve;
+      });
+      const uploadFn = vi.fn().mockImplementation(() => uploadPromise);
+      const callbackError = new Error('Error asíncrono en onSuccess');
       const onSuccess = vi.fn().mockRejectedValueOnce(callbackError);
       const onError = vi.fn();
 
@@ -754,28 +858,39 @@ describe('MaterialUploadForm - Cobertura de pruebas y regresión (#244)', () => 
       );
 
       fireEvent.change(screen.getByTestId('upload-title-input'), {
-        target: { value: 'Guía de Estudio' },
+        target: { value: 'Guía de Estudio Avanzada' },
       });
-      fireEvent.change(screen.getByTestId('upload-subject-input'), {
-        target: { value: 'MAT-101' },
+      await selectAcademic();
+      fireEvent.change(screen.getByTestId('upload-year-input'), {
+        target: { value: '2026' },
       });
 
       const file = new File(['content'], 'guia.pdf', {
         type: 'application/pdf',
       });
-      await userEvent.upload(screen.getByTestId('upload-file-input'), file);
+      const fileInput = screen.getByTestId('upload-file-input');
+      await userEvent.upload(fileInput, file);
 
-      fireEvent.click(screen.getByTestId('upload-submit-button'));
+      const submitBtn = screen.getByTestId('upload-submit-button');
+      fireEvent.click(submitBtn);
 
+      expect(submitBtn).toBeDisabled();
+      expect(uploadFn).toHaveBeenCalledTimes(1);
+
+      // Resuelve la subida exitosa del material
+      resolveUpload!({ id: 'form-mat-async' });
+
+      // La confirmación de subida exitosa debe conservarse
       await waitFor(() => {
         expect(
           screen.getByText('¡Material subido exitosamente!')
         ).toBeInTheDocument();
+        expect(screen.getByRole('status')).toBeInTheDocument();
         expect(onSuccess).toHaveBeenCalledTimes(1);
         expect(onError).toHaveBeenCalledWith(callbackError);
       });
 
-      // No debe mostrar alerta de error de subida
+      // No debe reemplazar el éxito por un error de subida ni mostrar mensajes de error simultáneos
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
   });

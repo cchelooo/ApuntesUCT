@@ -151,8 +151,8 @@ export interface UploadMaterialInput {
 
 export async function uploadMaterial(
   input: UploadMaterialInput | FormData,
-  signal?: AbortSignal
-): Promise<unknown> {
+  options: MaterialRequestOptions = {}
+): Promise<CreateMaterialResponse> {
   let body: FormData;
   if (input instanceof FormData) {
     body = input;
@@ -174,7 +174,10 @@ export async function uploadMaterial(
     response = await fetch(getMaterialsUrl(), {
       method: 'POST',
       body,
-      signal,
+      signal: options.signal,
+      headers: options.accessToken
+        ? { Authorization: `Bearer ${options.accessToken}` }
+        : undefined,
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
@@ -199,7 +202,7 @@ export async function uploadMaterial(
     });
   }
 
-  return response.json();
+  return (await response.json()) as CreateMaterialResponse;
 }
 
 export function buildMaterialDownloadUrl(materialId: string): string {
@@ -248,20 +251,7 @@ export async function createMaterial(
     formData.append('file', material.file);
   }
 
-  const response = await fetch(getMaterialsUrl(), {
-    method: 'POST',
-    signal: options.signal,
-    headers: options.accessToken
-      ? { Authorization: `Bearer ${options.accessToken}` }
-      : undefined,
-    body: formData,
-  });
-
-  if (!response.ok) {
-    await throwApiError(response);
-  }
-
-  return (await response.json()) as CreateMaterialResponse;
+  return uploadMaterial(formData, options);
 }
 
 export async function downloadMaterial(materialId: string): Promise<Response> {
