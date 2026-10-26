@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,6 +19,28 @@ class _FakeSuccessRepo implements IAcademicHierarchyRepository {
   @override
   Future<List<CareerModel>> fetchCareersByUniversity(String universityId) async =>
       CareerModel.mockList();
+
+  @override
+  Future<List<SubjectModel>> fetchSubjectsByCareer(String careerId) async =>
+      SubjectModel.mockList();
+
+  @override
+  Future<List<ProfessorModel>> fetchProfessorsBySubject(String subjectId) async =>
+      ProfessorModel.mockList();
+}
+
+class _FakeControllableRepo implements IAcademicHierarchyRepository {
+  FutureOr<List<CareerModel>> Function(String)? onFetchCareers;
+
+  @override
+  Future<List<UniversityModel>> fetchUniversities() async =>
+      UniversityModel.mockList();
+
+  @override
+  Future<List<CareerModel>> fetchCareersByUniversity(String universityId) async {
+    if (onFetchCareers != null) return onFetchCareers!(universityId);
+    return CareerModel.mockList();
+  }
 
   @override
   Future<List<SubjectModel>> fetchSubjectsByCareer(String careerId) async =>
@@ -515,6 +539,88 @@ void main() {
             .read(academicHierarchyProvider.notifier)
             .resetSelection();
         expect(container.read(hasAcademicHierarchyFiltersProvider), isFalse);
+      },
+    );
+
+    // -----------------------------------------------------------------------
+    // Race conditions y descarte de respuestas obsoletas (#326)
+    // -----------------------------------------------------------------------
+
+    test(
+      'Descarta respuestas de red obsoletas ante cambios rápidos de universidad (#326)',
+      () async {
+        final slowCompleter = Completer<List<CareerModel>>();
+        final repo = _FakeControllableRepo();
+        repo.onFetchCareers = (uniId) {
+          if (uniId == 'uni-lenta') return slowCompleter.future;
+          return [
+            const CareerModel(
+              id: 'carrera-rapida',
+              universityId: 'uni-rapida',
+              name: 'Carrera Rápida',
+              code: 'CR1',
+              active: true,
+            ),
+          ];
+        };
+
+        final c = _makeContainer(repo: repo);
+        final notifier = c.read(academicHierarchyProvider.notifier);
+
+        final p1 = notifier.selectUniversity('uni-lenta');
+        final p2 = notifier.selectUniversity('uni-rapida');
+
+        await p2;
+        var state = c.read(academicHierarchyProvider);
+        expect(state.selectedUniversityId, 'uni-rapida');
+        expect(state.careers.first.id, 'carrera-rapida');
+
+        // La respuesta lenta llega después
+        slowCompleter.complete([
+          const CareerModel(
+            id: 'carrera-lenta',
+            universityId: 'uni-lenta',
+            name: 'Carrera Lenta',
+            code: 'CL1',
+            active: true,
+          ),
+        ]);
+        await p1;
+
+        // No debe sobreescribir la selección nueva
+        state = c.read(academicHierarchyProvider);
+        expect(state.selectedUniversityId, 'uni-rapida');
+        expect(state.careers.first.id, 'carrera-rapida');
+      },
+    );
+
+    test(
+      'Limpiar filtros mientras hay una petición en vuelo no permite que reaparezcan datos al completarse (#326)',
+      () async {
+        final slowCompleter = Completer<List<CareerModel>>();
+        final repo = _FakeControllableRepo();
+        repo.onFetchCareers = (uniId) => slowCompleter.future;
+
+        final c = _makeContainer(repo: repo);
+        final notifier = c.read(academicHierarchyProvider.notifier);
+
+        final p = notifier.selectUniversity('uni-1');
+        notifier.resetSelection();
+
+        slowCompleter.complete([
+          const CareerModel(
+            id: 'c-1',
+            universityId: 'uni-1',
+            name: 'Carrera 1',
+            code: 'C1',
+            active: true,
+          ),
+        ]);
+        await p;
+
+        final state = c.read(academicHierarchyProvider);
+        expect(state.careers, isEmpty);
+        expect(state.selectedUniversityId, isNull);
       },
     );
   });
