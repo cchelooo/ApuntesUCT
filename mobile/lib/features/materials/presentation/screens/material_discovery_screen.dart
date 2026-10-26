@@ -67,13 +67,9 @@ class _MaterialDiscoveryScreenState
       onApply: () {
         final hierarchy = ref.read(academicHierarchyProvider);
         final selectedSubject = hierarchy.selectedSubject;
-        if (selectedSubject != null) {
-          ref
-              .read(discoveryMaterialsProvider.notifier)
-              .setSubject(selectedSubject.name);
-        } else if (!hierarchy.hasActiveFilters) {
-          ref.read(discoveryMaterialsProvider.notifier).setSubject(null);
-        }
+        ref
+            .read(discoveryMaterialsProvider.notifier)
+            .setSubject(selectedSubject?.name);
       },
     );
   }
