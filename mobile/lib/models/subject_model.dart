@@ -47,17 +47,23 @@ class SubjectModel {
   static List<SubjectModel> mockList() {
     return [
       SubjectModel.mock(
+        id: 'subj-eda-uuid',
+        code: 'INF-2101',
+        name: 'Estructuras de Datos',
+        description:
+            'Árboles, grafos, análisis asintótico y algoritmos clásicos.',
+      ),
+      SubjectModel.mock(
+        id: 'subj-calculo-uuid',
+        code: 'MAT-1101',
+        name: 'Cálculo I',
+        description: 'Límites, continuidad y derivadas.',
+      ),
+      SubjectModel.mock(
         id: 'subj-integra-iv-uuid',
         code: 'INF-4101',
         name: 'Integración de Sistemas IV',
         description: 'Taller integrador de arquitectura de microservicios y desarrollo móvil.',
-      ),
-      SubjectModel.mock(
-        id: 'subj-eda-uuid',
-        code: 'INF-2101',
-        name: 'Estructuras de Datos y Algoritmos',
-        description:
-            'Árboles, grafos, análisis asintótico y algoritmos clásicos.',
       ),
       SubjectModel.mock(
         id: 'subj-bd-uuid',
