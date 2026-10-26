@@ -59,18 +59,21 @@ class _MaterialVersionUploadSheetState
   void initState() {
     super.initState();
     // Limpia un resultado anterior (versión A) al reabrir para la versión B.
-    // Si hay una subida en curso se conserva y se sigue mostrando su progreso.
+    // Si hay una subida en curso de ESTE material se conserva y se sigue
+    // mostrando su progreso (el estado está aislado por materialId).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final upload = ref.read(materialVersionUploadProvider);
+      final upload = ref.read(materialVersionUploadProvider(widget.materialId));
       if (!upload.isUploading) {
-        ref.read(materialVersionUploadProvider.notifier).reset();
+        ref
+            .read(materialVersionUploadProvider(widget.materialId).notifier)
+            .reset();
       }
     });
   }
 
   Future<void> _pickFile() async {
-    ref.read(materialVersionUploadProvider.notifier).reset();
+    ref.read(materialVersionUploadProvider(widget.materialId).notifier).reset();
     setState(() {
       _isPicking = true;
       _fileError = null;
@@ -128,8 +131,8 @@ class _MaterialVersionUploadSheetState
       return;
     }
     setState(() => _attemptedHere = true);
-    await ref
-        .read(materialVersionUploadProvider.notifier)
+    final ok = await ref
+        .read(materialVersionUploadProvider(widget.materialId).notifier)
         .uploadVersion(
           widget.materialId,
           LocalMaterialFile(
@@ -138,23 +141,24 @@ class _MaterialVersionUploadSheetState
             bytes: picked.bytes,
           ),
         );
+    // Solo una subida iniciada por ESTA hoja marca su confirmación: el
+    // estado está aislado por materialId, así el éxito de otro material
+    // nunca aparece aquí aunque complete mientras esta hoja está abierta.
+    if (!mounted) return;
+    if (ok) {
+      setState(() {
+        _createdVersionNumber = ref
+            .read(materialVersionUploadProvider(widget.materialId))
+            .created
+            ?.versionNumber;
+        _completedHere = true;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Un éxito que complete en segundo plano (hoja cerrada y reabierta
-    // durante la subida) también cuenta como completado aquí.
-    ref.listen<MaterialVersionUploadState>(materialVersionUploadProvider, (
-      _,
-      next,
-    ) {
-      if (!mounted || !next.isSuccess || next.created == null) return;
-      setState(() {
-        _createdVersionNumber = next.created!.versionNumber;
-        _completedHere = true;
-      });
-    });
-    final upload = ref.watch(materialVersionUploadProvider);
+    final upload = ref.watch(materialVersionUploadProvider(widget.materialId));
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
 
     return SafeArea(
@@ -179,7 +183,12 @@ class _MaterialVersionUploadSheetState
                 fileName: _picked?.fileName,
                 onClose: () => Navigator.of(context).pop(),
                 onAgain: () {
-                  ref.read(materialVersionUploadProvider.notifier).reset();
+                  ref
+                      .read(
+                        materialVersionUploadProvider(widget.materialId)
+                            .notifier,
+                      )
+                      .reset();
                   setState(() {
                     _picked = null;
                     _fileError = null;
@@ -267,8 +276,12 @@ class _MaterialVersionUploadSheetState
                 ),
                 const SizedBox(height: 8),
                 TextButton.icon(
-                  onPressed: () =>
-                      ref.read(materialVersionUploadProvider.notifier).cancel(),
+                  onPressed: () => ref
+                      .read(
+                        materialVersionUploadProvider(widget.materialId)
+                            .notifier,
+                      )
+                      .cancel(),
                   icon: const Icon(Icons.cancel_outlined),
                   label: const Text('Cancelar subida'),
                 ),

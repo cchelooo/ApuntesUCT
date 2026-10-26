@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:apuntesuct_mobile/core/errors/api_exception.dart';
@@ -7,6 +8,7 @@ import 'package:apuntesuct_mobile/features/materials/domain/models/material_page
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_requests.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_version.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/repositories/material_repository.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_version_upload_provider.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/validation/material_upload_validation.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_version_upload_sheet.dart';
 import 'package:dio/dio.dart';
@@ -65,6 +67,7 @@ class _FakeVersionRepository implements MaterialRepository {
 Future<void> _pumpSheet(
   WidgetTester tester,
   _FakeVersionRepository fake, {
+  String materialId = 'mat-1',
   Future<MaterialPickedFile?> Function()? pickFile,
   int? currentVersionNumber = 2,
 }) async {
@@ -74,7 +77,7 @@ Future<void> _pumpSheet(
       child: MaterialApp(
         home: Scaffold(
           body: MaterialVersionUploadSheet(
-            materialId: 'mat-1',
+            materialId: materialId,
             currentVersionNumber: currentVersionNumber,
             pickFile:
                 pickFile ??
@@ -276,6 +279,86 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(fake.calls, 2);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('subida de A en curso no contamina la hoja de B al terminar', (
+      tester,
+    ) async {
+      final gate = Completer<MaterialVersion>();
+      final fake = _FakeVersionRepository()
+        ..onCreate = (materialId, file) {
+          if (materialId == 'mat-A') return gate.future;
+          return Future.value(
+            MaterialVersion(
+              id: 'ver-6',
+              materialId: materialId,
+              versionNumber: 6,
+            ),
+          );
+        };
+      final container = ProviderContainer(
+        overrides: [dioMaterialRepositoryProvider.overrideWithValue(fake)],
+      );
+      addTearDown(container.dispose);
+
+      // Empieza la subida de A sin UI (equivale a cerrar su hoja a mitad).
+      final futureA = container
+          .read(materialVersionUploadProvider('mat-A').notifier)
+          .uploadVersion(
+            'mat-A',
+            LocalMaterialFile(
+              fileName: 'a-v4.pdf',
+              mimeType: 'application/pdf',
+              bytes: const [1, 2, 3],
+            ),
+          );
+
+      // Se abre la hoja de B mientras A sigue en vuelo.
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: MaterialVersionUploadSheet(
+                materialId: 'mat-B',
+                currentVersionNumber: 5,
+                pickFile: () async => MaterialPickedFile(
+                  fileName: 'b-v6.pdf',
+                  sizeBytes: 3,
+                  mimeType: 'application/pdf',
+                  bytes: Uint8List.fromList(const [1, 2, 3]),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // B propone su propia v6, sin progreso ni confirmación ajena.
+      expect(find.text('Confirmar subida de v6'), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+      expect(find.textContaining('creada'), findsNothing);
+
+      // Termina A: B sigue intacta aunque no subió nada ahí.
+      gate.complete(
+        MaterialVersion(id: 'ver-4', materialId: 'mat-A', versionNumber: 4),
+      );
+      expect(await futureA, isTrue);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Confirmar subida de v6'), findsOneWidget);
+      expect(find.textContaining('creada'), findsNothing);
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+      expect(
+        container.read(materialVersionUploadProvider('mat-A')).isSuccess,
+        isTrue,
+      );
+      expect(
+        container.read(materialVersionUploadProvider('mat-B')).isIdle,
+        isTrue,
+      );
       expect(tester.takeException(), isNull);
     });
   });

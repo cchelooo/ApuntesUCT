@@ -70,14 +70,17 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      expect(container.read(materialVersionUploadProvider).isIdle, isTrue);
+      expect(
+        container.read(materialVersionUploadProvider('mat-1')).isIdle,
+        isTrue,
+      );
 
       final ok = await container
-          .read(materialVersionUploadProvider.notifier)
+          .read(materialVersionUploadProvider('mat-1').notifier)
           .uploadVersion('mat-1', _file());
 
       expect(ok, isTrue);
-      final state = container.read(materialVersionUploadProvider);
+      final state = container.read(materialVersionUploadProvider('mat-1'));
       expect(state.isSuccess, isTrue);
       expect(state.created?.versionNumber, 2);
       expect(fake.calls, 1);
@@ -99,7 +102,9 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      final notifier = container.read(materialVersionUploadProvider.notifier);
+      final notifier = container.read(
+        materialVersionUploadProvider('mat-1').notifier,
+      );
       final results = await Future.wait([
         notifier.uploadVersion('mat-1', _file()),
         notifier.uploadVersion('mat-1', _file()),
@@ -120,14 +125,12 @@ void main() {
           );
         };
       final container = ProviderContainer(
-        overrides: [
-          dioMaterialRepositoryProvider.overrideWithValue(fake),
-        ],
+        overrides: [dioMaterialRepositoryProvider.overrideWithValue(fake)],
       );
       addTearDown(container.dispose);
 
       final notifier = container.read(
-        materialVersionUploadProvider.notifier,
+        materialVersionUploadProvider('mat-1').notifier,
       );
       final results = await Future.wait([
         notifier.uploadVersion('mat-1', _file()),
@@ -171,12 +174,12 @@ void main() {
         addTearDown(container.dispose);
 
         final ok = await container
-            .read(materialVersionUploadProvider.notifier)
+            .read(materialVersionUploadProvider('mat-1').notifier)
             .uploadVersion('mat-1', _file());
 
         expect(ok, isFalse, reason: 'error: ${c.error}');
         expect(
-          container.read(materialVersionUploadProvider).errorMessage,
+          container.read(materialVersionUploadProvider('mat-1')).errorMessage,
           contains(c.contains),
           reason: 'error: ${c.error}',
         );
@@ -193,12 +196,61 @@ void main() {
       addTearDown(container.dispose);
 
       await container
-          .read(materialVersionUploadProvider.notifier)
+          .read(materialVersionUploadProvider('mat-1').notifier)
           .uploadVersion('mat-1', _file());
-      expect(container.read(materialVersionUploadProvider).hasError, isTrue);
+      expect(
+        container.read(materialVersionUploadProvider('mat-1')).hasError,
+        isTrue,
+      );
 
-      container.read(materialVersionUploadProvider.notifier).reset();
-      expect(container.read(materialVersionUploadProvider).isIdle, isTrue);
+      container.read(materialVersionUploadProvider('mat-1').notifier).reset();
+      expect(
+        container.read(materialVersionUploadProvider('mat-1')).isIdle,
+        isTrue,
+      );
+    });
+
+    test('el estado está aislado por material (A no contamina a B)', () async {
+      final fake = _FakeVersionRepository()
+        ..onCreate = (materialId, file) async {
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          return MaterialVersion(
+            id: 'ver-$materialId',
+            materialId: materialId,
+            versionNumber: materialId == 'mat-A' ? 4 : 6,
+          );
+        };
+      final container = ProviderContainer(
+        overrides: [dioMaterialRepositoryProvider.overrideWithValue(fake)],
+      );
+      addTearDown(container.dispose);
+
+      // Subidas concurrentes en materiales distintos no se bloquean.
+      final results = await Future.wait([
+        container
+            .read(materialVersionUploadProvider('mat-A').notifier)
+            .uploadVersion('mat-A', _file()),
+        container
+            .read(materialVersionUploadProvider('mat-B').notifier)
+            .uploadVersion('mat-B', _file()),
+      ]);
+
+      expect(results, [true, true]);
+      expect(fake.calls, 2);
+      expect(
+        container
+            .read(materialVersionUploadProvider('mat-A'))
+            .created
+            ?.versionNumber,
+        4,
+      );
+      expect(
+        container
+            .read(materialVersionUploadProvider('mat-B'))
+            .created
+            ?.versionNumber,
+        6,
+      );
     });
   });
 }

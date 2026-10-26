@@ -133,7 +133,12 @@ class MaterialVersionUploadNotifier
   }
 }
 
+/// Estado de subida aislado por material: cada material tiene su propia
+/// instancia (family por [materialId]), así la subida de A nunca contamina
+/// la hoja de B (progreso, éxito o error ajenos).
 final materialVersionUploadProvider =
-    NotifierProvider<MaterialVersionUploadNotifier, MaterialVersionUploadState>(
-      MaterialVersionUploadNotifier.new,
-    );
+    NotifierProvider.family<
+      MaterialVersionUploadNotifier,
+      MaterialVersionUploadState,
+      String
+    >((_) => MaterialVersionUploadNotifier());
