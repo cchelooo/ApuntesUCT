@@ -118,7 +118,7 @@ class MaterialSummaryCard extends StatelessWidget {
                             material.materialType.isEmpty
                                 ? 'SIN TIPO'
                                 : material.materialType.toUpperCase(),
-                            style: theme.textTheme.labelSmall?.copyWith(
+                            style: theme.textTheme.labelSmall?.copyWith(bile
                               color: colorScheme.onPrimaryContainer,
                               fontWeight: FontWeight.bold,
                               fontSize: 10,
