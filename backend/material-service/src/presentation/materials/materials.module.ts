@@ -1,3 +1,5 @@
+import { CreateMaterialVersion } from '../../application/use-cases/create-material-version';
+import { MaterialVersionController } from '../controllers/material-version.controller';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '../../infrastructure/prisma/prisma.module';
@@ -12,10 +14,11 @@ import { CatalogHttpAdapter } from '../../infrastructure/catalog/catalog-http.ad
 
 @Module({
   imports: [ConfigModule, PrismaModule, StorageModule],
-  controllers: [MaterialsController, MaterialController],
+  controllers: [MaterialsController, MaterialController, MaterialVersionController],
   providers: [
     MaterialsService,
     CreateMaterial,
+    CreateMaterialVersion,
     MaterialAuthorProvider,
     { provide: CatalogPort, useClass: CatalogHttpAdapter },
   ],

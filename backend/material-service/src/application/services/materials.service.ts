@@ -104,7 +104,6 @@ export class MaterialsService {
         updatedAt: true,
         versions: {
           orderBy: { versionNumber: 'desc' },
-          take: 1,
           select: {
             id: true,
             versionNumber: true,
@@ -122,6 +121,14 @@ export class MaterialsService {
       throw new NotFoundException('Versión del material no encontrada.');
     }
     // Mapeo explícito: nunca serializa storageKey ni campos internos de Prisma.
+    const versions = material.versions.map((item) => ({
+      id: item.id,
+      versionNumber: item.versionNumber,
+      originalFilename: item.originalFilename,
+      mimeType: item.mimeType,
+      fileSize: item.fileSize.toString(),
+      createdAt: item.createdAt.toISOString(),
+    }));
     return {
       id: material.id,
       title: material.title,
@@ -140,16 +147,8 @@ export class MaterialsService {
       externalLink: material.externalLink,
       createdAt: material.createdAt.toISOString(),
       updatedAt: material.updatedAt.toISOString(),
-      currentVersion: version
-        ? {
-            id: version.id,
-            versionNumber: version.versionNumber,
-            originalFilename: version.originalFilename,
-            mimeType: version.mimeType,
-            fileSize: version.fileSize.toString(),
-            createdAt: version.createdAt.toISOString(),
-          }
-        : null,
+      currentVersion: versions[0] ?? null,
+      versions,
     };
   }
 

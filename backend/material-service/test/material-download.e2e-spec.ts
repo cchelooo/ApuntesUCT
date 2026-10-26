@@ -3,7 +3,11 @@ import { Test } from '@nestjs/testing';
 import { Readable } from 'node:stream';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { ObjectNotFoundError, ObjectStorage, ObjectStorageError } from '../src/application/ports/object-storage.port';
+import {
+  ObjectNotFoundError,
+  ObjectStorage,
+  ObjectStorageError,
+} from '../src/application/ports/object-storage.port';
 import { PrismaService } from '../src/infrastructure/prisma/prisma.service';
 import { setupApp } from '../src/setup-app';
 
@@ -43,7 +47,7 @@ describe('GET /api/v1/materials/:id/download', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
     prisma.material.findFirst.mockResolvedValue({ id: materialId });
     prisma.materialVersion.findFirst.mockResolvedValue(version);
     storage.get.mockResolvedValue(Readable.from([content]));
@@ -74,20 +78,53 @@ describe('GET /api/v1/materials/:id/download', () => {
     expect(storage.get).toHaveBeenCalledWith('materials/internal-key-2');
   });
 
-  it('descarga la versión indicada por versionId sin alterar la clave interna', async () => {
-    await request(app.getHttpServer())
-      .get(`/api/v1/materials/${materialId}/download?versionId=${versionId}`)
+  it('descarga una versión histórica con sus propios bytes y metadatos', async () => {
+    const oldContent = Buffer.from('Primera versión');
+    const oldVersion = {
+      ...version,
+      id: '11111111-1111-4111-8111-111111111111',
+      versionNumber: 1,
+      storageKey: 'materials/internal-key-1',
+      originalFilename: 'apuntes-original.txt',
+      mimeType: 'text/plain',
+      fileSize: BigInt(oldContent.length),
+    };
+    prisma.materialVersion.findFirst.mockImplementation(({ where }) =>
+      Promise.resolve(
+        where.id === oldVersion.id && where.materialId === materialId ? oldVersion : version,
+      ),
+    );
+    storage.get.mockImplementation((key) =>
+      Promise.resolve(Readable.from([key === oldVersion.storageKey ? oldContent : content])),
+    );
+    const response = await request(app.getHttpServer())
+      .get(`/api/v1/materials/${materialId}/download?versionId=${oldVersion.id}`)
       .expect(200);
+    expect(response.text).toBe(oldContent.toString());
+    expect(response.headers['content-type']).toContain('text/plain');
+    expect(response.headers['content-length']).toBe(String(oldContent.length));
+    expect(response.headers['content-disposition']).toContain('apuntes-original.txt');
+    expect(storage.get).toHaveBeenCalledWith(oldVersion.storageKey);
     expect(prisma.materialVersion.findFirst).toHaveBeenCalledWith({
-      where: { id: versionId, materialId },
+      where: { id: oldVersion.id, materialId },
     });
   });
 
+  it('devuelve 404 al solicitar una versión que pertenece a otro material', async () => {
+    const otherMaterialId = '99999999-9999-4999-8999-999999999999';
+    prisma.materialVersion.findFirst.mockImplementation(({ where }) =>
+      Promise.resolve(
+        where.id === versionId && where.materialId === otherMaterialId ? version : null,
+      ),
+    );
+    await request(app.getHttpServer())
+      .get(`/api/v1/materials/${materialId}/download?versionId=${versionId}`)
+      .expect(404);
+    expect(storage.get).not.toHaveBeenCalled();
+  });
+
   it.each([
-    [
-      'cálculo.pdf',
-      `attachment; filename="calculo.pdf"; filename*=UTF-8''c%C3%A1lculo.pdf`,
-    ],
+    ['cálculo.pdf', `attachment; filename="calculo.pdf"; filename*=UTF-8''c%C3%A1lculo.pdf`],
     ['niño.pdf', `attachment; filename="nino.pdf"; filename*=UTF-8''ni%C3%B1o.pdf`],
     [
       'guía de cálculo.pdf',
@@ -97,19 +134,16 @@ describe('GET /api/v1/materials/:id/download', () => {
       'apunte "final".pdf',
       `attachment; filename="apunte _final_.pdf"; filename*=UTF-8''apunte%20%22final%22.pdf`,
     ],
-  ])(
-    'conserva el nombre especial %s en la cabecera de descarga',
-    async (name, expected) => {
-      prisma.materialVersion.findFirst.mockResolvedValue({
-        ...version,
-        originalFilename: name,
-      });
-      const response = await request(app.getHttpServer())
-        .get(`/api/v1/materials/${materialId}/download`)
-        .expect(200);
-      expect(response.headers['content-disposition']).toBe(expected);
-    },
-  );
+  ])('conserva el nombre especial %s en la cabecera de descarga', async (name, expected) => {
+    prisma.materialVersion.findFirst.mockResolvedValue({
+      ...version,
+      originalFilename: name,
+    });
+    const response = await request(app.getHttpServer())
+      .get(`/api/v1/materials/${materialId}/download`)
+      .expect(200);
+    expect(response.headers['content-disposition']).toBe(expected);
+  });
 
   it('no permite inyectar cabeceras con un nombre malicioso', async () => {
     prisma.materialVersion.findFirst.mockResolvedValue({

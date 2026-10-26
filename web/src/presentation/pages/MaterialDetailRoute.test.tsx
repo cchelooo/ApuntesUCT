@@ -54,7 +54,7 @@ function mockApi(detail: () => Response) {
     const { pathname } = new URL(String(input));
     if (/\/materials\/[^/]+\/download$/.test(pathname)) {
       return Promise.resolve(
-        new Response(new Blob(['%PDF-1.7']), {
+        new Response('%PDF-1.7', {
           status: 200,
           headers: { 'Content-Type': 'application/pdf' },
         })
@@ -125,7 +125,8 @@ describe('MaterialDetailRoute', () => {
     mockApi(() => json(contract()));
     renderRoute(`/material/${MATERIAL_ID}`);
 
-    const button = await screen.findByRole('button', {
+    await screen.findByText('Certamen 1');
+    const button = screen.getByRole('button', {
       name: /descargar material/i,
     });
     expect(button).toBeEnabled();
@@ -154,8 +155,9 @@ describe('MaterialDetailRoute', () => {
     );
     renderRoute(`/material/${MATERIAL_ID}`);
 
+    await screen.findByText('Certamen 1');
     expect(
-      await screen.findByRole('button', { name: /descargar material/i })
+      screen.getByRole('button', { name: /descargar material/i })
     ).toBeDisabled();
   });
 

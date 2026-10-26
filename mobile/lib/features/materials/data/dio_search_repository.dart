@@ -1,9 +1,16 @@
-import 'package:apuntesuct_mobile/core/network/api_client.dart';
-import 'package:apuntesuct_mobile/features/materials/domain/models/material_page.dart';
-import 'package:apuntesuct_mobile/features/materials/domain/models/material_requests.dart';
-import 'package:apuntesuct_mobile/features/materials/domain/repositories/search_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/errors/api_exception.dart';
+import '../../../core/network/api_client.dart';
+import '../domain/models/material_page.dart';
+import '../domain/models/material_requests.dart';
+import '../domain/repositories/search_repository.dart';
+
+/// Permite distinguir una integración pendiente de una búsqueda sin resultados.
+class SearchContractPendingException extends ApiException {
+  SearchContractPendingException({required super.message, super.data});
+}
 
 final searchRepositoryProvider = Provider<SearchRepository>((ref) {
   final apiClient = ref.watch(apiclientProvider);
@@ -11,39 +18,59 @@ final searchRepositoryProvider = Provider<SearchRepository>((ref) {
 });
 
 class DioSearchRepository implements SearchRepository {
-  final ApiClient _apiClient;
+  DioSearchRepository(this._client);
+  final ApiClient _client;
 
-  DioSearchRepository(this._apiClient);
+  static const stubMessage =
+      'Search Service inicializado correctamente. '
+      'Búsqueda desacoplada lista para Semana 3.';
 
   @override
   Future<MaterialPage> search(
     MaterialSearchQuery query, {
     int page = 1,
     int pageSize = 10,
+    CancelToken? cancelToken,
   }) async {
-    try {
-      final queryParams = <String, dynamic>{
-        'page': page,
-        'pageSize': pageSize,
-        if (query.text.trim().isNotEmpty) 'q': query.text.trim(),
-        if (query.subjectId != null && query.subjectId!.isNotEmpty)
-          'subjectId': query.subjectId,
-        if (query.careerId != null && query.careerId!.isNotEmpty)
-          'careerId': query.careerId,
-        if (query.universityId != null && query.universityId!.isNotEmpty)
-          'universityId': query.universityId,
-        if (query.type != null && query.type!.isNotEmpty) 'type': query.type,
-      };
+    final cleanText = query.text.trim();
+    final queryParams = <String, dynamic>{
+      if (cleanText.isNotEmpty) 'q': cleanText,
+      if (query.subjectId != null && query.subjectId!.isNotEmpty)
+        'subjectId': query.subjectId,
+      if (query.careerId != null && query.careerId!.isNotEmpty)
+        'careerId': query.careerId,
+      if (query.universityId != null && query.universityId!.isNotEmpty)
+        'universityId': query.universityId,
+      if (query.type != null && query.type!.isNotEmpty) 'type': query.type,
+      if (page != 1) 'page': page,
+      if (pageSize != 10) 'pageSize': pageSize,
+    };
 
-      final response = await _apiClient.dio.get(
+    try {
+      final response = await _client.dio.get<dynamic>(
         '/search',
         queryParameters: queryParams,
+        cancelToken: cancelToken,
       );
 
       final data = response.data;
       if (data is Map<String, dynamic>) {
-        // Soporte tanto para formato estándar MaterialPage ({items, page, ...})
-        // como para stub de Search ({results, total, ...})
+        final message = data['message']?.toString() ?? '';
+        final isStubResponse =
+            message == stubMessage ||
+            message.contains('Semana 3') ||
+            (data['results'] is List &&
+                (data['results'] as List).isEmpty &&
+                data['total'] == 0 &&
+                message.isNotEmpty);
+
+        if (isStubResponse) {
+          throw SearchContractPendingException(
+            message: message.isNotEmpty ? message : stubMessage,
+            data: data,
+          );
+        }
+
         if (data.containsKey('results') && !data.containsKey('items')) {
           final mapped = Map<String, dynamic>.from(data);
           mapped['items'] = data['results'] ?? [];
@@ -60,7 +87,11 @@ class DioSearchRepository implements SearchRepository {
         pageSize: pageSize,
         total: 0,
       );
-    } on DioException {
+    } on DioException catch (error) {
+      final intercepted = error.error;
+      if (intercepted is ApiException) throw intercepted;
+      throw ApiException.fromDioException(error);
+    } catch (_) {
       rethrow;
     }
   }
