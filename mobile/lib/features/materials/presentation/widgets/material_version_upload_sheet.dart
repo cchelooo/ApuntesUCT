@@ -54,19 +54,38 @@ class _MaterialVersionUploadSheetState
   /// El error solo se muestra tras un intento de ESTA hoja.
   bool _attemptedHere = false;
 
-  int get _nextVersion =>
-      (_createdVersionNumber ?? widget.currentVersionNumber ?? 0) + 1;
+  /// Último número de versión conocido al enviar: cubre el hueco mientras la
+  /// subida está en vuelo (el estado `uploading` no conserva `created`).
+  int? _submittedBase;
+
+  /// Última versión conocida combinando todas las fuentes, porque cada una
+  /// puede ir desactualizada: lo creado en esta hoja, lo enviado y aún en
+  /// vuelo, lo conservado en el provider (p. ej. se cerró y reabrió la hoja
+  /// antes de que terminara) y el prop del detalle.
+  int _latestKnown(MaterialVersionUploadState upload) {
+    var latest = widget.currentVersionNumber ?? 0;
+    for (final v in [
+      _createdVersionNumber,
+      _submittedBase,
+      upload.created?.versionNumber,
+    ]) {
+      if (v != null && v > latest) latest = v;
+    }
+    return latest;
+  }
 
   @override
   void initState() {
     super.initState();
-    // Limpia un resultado anterior (versión A) al reabrir para la versión B.
+    // Limpia un error anterior al reabrir para la versión B. El éxito se
+    // conserva: la confirmación no se muestra (bandera local), pero su
+    // número sí cuenta para proponer la siguiente versión.
     // Si hay una subida en curso de ESTE material se conserva y se sigue
     // mostrando su progreso (el estado está aislado por materialId).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final upload = ref.read(materialVersionUploadProvider(widget.materialId));
-      if (!upload.isUploading) {
+      if (upload.hasError) {
         ref
             .read(materialVersionUploadProvider(widget.materialId).notifier)
             .reset();
@@ -75,7 +94,12 @@ class _MaterialVersionUploadSheetState
   }
 
   Future<void> _pickFile() async {
-    ref.read(materialVersionUploadProvider(widget.materialId).notifier).reset();
+    final upload = ref.read(materialVersionUploadProvider(widget.materialId));
+    if (upload.hasError) {
+      ref
+          .read(materialVersionUploadProvider(widget.materialId).notifier)
+          .reset();
+    }
     setState(() {
       _isPicking = true;
       _fileError = null;
@@ -136,7 +160,15 @@ class _MaterialVersionUploadSheetState
     // en curso, esta hoja no inicia nada hasta que termine o se cancele.
     final lockedBy = ref.read(materialVersionUploadLockProvider);
     if (lockedBy != null && lockedBy != widget.materialId) return;
-    setState(() => _attemptedHere = true);
+    final proposed =
+        _latestKnown(
+          ref.read(materialVersionUploadProvider(widget.materialId)),
+        ) +
+        1;
+    setState(() {
+      _attemptedHere = true;
+      _submittedBase = proposed - 1;
+    });
     final ok = await ref
         .read(materialVersionUploadProvider(widget.materialId).notifier)
         .uploadVersion(
@@ -151,15 +183,16 @@ class _MaterialVersionUploadSheetState
     // estado está aislado por materialId, así el éxito de otro material
     // nunca aparece aquí aunque complete mientras esta hoja está abierta.
     if (!mounted) return;
-    if (ok) {
-      setState(() {
+    setState(() {
+      if (ok) {
         _createdVersionNumber = ref
             .read(materialVersionUploadProvider(widget.materialId))
             .created
             ?.versionNumber;
         _completedHere = true;
-      });
-    }
+      }
+      _submittedBase = null;
+    });
   }
 
   @override
@@ -169,6 +202,7 @@ class _MaterialVersionUploadSheetState
     // iniciar nada aquí hasta que termine o se cancele aquella.
     final lockedBy = ref.watch(materialVersionUploadLockProvider);
     final blockedByOther = lockedBy != null && lockedBy != widget.materialId;
+    final nextVersion = _latestKnown(upload) + 1;
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
 
     return SafeArea(
@@ -216,7 +250,7 @@ class _MaterialVersionUploadSheetState
               const SizedBox(height: 8),
               Text(
                 'La versión anterior no se elimina: quedará disponible en el historial. '
-                'Se creará la versión v$_nextVersion.',
+                'Se creará la versión v$nextVersion.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),
@@ -321,7 +355,7 @@ class _MaterialVersionUploadSheetState
                 ),
               ] else ...[
                 AppPrimaryButton(
-                  label: 'Confirmar subida de v$_nextVersion',
+                  label: 'Confirmar subida de v$nextVersion',
                   icon: Icons.cloud_upload_outlined,
                   onPressed: (_fileValid && !blockedByOther) ? _submit : null,
                 ),

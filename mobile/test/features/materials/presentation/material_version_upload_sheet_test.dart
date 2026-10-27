@@ -260,6 +260,67 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('reabrir durante la subida propone vN+1 al terminar', (
+      tester,
+    ) async {
+      final gate = Completer<MaterialVersion>();
+      final fake = _FakeVersionRepository()..onCreate = (_, _) => gate.future;
+      final container = ProviderContainer(
+        overrides: [dioMaterialRepositoryProvider.overrideWithValue(fake)],
+      );
+      addTearDown(container.dispose);
+
+      var openings = 0;
+      Future<void> openSheet() async {
+        openings++;
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              home: Scaffold(
+                body: MaterialVersionUploadSheet(
+                  key: ValueKey('sheet-$openings'),
+                  materialId: 'mat-1',
+                  // Prop a propósito desactualizado: el detalle se
+                  // refresca solo, la hoja debe igual proponer v4.
+                  currentVersionNumber: 2,
+                  pickFile: () async => MaterialPickedFile(
+                    fileName: 'guia-v3.pdf',
+                    sizeBytes: 3,
+                    mimeType: 'application/pdf',
+                    bytes: Uint8List.fromList(const [1, 2, 3]),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+      }
+
+      // Inicia la subida de v3 y reabre antes de que termine.
+      await openSheet();
+      await tester.tap(find.textContaining('Seleccionar archivo'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Confirmar subida de v3'));
+      await tester.pump();
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+
+      // Cierra y reabre con la subida en curso: sigue el progreso.
+      await openSheet();
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+
+      // Termina la subida: sin confirmación ajena pero proponiendo v4.
+      gate.complete(
+        MaterialVersion(id: 'ver-3', materialId: 'mat-1', versionNumber: 3),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Versión v3 creada'), findsNothing);
+      expect(find.text('Confirmar subida de v4'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('tras crear v3, subir otra propone v4', (tester) async {
       final fake = _FakeVersionRepository();
       await _pumpSheet(tester, fake);
