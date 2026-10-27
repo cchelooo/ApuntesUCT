@@ -1,5 +1,6 @@
 import {
   DEFAULT_SEARCH_SORT,
+  SEARCH_FILTER_KEYS,
   type SearchParams,
   type SearchResultPage,
 } from '../../domain/search/search';
@@ -24,6 +25,7 @@ export async function fetchSearch(
     sort = DEFAULT_SEARCH_SORT,
     page = 1,
     pageSize = DEFAULT_SEARCH_PAGE_SIZE,
+    filters = {},
   }: SearchParams,
   signal?: AbortSignal
 ): Promise<SearchResultPage> {
@@ -33,6 +35,11 @@ export async function fetchSearch(
     page: String(page),
     pageSize: String(pageSize),
   });
+
+  for (const key of SEARCH_FILTER_KEYS) {
+    const value = filters[key]?.trim();
+    if (value) params.set(key, value);
+  }
 
   let response: Response;
   try {
