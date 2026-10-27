@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../models/material_detail.dart';
 import '../models/material_page.dart';
 import '../models/material_requests.dart';
@@ -14,6 +16,8 @@ abstract interface class MaterialRepository
   Future<MaterialDownload> download(String materialId, {String? versionId});
   Future<MaterialVersion> createVersion(
     String materialId,
-    MaterialSource source,
-  );
+    MaterialSource source, {
+    CancelToken? cancelToken,
+    ProgressCallback? onSendProgress,
+  });
 }

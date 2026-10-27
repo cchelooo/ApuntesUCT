@@ -4,7 +4,10 @@ import 'package:apuntesuct_mobile/core/widgets/loading_state.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_detail_provider.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/validation/material_upload_validation.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_download_actions.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_version_history.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_version_upload_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,14 +15,22 @@ class MaterialDetailScreen extends StatelessWidget {
   final MaterialDetail? _detail;
   final String? _explicitId;
 
-  const MaterialDetailScreen({super.key, required MaterialDetail detail})
-    : _detail = detail, // ignore: prefer_initializing_formals
-      _explicitId = null;
+  /// Seam para tests: reemplaza el selector nativo de la hoja de subida
+  /// sin usar MethodChannels.
+  final Future<MaterialPickedFile?> Function()? versionPickFile;
+
+  const MaterialDetailScreen({
+    super.key,
+    required MaterialDetail detail,
+    this.versionPickFile,
+  }) : _detail = detail, // ignore: prefer_initializing_formals
+       _explicitId = null;
 
   MaterialDetailScreen.byId({
     super.key,
     required String materialId,
     MaterialSummary? initialSummary,
+    this.versionPickFile,
   }) : _explicitId = materialId,
        _detail = initialSummary != null
            ? MaterialDetail(summary: initialSummary)
@@ -365,11 +376,28 @@ class MaterialDetailScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 28),
-          if (summary.materialType.toUpperCase() != 'LINK')
+          if (summary.materialType.toUpperCase() != 'LINK') ...[
             MaterialDownloadActions(
               materialId: materialId,
               versionId: currentVersion?.id,
             ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => MaterialVersionUploadSheet(
+                  materialId: materialId,
+                  currentVersionNumber: currentVersion?.versionNumber,
+                  pickFile: versionPickFile,
+                ),
+              ),
+              icon: const Icon(Icons.upload_file_outlined),
+              label: const Text('Subir nueva versión'),
+            ),
+          ],
+          const SizedBox(height: 28),
+          MaterialVersionHistory(materialId: materialId, detail: data),
         ],
       ),
     );

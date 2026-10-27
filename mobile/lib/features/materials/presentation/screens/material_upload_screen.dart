@@ -6,12 +6,12 @@ import 'package:apuntesuct_mobile/features/materials/domain/models/material_deta
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_requests.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_catalog_selectors_provider.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_upload_provider.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/utils/material_file_picker.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/validation/material_upload_validation.dart';
 import 'package:apuntesuct_mobile/models/career_model.dart';
 import 'package:apuntesuct_mobile/models/professor_model.dart';
 import 'package:apuntesuct_mobile/models/subject_model.dart';
 import 'package:apuntesuct_mobile/models/university_model.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -104,39 +104,9 @@ class _MaterialUploadScreenState extends ConsumerState<MaterialUploadScreen> {
     }
   }
 
-  /// Selector nativo compatible con Android/iOS (file_picker 13).
-  ///
-  /// Lee los bytes reales para el multipart de #285. Si el tamaño ya
-  /// excede el límite no se lee el contenido: la validación lo rechaza.
+  /// Selector nativo (compartido con la subida de versión #292).
   /// Un fallo de lectura lanza y [_pickFile] lo convierte en [_fileError].
-  Future<MaterialPickedFile?> _defaultPickFile() async {
-    final f = await FilePicker.pickFile(
-      type: FileType.custom,
-      allowedExtensions: MaterialUploadValidation.allowedExtensions,
-    );
-    if (f == null) return null;
-    final size = f.lengthSync() ?? await f.length() ?? 0;
-    final mimeType = MaterialUploadValidation.mimeForExtension(
-      MaterialUploadValidation.extensionOf(f.name),
-    );
-    if (size > MaterialUploadValidation.maxFileSizeBytes ||
-        !MaterialUploadValidation.allowedExtensions.contains(
-          MaterialUploadValidation.extensionOf(f.name),
-        )) {
-      return MaterialPickedFile(
-        fileName: f.name,
-        sizeBytes: size,
-        mimeType: mimeType,
-      );
-    }
-    final bytes = await f.readAsBytes();
-    return MaterialPickedFile(
-      fileName: f.name,
-      sizeBytes: bytes.length,
-      mimeType: mimeType,
-      bytes: bytes,
-    );
-  }
+  Future<MaterialPickedFile?> _defaultPickFile() => pickMaterialFile();
 
   Future<void> _submit() async {
     final fieldsOk = _formKey.currentState?.validate() ?? false;
