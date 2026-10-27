@@ -1,5 +1,6 @@
 import 'package:apuntesuct_mobile/features/materials/data/dio_material_repository.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/providers/materials_discovery_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,6 +8,17 @@ final materialDetailProvider = FutureProvider.autoDispose
     .family<MaterialDetail, String>((ref, materialId) async {
       final repository = ref.watch(dioMaterialRepositoryProvider);
       return repository.getDetail(materialId);
+    });
+
+/// Provider por ID para la ruta `/materials/:id` (issue #279).
+///
+/// Usa el repositorio actual (mock hasta INT2). Un ID vacío o un fallo
+/// del repositorio se representa con [ErrorState], nunca con pantalla
+/// en blanco ni excepción sin atrapar.
+final materialDetailByIdProvider = FutureProvider.autoDispose
+    .family<MaterialDetail, String>((ref, id) async {
+      final repository = ref.watch(materialsRepositoryProvider);
+      return repository.getMaterialDetail(id);
     });
 
 extension DioErrorCheck on Object? {

@@ -142,7 +142,12 @@ class MaterialVersionUploadNotifier
       );
       if (!ref.mounted) return false;
       state = MaterialVersionUploadState.success(created);
+      // Refresca el detalle y el historial en todos sus consumidores: la
+      // ruta normal (`materialDetailByIdProvider`) y la pantalla byId
+      // (`materialDetailProvider`). Invalidar solo uno dejaba al otro con
+      // la versión anterior aunque la nueva ya existiera.
       ref.invalidate(materialDetailProvider(materialId));
+      ref.invalidate(materialDetailByIdProvider(materialId));
       return true;
     } catch (e) {
       if (!ref.mounted) return false;
