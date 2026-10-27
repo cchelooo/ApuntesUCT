@@ -4,7 +4,10 @@ import { IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validato
 
 export class SearchQueryDto {
   @ApiPropertyOptional({
-    description: 'Término de búsqueda textual. Se devuelve en el campo `query` de la respuesta.',
+    description:
+    'Texto opcional. Busca coincidencias en el título o la descripción, ' +
+    'sin distinguir mayúsculas ni tildes. Los espacios al inicio y al final ' +
+    'se eliminan. Si se omite o está vacío, devuelve el listado paginado.',
     example: 'Estructuras de Datos',
     maxLength: 200,
   })

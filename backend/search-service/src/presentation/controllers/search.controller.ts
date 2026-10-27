@@ -13,12 +13,18 @@ export class SearchController {
   @ApiOperation({
     summary: 'Buscar materiales y recursos',
     description:
-      'Compone el listado paginado de Material con el contexto académico resuelto por Catalog. Search no accede a las bases de datos de otros servicios.',
+      'Busca texto en el título o la descripción de los materiales. ' +
+      'La búsqueda no distingue mayúsculas ni tildes. Si se omite el texto, ' +
+      'devuelve el listado paginado. Los resultados se complementan con ' +
+      'el contexto académico de Catalog. Search consume los contratos REST ' +
+      'de los servicios y no consulta sus bases de datos.',
   })
   @ApiQuery({
     name: 'q',
     required: false,
-    description: 'Término de búsqueda textual. Se devuelve en `query`.',
+    description:
+      'Texto opcional para buscar en el título o la descripción. ' +
+      'Los espacios al inicio y al final se eliminan.',
     example: 'Estructuras de Datos',
   })
   @ApiQuery({
@@ -30,26 +36,28 @@ export class SearchController {
   @ApiQuery({
     name: 'pageSize',
     required: false,
-    description: 'Cantidad de resultados por página (máximo 100).',
+    description: 'Cantidad de resultados por página, entre 1 y 100.',
     example: 20,
   })
   @ApiResponse({
     status: 200,
-    description: 'Materiales candidatos con su contexto académico.',
+    description:
+      'Resultados paginados y contexto académico de los materiales encontrados.',
     type: SearchResponseDto,
   })
   @ApiResponse({
     status: 400,
-    description:
-      'La paginación solicitada no es válida para el servicio de materiales.',
+    description: 'Los parámetros de búsqueda o paginación no son válidos.',
   })
   @ApiResponse({
     status: 502,
-    description: 'Un servicio dependiente devolvió una respuesta inválida.',
+    description:
+      'Un servicio dependiente devolvió una respuesta inválida o inconsistente.',
   })
   @ApiResponse({
     status: 503,
-    description: 'Un servicio dependiente no está disponible.',
+    description:
+      'Un servicio dependiente no está disponible o se superó el límite de la búsqueda inicial.',
   })
   async search(@Query() query: SearchQueryDto): Promise<SearchResponseDto> {
     return this.searchService.search(query);
