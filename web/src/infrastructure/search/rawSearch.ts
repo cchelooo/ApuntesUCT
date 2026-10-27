@@ -1,5 +1,5 @@
 export interface RawSearchResult {
-  materialId?: string | null;
+  id?: string | null;
   title?: string | null;
   academicYear?: number | null;
   materialType?: string | null;
