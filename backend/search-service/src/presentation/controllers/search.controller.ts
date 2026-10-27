@@ -1,23 +1,57 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { SearchQueryDto } from '../../application/dtos/search-query.dto';
+import { SearchResponseDto } from '../../application/dtos/search-response.dto';
+import { SearchService } from '../../application/services/search.service';
 
 @ApiTags('Search')
 @Controller('api/v1/search')
 export class SearchController {
+  constructor(private readonly searchService: SearchService) {}
 
   @Get()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Buscar materiales y recursos',
-    description: 'Endpoint stub/preparatorio para la búsqueda global. No accede directamente a las tablas de Material o Catalog.' 
+    description:
+      'Compone el listado paginado de Material con el contexto académico resuelto por Catalog. Search no accede a las bases de datos de otros servicios.',
   })
-  @ApiQuery({ name: 'q', required: false, description: 'Término de búsqueda', example: 'Estructuras de Datos' })
-  @ApiResponse({ status: 200, description: 'Resultados de búsqueda (Mock preparatorio para Semana 3).' })
-  async search(@Query('q') query?: string) {
-    return {
-      query: query || null,
-      results: [],
-      total: 0,
-      message: 'Search Service inicializado correctamente. Búsqueda desacoplada lista para Semana 3.'
-    };
+  @ApiQuery({
+    name: 'q',
+    required: false,
+    description: 'Término de búsqueda textual. Se devuelve en `query`.',
+    example: 'Estructuras de Datos',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Página solicitada, comenzando en 1.',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    description: 'Cantidad de resultados por página (máximo 100).',
+    example: 20,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Materiales candidatos con su contexto académico.',
+    type: SearchResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'La paginación solicitada no es válida para el servicio de materiales.',
+  })
+  @ApiResponse({
+    status: 502,
+    description: 'Un servicio dependiente devolvió una respuesta inválida.',
+  })
+  @ApiResponse({
+    status: 503,
+    description: 'Un servicio dependiente no está disponible.',
+  })
+  async search(@Query() query: SearchQueryDto): Promise<SearchResponseDto> {
+    return this.searchService.search(query);
   }
 }
