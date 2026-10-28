@@ -25,7 +25,7 @@ function result(id: string, title: string) {
   return { id, title, academicYear: 2026, materialType: 'EXAM' };
 }
 
-function mockApi(search: (url: URL) => Response) {
+function mockApi(search: (url: URL) => Response | Promise<Response>) {
   fetchMock.mockImplementation((input: RequestInfo | URL) => {
     const url = new URL(String(input));
     if (url.pathname.endsWith('/search')) return Promise.resolve(search(url));
@@ -228,6 +228,35 @@ describe('SearchPage', () => {
       );
       expect(values).toEqual(['relevance', 'recent', 'year_desc', 'title']);
     });
+  });
+
+  it('muestra el estado de carga (loading) con esqueletos e indicador accesible', async () => {
+    let resolveSearch: (val: Response) => void;
+    mockApi(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveSearch = resolve;
+        })
+    );
+    renderPage('/search?q=algebra');
+
+    expect(screen.getByRole('status')).toHaveTextContent('Cargando materiales');
+    expect(
+      screen.getAllByTestId('material-card-skeleton').length
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText(/Sin resultados para/)).not.toBeInTheDocument();
+
+    resolveSearch!(
+      json({
+        results: [result('real-uuid-1', 'Guía de álgebra')],
+        page: 1,
+        pageSize: PAGE_SIZE,
+        total: 1,
+      })
+    );
+
+    expect(await screen.findByText('Guía de álgebra')).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it('muestra el estado vacío con el stub actual de Search', async () => {
