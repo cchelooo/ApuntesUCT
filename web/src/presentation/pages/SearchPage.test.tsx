@@ -21,8 +21,8 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function result(materialId: string, title: string) {
-  return { materialId, title, academicYear: 2026, materialType: 'EXAM' };
+function result(id: string, title: string) {
+  return { id, title, academicYear: 2026, materialType: 'EXAM' };
 }
 
 function mockApi(search: (url: URL) => Response) {
@@ -37,7 +37,7 @@ function mockPagedApi() {
   mockApi((url) => {
     const page = Number(url.searchParams.get('page'));
     return json({
-      items: [result(`m-${page}`, `Página ${page}`)],
+      results: [result(`m-${page}`, `Página ${page}`)],
       page,
       pageSize: PAGE_SIZE,
       total: TOTAL,
@@ -88,10 +88,10 @@ describe('SearchPage', () => {
     expect(searchCalls()).toHaveLength(0);
   });
 
-  it('muestra los resultados enlazando al materialId real', async () => {
+  it('muestra results de Search enlazando al id real del material', async () => {
     mockApi(() =>
       json({
-        items: [result('real-uuid-1', 'Guía de álgebra')],
+        results: [result('real-uuid-1', 'Guía de álgebra')],
         page: 1,
         pageSize: PAGE_SIZE,
         total: 1,
@@ -242,7 +242,7 @@ describe('SearchPage', () => {
       attempts += 1;
       return attempts === 1
         ? json({}, 502)
-        : json({ items: [result('a', 'Recuperado')], total: 1 });
+        : json({ results: [result('a', 'Recuperado')], total: 1 });
     });
     renderPage();
 
