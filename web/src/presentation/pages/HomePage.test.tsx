@@ -175,6 +175,14 @@ describe('HomePage - Issue #256: Reemplazo de materiales mock por reales y revis
         /Las calificaciones, reseñas y el posicionamiento por reputación estarán disponibles próximamente/i
       )
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Próximamente podrás consultar las calificaciones y reseñas de la comunidad/i
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/No se simulan estrellas ni algoritmos artificiales/i)
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/quality service/i)).not.toBeInTheDocument();
   });
 

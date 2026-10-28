@@ -153,9 +153,8 @@ export function HomePage() {
                 </h3>
                 <p className="max-w-2xl text-sm leading-relaxed text-catalog-ink/70">
                   Las calificaciones, reseñas y el posicionamiento por
-                  reputación estarán disponibles próximamente. No se simulan
-                  estrellas ni algoritmos artificiales de ranking en el cliente
-                  web.
+                  reputación estarán disponibles próximamente. Próximamente
+                  podrás consultar las calificaciones y reseñas de la comunidad.
                 </p>
               </div>
               <Link
