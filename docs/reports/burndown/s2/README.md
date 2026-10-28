@@ -1,8 +1,9 @@
 # Burndown S2
 
 Primer snapshot guardado: 2026-10-03.
-Ultimo snapshot: 2026-10-28.
+Ultimo snapshot: 2026-10-27.
 Corte del 19-10 registrado el 20-10-2026 con los datos actuales de GitHub Projects, por actualización diferida.
+Corte del 27-10 registrado el 28-10-2026 con las horas de la captura original, por actualización diferida.
 No se reconstruyen horas de dias sin snapshot.
 
 ## Ventanas del sprint
