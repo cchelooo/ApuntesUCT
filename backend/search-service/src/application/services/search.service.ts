@@ -19,6 +19,16 @@ import {
   MaterialPort,
 } from '../ports/material.port';
 
+/**
+ * Material permite solicitar como máximo 100 elementos por página.
+ *
+ * El límite de páginas evita recorrer una cantidad ilimitada de materiales
+ * durante una búsqueda textual. Si se supera, se devuelve un error controlado:
+ * no se entregan resultados incompletos como si fueran definitivos.
+ */
+const MATERIAL_PAGE_SIZE = 100;
+const MAX_MATERIAL_PAGES = 100;
+
 @Injectable()
 export class SearchService {
   constructor(
@@ -27,18 +37,28 @@ export class SearchService {
   ) {}
 
   async search(query: SearchQueryDto): Promise<SearchResponseDto> {
+    const text = query.q?.trim() || null;
+
     let academicContext: SubjectAcademicContext[];
     let materials: MaterialPage;
 
     try {
       [academicContext, materials] = await Promise.all([
         this.catalog.getAcademicContext(),
-        this.material.findCandidates({
-          page: query.page,
-          pageSize: query.pageSize,
-        }),
+        text
+          ? this.searchMaterialsByText(text, query.page, query.pageSize)
+          : this.material.findCandidates({
+              page: query.page,
+              pageSize: query.pageSize,
+            }),
       ]);
     } catch (error) {
+      // Los errores de validación o límites generados por Search conservan
+      // su respuesta. Los errores de dependencias se traducen como antes.
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       throw this.toHttpException(error);
     }
 
@@ -47,7 +67,7 @@ export class SearchService {
     );
 
     return {
-      query: query.q ?? null,
+      query: text,
       page: materials.page,
       pageSize: materials.pageSize,
       total: materials.total,
@@ -56,6 +76,147 @@ export class SearchService {
       ),
       context: this.toContextList(materials.items, contextBySubject),
     };
+  }
+
+  /**
+   * Busca en todas las páginas de candidatos antes de aplicar la
+   * paginación solicitada por el usuario.
+   */
+  private async searchMaterialsByText(
+    text: string,
+    page: number,
+    pageSize: number,
+  ): Promise<MaterialPage> {
+    const normalizedText = this.normalizeText(text);
+    const matches: MaterialCandidate[] = [];
+    const seenIds = new Set<string>();
+
+    let expectedTotal: number | undefined;
+
+    for (
+      let materialPageNumber = 1;
+      materialPageNumber <= MAX_MATERIAL_PAGES;
+      materialPageNumber += 1
+    ) {
+      const materialPage = await this.material.findCandidates({
+        page: materialPageNumber,
+        pageSize: MATERIAL_PAGE_SIZE,
+      });
+
+      this.assertValidMaterialPage(
+        materialPage,
+        materialPageNumber,
+        expectedTotal,
+      );
+
+      if (expectedTotal === undefined) {
+        expectedTotal = materialPage.total;
+
+        const requiredPages = Math.ceil(
+          expectedTotal / MATERIAL_PAGE_SIZE,
+        );
+
+        if (requiredPages > MAX_MATERIAL_PAGES) {
+          throw new ServiceUnavailableException(
+            'La búsqueda supera el límite de materiales que puede procesarse.',
+          );
+        }
+      }
+
+      for (const candidate of materialPage.items) {
+        if (seenIds.has(candidate.id)) {
+          throw new BadGatewayException(
+            'Material Service devolvió materiales duplicados durante la búsqueda.',
+          );
+        }
+
+        seenIds.add(candidate.id);
+
+        const titleMatches = this.normalizeText(candidate.title).includes(
+          normalizedText,
+        );
+
+        const descriptionMatches =
+          candidate.description !== null &&
+          this.normalizeText(candidate.description).includes(normalizedText);
+
+        if (titleMatches || descriptionMatches) {
+          matches.push(candidate);
+        }
+      }
+
+      if (seenIds.size === expectedTotal) {
+        const start = (page - 1) * pageSize;
+
+        return {
+          items: matches.slice(start, start + pageSize),
+          page,
+          pageSize,
+          total: matches.length,
+        };
+      }
+    }
+
+    throw new ServiceUnavailableException(
+      'No fue posible completar la búsqueda de materiales.',
+    );
+  }
+
+  /**
+   * Comprueba la coherencia de cada página recibida.
+   *
+   * Estas comprobaciones detectan algunos cambios concurrentes, aunque el
+   * contrato paginado de Material no garantiza una instantánea compartida
+   * entre solicitudes.
+   */
+  private assertValidMaterialPage(
+    materialPage: MaterialPage,
+    requestedPage: number,
+    expectedTotal?: number,
+  ): void {
+    if (
+      materialPage.page !== requestedPage ||
+      materialPage.pageSize !== MATERIAL_PAGE_SIZE ||
+      !Number.isSafeInteger(materialPage.total) ||
+      materialPage.total < 0 ||
+      !Array.isArray(materialPage.items)
+    ) {
+      throw new BadGatewayException(
+        'Material Service devolvió una paginación inválida.',
+      );
+    }
+
+    if (
+      expectedTotal !== undefined &&
+      materialPage.total !== expectedTotal
+    ) {
+      throw new BadGatewayException(
+        'El listado de Material cambió durante la búsqueda. Intenta nuevamente.',
+      );
+    }
+
+    const offset = (requestedPage - 1) * MATERIAL_PAGE_SIZE;
+    const expectedItems = Math.max(
+      0,
+      Math.min(MATERIAL_PAGE_SIZE, materialPage.total - offset),
+    );
+
+    if (materialPage.items.length !== expectedItems) {
+      throw new BadGatewayException(
+        'Material Service devolvió una página incompleta durante la búsqueda.',
+      );
+    }
+  }
+
+  /**
+   * Permite que "algebra" coincida con "Álgebra" y evita diferencias
+   * entre mayúsculas y minúsculas.
+   */
+  private normalizeText(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
   }
 
   private toResult(

@@ -4,12 +4,12 @@ import { mapRawSearchPage } from './mapSearch';
 const requested = { page: 1, pageSize: 20 };
 
 describe('mapRawSearchPage', () => {
-  it('usa materialId como id de la tarjeta', () => {
+  it('conserva results[].id de Search como id de la tarjeta', () => {
     const page = mapRawSearchPage(
       {
-        items: [
+        results: [
           {
-            materialId: 'real-uuid',
+            id: 'real-uuid',
             title: 'Certamen 1',
             academicYear: 2026,
             materialType: 'EXAM',
@@ -31,13 +31,14 @@ describe('mapRawSearchPage', () => {
     });
   });
 
-  it('descarta resultados sin materialId y no inventa uno desde id', () => {
+  it('descarta resultados sin id válido', () => {
     const page = mapRawSearchPage(
       {
         items: [
           { title: 'sin id' },
-          { id: 'otro', title: 'solo id' },
-          { materialId: 'ok' },
+          { id: '   ', title: 'id vacío' },
+          { materialId: 'antiguo', title: 'contrato anterior' },
+          { id: 'ok' },
         ] as never,
       },
       requested
@@ -50,7 +51,7 @@ describe('mapRawSearchPage', () => {
     expect(stub).toMatchObject({ items: [], total: 0, totalPages: 1 });
 
     const paged = mapRawSearchPage(
-      { items: [{ materialId: 'a' }], page: 2, pageSize: 10, total: 25 },
+      { items: [{ id: 'a' }], page: 2, pageSize: 10, total: 25 },
       requested
     );
     expect(paged).toMatchObject({ page: 2, pageSize: 10, totalPages: 3 });

@@ -15,7 +15,7 @@ function integer(value: unknown): number | null {
 export function mapRawSearchResult(
   raw: RawSearchResult
 ): MaterialListItem | null {
-  const id = text(raw?.materialId);
+  const id = text(raw?.id);
   if (!id) return null;
   return {
     id,

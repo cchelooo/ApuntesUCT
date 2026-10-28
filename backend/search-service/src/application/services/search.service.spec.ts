@@ -102,9 +102,9 @@ describe('SearchService', () => {
   });
 
   it('compone los materiales de Material con el contexto académico de Catalog', async () => {
-    const response = await service.search(searchQuery({ q: 'listas' }));
+    const response = await service.search(searchQuery());
 
-    expect(response.query).toBe('listas');
+    expect(response.query).toBeNull();
     expect(response.page).toBe(1);
     expect(response.pageSize).toBe(20);
     expect(response.total).toBe(1);
