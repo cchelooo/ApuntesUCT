@@ -73,3 +73,18 @@ Content-Disposition: form-data; name="externalLink"
 
 https://example.com/clase
 --material-boundary--
+
+### Detalle: currentVersion e historial versions ordenado por número descendente
+# Sustituye por un material publicado y una versión obtenida de su historial.
+@materialId = 11111111-1111-4111-8111-111111111111
+@versionId = 22222222-2222-4222-8222-222222222222
+GET {{materialBaseUrl}}/materials/{{materialId}}
+
+### Descargar la versión actual por Material Service
+GET {{materialBaseUrl}}/materials/{{materialId}}/download
+
+### Descargar una versión específica del historial
+GET {{materialBaseUrl}}/materials/{{materialId}}/download?versionId={{versionId}}
+
+### Versión inexistente: 404 (o de otro material)
+GET {{materialBaseUrl}}/materials/{{materialId}}/download?versionId=00000000-0000-4000-8000-000000000000

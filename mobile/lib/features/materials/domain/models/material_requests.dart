@@ -33,6 +33,10 @@ class UploadMaterialRequest {
   final String type;
   final MaterialSource source;
 
+  /// Enlace de respaldo opcional cuando la fuente es un archivo local.
+  /// El backend lo acepta junto al archivo (solo LINK lo exige).
+  final Uri? backupLink;
+
   const UploadMaterialRequest({
     required this.title,
     this.description,
@@ -43,6 +47,7 @@ class UploadMaterialRequest {
     required this.year,
     required this.type,
     required this.source,
+    this.backupLink,
   });
 }
 

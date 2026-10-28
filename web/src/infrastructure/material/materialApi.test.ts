@@ -8,6 +8,8 @@ import {
   downloadMaterial,
   fetchMaterial,
   fetchMaterials,
+  uploadMaterial,
+  MaterialRequestError,
 } from './materialApi';
 
 const createdResponse: CreateMaterialResponse = {
@@ -202,5 +204,129 @@ describe('materialApi', () => {
     const aborted = new DOMException('Aborted', 'AbortError');
     fetchMock.mockRejectedValueOnce(aborted);
     await expect(fetchMaterials({}, signal)).rejects.toBe(aborted);
+  });
+
+  describe('uploadMaterial', () => {
+    it('envía FormData directamente vía POST al endpoint de materiales', async () => {
+      vi.stubEnv('VITE_API_URL', 'https://api.example.test/api/v1');
+      const mockResult = { id: 'mat-100', status: 'uploaded' };
+      const fetchMock = vi.fn().mockResolvedValue(Response.json(mockResult));
+      vi.stubGlobal('fetch', fetchMock);
+
+      const formData = new FormData();
+      formData.append('title', 'Guía de Estudio');
+      formData.append('year', '2026');
+      formData.append('type', 'DOCUMENT');
+      formData.append('subjectId', 'sub-1');
+      const file = new File(['contenido'], 'guia.pdf', {
+        type: 'application/pdf',
+      });
+      formData.append('file', file);
+
+      const result = await uploadMaterial(formData);
+
+      expect(result).toEqual(mockResult);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('https://api.example.test/api/v1/materials');
+      expect(options.method).toBe('POST');
+      expect(options.body).toBe(formData);
+    });
+
+    it('construye FormData a partir de objeto UploadMaterialInput antes de enviarlo vía POST', async () => {
+      vi.stubEnv('VITE_API_URL', 'https://api.example.test/api/v1');
+      const mockResult = { id: 'mat-200' };
+      const fetchMock = vi.fn().mockResolvedValue(Response.json(mockResult));
+      vi.stubGlobal('fetch', fetchMock);
+
+      const file = new File(['doc'], 'resumen.docx', {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+
+      const result = await uploadMaterial({
+        title: 'Resumen de Álgebra',
+        description: 'Vectores y matrices',
+        year: '2026',
+        type: 'DOCUMENT',
+        subjectId: 'sub-algebra',
+        careerId: 'car-inf',
+        professorId: 'prof-perez',
+        file,
+      });
+
+      expect(result).toEqual(mockResult);
+      const [, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(options.method).toBe('POST');
+      const body = options.body as FormData;
+      expect(body.get('title')).toBe('Resumen de Álgebra');
+      expect(body.get('description')).toBe('Vectores y matrices');
+      expect(body.get('year')).toBe('2026');
+      expect(body.get('type')).toBe('DOCUMENT');
+      expect(body.get('subjectId')).toBe('sub-algebra');
+      expect(body.get('careerId')).toBe('car-inf');
+      expect(body.get('professorId')).toBe('prof-perez');
+      expect(body.get('file')).toBe(file);
+    });
+
+    it('propaga MaterialRequestError con status 413 cuando el servidor responde Payload Too Large', async () => {
+      vi.stubEnv('VITE_API_URL', 'https://api.example.test/api/v1');
+      const fetchMock = vi.fn().mockResolvedValue(
+        Response.json(
+          {
+            message: 'El archivo supera el tamaño máximo permitido de 15 MB',
+          },
+          { status: 413 }
+        )
+      );
+      vi.stubGlobal('fetch', fetchMock);
+
+      const formData = new FormData();
+      formData.append('title', 'Archivo gigante');
+
+      const promise = uploadMaterial(formData);
+      await expect(promise).rejects.toBeInstanceOf(MaterialRequestError);
+      await expect(promise).rejects.toMatchObject({
+        status: 413,
+        message: 'El archivo supera el tamaño máximo permitido de 15 MB',
+      });
+    });
+
+    it('propaga MaterialRequestError con status 415 cuando el servidor responde Unsupported Media Type', async () => {
+      vi.stubEnv('VITE_API_URL', 'https://api.example.test/api/v1');
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(
+          Response.json({ message: 'Formato no admitido' }, { status: 415 })
+        );
+      vi.stubGlobal('fetch', fetchMock);
+
+      const formData = new FormData();
+      formData.append('title', 'Archivo no admitido');
+
+      const promise = uploadMaterial(formData);
+      await expect(promise).rejects.toBeInstanceOf(MaterialRequestError);
+      await expect(promise).rejects.toMatchObject({
+        status: 415,
+        message: 'Formato no admitido',
+      });
+    });
+
+    it('propaga MaterialRequestError con isNetworkError cuando ocurre un fallo de conectividad', async () => {
+      vi.stubEnv('VITE_API_URL', 'https://api.example.test/api/v1');
+      const fetchMock = vi
+        .fn()
+        .mockRejectedValue(new TypeError('Failed to fetch'));
+      vi.stubGlobal('fetch', fetchMock);
+
+      const formData = new FormData();
+      formData.append('title', 'Error de red');
+
+      const promise = uploadMaterial(formData);
+      await expect(promise).rejects.toBeInstanceOf(MaterialRequestError);
+      await expect(promise).rejects.toMatchObject({
+        isNetworkError: true,
+        message: 'Fallo de red al subir el material',
+      });
+    });
   });
 });

@@ -1,33 +1,29 @@
 import 'package:apuntesuct_mobile/core/widgets/empty_state.dart';
 import 'package:apuntesuct_mobile/core/widgets/error_state.dart';
 import 'package:apuntesuct_mobile/core/widgets/loading_state.dart';
-import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/repositories/materials_repository.dart';
-import 'package:apuntesuct_mobile/features/materials/presentation/providers/materials_discovery_provider.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_detail_provider.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/validation/material_upload_validation.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-/// Provider por ID para la ruta `/materials/:id` (issue #279).
-///
-/// Usa el repositorio actual (mock hasta INT2). Un ID vacío o un fallo
-/// del repositorio se representa con [ErrorState], nunca con pantalla
-/// en blanco ni excepción sin atrapar.
-final materialDetailByIdProvider =
-    FutureProvider.autoDispose.family<MaterialDetail, String>((ref, id) async {
-  final repository = ref.watch(materialsRepositoryProvider);
-  return repository.getMaterialDetail(id);
-});
 
 /// Contenedor de ruta que resuelve el detalle por ID.
 ///
 /// Separa el ruteo (`GoRoute(path: '/materials/:id')`) de la UI
 /// ([MaterialDetailScreen]), que sigue recibiendo un [MaterialDetail].
 class MaterialDetailRoute extends ConsumerWidget {
-  const MaterialDetailRoute({super.key, required this.materialId});
+  const MaterialDetailRoute({
+    super.key,
+    required this.materialId,
+    this.versionPickFile,
+  });
 
   final String materialId;
+
+  /// Seam para tests: se propaga a la hoja de subida de versiones.
+  final Future<MaterialPickedFile?> Function()? versionPickFile;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -77,9 +73,8 @@ class MaterialDetailRoute extends ConsumerWidget {
                 children: [
                   ErrorState(
                     message: 'No fue posible cargar el material solicitado.',
-                    onRetry: () => ref.invalidate(
-                      materialDetailByIdProvider(materialId),
-                    ),
+                    onRetry: () =>
+                        ref.invalidate(materialDetailByIdProvider(materialId)),
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
@@ -109,7 +104,10 @@ class MaterialDetailRoute extends ConsumerWidget {
             ),
           );
         }
-        return MaterialDetailScreen(detail: detail);
+        return MaterialDetailScreen(
+          detail: detail,
+          versionPickFile: versionPickFile,
+        );
       },
     );
   }
