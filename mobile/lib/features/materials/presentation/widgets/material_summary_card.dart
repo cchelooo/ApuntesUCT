@@ -255,6 +255,7 @@ class MaterialSummaryCard extends StatelessWidget {
               ],
               const SizedBox(height: 10),
               // Fila inferior: Autor y Metadatos de interacción
+              // Fila inferior: Autor y Metadatos de interacción
               Row(
                 children: [
                   Icon(
@@ -273,34 +274,40 @@ class MaterialSummaryCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  Icon(
-                    Icons.star_rounded,
-                    size: 15,
-                    color: isDark
-                        ? Colors.amber.shade300
-                        : Colors.amber.shade700,
-                  ),
-                  const SizedBox(width: 2),
-                  Text(
-                    material.rating.toStringAsFixed(1),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
+                  // OCULTAR RATING: Si es 0 o no hay valor real, no se muestra para evitar datos ficticios
+                  if (material.rating > 0) ...[
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.star_rounded,
+                      size: 15,
+                      color: isDark
+                          ? Colors.amber.shade300
+                          : Colors.amber.shade700,
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Icon(
-                    Icons.download_rounded,
-                    size: 14,
-                    color: colorScheme.outline,
-                  ),
-                  const SizedBox(width: 2),
-                  Text(
-                    '${material.downloadCount}',
-                    style: theme.textTheme.labelSmall?.copyWith(
+                    const SizedBox(width: 2),
+                    Text(
+                      material.rating.toStringAsFixed(1),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                  // OCULTAR DESCARGAS: Si el contador es 0 o no está disponible, se omite por completo
+                  if (material.downloadCount > 0) ...[
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.download_rounded,
+                      size: 14,
                       color: colorScheme.outline,
                     ),
-                  ),
+                    const SizedBox(width: 2),
+                    Text(
+                      '${material.downloadCount}',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colorScheme.outline,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ],
