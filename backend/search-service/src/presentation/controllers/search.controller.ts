@@ -13,11 +13,18 @@ export class SearchController {
   @ApiOperation({
     summary: 'Buscar materiales y recursos',
     description:
-      'Busca texto en el título o la descripción de los materiales. ' +
-      'La búsqueda no distingue mayúsculas ni tildes. Si se omite el texto, ' +
-      'devuelve el listado paginado. Los resultados se complementan con ' +
-      'el contexto académico de Catalog. Search consume los contratos REST ' +
-      'de los servicios y no consulta sus bases de datos.',
+      'Busca coincidencias parciales en el título o la descripción de los materiales ' +
+      'publicados, sin distinguir mayúsculas ni tildes. Los espacios al inicio y al ' +
+      'final del texto se eliminan. ' +
+      'Si q se omite, está vacío o contiene solo espacios, devuelve el listado paginado. ' +
+      'Los resultados incluyen el contexto académico obtenido de Catalog. ' +
+      'Search consume contratos REST y no consulta bases de datos de otros servicios. ' +
+      '\n\nLímite de la búsqueda textual: se pueden recorrer como máximo 10.000 ' +
+      'materiales publicados, distribuidos en 100 páginas de 100 elementos. ' +
+      'Si Material informa más de 10.000 materiales publicados, cualquier consulta ' +
+      'con texto devuelve HTTP 503, aunque el texto pudiera coincidir con pocos ' +
+      'materiales. No se entregan resultados parciales. ' +
+      'Este límite no se aplica al listado sin texto.',
   })
   @ApiQuery({
     name: 'q',
@@ -57,7 +64,10 @@ export class SearchController {
   @ApiResponse({
     status: 503,
     description:
-      'Un servicio dependiente no está disponible o se superó el límite de la búsqueda inicial.',
+      'Un servicio dependiente no está disponible o la búsqueda textual supera ' +
+      'el límite de 10.000 materiales publicados. En este último caso se devuelve ' +
+      'el mensaje: "La búsqueda supera el límite de materiales que puede procesarse." ' +
+      'No se entregan resultados parciales.',
   })
   async search(@Query() query: SearchQueryDto): Promise<SearchResponseDto> {
     return this.searchService.search(query);
