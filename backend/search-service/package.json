@@ -1,7 +1,7 @@
 {
   "name": "search-service",
   "version": "0.0.1",
-  "description": "Microservicio de b\u00fasqueda y consulta desacoplada para ApuntesUCT",
+  "description": "Microservicio de búsqueda y consulta desacoplada para ApuntesUCT",
   "author": "INT2 - ApuntesUCT",
   "private": true,
   "license": "UNLICENSED",
@@ -19,7 +19,7 @@
     "test:cov": "jest --coverage --passWithNoTests",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:ci": "jest --ci --runInBand --passWithNoTests",
-    "test:e2e": "echo \"Pruebas E2E planificadas para Semana 4\""
+    "test:e2e": "jest --config ./test/jest-e2e.cjs --runInBand"
   },
   "dependencies": {
     "@nestjs/common": "11.2.7",
