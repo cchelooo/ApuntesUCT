@@ -10,7 +10,10 @@ RUN npm run build
 
 FROM nginx:stable-alpine
 ENV GATEWAY_UPSTREAM=http://gateway-kuberoapp:3000
-ENV NGINX_ENVSUBST_FILTER=^GATEWAY_UPSTREAM$
+COPY deploy/kubero/nginx-main.conf /etc/nginx/nginx.conf
 COPY deploy/kubero/nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY --chmod=755 deploy/kubero/web-entrypoint.sh /usr/local/bin/apuntesuct-web
 COPY --from=build /app/web/dist /usr/share/nginx/html
+USER nginx
 EXPOSE 8080
+ENTRYPOINT ["apuntesuct-web"]

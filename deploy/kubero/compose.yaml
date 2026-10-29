@@ -163,6 +163,8 @@ services:
       search: {condition: service_healthy}
   web:
     image: apuntesuct/kubero-web:local
+    read_only: true
+    tmpfs: [/tmp]
     build:
       context: ../..
       dockerfile: deploy/kubero/web.Dockerfile
