@@ -51,13 +51,25 @@ jobs:
         shell: bash
         run: |
           owner="${GITHUB_REPOSITORY_OWNER,,}"
+          push_image() {
+            for attempt in 1 2 3; do
+              if docker push "$1"; then
+                return 0
+              fi
+              if [ "$attempt" -lt 3 ]; then
+                echo "Push failed for $1 (attempt $attempt/3); retrying in 10 seconds."
+                sleep 10
+              fi
+            done
+            return 1
+          }
           for service in web api-gateway auth-service catalog-service material-service search-service minio; do
             source="apuntesuct/kubero-${service}:local"
             target="ghcr.io/${owner}/apuntesuct-kubero-${service}"
             docker tag "$source" "${target}:sha-${GITHUB_SHA}"
             docker tag "$source" "${target}:latest"
-            docker push "${target}:sha-${GITHUB_SHA}"
-            docker push "${target}:latest"
+            push_image "${target}:sha-${GITHUB_SHA}"
+            push_image "${target}:latest"
           done
       - name: Remove isolated stack
         if: always()
