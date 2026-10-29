@@ -1,0 +1,13 @@
+.git
+**/node_modules
+**/dist
+**/build
+**/coverage
+**/.env*
+**/*.log
+**/*.tsbuildinfo
+**/.DS_Store
+mobile
+docs
+tools
+.github
