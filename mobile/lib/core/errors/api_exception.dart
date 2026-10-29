@@ -34,6 +34,12 @@ class ApiException implements Exception {
           if (responseData.containsKey('message') &&
               responseData['message'] is String) {
             message = responseData['message'];
+          } else if (responseData['message'] is List &&
+              (responseData['message'] as List).isNotEmpty &&
+              (responseData['message'] as List).every(
+                (item) => item is String,
+              )) {
+            message = (responseData['message'] as List).join('\n');
           } else if (responseData.containsKey('detail') &&
               responseData['detail'] is String) {
             message = responseData['detail'];

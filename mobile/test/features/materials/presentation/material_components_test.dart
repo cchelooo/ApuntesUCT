@@ -1,3 +1,6 @@
+import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_detail_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_fixtures.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_detail_screen.dart';
@@ -12,11 +15,7 @@ void main() {
       (WidgetTester tester) async {
         final sample = MaterialFixtures.sampleSummary1;
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(body: MaterialSummaryCard(material: sample)),
-          ),
-        );
+        await tester.pumpWidget(_testApp(sample));
 
         expect(find.text(sample.title), findsOneWidget);
         expect(find.text('Prof. Dr. Roberto Muñoz'), findsOneWidget);
@@ -31,11 +30,7 @@ void main() {
       (WidgetTester tester) async {
         final sample = MaterialFixtures.sampleSummary1;
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(body: MaterialSummaryCard(material: sample)),
-          ),
-        );
+        await tester.pumpWidget(_testApp(sample));
 
         await tester.tap(find.byType(MaterialSummaryCard));
         await tester.pumpAndSettle();
@@ -72,11 +67,7 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
 
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(body: MaterialSummaryCard(material: longDataSample)),
-          ),
-        );
+        await tester.pumpWidget(_testApp(longDataSample));
 
         // Sin desborde en la tarjeta
         expect(tester.takeException(), isNull);
@@ -92,3 +83,13 @@ void main() {
     );
   });
 }
+
+Widget _testApp(MaterialSummary summary) => ProviderScope(
+  overrides: [
+    materialDetailProvider(summary.id)
+        .overrideWith((_) async => MaterialDetail(summary: summary)),
+  ],
+  child: MaterialApp(
+    home: Scaffold(body: MaterialSummaryCard(material: summary)),
+  ),
+);

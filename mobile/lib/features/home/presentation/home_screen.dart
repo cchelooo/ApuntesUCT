@@ -46,6 +46,11 @@ class HomeScreen extends ConsumerWidget {
           ref.read(navTabProvider.notifier).selectTab(0);
         });
         break;
+      case AppNavigationDestination.materials:
+        context.push('/materials').then((_) {
+          ref.read(navTabProvider.notifier).selectTab(0);
+        });
+        break;
     }
   }
 
@@ -129,6 +134,32 @@ class HomeScreen extends ConsumerWidget {
           children: [
             // ---- Encabezado de página ----
             const _PageHeader(),
+            const SizedBox(height: 8),
+            // ---- Acceso al módulo Materiales (issue #279) ----
+            // No reemplaza al catálogo: es un acceso directo a /materials
+            // y /materials/upload que convive con "Tus cursos".
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => context.push('/materials'),
+                      icon: const Icon(Icons.explore_outlined),
+                      label: const Text('Explorar materiales'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () => context.push('/materials/upload'),
+                      icon: const Icon(Icons.upload_outlined),
+                      label: const Text('Subir material'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 8),
             // ---- Tus cursos ----
             AppSectionHeader(

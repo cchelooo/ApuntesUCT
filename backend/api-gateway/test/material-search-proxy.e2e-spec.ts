@@ -20,12 +20,24 @@ const SERVICES = [
 
 async function startUpstream(label: string): Promise<Upstream> {
   const server = createServer((req, res) => {
-    if (req.url === '/api/v1/materials/transport-test/download') {
+    if (
+      req.url === '/api/v1/materials/transport-test/download' ||
+      req.url ===
+        '/api/v1/materials/transport-test/download?versionId=11111111-1111-4111-8111-111111111111'
+    ) {
       res.writeHead(200, {
         'Content-Type': 'application/octet-stream',
         'Content-Disposition': 'attachment; filename="apuntes.pdf"',
       });
       res.end(Buffer.from([0, 255, 128, 13, 10, 42]));
+      return;
+    }
+    if (req.url === '/api/v1/materials/transport-unicode/download') {
+      res.writeHead(200, {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="calculo.pdf"; filename*=UTF-8''c%C3%A1lculo.pdf`,
+      });
+      res.end(Buffer.from('%PDF-1.7'));
       return;
     }
     let body = '';
@@ -119,15 +131,31 @@ describe('Gateway → Material y Search (HTTP)', () => {
     upstreams.clear();
   });
 
-  it('conserva bytes y headers de una descarga del upstream simulado', async () => {
+  it.each(['', '?versionId=11111111-1111-4111-8111-111111111111'])(
+    'conserva bytes, headers y selección de versión al descargar: %s',
+    async (query) => {
+      const response = await request(gateway.getHttpServer())
+        .get(`/api/v1/materials/transport-test/download${query}`)
+        .expect(200);
+      expect(response.headers['content-type']).toBe('application/octet-stream');
+      expect(response.headers['content-disposition']).toBe(
+        'attachment; filename="apuntes.pdf"',
+      );
+      expect(response.body).toEqual(Buffer.from([0, 255, 128, 13, 10, 42]));
+    },
+  );
+
+  it('conserva Content-Disposition con filename* UTF-8 a través del proxy', async () => {
     const response = await request(gateway.getHttpServer())
-      .get('/api/v1/materials/transport-test/download')
+      .get('/api/v1/materials/transport-unicode/download')
       .expect(200);
-    expect(response.headers['content-type']).toBe('application/octet-stream');
-    expect(response.headers['content-disposition']).toBe(
-      'attachment; filename="apuntes.pdf"',
+    expect(response.headers['content-type']).toBe('application/pdf');
+    const disposition = response.headers['content-disposition'];
+    expect(disposition).toBe(
+      `attachment; filename="calculo.pdf"; filename*=UTF-8''c%C3%A1lculo.pdf`,
     );
-    expect(response.body).toEqual(Buffer.from([0, 255, 128, 13, 10, 42]));
+    expect(disposition).not.toMatch(/[\r\n]/);
+    expect(disposition.match(/"/g)).toHaveLength(2);
   });
 
   it.each(SERVICES)(

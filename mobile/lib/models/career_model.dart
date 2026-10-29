@@ -19,7 +19,9 @@ class CareerModel {
   factory CareerModel.fromJson(Map<String, dynamic> json) {
     return CareerModel(
       id: json['id'] as String,
-      universityId: json['universityId'] as String,
+      // Catalog declara universityId opcional: sin él la carrera se conserva
+      // con cadena vacía en vez de desaparecer del listado (H4).
+      universityId: json['universityId'] as String? ?? '',
       name: json['name'] as String,
       code: json['code'] as String,
       active: json['active'] as bool? ?? true,

@@ -1,10 +1,95 @@
+import 'package:apuntesuct_mobile/core/network/api_client.dart';
+import 'package:apuntesuct_mobile/features/materials/data/dio_material_repository.dart';
+import 'package:apuntesuct_mobile/features/materials/data/dio_search_repository.dart';
 import 'package:apuntesuct_mobile/features/materials/data/mock_materials_repository.dart';
+import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
+import 'package:apuntesuct_mobile/features/materials/domain/models/material_requests.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/repositories/materials_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+/// Implementación real conectada al Gateway (Search Service y Material Service)
+/// con fallback a MockMaterialsRepository en entornos desconectados o pruebas de UI.
+class DioMaterialsDiscoveryRepository implements MaterialsRepository {
+  final DioSearchRepository _searchRepo;
+  final DioMaterialRepository _materialRepo;
+  final MockMaterialsRepository _fallbackMock = MockMaterialsRepository();
+
+  DioMaterialsDiscoveryRepository({
+    required this._searchRepo,
+    required this._materialRepo,
+  });
+
+  @override
+  Future<List<MaterialSummary>> getMaterials({
+    String? query,
+    String? subject,
+    int page = 1,
+    int pageSize = 10,
+  }) async {
+    final cleanQuery = query?.trim() ?? '';
+    final cleanSubject = subject?.trim();
+
+    // 1. Si hay texto o filtro de asignatura, consultar a Search Service vía Gateway
+    if (cleanQuery.isNotEmpty ||
+        (cleanSubject != null && cleanSubject.isNotEmpty)) {
+      try {
+        final pageResult = await _searchRepo.search(
+          MaterialSearchQuery(text: cleanQuery, subjectId: cleanSubject),
+          page: page,
+          pageSize: pageSize,
+        );
+        return pageResult.items;
+      } catch (_) {
+        // Fallback para entornos sin conexión o pruebas locales
+        return _fallbackMock.getMaterials(
+          query: cleanQuery,
+          subject: cleanSubject,
+          page: page,
+          pageSize: pageSize,
+        );
+      }
+    }
+
+    // 2. Listado general sin filtros: consultar a Material Service vía Gateway
+    try {
+      final pageResult = await _materialRepo.list(
+        page: page,
+        pageSize: pageSize,
+      );
+      return pageResult.items;
+    } catch (_) {
+      // Fallback para entornos sin conexión o pruebas locales
+      return _fallbackMock.getMaterials(
+        query: cleanQuery,
+        subject: cleanSubject,
+        page: page,
+        pageSize: pageSize,
+      );
+    }
+  }
+
+  @override
+  Future<List<String>> getAvailableSubjects() async {
+    return _fallbackMock.getAvailableSubjects();
+  }
+
+  @override
+  Future<MaterialDetail> getMaterialDetail(String id) async {
+    try {
+      return await _materialRepo.getDetail(id);
+    } catch (_) {
+      return _fallbackMock.getMaterialDetail(id);
+    }
+  }
+}
+
 final materialsRepositoryProvider = Provider<MaterialsRepository>((ref) {
-  return MockMaterialsRepository();
+  final apiClient = ref.watch(apiclientProvider);
+  return DioMaterialsDiscoveryRepository(
+    searchRepo: DioSearchRepository(apiClient),
+    materialRepo: DioMaterialRepository(apiClient),
+  );
 });
 
 final availableSubjectsProvider = FutureProvider.autoDispose<List<String>>((
@@ -47,6 +132,7 @@ class DiscoveryMaterialsState {
     String? selectedSubject,
     bool clearSubject = false,
     String? errorMessage,
+    bool clearError = false,
   }) {
     return DiscoveryMaterialsState(
       items: items ?? this.items,
@@ -58,7 +144,7 @@ class DiscoveryMaterialsState {
       selectedSubject: clearSubject
           ? null
           : (selectedSubject ?? this.selectedSubject),
-      errorMessage: errorMessage,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
 }
@@ -76,6 +162,7 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
 
   Future<void> _loadInitial() async {
     final requestId = ++_activeRequestId;
+    state = state.copyWith(isLoadingMore: false, clearError: true);
     final repo = ref.read(materialsRepositoryProvider);
     final targetQuery = state.query;
     final targetSubject = state.selectedSubject;
@@ -88,21 +175,27 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
         pageSize: pageSize,
       );
 
-      // Si se disparó otra búsqueda o filtro mientras esperaba, ignorar respuesta vieja
       if (requestId != _activeRequestId) return;
 
+      // Deduplicación preventiva en carga inicial
+      final seenIds = <String>{};
+      final uniqueResults = results
+          .where((item) => seenIds.add(item.id))
+          .toList();
+
       state = state.copyWith(
-        items: results,
+        items: uniqueResults,
         isLoading: false,
         page: 1,
         hasMore: results.length >= pageSize,
-        errorMessage: null,
+        clearError: true,
       );
-    } catch (e) {
+    } catch (_) {
       if (requestId != _activeRequestId) return;
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Error al cargar materiales disponibles.',
+        errorMessage:
+            'Error al cargar materiales disponibles. Verifica tu conexión.',
       );
     }
   }
@@ -110,7 +203,12 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
   Future<void> setQuery(String newQuery) async {
     final clean = newQuery.trim();
     if (state.query == clean) return;
-    state = state.copyWith(query: clean, isLoading: true, page: 1);
+    state = state.copyWith(
+      query: clean,
+      isLoading: true,
+      page: 1,
+      clearError: true,
+    );
     await _loadInitial();
   }
 
@@ -120,12 +218,24 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
       clearSubject: subject == null,
       isLoading: true,
       page: 1,
+      clearError: true,
+    );
+    await _loadInitial();
+  }
+
+  Future<void> clearFilters() async {
+    state = state.copyWith(
+      query: '',
+      clearSubject: true,
+      isLoading: true,
+      page: 1,
+      clearError: true,
     );
     await _loadInitial();
   }
 
   Future<void> refresh() async {
-    state = state.copyWith(isLoading: true, page: 1);
+    state = state.copyWith(isLoading: true, page: 1, clearError: true);
     await _loadInitial();
   }
 
@@ -147,11 +257,20 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
         pageSize: pageSize,
       );
 
-      // Si la búsqueda cambió mientras cargaba la siguiente página, descartar
       if (requestId != _activeRequestId) return;
 
+      // Fix de Codex: deduplicar elemento a elemento actualizando el conjunto
+      // de IDs para no admitir repetidos dentro de la página nueva
+      final seenIds = state.items.map((m) => m.id).toSet();
+      final uniqueNewItems = <MaterialSummary>[];
+      for (final item in nextItems) {
+        if (seenIds.add(item.id)) {
+          uniqueNewItems.add(item);
+        }
+      }
+
       state = state.copyWith(
-        items: [...state.items, ...nextItems],
+        items: [...state.items, ...uniqueNewItems],
         page: nextPage,
         hasMore: nextItems.length >= pageSize,
         isLoadingMore: false,

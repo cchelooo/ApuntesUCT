@@ -9,6 +9,7 @@ import 'package:apuntesuct_mobile/features/materials/presentation/providers/mate
 import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_summary_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class MaterialDiscoveryScreen extends ConsumerStatefulWidget {
   const MaterialDiscoveryScreen({super.key});
@@ -54,11 +55,10 @@ class _MaterialDiscoveryScreenState
   }
 
   void _onClearSearch() {
-    // Cancelar debounce inmediatamente para evitar que aplique búsquedas previas
     _debounceTimer?.cancel();
     _searchController.clear();
     setState(() {});
-    ref.read(discoveryMaterialsProvider.notifier).setQuery('');
+    ref.read(discoveryMaterialsProvider.notifier).clearFilters();
   }
 
   void _openFiltersModal(BuildContext context) {
@@ -155,6 +155,7 @@ class _MaterialDiscoveryScreenState
       return const LoadingState(message: 'Buscando materiales...');
     }
 
+    // Criterio 3: Falla en pull-to-refresh o carga inicial expone ErrorState sin crash
     if (state.errorMessage != null) {
       return Center(
         child: SingleChildScrollView(
@@ -169,18 +170,39 @@ class _MaterialDiscoveryScreenState
     }
 
     if (state.items.isEmpty) {
-      // Distinción entre catálogo sin datos vs búsqueda sin coincidencias
       final isFiltered = state.isSearchActive;
+      final queryText = state.query.isNotEmpty ? ' para "${state.query}"' : '';
+      final subjectText = state.selectedSubject != null
+          ? ' en "${state.selectedSubject}"'
+          : '';
+
       return Center(
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          child: EmptyState(
-            title: isFiltered
-                ? 'Sin coincidencias'
-                : 'Catálogo de materiales vacío',
-            subtitle: isFiltered
-                ? 'No encontramos materiales con esos términos o filtros.'
-                : 'Aún no se han registrado materiales académicos.',
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                EmptyState(
+                  title: isFiltered
+                      ? 'Sin coincidencias'
+                      : 'Catálogo de materiales vacío',
+                  subtitle: isFiltered
+                      ? 'No encontramos materiales$queryText$subjectText.'
+                      : 'Aún no se han registrado materiales académicos.',
+                ),
+                // Criterio 4: Opción visible para limpiar filtros y búsqueda
+                if (isFiltered) ...[
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: _onClearSearch,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Limpiar filtros y búsqueda'),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       );
@@ -203,7 +225,11 @@ class _MaterialDiscoveryScreenState
             ),
           );
         }
-        return MaterialSummaryCard(material: state.items[index]);
+        final item = state.items[index];
+        return MaterialSummaryCard(
+          material: item,
+          onTap: () => context.push('/materials/${item.id}'),
+        );
       },
     );
   }
