@@ -208,6 +208,13 @@ interno y conserva la ruta, los errores y las descargas. `GATEWAY_UPSTREAM` se
 sustituye al iniciar; cambiar el DNS no requiere recompilar React. Establecer
 `VITE_API_URL` en Kubero no cambia un bundle ya construido.
 
+La imagen Web admite el sistema de archivos raíz de solo lectura: escribe su
+configuración generada, PID y archivos temporales exclusivamente en `/tmp`.
+Kubero proporciona un `emptyDir` escribible en esa ruta; el Compose monta un
+`tmpfs` y activa `read_only` para verificar la misma restricción. En Seguridad de
+Kubero, mantener solo lectura y configurar Web como no root, UID/GID `101`
+(usuario `nginx`). No montar un volumen sobre `/usr/share/nginx/html`.
+
 **Mobile** se compila por separado; no es un contenedor Kubero:
 
 ```bash
