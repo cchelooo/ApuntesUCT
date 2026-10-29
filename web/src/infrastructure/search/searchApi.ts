@@ -1,6 +1,7 @@
 import {
   DEFAULT_SEARCH_SORT,
   type SearchParams,
+  type SearchSort,
   type SearchResultPage,
 } from '../../domain/search/search';
 import { MaterialRequestError } from '../material/materialApi';
@@ -8,6 +9,15 @@ import { mapRawSearchPage } from './mapSearch';
 import type { RawSearchPage } from './rawSearch';
 
 export const DEFAULT_SEARCH_PAGE_SIZE = 20;
+
+const SEARCH_API_SORT: Record<
+  SearchSort,
+  { sortBy: 'createdAt' | 'year' | 'title'; order: 'asc' | 'desc' }
+> = {
+  recent: { sortBy: 'createdAt', order: 'desc' },
+  year_desc: { sortBy: 'year', order: 'desc' },
+  title: { sortBy: 'title', order: 'asc' },
+};
 
 function getSearchUrl(): string {
   const envUrl = import.meta.env.VITE_API_URL;
@@ -29,7 +39,7 @@ export async function fetchSearch(
 ): Promise<SearchResultPage> {
   const params = new URLSearchParams({
     q,
-    sort,
+    ...SEARCH_API_SORT[sort],
     page: String(page),
     pageSize: String(pageSize),
   });

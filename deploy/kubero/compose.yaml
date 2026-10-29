@@ -1,0 +1,186 @@
+name: apuntesuct-kubero
+
+x-backend: &backend
+  restart: unless-stopped
+  init: true
+  healthcheck:
+    test: [CMD, node, -e, "fetch('http://127.0.0.1:'+process.env.PORT+process.env.HEALTH_PATH).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+    interval: 5s
+    timeout: 5s
+    retries: 30
+    start_period: 30s
+
+x-postgres: &postgres
+  image: postgres:17-alpine
+  restart: unless-stopped
+  healthcheck:
+    test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+    interval: 5s
+    timeout: 5s
+    retries: 20
+
+services:
+  db-auth:
+    <<: *postgres
+    environment:
+      POSTGRES_USER: apuntes
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configura POSTGRES_PASSWORD}
+      POSTGRES_DB: auth_db
+    volumes: [auth-data:/var/lib/postgresql/data]
+  db-catalog:
+    <<: *postgres
+    environment:
+      POSTGRES_USER: apuntes
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configura POSTGRES_PASSWORD}
+      POSTGRES_DB: catalog_db
+    volumes: [catalog-data:/var/lib/postgresql/data]
+  db-material:
+    <<: *postgres
+    environment:
+      POSTGRES_USER: apuntes
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configura POSTGRES_PASSWORD}
+      POSTGRES_DB: material_db
+    volumes: [material-data:/var/lib/postgresql/data]
+
+  minio:
+    image: apuntesuct/kubero-minio:local
+    build:
+      context: ../..
+      dockerfile: deploy/kubero/minio.Dockerfile
+    command: [server, /data, --console-address, ':9001']
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Configura MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Configura MINIO_ROOT_PASSWORD}
+    volumes: [minio-data:/data]
+  minio-init:
+    image: apuntesuct/kubero-material-service:local
+    depends_on: [minio]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Configura MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Configura MINIO_ROOT_PASSWORD}
+    entrypoint: [node, -e]
+    command:
+      - |
+        const { Client } = require('minio');
+        const client = new Client({endPoint: 'minio', port: 9000, useSSL: false,
+          accessKey: process.env.MINIO_ROOT_USER, secretKey: process.env.MINIO_ROOT_PASSWORD});
+        (async () => {
+          for (let attempt = 0; attempt < 30; attempt++) {
+            try {
+              if (!await client.bucketExists('materials')) await client.makeBucket('materials');
+              return;
+            } catch (error) {
+              if (attempt === 29) throw error;
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+          }
+        })().catch(error => { console.error(error.message); process.exitCode = 1; });
+
+  auth:
+    <<: *backend
+    image: apuntesuct/kubero-auth-service:local
+    build:
+      context: ../..
+      dockerfile: deploy/kubero/backend.Dockerfile
+      args: {SERVICE: auth-service}
+    environment:
+      PORT: '3001'
+      HEALTH_PATH: /api/v1/health
+      DATABASE_URL: postgresql://apuntes:${POSTGRES_PASSWORD}@db-auth:5432/auth_db?schema=public
+    depends_on:
+      db-auth: {condition: service_healthy}
+  catalog:
+    <<: *backend
+    image: apuntesuct/kubero-catalog-service:local
+    build:
+      context: ../..
+      dockerfile: deploy/kubero/backend.Dockerfile
+      args: {SERVICE: catalog-service}
+    environment:
+      PORT: '3002'
+      HEALTH_PATH: /health
+      DATABASE_URL: postgresql://apuntes:${POSTGRES_PASSWORD}@db-catalog:5432/catalog_db?schema=public
+    depends_on:
+      db-catalog: {condition: service_healthy}
+  material:
+    <<: *backend
+    image: apuntesuct/kubero-material-service:local
+    build:
+      context: ../..
+      dockerfile: deploy/kubero/backend.Dockerfile
+      args: {SERVICE: material-service}
+    environment:
+      PORT: '3003'
+      HEALTH_PATH: /api/v1/health
+      DATABASE_URL: postgresql://apuntes:${POSTGRES_PASSWORD}@db-material:5432/material_db?schema=public
+      CATALOG_SERVICE_URL: http://catalog:3002/api/v1
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: '9000'
+      MINIO_USE_SSL: 'false'
+      MINIO_BUCKET: materials
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MATERIAL_LOCAL_AUTHOR_ENABLED: 'false'
+    depends_on:
+      db-material: {condition: service_healthy}
+      catalog: {condition: service_healthy}
+      minio-init: {condition: service_completed_successfully}
+  search:
+    <<: *backend
+    image: apuntesuct/kubero-search-service:local
+    build:
+      context: ../..
+      dockerfile: deploy/kubero/backend.Dockerfile
+      args: {SERVICE: search-service}
+    environment:
+      PORT: '3005'
+      HEALTH_PATH: /api/v1/health
+      CATALOG_SERVICE_URL: http://catalog:3002
+      MATERIAL_SERVICE_URL: http://material:3003
+    depends_on:
+      catalog: {condition: service_healthy}
+      material: {condition: service_healthy}
+  gateway:
+    <<: *backend
+    image: apuntesuct/kubero-api-gateway:local
+    build:
+      context: ../..
+      dockerfile: deploy/kubero/backend.Dockerfile
+      args: {SERVICE: api-gateway}
+    environment:
+      PORT: '3000'
+      HEALTH_PATH: /health
+      AUTH_SERVICE_URL: http://auth:3001
+      CATALOG_SERVICE_URL: http://catalog:3002
+      MATERIAL_SERVICE_URL: http://material:3003
+      SEARCH_SERVICE_URL: http://search:3005
+    ports: ['127.0.0.1:${GATEWAY_PORT:-13000}:3000']
+    depends_on:
+      auth: {condition: service_healthy}
+      catalog: {condition: service_healthy}
+      material: {condition: service_healthy}
+      search: {condition: service_healthy}
+  web:
+    image: apuntesuct/kubero-web:local
+    read_only: true
+    tmpfs: [/tmp]
+    build:
+      context: ../..
+      dockerfile: deploy/kubero/web.Dockerfile
+    environment:
+      GATEWAY_UPSTREAM: http://gateway:3000
+    ports: ['127.0.0.1:${WEB_PORT:-18080}:8080']
+    depends_on:
+      gateway: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8080/health]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  auth-data:
+  catalog-data:
+  material-data:
+  minio-data:
