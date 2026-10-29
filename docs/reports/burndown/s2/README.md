@@ -1,7 +1,7 @@
 # Burndown S2
 
 Primer snapshot guardado: 2026-10-03.
-Ultimo snapshot: 2026-10-27.
+Ultimo snapshot: 2026-10-28.
 Corte del 19-10 registrado el 20-10-2026 con los datos actuales de GitHub Projects, por actualización diferida.
 Corte del 27-10 registrado el 28-10-2026 con las horas de la captura original, por actualización diferida.
 No se reconstruyen horas de dias sin snapshot.
@@ -20,21 +20,21 @@ Las tareas con `Equipo = Compartido` quedan fuera del burndown de equipos e inte
 
 | Equipo | Items | Horas asignadas | Horas usadas | Horas restantes | Horas excedidas | Grafico |
 |---|---:|---:|---:|---:|---:|---|
-| INT2 | 50 | 120 | 87.1 | 39.3 | 6.4 | [ver (2026-09-30 a 2026-11-04)](charts/team-int2.svg) |
-| INT4 | 32 | 80 | 51.5 | 28.5 | 1 | [ver (2026-10-01 a 2026-11-05)](charts/team-int4.svg) |
+| INT2 | 50 | 120 | 89.1 | 37.3 | 6.4 | [ver (2026-09-30 a 2026-11-04)](charts/team-int2.svg) |
+| INT4 | 32 | 80 | 54.5 | 26.5 | 1 | [ver (2026-10-01 a 2026-11-05)](charts/team-int4.svg) |
 
 ## Integrantes
 
 | Equipo | Integrante | Items | Horas asignadas | Horas usadas | Horas restantes | Horas excedidas | Grafico |
 |---|---|---:|---:|---:|---:|---:|---|
 | INT2 | Ailyn Melillan | 9 | 20 | 15 | 5 | 0 | [ver (2026-09-30 a 2026-11-04)](charts/member-ailynmelillan.svg) |
-| INT2 | Antonio Lara | 8 | 20 | 13.5 | 7 | 0.5 | [ver (2026-09-30 a 2026-11-04)](charts/member-alara2024uct.svg) |
+| INT2 | Antonio Lara | 8 | 20 | 15.5 | 5 | 0.5 | [ver (2026-09-30 a 2026-11-04)](charts/member-alara2024uct.svg) |
 | INT2 | David Villegas | 9 | 20 | 15 | 5 | 0 | [ver (2026-09-30 a 2026-11-04)](charts/member-david7985.svg) |
 | INT2 | Gabriel Gutierrez | 8 | 20 | 14 | 6 | 0 | [ver (2026-09-30 a 2026-11-04)](charts/member-gabrielgutierrez1.svg) |
 | INT2 | Martina Iturrieta | 8 | 20 | 19.6 | 6.3 | 5.9 | [ver (2026-09-30 a 2026-11-04)](charts/member-kennyaale.svg) |
 | INT2 | Raul Rodriguez | 8 | 20 | 10 | 10 | 0 | [ver (2026-09-30 a 2026-11-04)](charts/member-rrodriguez2025.svg) |
-| INT4 | Eduardo Escares | 8 | 20 | 14 | 5 | 0 | [ver (2026-10-01 a 2026-11-05)](charts/member-eduardoscrs.svg) |
-| INT4 | Marcelo Santana | 8 | 20 | 15 | 5 | 0 | [ver (2026-10-01 a 2026-11-05)](charts/member-cchelooo.svg) |
+| INT4 | Eduardo Escares | 8 | 20 | 15 | 5 | 0 | [ver (2026-10-01 a 2026-11-05)](charts/member-eduardoscrs.svg) |
+| INT4 | Marcelo Santana | 8 | 20 | 17 | 3 | 0 | [ver (2026-10-01 a 2026-11-05)](charts/member-cchelooo.svg) |
 | INT4 | Nelson Quiñinao Isla | 8 | 20 | 7 | 13 | 0 | [ver (2026-10-01 a 2026-11-05)](charts/member-anker04.svg) |
 | INT4 | Yaninna Alvarez | 8 | 20 | 15.5 | 5.5 | 1 | [ver (2026-10-01 a 2026-11-05)](charts/member-yaninna137.svg) |
 
