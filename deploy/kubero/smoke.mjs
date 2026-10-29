@@ -14,6 +14,9 @@ const gateway = `http://127.0.0.1:${process.env.GATEWAY_PORT ?? 13000}`;
 async function request(base, path, status = 200, options) {
   const response = await fetch(`${base}${path}`, {
     ...options,
+    // Container recreation blocks this process while servers expire idle
+    // keep-alive sockets. Use a fresh connection for each verification.
+    headers: { Connection: 'close', ...options?.headers },
     signal: AbortSignal.timeout(15000),
   });
   assert.equal(response.status, status, `${base}${path}`);

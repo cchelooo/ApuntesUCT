@@ -29,6 +29,9 @@ jobs:
       MINIO_ROOT_PASSWORD: ephemeral-ci-minio-password
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Build and start isolated stack
         run: docker compose -f deploy/kubero/compose.yaml up --build --wait --wait-timeout 180
       - name: Check Web, Gateway and services
