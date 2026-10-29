@@ -39,9 +39,11 @@ class MockAcademicHierarchyRepository implements IAcademicHierarchyRepository {
   Future<List<CareerModel>> fetchCareersByUniversity(
     String universityId,
   ) async {
-    final all = CareerModel.mockList();
-    final matching = all.where((c) => c.universityId == universityId).toList();
-    return matching.isNotEmpty ? matching : all;
+    // Filtra estrictamente por universidad: nunca devuelve carreras de otra
+    // institución como fallback (issue: UFRO mostraba carreras de UCT).
+    return CareerModel.mockList()
+        .where((c) => c.universityId == universityId)
+        .toList();
   }
 
   @override

@@ -55,8 +55,12 @@ class CareerModel {
   }
 
   /// Lista de carreras MOCK para poblar menús y catálogos.
+  ///
+  /// Incluye carreras de más de una universidad para que el filtro por
+  /// [universityId] devuelva datos distintos según la selección.
   static List<CareerModel> mockList() {
     return [
+      // UCT
       CareerModel.mock(
         id: 'inf-uct-uuid',
         universityId: 'uct-main-uuid',
@@ -83,6 +87,21 @@ class CareerModel {
         universityId: 'uct-main-uuid',
         name: 'Derecho',
         code: 'DER',
+        active: true,
+      ),
+      // UFRO
+      CareerModel.mock(
+        id: 'inf-ufro-uuid',
+        universityId: 'ufro-main-uuid',
+        name: 'Ingeniería Civil en Computación e Informática',
+        code: 'ICCI',
+        active: true,
+      ),
+      CareerModel.mock(
+        id: 'agr-ufro-uuid',
+        universityId: 'ufro-main-uuid',
+        name: 'Agronomía',
+        code: 'AGR',
         active: true,
       ),
     ];

@@ -26,9 +26,10 @@ class FakeAcademicHierarchyRepository implements IAcademicHierarchyRepository {
     String universityId,
   ) async {
     if (onFetchCareers != null) return onFetchCareers!(universityId);
-    final all = CareerModel.mockList();
-    final matching = all.where((c) => c.universityId == universityId).toList();
-    return matching.isNotEmpty ? matching : all;
+    // Filtra estrictamente — igual que el repositorio de producción.
+    return CareerModel.mockList()
+        .where((c) => c.universityId == universityId)
+        .toList();
   }
 
   @override
@@ -476,5 +477,64 @@ void main() {
       expect(state.universities, isEmpty);
       expect(state.selectedUniversityId, isNull);
     });
+
+    // -----------------------------------------------------------------------
+    // Criterio: Aislamiento de carreras por universidad (#289)
+    // Caso que generó el segundo CHANGES_REQUESTED de @cchelooo:
+    // al elegir UFRO aparecían carreras de UCT (fallback incorrecto).
+    // -----------------------------------------------------------------------
+    test(
+      'Elegir UFRO devuelve solo sus propias carreras, no las de UCT',
+      () async {
+        final notifier = container.read(academicHierarchyProvider.notifier);
+
+        // Primero seleccionamos UCT para asegurarnos de que el estado
+        // previo no «contamina» la selección siguiente.
+        await notifier.selectUniversity('uct-main-uuid');
+        var state = container.read(academicHierarchyProvider);
+        final uctCareerIds = state.careers.map((c) => c.id).toSet();
+        expect(uctCareerIds, isNotEmpty);
+
+        // Ahora seleccionamos UFRO
+        await notifier.selectUniversity('ufro-main-uuid');
+        state = container.read(academicHierarchyProvider);
+
+        // Solo deben aparecer carreras de UFRO
+        expect(state.careers, isNotEmpty,
+            reason: 'UFRO debe tener carreras propias en el mock');
+        expect(
+          state.careers.every((c) => c.universityId == 'ufro-main-uuid'),
+          isTrue,
+          reason: 'Todas las carreras deben pertenecer a UFRO',
+        );
+
+        // Ninguna carrera de UCT debe aparecer
+        final ufroCareerIds = state.careers.map((c) => c.id).toSet();
+        expect(
+          ufroCareerIds.intersection(uctCareerIds),
+          isEmpty,
+          reason: 'Las carreras de UCT no deben filtrarse con UFRO',
+        );
+      },
+    );
+
+    test(
+      'Elegir universidad sin carreras en el mock devuelve lista vacía, no carreras de otra uni',
+      () async {
+        final notifier = container.read(academicHierarchyProvider.notifier);
+
+        // 'desconocida-uuid' no tiene carreras en mockList
+        await notifier.selectUniversity('desconocida-uuid');
+        final state = container.read(academicHierarchyProvider);
+
+        expect(
+          state.careers,
+          isEmpty,
+          reason: 'No debe haber fallback a carreras de otras universidades',
+        );
+        expect(state.canSelectCareer, isTrue);
+        expect(state.canSelectSubject, isFalse);
+      },
+    );
   });
 }
