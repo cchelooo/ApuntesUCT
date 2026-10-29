@@ -1,14 +1,13 @@
 import type { MaterialListItem } from '../material/materialListItem';
 
-export type SearchSort = 'relevance' | 'recent' | 'year_desc' | 'title';
+export type SearchSort = 'recent' | 'year_desc' | 'title';
 
-export const DEFAULT_SEARCH_SORT: SearchSort = 'relevance';
+export const DEFAULT_SEARCH_SORT: SearchSort = 'recent';
 
 export const SEARCH_SORT_OPTIONS: ReadonlyArray<{
   value: SearchSort;
   label: string;
 }> = [
-  { value: 'relevance', label: 'Más relevantes' },
   { value: 'recent', label: 'Más recientes' },
   { value: 'year_desc', label: 'Año (mayor a menor)' },
   { value: 'title', label: 'Título (A-Z)' },
