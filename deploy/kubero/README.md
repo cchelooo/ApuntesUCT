@@ -81,6 +81,11 @@ de Kubero para construir/publicar. Si el propietario del repositorio cambia, el
 workflow adapta su prefijo en minúsculas. El nombre del repositorio no modifica
 el prefijo estable `apuntesuct-kubero-` de las imágenes.
 
+Cada subida se reintenta hasta tres veces, con 10 segundos entre intentos, para
+fallos transitorios del registro. Si el último intento falla, la ejecución queda
+fallida y no continúa publicando los siguientes servicios. Un permiso incorrecto
+de GHCR debe corregirse; los reintentos no amplían el acceso del token.
+
 Las imágenes backend incluyen los clientes Prisma generados para Linux, los
 binarios compilados y los CLI fijados por el lockfile para ejecutar migraciones.
 No incluyen archivos `.env`, código Mobile ni credenciales de una DB real.
