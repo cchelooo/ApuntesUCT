@@ -3,10 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  SEARCH_SORT_OPTIONS,
-  type SearchSort,
-} from '../../domain/search/search';
+import type { SearchSort } from '../../domain/search/search';
 import { SearchPage } from './SearchPage';
 
 const GATEWAY = 'https://gateway.test/api/v1';
@@ -105,7 +102,9 @@ describe('SearchPage', () => {
     ).toHaveAttribute('href', '/material/real-uuid-1');
     const [first] = searchCalls();
     expect(first.searchParams.get('q')).toBe('algebra');
-    expect(first.searchParams.get('sort')).toBe('relevance');
+    expect(first.searchParams.get('sortBy')).toBe('createdAt');
+    expect(first.searchParams.get('order')).toBe('desc');
+    expect(first.searchParams.has('sort')).toBe(false);
     expect(first.searchParams.get('page')).toBe('1');
   });
 
@@ -195,15 +194,21 @@ describe('SearchPage', () => {
   });
 
   describe('ordenamiento', () => {
-    it.each(SEARCH_SORT_OPTIONS.map((option) => option.value))(
-      'envía sort=%s al backend y vuelve a la página 1',
-      async (sort: SearchSort) => {
+    it.each([
+      ['recent', 'createdAt', 'desc'],
+      ['year_desc', 'year', 'desc'],
+      ['title', 'title', 'asc'],
+    ] as const)(
+      'traduce %s a sortBy=%s y order=%s y vuelve a la página 1',
+      async (sort, sortBy, order) => {
         mockPagedApi();
         const initial: SearchSort = sort === 'title' ? 'recent' : 'title';
         renderPage(`/search?q=algebra&sort=${initial}&page=2`);
 
         await screen.findByText('Página 2');
-        expect(lastCall().searchParams.get('sort')).toBe(initial);
+        expect(lastCall().searchParams.get('sortBy')).toBe(
+          initial === 'recent' ? 'createdAt' : 'title'
+        );
         expect(lastCall().searchParams.get('page')).toBe('2');
 
         await userEvent.selectOptions(
@@ -212,13 +217,25 @@ describe('SearchPage', () => {
         );
 
         expect(await screen.findByText('Página 1')).toBeInTheDocument();
-        expect(lastCall().searchParams.get('sort')).toBe(sort);
+        expect(lastCall().searchParams.get('sortBy')).toBe(sortBy);
+        expect(lastCall().searchParams.get('order')).toBe(order);
+        expect(lastCall().searchParams.has('sort')).toBe(false);
         expect(lastCall().searchParams.get('page')).toBe('1');
         expect(lastCall().searchParams.get('q')).toBe('algebra');
       }
     );
 
-    it('ofrece exactamente las cuatro opciones de ordenamiento', () => {
+    it('usa recientes al abrir un enlace antiguo con sort=relevance', async () => {
+      mockPagedApi();
+      renderPage('/search?q=algebra&sort=relevance');
+      await screen.findByText('Página 1');
+      expect(screen.getByLabelText('Ordenar por')).toHaveValue('recent');
+      expect(lastCall().searchParams.get('sortBy')).toBe('createdAt');
+      expect(lastCall().searchParams.get('order')).toBe('desc');
+      expect(lastCall().searchParams.has('sort')).toBe(false);
+    });
+
+    it('ofrece solamente los tres criterios implementados por Search', () => {
       mockPagedApi();
       renderPage();
       const select = screen.getByLabelText('Ordenar por');
@@ -226,7 +243,7 @@ describe('SearchPage', () => {
         select.querySelectorAll('option'),
         (option) => (option as HTMLOptionElement).value
       );
-      expect(values).toEqual(['relevance', 'recent', 'year_desc', 'title']);
+      expect(values).toEqual(['recent', 'year_desc', 'title']);
     });
   });
 
