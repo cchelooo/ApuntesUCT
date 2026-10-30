@@ -4,6 +4,7 @@ import 'package:apuntesuct_mobile/features/materials/data/mock_materials_reposit
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_fixtures.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/providers/materials_discovery_provider.dart';
+import 'package:apuntesuct_mobile/features/catalog/presentation/widgets/academic_filter_sheet.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_discovery_screen.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_summary_card.dart';
 import 'package:flutter/material.dart';
@@ -173,5 +174,104 @@ void main() {
         isTrue,
       );
     });
+
+    testWidgets(
+      'Aplicar filtro de asignatura desde AcademicFilterSheet filtra resultados y muestra chip',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(buildScreen());
+        await tester.pumpAndSettle();
+
+        // Inicialmente muestra los 2 materiales de muestra
+        expect(find.byType(MaterialSummaryCard), findsNWidgets(2));
+
+        // Abrir el modal de filtros
+        await tester.tap(find.byIcon(Icons.tune_rounded));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(AcademicFilterSheet), findsOneWidget);
+
+        // Seleccionar Universidad UCT para poblar la cascada
+        await tester.tap(find.byKey(const Key('filter_university_dropdown')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Universidad Católica de Temuco').last);
+        await tester.pumpAndSettle();
+
+        // Seleccionar Carrera
+        await tester.tap(find.byKey(const Key('filter_career_dropdown')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Ingeniería Civil en Informática').last);
+        await tester.pumpAndSettle();
+
+        // Seleccionar Asignatura "Cálculo I"
+        await tester.tap(find.byKey(const Key('filter_subject_dropdown')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.textContaining('Cálculo I').last);
+        await tester.pumpAndSettle();
+
+        // Presionar Aplicar filtros
+        await tester.ensureVisible(find.byKey(const Key('filter_apply_button')));
+        await tester.tap(find.byKey(const Key('filter_apply_button')));
+        await tester.pumpAndSettle();
+
+        // El modal debe haberse cerrado
+        expect(find.byType(AcademicFilterSheet), findsNothing);
+
+        // Ahora solo debe mostrar 1 material coincidente ("Cálculo I")
+        expect(find.byType(MaterialSummaryCard), findsOneWidget);
+        expect(find.text('Cálculo I'), findsWidgets);
+      },
+    );
+
+    testWidgets(
+      'Cambiar de universidad y aplicar sin asignatura limpia el filtro de asignatura previo (#327)',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(buildScreen());
+        await tester.pumpAndSettle();
+
+        // 1. Abrir modal y seleccionar UCT -> Informática -> Cálculo I
+        await tester.tap(find.byIcon(Icons.tune_rounded));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('filter_university_dropdown')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Universidad Católica de Temuco').last);
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('filter_career_dropdown')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Ingeniería Civil en Informática').last);
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('filter_subject_dropdown')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.textContaining('Cálculo I').last);
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(find.byKey(const Key('filter_apply_button')));
+        await tester.tap(find.byKey(const Key('filter_apply_button')));
+        await tester.pumpAndSettle();
+
+        // Filtro aplicado: 1 material
+        expect(find.byType(MaterialSummaryCard), findsOneWidget);
+
+        // 2. Abrir modal de nuevo y cambiar universidad a UFRO (resetea cascada de asignatura)
+        await tester.tap(find.byIcon(Icons.tune_rounded));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('filter_university_dropdown')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Universidad de La Frontera').last);
+        await tester.pumpAndSettle();
+
+        // 3. Aplicar SIN seleccionar asignatura
+        await tester.ensureVisible(find.byKey(const Key('filter_apply_button')));
+        await tester.tap(find.byKey(const Key('filter_apply_button')));
+        await tester.pumpAndSettle();
+
+        // El filtro de asignatura previo debe haberse limpiado y mostrar todos los materiales (2)
+        expect(find.byType(MaterialSummaryCard), findsNWidgets(2));
+        expect(find.textContaining('Asignatura: Cálculo I'), findsNothing);
+      },
+    );
   });
 }
