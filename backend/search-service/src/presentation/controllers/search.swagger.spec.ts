@@ -50,7 +50,6 @@ describe('Search Swagger', () => {
 
       expect(operation).toBeDefined();
       expect(parameters.map((parameter) => parameter.name).sort()).toEqual([
-        'academicYear',
         'careerId',
         'order',
         'page',
@@ -62,6 +61,7 @@ describe('Search Swagger', () => {
         'type',
         'universityId',
         'year',
+      ]);
       ]);
       const byName = new Map(
         parameters.map((parameter) => [parameter.name, parameter]),
