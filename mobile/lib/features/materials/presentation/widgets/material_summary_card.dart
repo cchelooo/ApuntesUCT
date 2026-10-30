@@ -202,14 +202,22 @@ class MaterialSummaryCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2),
-                        Text(
-                          '${material.subjectName} • ${material.careerName}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.outline,
+                        // Mostrar asignatura y carrera solo si están disponibles y no son genéricas vacías
+                        if ((material.subjectName.isNotEmpty && material.subjectName != 'General') || 
+                            (material.careerName.isNotEmpty && material.careerName != 'UCT')) ...[
+                          Text(
+                            [
+                              if (material.subjectName.isNotEmpty && material.subjectName != 'General') material.subjectName,
+                              if (material.careerName.isNotEmpty && material.careerName != 'UCT') material.careerName,
+                            ].join(' • '),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.outline,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                          const SizedBox(height: 2),
+                        ],
                         if (material.professor != null &&
                             material.professor!.isNotEmpty) ...[
                           const SizedBox(height: 2),

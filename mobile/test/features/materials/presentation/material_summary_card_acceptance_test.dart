@@ -210,5 +210,32 @@ void main() {
         expect(tester.takeException(), isNull);
       },
     );
+    testWidgets('Oculta asignatura y carrera cuando el servidor solo entrega IDs sin nombres', (tester) async {
+      // Material simulado con nombres vacíos / sin datos del catálogo
+      final materialSinNombres = MaterialSummary(
+        id: 'mat_empty',
+        title: 'Documento de prueba',
+        subjectName: '',
+        careerName: '',
+        materialType: 'Guía',
+        authorName: 'Ana Pérez',
+        status: 'PUBLISHED',
+        rating: 0.0,
+        downloadCount: 0,
+        // ... los demás campos requeridos por tu modelo con valores por defecto seguros
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: MaterialSummaryCard(material: materialSinNombres),
+          ),
+        ),
+      );
+
+      // Verificamos que el título y autor estén presentes, pero NO aparezca el texto genérico o vacío en la zona de asignatura/carrera
+      expect(find.text('Documento de prueba'), findsOneWidget);
+      expect(find.text('General • UCT'), findsNothing);
+    });
   });
 }
