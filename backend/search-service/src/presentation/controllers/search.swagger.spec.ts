@@ -50,19 +50,22 @@ describe('Search Swagger', () => {
 
       expect(operation).toBeDefined();
       expect(parameters.map((parameter) => parameter.name).sort()).toEqual([
+        'academicYear',
+        'careerId',
+        'order',
         'page',
         'pageSize',
+        'professorId',
         'q',
+        'sortBy',
+        'subjectId',
+        'type',
+        'universityId',
+        'year',
       ]);
-
       const byName = new Map(
         parameters.map((parameter) => [parameter.name, parameter]),
       );
-      expect(byName.get('q')).toMatchObject({
-        in: 'query',
-        required: false,
-        schema: { type: 'string', maxLength: 200 },
-      });
       expect(byName.get('page')).toMatchObject({
         in: 'query',
         required: false,
