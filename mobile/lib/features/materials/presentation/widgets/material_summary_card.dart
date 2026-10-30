@@ -10,17 +10,12 @@ class MaterialSummaryCard extends StatelessWidget {
 
   const MaterialSummaryCard({super.key, required this.material, this.onTap});
 
-  /// Navegación por defecto a la ruta /materials/:id (issue #279).
-  ///
-  /// Usa go_router para que la URL cambie y [MaterialDetailRoute] resuelva
-  /// el detalle. Si no hay router en el árbol (tests aislados de widgets
-  /// con MaterialApp simple), cae al Navigator legacy con un detalle local.
   void _defaultNavigate(BuildContext context) {
     try {
       GoRouter.of(context).push('/materials/${material.id}');
       return;
     } catch (_) {
-      // Sin GoRouter disponible (test aislado): fallback legacy.
+      // Sin GoRouter disponible (tests unitarios/aislados): fallback legacy
     }
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -32,10 +27,55 @@ class MaterialSummaryCard extends StatelessWidget {
     );
   }
 
+  /// Configuración de color accesible según el estado del material y el brillo del tema.
+  (Color background, Color foreground) _statusColors(
+    MaterialStatus status,
+    ColorScheme colorScheme,
+    bool isDark,
+  ) {
+    switch (status) {
+      case MaterialStatus.published:
+      case MaterialStatus.approved:
+        return isDark
+            ? (
+                Colors.green.shade900.withValues(alpha: 0.4),
+                Colors.green.shade200,
+              )
+            : (Colors.green.shade100, Colors.green.shade900);
+      case MaterialStatus.pendingReview:
+        return isDark
+            ? (
+                Colors.amber.shade900.withValues(alpha: 0.4),
+                Colors.amber.shade200,
+              )
+            : (Colors.amber.shade100, Colors.amber.shade900);
+      case MaterialStatus.rejected:
+      case MaterialStatus.withdrawn:
+        return isDark
+            ? (
+                colorScheme.errorContainer.withValues(alpha: 0.4),
+                colorScheme.onErrorContainer,
+              )
+            : (colorScheme.errorContainer, colorScheme.onErrorContainer);
+      case MaterialStatus.unknown:
+        return (
+          colorScheme.surfaceContainerHighest,
+          colorScheme.onSurfaceVariant,
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    final (statusBg, statusFg) = _statusColors(
+      material.reviewStatus,
+      colorScheme,
+      isDark,
+    );
 
     return Card(
       elevation: 0,
@@ -55,38 +95,38 @@ class MaterialSummaryCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Fila superior: Tipo, Año académico y Badge de Estado
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Flexible(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Flexible(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            material.materialType.isEmpty
+                                ? 'SIN TIPO'
+                                : material.materialType.toUpperCase(),
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: colorScheme.onPrimaryContainer,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10,
                             ),
-                            decoration: BoxDecoration(
-                              color: colorScheme.primaryContainer,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              material.materialType.isEmpty
-                                  ? 'SIN TIPO'
-                                  : material.materialType.toUpperCase(),
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: colorScheme.onPrimaryContainer,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 6,
@@ -108,23 +148,21 @@ class MaterialSummaryCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
+                  // Badge de estado con semántica clara
                   Container(
+                    key: const Key('material_status_badge'),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 6,
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: material.reviewStatus == MaterialStatus.approved
-                          ? Colors.green.withValues(alpha: 0.15)
-                          : Colors.amber.withValues(alpha: 0.15),
+                      color: statusBg,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       material.reviewStatus.label.toUpperCase(),
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: material.reviewStatus == MaterialStatus.approved
-                            ? Colors.green.shade800
-                            : Colors.amber.shade900,
+                        color: statusFg,
                         fontWeight: FontWeight.bold,
                         fontSize: 10,
                       ),
@@ -133,6 +171,7 @@ class MaterialSummaryCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
+              // Cuerpo: Ícono y Detalles del Contrato
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -163,14 +202,22 @@ class MaterialSummaryCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2),
-                        Text(
-                          '${material.subjectName} • ${material.careerName}',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.outline,
+                        // Mostrar asignatura y carrera solo si están disponibles y no son genéricas vacías
+                        if ((material.subjectName.isNotEmpty && material.subjectName != 'General') || 
+                            (material.careerName.isNotEmpty && material.careerName != 'UCT')) ...[
+                          Text(
+                            [
+                              if (material.subjectName.isNotEmpty && material.subjectName != 'General') material.subjectName,
+                              if (material.careerName.isNotEmpty && material.careerName != 'UCT') material.careerName,
+                            ].join(' • '),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.outline,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                          const SizedBox(height: 2),
+                        ],
                         if (material.professor != null &&
                             material.professor!.isNotEmpty) ...[
                           const SizedBox(height: 2),
@@ -215,6 +262,8 @@ class MaterialSummaryCard extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 10),
+              // Fila inferior: Autor y Metadatos de interacción
+              // Fila inferior: Autor y Metadatos de interacción
               Row(
                 children: [
                   Icon(
@@ -233,32 +282,40 @@ class MaterialSummaryCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  Icon(
-                    Icons.star_rounded,
-                    size: 15,
-                    color: Colors.amber.shade700,
-                  ),
-                  const SizedBox(width: 2),
-                  Text(
-                    material.rating.toStringAsFixed(1),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
+                  // OCULTAR RATING: Si es 0 o no hay valor real, no se muestra para evitar datos ficticios
+                  if (material.rating > 0) ...[
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.star_rounded,
+                      size: 15,
+                      color: isDark
+                          ? Colors.amber.shade300
+                          : Colors.amber.shade700,
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Icon(
-                    Icons.download_rounded,
-                    size: 14,
-                    color: colorScheme.outline,
-                  ),
-                  const SizedBox(width: 2),
-                  Text(
-                    '${material.downloadCount}',
-                    style: theme.textTheme.labelSmall?.copyWith(
+                    const SizedBox(width: 2),
+                    Text(
+                      material.rating.toStringAsFixed(1),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                  // OCULTAR DESCARGAS: Si el contador es 0 o no está disponible, se omite por completo
+                  if (material.downloadCount > 0) ...[
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.download_rounded,
+                      size: 14,
                       color: colorScheme.outline,
                     ),
-                  ),
+                    const SizedBox(width: 2),
+                    Text(
+                      '${material.downloadCount}',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colorScheme.outline,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ],
