@@ -1,4 +1,4 @@
-import { Test } from '@nestjs/testing';
+﻿import { Test } from '@nestjs/testing';
 import { CatalogPort } from '../../application/ports/catalog.port';
 import { MaterialPort } from '../../application/ports/material.port';
 import { SearchModule } from '../../search.module';
@@ -41,7 +41,7 @@ describe('Search Swagger', () => {
     await app.init();
 
     try {
-      const document = setupSwagger(app);
+      const document: any = setupSwagger(app);
       const operation = document.paths['/api/v1/search']?.get;
       const parameters = (operation?.parameters ??
         []) as unknown as DocumentedParameter[];
@@ -62,7 +62,7 @@ describe('Search Swagger', () => {
         'universityId',
         'year',
       ]);
-      ]);
+
       const byName = new Map(
         parameters.map((parameter) => [parameter.name, parameter]),
       );
