@@ -1,4 +1,5 @@
 import 'package:apuntesuct_mobile/core/widgets/empty_state.dart';
+import 'package:apuntesuct_mobile/core/errors/api_exception.dart';
 import 'package:apuntesuct_mobile/core/widgets/error_state.dart';
 import 'package:apuntesuct_mobile/core/widgets/loading_state.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
@@ -85,8 +86,7 @@ class MaterialDetailScreen extends StatelessWidget {
                           children: [
                             const EmptyState(
                               title: 'Material no encontrado',
-                              subtitle:
-                                  'El material solicitado no existe o fue eliminado del catálogo.',
+                              subtitle: 'El material solicitado no existe o fue eliminado del catálogo.',
                             ),
                             const SizedBox(height: 20),
                             FilledButton.icon(
@@ -104,8 +104,10 @@ class MaterialDetailScreen extends StatelessWidget {
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       child: ErrorState(
-                        message:
-                            'No fue posible cargar el material. Verifica tu conexión.',
+                        message: apiErrorMessage(
+                          error,
+                          fallback: 'No fue posible cargar el material. Verifica tu conexión.',
+                        ),
                         onRetry: () =>
                             ref.invalidate(materialDetailProvider(materialId)),
                       ),

@@ -191,9 +191,10 @@ tamaño móvil reproducible de 390 × 844:
 - `pumpWidgetUnderTest` para un widget dentro de Material y Riverpod.
 - `pumpRouterUnderTest` para rutas aisladas con `GoRouter`.
 
-Los providers que normalmente consultan servicios externos deben reemplazarse
-mediante `ProviderScope.overrides`. Así, las pruebas no dependen del Backend ni
-de Internet y siguen verificando la interfaz y la navegación reales.
+Las pruebas de interfaz pueden reemplazar repositorios o providers mediante
+`ProviderScope.overrides`. Las pruebas de integración HTTP conservan los
+repositorios y providers reales y sustituyen únicamente el transporte del
+`ApiClient` central. Ambos tipos se ejecutan sin Backend ni Internet.
 
 Desde `mobile/` se puede ejecutar toda la batería o archivos específicos:
 
@@ -209,6 +210,44 @@ flutter test test/features/auth/presentation/login_dio_test.dart
 # Generar reporte de cobertura
 flutter test --coverage
 ```
+
+### Integración HTTP de repositorios, providers e interfaz
+
+Desde `mobile/`:
+
+```bash
+flutter test \
+  test/integration/gateway_read_providers_test.dart \
+  test/integration/gateway_search_providers_test.dart \
+  test/integration/gateway_material_operations_test.dart \
+  test/integration/gateway_discovery_ui_test.dart
+```
+
+Las suites usan Dio, sus interceptores y los repositorios/providers de producción:
+
+| Suite | Recorrido |
+| --- | --- |
+| `gateway_read_providers_test.dart` | Selectores reales de Catalog, listado paginado, vacíos, detalle, estados de Riverpod y reintentos |
+| `gateway_search_providers_test.dart` | Texto, filtros individuales y jerárquicos combinados, orden, paginación, DTO inválidos, errores y respuestas atrasadas |
+| `gateway_material_operations_test.dart` | Multipart y bytes enviados, errores de subida, creación de versión, actualización del historial y descarga histórica |
+| `gateway_discovery_ui_test.dart` | Discovery → tarjeta → ruta de detalle, mensajes de error, reintento y distinción entre 404, 502, timeout y cero resultados |
+
+Se verifican las URI completas del Gateway y los errores `401`, `404`, `413`,
+`415`, `500`, `502` y timeout. Los fallos del Gateway se propagan sin consultar
+materiales de ejemplo. En pruebas de interfaz que sí necesitan fixtures, el
+repositorio mock debe seleccionarse explícitamente mediante un override.
+
+Search envía `page` y `pageSize` explícitos (Mobile solicita 10; el servidor usa
+20 por defecto). Su respuesta debe incluir `query`, `page`, `pageSize`, `total`,
+`results` y `context`, respetar sus tipos y corresponder a la página solicitada.
+Los filtros y el orden se ejercitan a través de `MaterialSearchController`.
+
+`test/helpers/gateway_test_transport.dart` entrega JSON controlado compatible con
+los DTO públicos y registra solicitudes y cuerpos multipart. No se reemplazan
+los repositorios por modelos ya construidos ni se contacta Kubero. Solo la
+frontera de guardado/apertura de archivos se sustituye por memoria para evitar
+plugins en la suite HTTP. Estas pruebas no validan un servidor desplegado ni
+la ejecución nativa en Android/iOS.
 
 ### Descarga y apertura de materiales
 

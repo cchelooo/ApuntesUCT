@@ -60,7 +60,7 @@ void main() {
       expect(state.result!.asData, isNull);
       expect(
         adapter.requests.single.uri.toString(),
-        'https://central.example.test/api/v1/search?q=%C3%A1lgebra',
+        'https://central.example.test/api/v1/search?q=%C3%A1lgebra&page=1&pageSize=10',
       );
     },
   );

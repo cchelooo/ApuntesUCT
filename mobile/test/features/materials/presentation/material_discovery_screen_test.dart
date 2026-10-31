@@ -14,7 +14,13 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   Widget buildScreen({List<dynamic> overrides = const []}) {
     return ProviderScope(
-      overrides: overrides.cast(),
+      overrides: overrides.isEmpty
+          ? [
+              materialsRepositoryProvider.overrideWithValue(
+                MockMaterialsRepository(),
+              ),
+            ]
+          : overrides.cast(),
       child: const MaterialApp(home: MaterialDiscoveryScreen()),
     );
   }
@@ -209,7 +215,9 @@ void main() {
         await tester.pumpAndSettle();
 
         // Presionar Aplicar filtros
-        await tester.ensureVisible(find.byKey(const Key('filter_apply_button')));
+        await tester.ensureVisible(
+          find.byKey(const Key('filter_apply_button')),
+        );
         await tester.tap(find.byKey(const Key('filter_apply_button')));
         await tester.pumpAndSettle();
 
@@ -247,7 +255,9 @@ void main() {
         await tester.tap(find.textContaining('Cálculo I').last);
         await tester.pumpAndSettle();
 
-        await tester.ensureVisible(find.byKey(const Key('filter_apply_button')));
+        await tester.ensureVisible(
+          find.byKey(const Key('filter_apply_button')),
+        );
         await tester.tap(find.byKey(const Key('filter_apply_button')));
         await tester.pumpAndSettle();
 
@@ -264,7 +274,9 @@ void main() {
         await tester.pumpAndSettle();
 
         // 3. Aplicar SIN seleccionar asignatura
-        await tester.ensureVisible(find.byKey(const Key('filter_apply_button')));
+        await tester.ensureVisible(
+          find.byKey(const Key('filter_apply_button')),
+        );
         await tester.tap(find.byKey(const Key('filter_apply_button')));
         await tester.pumpAndSettle();
 
