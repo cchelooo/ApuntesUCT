@@ -16,8 +16,14 @@
             "header": [],
             "url": {
               "raw": "{{gatewayUrl}}/api/v1/health",
-              "host": ["{{gatewayUrl}}"],
-              "path": ["api", "v1", "health"]
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "health"
+              ]
             },
             "description": "Chequeo público de disponibilidad del Gateway. No consulta bases de datos ni otros microservicios."
           },
@@ -42,8 +48,16 @@
             "header": [],
             "url": {
               "raw": "{{gatewayUrl}}/api/v1/api/v1/health",
-              "host": ["{{gatewayUrl}}"],
-              "path": ["api", "v1", "api", "v1", "health"]
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "api",
+                "v1",
+                "health"
+              ]
             },
             "description": "Chequeo público de disponibilidad del Gateway. No consulta bases de datos ni otros microservicios."
           },
@@ -68,8 +82,15 @@
             "header": [],
             "url": {
               "raw": "{{gatewayUrl}}/api/v1/auth/health",
-              "host": ["{{gatewayUrl}}"],
-              "path": ["api", "v1", "auth", "health"]
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "health"
+              ]
             },
             "description": "Ruta proxeada hacia Auth (no aparece en el OpenAPI del gateway porque el proxy es middleware). El gateway reescribe la ruta a /api/v1/health en Auth. Responde 502 si Auth no acepta la conexión o tarda más de 5 segundos."
           },
@@ -109,8 +130,15 @@
             },
             "url": {
               "raw": "{{gatewayUrl}}/api/v1/auth/login",
-              "host": ["{{gatewayUrl}}"],
-              "path": ["api", "v1", "auth", "login"]
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
             },
             "description": "Ruta proxeada hacia Auth (ver #91). Devuelve el JWT sin firma del login mock (#92) y guarda el accessToken en la variable accessToken. Responde 502 si Auth no está disponible."
           },
@@ -146,8 +174,14 @@
             ],
             "url": {
               "raw": "{{gatewayUrl}}/api/v1/catalog",
-              "host": ["{{gatewayUrl}}"],
-              "path": ["api", "v1", "catalog"]
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog"
+              ]
             },
             "description": "Ruta proxeada hacia Catalog (ProxyModule, #122). No hay health reescrito para Catalog: su healthcheck está en {{catalogUrl}}/api/v1/health. Responde 502 con \"Catalog Service no disponible\" si Catalog no responde."
           },
@@ -178,8 +212,15 @@
             ],
             "url": {
               "raw": "{{gatewayUrl}}/api/v1/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}",
-              "host": ["{{gatewayUrl}}"],
-              "path": ["api", "v1", "catalog", "filter"],
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "filter"
+              ],
               "query": [
                 {
                   "key": "universityId",
@@ -218,6 +259,94 @@
               }
             }
           ]
+        },
+        {
+          "name": "Search (Gateway)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/v1/search?q=listas&page=1&pageSize=20&sortBy=createdAt&order=desc",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "listas",
+                  "description": "Texto de búsqueda (opcional)",
+                  "disabled": false
+                },
+                {
+                  "key": "universityId",
+                  "value": "{{universityId}}",
+                  "description": "UUID de universidad (opcional)",
+                  "disabled": true
+                },
+                {
+                  "key": "careerId",
+                  "value": "{{careerId}}",
+                  "description": "UUID de carrera (opcional)",
+                  "disabled": true
+                },
+                {
+                  "key": "subjectId",
+                  "value": "{{subjectId}}",
+                  "description": "UUID de asignatura (opcional)",
+                  "disabled": true
+                },
+                {
+                  "key": "professorId",
+                  "value": "{{professorId}}",
+                  "description": "UUID de profesor (opcional)",
+                  "disabled": true
+                },
+                {
+                  "key": "year",
+                  "value": "2026",
+                  "description": "Año académico (opcional)",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "APUNTE",
+                  "description": "Tipo de material (APUNTE|GUIA|EJERCICIO|EXAMEN|OTRO) (opcional)",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página (default 1)",
+                  "disabled": false
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20",
+                  "description": "Tamaño página (default 20, max 100)",
+                  "disabled": false
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt",
+                  "description": "Campo de ordenamiento (createdAt|updatedAt|title|academicYear) (opcional)",
+                  "disabled": false
+                },
+                {
+                  "key": "order",
+                  "value": "desc",
+                  "description": "Orden (asc|desc, default desc)",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Búsqueda compuesta Gateway → Search → Material/Catalog. Soporta filtros por contexto académico, año, tipo, paginación y ordenamiento."
+          },
+          "response": []
         }
       ]
     },
@@ -232,8 +361,14 @@
             "header": [],
             "url": {
               "raw": "{{authUrl}}/api/v1/health",
-              "host": ["{{authUrl}}"],
-              "path": ["api", "v1", "health"]
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "health"
+              ]
             },
             "description": "/api/v1/health (Auth Service)"
           },
@@ -273,8 +408,15 @@
             },
             "url": {
               "raw": "{{authUrl}}/api/v1/auth/login",
-              "host": ["{{authUrl}}"],
-              "path": ["api", "v1", "auth", "login"]
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
             },
             "description": "Acepta cualquier credencial con formato válido. Devuelve un JWT falso sin firma, solo para integración del frontend; no autentica usuarios."
           },
@@ -310,8 +452,14 @@
             "header": [],
             "url": {
               "raw": "{{catalogUrl}}/api/v1/health",
-              "host": ["{{catalogUrl}}"],
-              "path": ["api", "v1", "health"]
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "health"
+              ]
             },
             "description": "/api/v1/health (Catalog Service)"
           },
@@ -342,8 +490,14 @@
             ],
             "url": {
               "raw": "{{catalogUrl}}/api/v1/catalog",
-              "host": ["{{catalogUrl}}"],
-              "path": ["api", "v1", "catalog"]
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog"
+              ]
             },
             "description": "Devuelve la jerarquía base completa del catálogo (Universidades -> Carreras -> Asignaturas) para ser consumida de forma inicial por el frontend."
           },
@@ -374,8 +528,15 @@
             ],
             "url": {
               "raw": "{{catalogUrl}}/api/v1/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}",
-              "host": ["{{catalogUrl}}"],
-              "path": ["api", "v1", "catalog", "filter"],
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "filter"
+              ],
               "query": [
                 {
                   "key": "universityId",
@@ -428,8 +589,15 @@
             ],
             "url": {
               "raw": "{{catalogUrl}}/api/v1/catalog/universities",
-              "host": ["{{catalogUrl}}"],
-              "path": ["api", "v1", "catalog", "universities"]
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "universities"
+              ]
             },
             "description": "Devuelve las universidades activas ordenadas por nombre. Alimenta el selector de universidades del frontend."
           },
@@ -474,8 +642,15 @@
             },
             "url": {
               "raw": "{{catalogUrl}}/api/v1/catalog/universities",
-              "host": ["{{catalogUrl}}"],
-              "path": ["api", "v1", "catalog", "universities"]
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "universities"
+              ]
             },
             "description": "/api/v1/catalog/universities (Catalog Service)"
           },
@@ -506,8 +681,15 @@
             ],
             "url": {
               "raw": "{{catalogUrl}}/api/v1/catalog/careers?universityId={{universityId}}",
-              "host": ["{{catalogUrl}}"],
-              "path": ["api", "v1", "catalog", "careers"],
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "careers"
+              ],
               "query": [
                 {
                   "key": "universityId",
@@ -559,8 +741,15 @@
             },
             "url": {
               "raw": "{{catalogUrl}}/api/v1/catalog/careers",
-              "host": ["{{catalogUrl}}"],
-              "path": ["api", "v1", "catalog", "careers"]
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "careers"
+              ]
             },
             "description": "/api/v1/catalog/careers (Catalog Service)"
           },
@@ -591,8 +780,15 @@
             ],
             "url": {
               "raw": "{{catalogUrl}}/api/v1/catalog/subjects?careerId={{careerId}}",
-              "host": ["{{catalogUrl}}"],
-              "path": ["api", "v1", "catalog", "subjects"],
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "subjects"
+              ],
               "query": [
                 {
                   "key": "careerId",
@@ -644,8 +840,15 @@
             },
             "url": {
               "raw": "{{catalogUrl}}/api/v1/catalog/subjects",
-              "host": ["{{catalogUrl}}"],
-              "path": ["api", "v1", "catalog", "subjects"]
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "subjects"
+              ]
             },
             "description": "/api/v1/catalog/subjects (Catalog Service)"
           },
@@ -676,8 +879,15 @@
             ],
             "url": {
               "raw": "{{catalogUrl}}/api/v1/catalog/professors?subjectId={{subjectId}}",
-              "host": ["{{catalogUrl}}"],
-              "path": ["api", "v1", "catalog", "professors"],
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "professors"
+              ],
               "query": [
                 {
                   "key": "subjectId",
@@ -729,8 +939,15 @@
             },
             "url": {
               "raw": "{{catalogUrl}}/api/v1/catalog/professors",
-              "host": ["{{catalogUrl}}"],
-              "path": ["api", "v1", "catalog", "professors"]
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "professors"
+              ]
             },
             "description": "Opcionalmente vincula el profesor a una o más asignaturas mediante `subjectIds`."
           },
@@ -761,8 +978,16 @@
             ],
             "url": {
               "raw": "{{catalogUrl}}/api/v1/catalog/universities/{id}",
-              "host": ["{{catalogUrl}}"],
-              "path": ["api", "v1", "catalog", "universities", "{id}"]
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "universities",
+                "{id}"
+              ]
             },
             "description": "Elimina en cascada sus carreras, asignaturas y recursos asociados."
           },
@@ -793,8 +1018,16 @@
             ],
             "url": {
               "raw": "{{catalogUrl}}/api/v1/catalog/careers/{id}",
-              "host": ["{{catalogUrl}}"],
-              "path": ["api", "v1", "catalog", "careers", "{id}"]
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "careers",
+                "{id}"
+              ]
             },
             "description": "Elimina en cascada sus asignaturas y recursos asociados."
           },
@@ -825,8 +1058,16 @@
             ],
             "url": {
               "raw": "{{catalogUrl}}/api/v1/catalog/professors/{id}",
-              "host": ["{{catalogUrl}}"],
-              "path": ["api", "v1", "catalog", "professors", "{id}"]
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "professors",
+                "{id}"
+              ]
             },
             "description": "Desvincula al profesor de sus asignaturas y deja sus recursos sin profesor asociado."
           },
@@ -857,8 +1098,16 @@
             ],
             "url": {
               "raw": "{{catalogUrl}}/api/v1/catalog/subjects/{id}",
-              "host": ["{{catalogUrl}}"],
-              "path": ["api", "v1", "catalog", "subjects", "{id}"]
+              "host": [
+                "{{catalogUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "catalog",
+                "subjects",
+                "{id}"
+              ]
             },
             "description": "/api/v1/catalog/subjects/{id} (Catalog Service)"
           },
