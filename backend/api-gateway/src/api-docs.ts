@@ -71,7 +71,10 @@ const SEARCH_SCHEMAS: NonNullable<OpenAPIObject['components']>['schemas'] = {
     properties: {
       statusCode: { type: 'integer' },
       message: {
-        oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }],
+        oneOf: [
+          { type: 'string' },
+          { type: 'array', items: { type: 'string' } },
+        ],
       },
       error: { type: 'string' },
     },
@@ -176,7 +179,7 @@ function addSearchDocumentation(document: OpenAPIObject): void {
       tags: ['Search'],
       summary: 'Buscar materiales y recursos',
       description:
-        'Compone el listado paginado de Material con el contexto académico resuelto por Catalog. ' +
+        'Busca por título o descripción, filtra y ordena antes de paginar; compone Material con el contexto académico de Catalog. ' +
         'La respuesta conserva el contrato público de Search.',
       parameters: [
         {
@@ -184,15 +187,80 @@ function addSearchDocumentation(document: OpenAPIObject): void {
           in: 'query',
           required: false,
           description:
-            'Término de búsqueda textual. Se devuelve en el campo `query` de la respuesta.',
+            'Coincidencia parcial por título o descripción sin distinguir mayúsculas ni tildes. Se eliminan espacios exteriores; vacío equivale a omitir q.',
           schema: { type: 'string', maxLength: 200 },
           example: 'Estructuras de Datos',
+        },
+        {
+          name: 'universityId',
+          in: 'query',
+          required: false,
+          description: 'Universidad activa de Catalog; primer nivel.',
+          schema: { type: 'string', format: 'uuid' },
+        },
+        {
+          name: 'careerId',
+          in: 'query',
+          required: false,
+          description: 'Carrera activa. Requiere universityId.',
+          schema: { type: 'string', format: 'uuid' },
+        },
+        {
+          name: 'subjectId',
+          in: 'query',
+          required: false,
+          description: 'Asignatura activa. Requiere careerId y universityId.',
+          schema: { type: 'string', format: 'uuid' },
+        },
+        {
+          name: 'professorId',
+          in: 'query',
+          required: false,
+          description:
+            'Profesor del material vinculado a la asignatura. Requiere subjectId, careerId y universityId.',
+          schema: { type: 'string', format: 'uuid' },
+        },
+        {
+          name: 'year',
+          in: 'query',
+          required: false,
+          description:
+            'Año académico exacto, independiente del contexto y tipo.',
+          schema: { type: 'integer', minimum: 1900, maximum: 2099 },
+        },
+        {
+          name: 'type',
+          in: 'query',
+          required: false,
+          description:
+            'materialType exacto de Material, distingue mayúsculas. Se eliminan espacios exteriores; no puede estar vacío. Sin coincidencias devuelve total 0.',
+          schema: { type: 'string', maxLength: 100, pattern: '\\S' },
+        },
+        {
+          name: 'sortBy',
+          in: 'query',
+          required: false,
+          description:
+            'Campo de ordenamiento; title normaliza mayúsculas y tildes. Nulos al final, empates por id DESC.',
+          schema: {
+            type: 'string',
+            enum: ['createdAt', 'title', 'year'],
+            default: 'createdAt',
+          },
+        },
+        {
+          name: 'order',
+          in: 'query',
+          required: false,
+          description:
+            'Dirección del ordenamiento. El desempate por id siempre es DESC.',
+          schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' },
         },
         {
           name: 'page',
           in: 'query',
           required: false,
-          description: 'Página solicitada, comenzando en 1.',
+          description: 'Página final de coincidencias, comenzando en 1.',
           schema: {
             type: 'integer',
             default: 1,
@@ -217,8 +285,7 @@ function addSearchDocumentation(document: OpenAPIObject): void {
       ],
       responses: {
         '200': {
-          description:
-            'Materiales candidatos con su contexto académico.',
+          description: 'Materiales candidatos con su contexto académico.',
           content: {
             'application/json': {
               schema: { $ref: '#/components/schemas/SearchResponse' },

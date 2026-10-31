@@ -83,7 +83,9 @@ describe('API Gateway (e2e)', () => {
         expect(res.text).toContain('http://localhost:3003/api/docs');
         expect(res.text).toContain('http://localhost:3005/api/docs');
         expect(res.text).toContain('Quality Service todavía no está enrutado');
-        expect(res.text).toContain('devuelve el listado paginado de materiales');
+        expect(res.text).toContain(
+          'devuelve el listado paginado de materiales',
+        );
         expect(res.text).toContain(
           'compone esos materiales con el contexto académico',
         );
@@ -125,7 +127,19 @@ describe('API Gateway (e2e)', () => {
         const parameterNames = search.parameters.map(
           (parameter: { name: string }) => parameter.name,
         );
-        expect(parameterNames.sort()).toEqual(['page', 'pageSize', 'q']);
+        expect(parameterNames.sort()).toEqual([
+          'careerId',
+          'order',
+          'page',
+          'pageSize',
+          'professorId',
+          'q',
+          'sortBy',
+          'subjectId',
+          'type',
+          'universityId',
+          'year',
+        ]);
         for (const status of ['200', '400', '502', '503']) {
           expect(search.responses[status]).toBeDefined();
         }
