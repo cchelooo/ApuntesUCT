@@ -6,6 +6,7 @@ import '../../../core/network/api_client.dart';
 import '../domain/models/material_page.dart';
 import '../domain/models/material_requests.dart';
 import '../domain/repositories/search_repository.dart';
+import 'search_response.dart';
 
 /// Permite distinguir una integración pendiente de una búsqueda sin resultados.
 class SearchContractPendingException extends ApiException {
@@ -32,18 +33,27 @@ class DioSearchRepository implements SearchRepository {
     int pageSize = 10,
     CancelToken? cancelToken,
   }) async {
+    if (page < 1 || pageSize < 1 || pageSize > 100 || page > 2147483647) {
+      throw ArgumentError('Paginación fuera de los límites de Search.');
+    }
     final cleanText = query.text.trim();
     final queryParams = <String, dynamic>{
       if (cleanText.isNotEmpty) 'q': cleanText,
-      if (query.subjectId != null && query.subjectId!.isNotEmpty)
-        'subjectId': query.subjectId,
-      if (query.careerId != null && query.careerId!.isNotEmpty)
-        'careerId': query.careerId,
-      if (query.universityId != null && query.universityId!.isNotEmpty)
+      for (final entry in <String, String?>{
         'universityId': query.universityId,
-      if (query.type != null && query.type!.isNotEmpty) 'type': query.type,
-      if (page != 1) 'page': page,
-      if (pageSize != 10) 'pageSize': pageSize,
+        'careerId': query.careerId,
+        'subjectId': query.subjectId,
+        'professorId': query.professorId,
+        'type': query.type,
+        'sortBy': query.sortBy,
+        'order': query.order,
+      }.entries)
+        if (entry.value?.trim().isNotEmpty ?? false)
+          entry.key: entry.value!.trim(),
+      if (query.year != null) 'year': query.year,
+      // El servidor usa 20 por defecto, mientras Mobile solicita 10.
+      'page': page,
+      'pageSize': pageSize,
     };
 
     try {
@@ -57,12 +67,7 @@ class DioSearchRepository implements SearchRepository {
       if (data is Map<String, dynamic>) {
         final message = data['message']?.toString() ?? '';
         final isStubResponse =
-            message == stubMessage ||
-            message.contains('Semana 3') ||
-            (data['results'] is List &&
-                (data['results'] as List).isEmpty &&
-                data['total'] == 0 &&
-                message.isNotEmpty);
+            message == stubMessage || message.contains('Semana 3');
 
         if (isStubResponse) {
           throw SearchContractPendingException(
@@ -70,29 +75,23 @@ class DioSearchRepository implements SearchRepository {
             data: data,
           );
         }
-
-        if (data.containsKey('results') && !data.containsKey('items')) {
-          final mapped = Map<String, dynamic>.from(data);
-          mapped['items'] = data['results'] ?? [];
-          mapped['page'] = page;
-          mapped['pageSize'] = pageSize;
-          return MaterialPage.fromJson(mapped);
-        }
-        return MaterialPage.fromJson(data);
       }
-
-      return MaterialPage(
-        items: const [],
-        page: page,
-        pageSize: pageSize,
-        total: 0,
-      );
+      final result = searchPageFromResponse(data);
+      if (result.page != page || result.pageSize != pageSize) {
+        throw const FormatException(
+          'La página de Search no corresponde a la solicitud.',
+        );
+      }
+      return result;
     } on DioException catch (error) {
       final intercepted = error.error;
       if (intercepted is ApiException) throw intercepted;
       throw ApiException.fromDioException(error);
-    } catch (_) {
-      rethrow;
+    } on FormatException catch (error) {
+      throw ApiException(
+        message: 'Search devolvió una respuesta inválida.',
+        data: error,
+      );
     }
   }
 }
