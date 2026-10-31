@@ -1,4 +1,4 @@
-﻿const assert = require('node:assert/strict');
+const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const { createServer } = require('node:http');
 const { Test } = require('@nestjs/testing');
@@ -8,7 +8,7 @@ const { AppModule: GatewayModule } = require('../dist/app.module');
 const { configureRoutes } = require('../dist/configure-routes');
 const { AppModule: SearchModule } = require('../../search-service/dist/app.module');
 
-test('Gateway → contrato HTTP real de Search', async (t) => {
+test('Gateway ? contrato HTTP real de Search', async (t) => {
   let gateway;
   let search;
   let catalog;
@@ -26,11 +26,11 @@ test('Gateway → contrato HTTP real de Search', async (t) => {
     careerId: 'career-1',
     career: {
       id: 'career-1',
-      name: 'Ingeniería Civil Informática',
+      name: 'Ingenier�a Civil Inform�tica',
       universityId: 'university-1',
       university: {
         id: 'university-1',
-        name: 'Universidad Católica de Temuco',
+        name: 'Universidad Cat�lica de Temuco',
       },
     },
     professors: [{ id: 'professor-1', name: 'Ada Lovelace' }],
@@ -89,9 +89,7 @@ test('Gateway → contrato HTTP real de Search', async (t) => {
         return;
       }
       if (catalogMode === 'invalid') {
-        respondJson(res, 200, [
-          { ...catalogSubject(), professors: {} },
-        ]);
+        respondJson(res, 200, [{ ...catalogSubject(), professors: {} }]);
         return;
       }
       respondJson(res, 200, [catalogSubject()]);
@@ -105,7 +103,7 @@ test('Gateway → contrato HTTP real de Search', async (t) => {
       }
       if (materialMode === 'rejected') {
         respondJson(res, 400, {
-          message: 'El desplazamiento de página excede el máximo permitido.',
+          message: 'El desplazamiento de p�gina excede el m�ximo permitido.',
         });
         return;
       }
@@ -116,20 +114,22 @@ test('Gateway → contrato HTTP real de Search', async (t) => {
 
       const page = Number(url.searchParams.get('page'));
       const pageSize = Number(url.searchParams.get('pageSize'));
+
       if (materialMode === 'invalid') {
         respondJson(res, 200, {
           items: [{ ...materialCandidate(), verified: 'si' }],
           page,
           pageSize,
-          total: 7,
+          total: 1,
         });
         return;
       }
+
       respondJson(res, 200, {
         items: [materialCandidate()],
         page,
         pageSize,
-        total: 7,
+        total: 1,
       });
     });
 
@@ -169,7 +169,7 @@ test('Gateway → contrato HTTP real de Search', async (t) => {
       return { status: response.status, body };
     };
 
-    await t.test('expone la búsqueda compuesta sin conocer el puerto 3005', async () => {
+    await t.test('expone la b�squeda compuesta sin conocer el puerto 3005', async () => {
       const result = await get('/api/v1/search?q=listas');
       assert.equal(result.status, 200);
       assert.equal(result.body.query, 'listas');
@@ -178,14 +178,14 @@ test('Gateway → contrato HTTP real de Search', async (t) => {
       assert.equal(result.body.total, 1);
       assert.equal(result.body.results.length, 1);
       assert.equal(result.body.results[0].subjectName, 'Estructuras de Datos');
-      assert.equal(result.body.results[0].universityName, 'Universidad Católica de Temuco');
+      assert.equal(result.body.results[0].universityName, 'Universidad Cat�lica de Temuco');
       assert.equal(result.body.context.length, 1);
       assert.equal(result.body.context[0].subjectCode, 'INF-201');
       assert.ok(materialCalls.some((call) => call.startsWith('/api/v1/materials?page=1&pageSize=100')));
       assert.ok(catalogCalls.at(-1).startsWith('/api/v1/catalog/filter'));
     });
 
-    await t.test('reenvía la paginación a Material y conserva q en la respuesta', async () => {
+    await t.test('reenv�a la paginaci�n a Material y conserva q en la respuesta', async () => {
       const result = await get('/api/v1/search?q=grafos&page=2&pageSize=5');
       assert.equal(result.status, 200);
       assert.equal(result.body.query, 'grafos');
@@ -194,7 +194,7 @@ test('Gateway → contrato HTTP real de Search', async (t) => {
       assert.ok(materialCalls.some((call) => call.startsWith('/api/v1/materials?page=1&pageSize=100')));
     });
 
-    await t.test('rechaza parámetros inválidos con 400 antes de llamar a las dependencias', async () => {
+    await t.test('rechaza par�metros inv�lidos con 400 antes de llamar a las dependencias', async () => {
       for (const path of [
         '/api/v1/search?page=0',
         '/api/v1/search?pageSize=101',
@@ -206,38 +206,38 @@ test('Gateway → contrato HTTP real de Search', async (t) => {
       }
     });
 
-    await t.test('propaga como 400 la paginación rechazada por Material', async () => {
+    await t.test('propaga como 400 la paginaci�n rechazada por Material', async () => {
       materialMode = 'rejected';
       const result = await get('/api/v1/search?page=2147483647&pageSize=100');
       assert.equal(result.status, 400);
       assert.equal(result.body.statusCode, 400);
-      assert.match(result.body.message, /no es válida para Material Service/);
+      assert.match(result.body.message, /no es v�lida para Material Service/);
     });
 
-    await t.test('responde 502 cuando Material devuelve un payload inválido', async () => {
+    await t.test('responde 502 cuando Material devuelve un payload inv�lido', async () => {
       materialMode = 'invalid';
       const result = await get('/api/v1/search');
       assert.equal(result.status, 502);
       assert.equal(result.body.statusCode, 502);
-      assert.match(result.body.message, /campos inválidos/);
+      assert.match(result.body.message, /campos inv�lidos/);
     });
 
-    await t.test('responde 502 cuando Catalog devuelve un payload inválido', async () => {
+    await t.test('responde 502 cuando Catalog devuelve un payload inv�lido', async () => {
       catalogMode = 'invalid';
       materialMode = 'ok';
       const result = await get('/api/v1/search');
       assert.equal(result.status, 502);
       assert.equal(result.body.statusCode, 502);
-      assert.match(result.body.message, /profesores con campos inválidos/);
+      assert.match(result.body.message, /profesores con campos inv�lidos/);
     });
 
-    await t.test('responde 503 cuando una dependencia no está disponible', async () => {
+    await t.test('responde 503 cuando una dependencia no est� disponible', async () => {
       catalogMode = 'ok';
       materialMode = 'down';
       const result = await get('/api/v1/search');
       assert.equal(result.status, 503);
       assert.equal(result.body.statusCode, 503);
-      assert.match(result.body.message, /Material Service no está disponible/);
+      assert.match(result.body.message, /Material Service no est� disponible/);
     });
 
     await t.test('se recupera cuando la dependencia vuelve a responder', async () => {
@@ -247,7 +247,7 @@ test('Gateway → contrato HTTP real de Search', async (t) => {
       assert.equal(result.body.total, 1);
     });
 
-    await t.test('el Gateway responde 502 propio cuando Search está caído', async () => {
+    await t.test('el Gateway responde 502 propio cuando Search est� ca�do', async () => {
       search.getHttpServer().closeAllConnections?.();
       await search.close();
       search = undefined;
