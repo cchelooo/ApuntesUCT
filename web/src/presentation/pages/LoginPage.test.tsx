@@ -3,11 +3,17 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LoginPage } from './LoginPage';
 
+const GATEWAY = 'https://gateway.test/api/v1';
+
 describe('LoginPage', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  beforeEach(() => vi.stubEnv('VITE_API_URL', GATEWAY));
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
 
   function renderAndSubmit() {
     render(
@@ -78,9 +84,7 @@ describe('LoginPage', () => {
     fireEvent.click(pendingButton);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, options] = fetchMock.mock.calls[0];
-    expect(url).toBe(
-      `${import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1'}/auth/login`
-    );
+    expect(url).toBe(`${GATEWAY}/auth/login`);
     expect(JSON.parse(options.body)).toEqual({
       email: 'qa@alu.uct.cl',
       password: 'demo',

@@ -19,11 +19,13 @@ describe('Pruebas de Integración - CatalogPage', () => {
   beforeEach(() => {
     queryClient = createTestQueryClient();
     vi.stubGlobal('fetch', vi.fn());
+    vi.stubEnv('VITE_API_URL', 'https://gateway.test/api/v1');
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
     queryClient.clear();
   });
 
@@ -111,5 +113,8 @@ describe('Pruebas de Integración - CatalogPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Ingeniería de Software')).toBeInTheDocument();
     });
+    expect(fetch).toHaveBeenCalledWith(
+      'https://gateway.test/api/v1/catalog/filter'
+    );
   });
 });

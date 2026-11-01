@@ -7,6 +7,7 @@ import { MaterialListSection } from './MaterialListSection';
 
 const SUBJECT_ID = '11111111-1111-4111-8111-111111111111';
 const PROFESSOR_ID = '22222222-2222-4222-8222-222222222222';
+const GATEWAY = 'https://gateway.test/api/v1';
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -81,9 +82,13 @@ function renderSection() {
 describe('MaterialListSection', () => {
   beforeEach(() => {
     fetchMock.mockReset();
+    vi.stubEnv('VITE_API_URL', GATEWAY);
     vi.stubGlobal('fetch', fetchMock);
   });
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
 
   it('muestra carga y luego año, tipo, asignatura y profesor del contrato real', async () => {
     mockApi({ materials: () => json(page([material()])) });
@@ -108,7 +113,12 @@ describe('MaterialListSection', () => {
       'href',
       '/material/real-uuid-1'
     );
-    expect(materialCalls()[0]).toContain('/materials?page=1&pageSize=2');
+    expect(materialCalls()[0]).toBe(
+      `${GATEWAY}/materials?page=1&pageSize=2`
+    );
+    expect(
+      fetchMock.mock.calls.every(([url]) => String(url).startsWith(GATEWAY))
+    ).toBe(true);
   });
 
   it('mantiene el texto alternativo cuando el material no tiene profesor', async () => {
