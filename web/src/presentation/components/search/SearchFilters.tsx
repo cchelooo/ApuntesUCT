@@ -1,6 +1,6 @@
 import {
   SEARCH_TYPE_OPTIONS,
-  hasActiveSearchFilters,
+  hasSearchFilters,
   type SearchFilters as SearchFiltersValue,
 } from '../../../domain/search/search';
 import { AcademicSelectors } from '../catalog/AcademicSelectors';
@@ -30,7 +30,7 @@ export function SearchFilters({
   onChange,
   onClear,
 }: SearchFiltersProps) {
-  const canClear = hasActiveSearchFilters(value) || yearDraft !== '';
+  const canClear = hasSearchFilters(value) || yearDraft !== '';
 
   return (
     <fieldset className="rounded-xs border border-catalog-line bg-catalog-paper p-4">

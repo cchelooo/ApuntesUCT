@@ -20,29 +20,46 @@ function mockApi() {
     const { pathname } = new URL(String(input));
     if (pathname.endsWith('/search')) {
       return Promise.resolve(
-        json({ items: [], page: 1, pageSize: 20, total: 0 })
+        json({
+          results: [{ id: 'm-1', title: 'Resultado', academicYear: 2026 }],
+          page: 1,
+          pageSize: 20,
+          total: 1,
+        })
       );
     }
     if (pathname.endsWith('/catalog/universities'))
-      return Promise.resolve(json([{ id: 'u1', name: 'UCT' }]));
+      return Promise.resolve(
+        json([
+          { id: 'u1', name: 'Universidad Uno' },
+          { id: 'u2', name: 'Universidad Dos' },
+        ])
+      );
     if (pathname.endsWith('/catalog/careers'))
-      return Promise.resolve(json([{ id: 'c1', name: 'Informática' }]));
+      return Promise.resolve(json([{ id: 'c1', name: 'Carrera Uno' }]));
     if (pathname.endsWith('/catalog/subjects'))
-      return Promise.resolve(json([{ id: 's1', name: 'Álgebra', code: 'A1' }]));
+      return Promise.resolve(
+        json([{ id: 's1', name: 'Asignatura Uno', code: 'A1', semester: 1 }])
+      );
     if (pathname.endsWith('/catalog/professors'))
-      return Promise.resolve(json([{ id: 'p1', name: 'Ana Pérez' }]));
+      return Promise.resolve(json([{ id: 'p1', name: 'Profesora Uno' }]));
     return Promise.resolve(json([]));
   });
 }
 
-function lastSearch(): URL {
+function searchCalls(): URL[] {
   return fetchMock.mock.calls
     .map((call) => new URL(String(call[0])))
-    .filter((url) => url.pathname.endsWith('/search'))
-    .at(-1)!;
+    .filter((url) => url.pathname.endsWith('/search'));
 }
 
-function renderPage(path = '/search?q=algebra') {
+function catalogCalls(resource: string): URL[] {
+  return fetchMock.mock.calls
+    .map((call) => new URL(String(call[0])))
+    .filter((url) => url.pathname.endsWith(`/catalog/${resource}`));
+}
+
+function renderPage(path: string) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -67,83 +84,126 @@ describe('SearchPage: filtros académicos', () => {
     vi.unstubAllEnvs();
   });
 
-  it('encadena universidad → carrera → asignatura → profesor y los envía a Search', async () => {
+  it('encadena Universidad → Carrera → Asignatura → Profesor y envía los IDs a Search', async () => {
     const user = userEvent.setup();
-    renderPage();
+    renderPage('/search');
 
+    await screen.findByRole('option', { name: 'Universidad Uno' });
     expect(screen.getByLabelText('Carrera')).toBeDisabled();
 
-    await screen.findByRole('option', { name: 'UCT' });
     await user.selectOptions(screen.getByLabelText('Universidad'), 'u1');
-    await screen.findByRole('option', { name: 'Informática' });
-    await user.selectOptions(screen.getByLabelText('Carrera'), 'c1');
-    await screen.findByRole('option', { name: 'Álgebra' });
-    await user.selectOptions(screen.getByLabelText('Asignatura'), 's1');
-    await screen.findByRole('option', { name: 'Ana Pérez' });
-    await user.selectOptions(screen.getByLabelText('Profesor'), 'p1');
+    await screen.findByRole('option', { name: 'Carrera Uno' });
+    expect(
+      catalogCalls('careers').at(-1)!.searchParams.get('universityId')
+    ).toBe('u1');
 
-    await vi.waitFor(() => {
-      const params = lastSearch().searchParams;
-      expect(params.get('universityId')).toBe('u1');
-      expect(params.get('careerId')).toBe('c1');
-      expect(params.get('subjectId')).toBe('s1');
-      expect(params.get('professorId')).toBe('p1');
-    });
+    await user.selectOptions(screen.getByLabelText('Carrera'), 'c1');
+    await screen.findByRole('option', { name: 'Asignatura Uno' });
+    expect(catalogCalls('subjects').at(-1)!.searchParams.get('careerId')).toBe(
+      'c1'
+    );
+
+    await user.selectOptions(screen.getByLabelText('Asignatura'), 's1');
+    await screen.findByRole('option', { name: 'Profesora Uno' });
+    expect(
+      catalogCalls('professors').at(-1)!.searchParams.get('subjectId')
+    ).toBe('s1');
+
+    await user.selectOptions(screen.getByLabelText('Profesor'), 'p1');
+    await screen.findByText('Resultado');
+
+    const last = searchCalls().at(-1)!;
+    expect(last.searchParams.get('universityId')).toBe('u1');
+    expect(last.searchParams.get('careerId')).toBe('c1');
+    expect(last.searchParams.get('subjectId')).toBe('s1');
+    expect(last.searchParams.get('professorId')).toBe('p1');
+    expect(last.searchParams.has('q')).toBe(false);
   });
 
-  it('reinicia los niveles inferiores al cambiar la universidad', async () => {
+  it('cambiar la universidad reinicia carrera, asignatura y profesor en la búsqueda', async () => {
     const user = userEvent.setup();
     renderPage(
-      '/search?q=algebra&universityId=u1&careerId=c1&subjectId=s1&professorId=p1'
+      '/search?universityId=u1&careerId=c1&subjectId=s1&professorId=p1'
     );
-    await screen.findByRole('option', { name: 'UCT' });
-    await user.selectOptions(screen.getByLabelText('Universidad'), '');
+    await screen.findByText('Resultado');
+    await screen.findByRole('option', { name: 'Universidad Dos' });
+
+    await user.selectOptions(screen.getByLabelText('Universidad'), 'u2');
 
     await vi.waitFor(() => {
-      const params = lastSearch().searchParams;
-      expect(params.has('careerId')).toBe(false);
-      expect(params.has('subjectId')).toBe(false);
-      expect(params.has('professorId')).toBe(false);
+      const last = searchCalls().at(-1)!;
+      expect(last.searchParams.get('universityId')).toBe('u2');
+      for (const key of ['careerId', 'subjectId', 'professorId']) {
+        expect(last.searchParams.has(key)).toBe(false);
+      }
     });
   });
 
-  it('envía año y tipo, y valida el año', async () => {
+  it('envía Año y Tipo a Search Service', async () => {
     const user = userEvent.setup();
-    renderPage();
+    renderPage('/search?q=algebra');
+    await screen.findByText('Resultado');
 
     await user.selectOptions(screen.getByLabelText('Tipo de material'), 'EXAM');
-    await vi.waitFor(() =>
-      expect(lastSearch().searchParams.get('type')).toBe('EXAM')
-    );
-
-    await user.type(screen.getByLabelText('Año'), '20');
-    expect(
-      screen.getByText('Ingresa un año de 4 dígitos, por ejemplo 2026.')
-    ).toBeInTheDocument();
-
-    await user.type(screen.getByLabelText('Año'), '26');
+    await user.type(screen.getByLabelText('Año'), '2026');
     await user.click(screen.getByRole('button', { name: 'Buscar' }));
-    await vi.waitFor(() =>
-      expect(lastSearch().searchParams.get('year')).toBe('2026')
-    );
+
+    await vi.waitFor(() => {
+      const last = searchCalls().at(-1)!;
+      expect(last.searchParams.get('type')).toBe('EXAM');
+      expect(last.searchParams.get('year')).toBe('2026');
+      expect(last.searchParams.get('q')).toBe('algebra');
+    });
   });
 
-  it('limpia todos los filtros y conserva el texto buscado', async () => {
+  it('rechaza un año fuera de rango sin consultar al backend', async () => {
     const user = userEvent.setup();
-    renderPage('/search?q=algebra&universityId=u1&year=2026&type=EXAM');
+    renderPage('/search?q=algebra');
+    await screen.findByText('Resultado');
+    const before = searchCalls().length;
+
+    await user.type(screen.getByLabelText('Año'), '1800');
+    await user.click(screen.getByRole('button', { name: 'Buscar' }));
+
+    expect(
+      await screen.findByText('El año debe estar entre 1900 y 2099.')
+    ).toBeInTheDocument();
+    expect(searchCalls()).toHaveLength(before);
+  });
+
+  it('Limpiar filtros quita academia, año y tipo y conserva el texto', async () => {
+    const user = userEvent.setup();
+    renderPage(
+      '/search?q=algebra&universityId=u1&careerId=c1&year=2026&type=EXAM'
+    );
+    await screen.findByText('Resultado');
 
     await user.click(screen.getByRole('button', { name: 'Limpiar filtros' }));
 
     await vi.waitFor(() => {
-      const params = lastSearch().searchParams;
-      expect(params.get('q')).toBe('algebra');
-      for (const key of ['universityId', 'year', 'type']) {
-        expect(params.has(key)).toBe(false);
+      const last = searchCalls().at(-1)!;
+      expect(last.searchParams.get('q')).toBe('algebra');
+      for (const key of ['universityId', 'careerId', 'year', 'type']) {
+        expect(last.searchParams.has(key)).toBe(false);
       }
     });
+    expect(screen.getByLabelText('Universidad')).toHaveValue('');
     expect(screen.getByLabelText('Año')).toHaveValue('');
+    expect(screen.getByLabelText('Tipo de material')).toHaveValue('');
     expect(
       screen.queryByRole('button', { name: 'Limpiar filtros' })
     ).not.toBeInTheDocument();
+  });
+
+  it('solo con filtros y sin texto muestra el estado inicial al limpiarlos', async () => {
+    const user = userEvent.setup();
+    renderPage('/search?year=2026');
+    await screen.findByText('Resultado');
+
+    await user.click(screen.getByRole('button', { name: 'Limpiar filtros' }));
+
+    expect(
+      await screen.findByText('Escribe lo que buscas')
+    ).toBeInTheDocument();
   });
 });
