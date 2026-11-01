@@ -14,14 +14,19 @@ final academicHierarchyRepositoryProvider =
     );
 
 // ---------------------------------------------------------------------------
-// AcademicHierarchySelection — 6 niveles (Issue #281)
+// AcademicHierarchySelection — 6 niveles (Issue #281, #282 y #289)
 // ---------------------------------------------------------------------------
 
-/// Representa la seleccion academica actual en la jerarquia de 6 niveles:
-/// Universidad -> Carrera -> Asignatura -> Profesor -> Anio -> Tipo de Material.
+/// Representa la selección académica actual en la jerarquía oficial de 6 niveles:
+/// 1. Universidad
+/// 2. Carrera
+/// 3. Asignatura
+/// 4. Profesor
+/// 5. Año académico
+/// 6. Tipo de material
 ///
-/// Los niveles Anio y Tipo son independientes de la cascada jerarquica y no
-/// forman parte del contrato de Catalog; se almacenan aqui para consolidar
+/// Los niveles Año y Tipo son independientes de la cascada jerárquica y no
+/// forman parte del contrato de Catalog; se almacenan aquí para consolidar
 /// el estado compartido de filtros.
 class AcademicHierarchySelection {
   final String? universityId;
@@ -72,7 +77,9 @@ class AcademicHierarchySelection {
     bool clearSubject = false,
     bool clearProfessor = false,
     bool clearYear = false,
+    bool clearAcademicYear = false,
     bool clearType = false,
+    bool clearMaterialType = false,
   }) {
     return AcademicHierarchySelection(
       universityId: clearUniversity
@@ -81,13 +88,17 @@ class AcademicHierarchySelection {
       careerId: clearCareer ? null : (careerId ?? this.careerId),
       subjectId: clearSubject ? null : (subjectId ?? this.subjectId),
       professorId: clearProfessor ? null : (professorId ?? this.professorId),
-      academicYear: clearYear ? null : (academicYear ?? this.academicYear),
-      materialType: clearType ? null : (materialType ?? this.materialType),
+      academicYear: (clearYear || clearAcademicYear)
+          ? null
+          : (academicYear ?? this.academicYear),
+      materialType: (clearType || clearMaterialType)
+          ? null
+          : (materialType ?? this.materialType),
     );
   }
 
-  /// Serializa la seleccion academica como parametros de consulta HTTP.
-  /// Anio y Tipo se incluyen aqui pero NO pertenecen al contrato de Catalog.
+  /// Serializa la selección académica como parámetros de consulta HTTP.
+  /// Año y Tipo se incluyen aquí pero NO pertenecen al contrato de Catalog.
   Map<String, String> toQueryParams() {
     final params = <String, String>{};
     if (universityId != null && universityId!.trim().isNotEmpty) {
@@ -133,22 +144,31 @@ class AcademicHierarchySelection {
       materialType.hashCode;
 
   @override
-  String toString() => 'AcademicHierarchySelection('
-      'universityId: $universityId, '
-      'careerId: $careerId, '
-      'subjectId: $subjectId, '
-      'professorId: $professorId, '
-      'academicYear: $academicYear, '
-      'materialType: $materialType)';
+  String toString() =>
+      'AcademicHierarchySelection(universityId: $universityId, '
+      'careerId: $careerId, subjectId: $subjectId, professorId: $professorId, '
+      'academicYear: $academicYear, materialType: $materialType)';
 }
 
 // ---------------------------------------------------------------------------
 // AcademicHierarchyState
 // ---------------------------------------------------------------------------
 
-/// Estado inmutable que gestiona la clasificacion jerarquica y entidades
-/// activas para los 6 niveles del Issue #281.
+/// Estado inmutable que gestiona la clasificación jerárquica y entidades
+/// activas para los 6 niveles (Issues #281, #282 y #289).
 class AcademicHierarchyState {
+  static const List<int> defaultYears = [2026, 2025, 2024, 2023, 2022, 2021];
+  static const List<String> defaultTypes = [
+    'apunte',
+    'certamen',
+    'guia',
+    'prueba',
+    'examen',
+    'control',
+    'resumen',
+    'formulario',
+  ];
+
   final AcademicHierarchySelection selection;
 
   // Listas de entidades disponibles en memoria
@@ -157,7 +177,7 @@ class AcademicHierarchyState {
   final List<SubjectModel> subjects;
   final List<ProfessorModel> professors;
 
-  /// Anios academicos disponibles para el selector (nivel 5).
+  /// Años académicos disponibles para el selector (nivel 5).
   final List<int> availableYears;
 
   /// Tipos de material disponibles para el selector (nivel 6).
@@ -181,8 +201,8 @@ class AcademicHierarchyState {
     this.careers = const [],
     this.subjects = const [],
     this.professors = const [],
-    this.availableYears = const [2021, 2022, 2023, 2024, 2025],
-    this.availableTypes = const ['apunte', 'guia', 'prueba', 'examen'],
+    this.availableYears = defaultYears,
+    this.availableTypes = defaultTypes,
     this.isLoadingUniversities = false,
     this.isLoadingCareers = false,
     this.isLoadingSubjects = false,
@@ -209,12 +229,19 @@ class AcademicHierarchyState {
       selectedSubjectId != null && selectedSubjectId!.isNotEmpty;
   bool get isProfessorSelected =>
       selectedProfessorId != null && selectedProfessorId!.isNotEmpty;
+  bool get isYearSelected => selectedYear != null;
+  bool get isTypeSelected => selectedType != null && selectedType!.isNotEmpty;
 
-  // Reglas de habilitacion en cascada para la UI (Issue #282 y #289)
+  // Reglas de habilitación en cascada para la UI (Issue #282 y #289)
   bool get canSelectUniversity => !isLoadingUniversities;
-  bool get canSelectCareer => isUniversitySelected && !isLoadingCareers;
-  bool get canSelectSubject => isCareerSelected && !isLoadingSubjects;
-  bool get canSelectProfessor => isSubjectSelected && !isLoadingProfessors;
+  bool get canSelectCareer =>
+      isUniversitySelected && !isLoadingCareers && errorCareers == null;
+  bool get canSelectSubject =>
+      isCareerSelected && !isLoadingSubjects && errorSubjects == null;
+  bool get canSelectProfessor =>
+      isSubjectSelected && !isLoadingProfessors && errorProfessors == null;
+  bool get canSelectYear => true;
+  bool get canSelectType => true;
 
   // Objetos completos seleccionados (si se encuentran en las listas actuales)
   UniversityModel? get selectedUniversity {
@@ -263,6 +290,17 @@ class AcademicHierarchyState {
       errorProfessors != null;
 
   bool get hasActiveFilters => selection.isNotEmpty;
+
+  int get activeFiltersCount {
+    var count = 0;
+    if (isUniversitySelected) count++;
+    if (isCareerSelected) count++;
+    if (isSubjectSelected) count++;
+    if (isProfessorSelected) count++;
+    if (selectedYear != null) count++;
+    if (selectedType != null && selectedType!.isNotEmpty) count++;
+    return count;
+  }
 
   Map<String, String> toQueryParams() => selection.toQueryParams();
 
@@ -320,11 +358,11 @@ class AcademicHierarchyState {
 // AcademicHierarchyNotifier
 // ---------------------------------------------------------------------------
 
-/// Notifier de Riverpod para controlar la jerarquia academica en cascada.
+/// Notifier de Riverpod para controlar la jerarquía académica en cascada.
 ///
-/// Recibe [IAcademicHierarchyRepository] como dependencia a traves del
+/// Recibe [IAcademicHierarchyRepository] como dependencia a través del
 /// [Ref], lo que permite sobrescribir el provider en tests con un
-/// repositorio fake sin modificar este codigo.
+/// repositorio fake sin modificar este código.
 class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
   IAcademicHierarchyRepository get _repo =>
       ref.read(academicHierarchyRepositoryProvider);
@@ -347,7 +385,7 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
   AcademicHierarchyState build() => const AcademicHierarchyState();
 
   // -------------------------------------------------------------------------
-  // Carga inicial de universidades
+  // Carga inicial y reintentos de universidades
   // -------------------------------------------------------------------------
 
   /// Carga las universidades desde el repositorio.
@@ -362,17 +400,21 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
     } catch (e) {
       state = state.copyWith(
         isLoadingUniversities: false,
-        errorUniversities: e.toString(),
+        errorUniversities: 'No se pudieron cargar las universidades: $e',
       );
     }
   }
 
+  /// Reintenta la carga de universidades ante un error de red.
+  Future<void> retryUniversities() async => loadUniversities();
+
   // -------------------------------------------------------------------------
-  // Selecciones en cascada — Fix: resetean loading de niveles hijos
+  // Selecciones en cascada — Fix: resetean loading y datos de niveles hijos
   // -------------------------------------------------------------------------
 
   /// Selecciona una universidad y reinicia selecciones, listas e indicadores
   /// de carga de los niveles hijos, luego carga las carreras del repositorio.
+  /// Preserva campos no relacionados (Año y Tipo).
   Future<void> selectUniversity(String? universityId) async {
     if (state.selectedUniversityId == universityId) return;
 
@@ -415,13 +457,38 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
       if (_careersGen != myGen) return;
       state = state.copyWith(
         isLoadingCareers: false,
-        errorCareers: e.toString(),
+        errorCareers: 'No se pudieron cargar las carreras: $e',
+      );
+    }
+  }
+
+  /// Reintenta la carga de carreras para la universidad seleccionada.
+  /// Preserva campos no relacionados (Año y Tipo).
+  Future<void> retryCareers() async {
+    final uniId = state.selectedUniversityId;
+    if (uniId == null) return;
+
+    final myGen = ++_careersGen;
+    state = state.copyWith(
+      isLoadingCareers: true,
+      clearErrorCareers: true,
+    );
+    try {
+      final careers = await _repo.fetchCareersByUniversity(uniId);
+      if (_careersGen != myGen) return;
+      state = state.copyWith(careers: careers, isLoadingCareers: false);
+    } catch (e) {
+      if (_careersGen != myGen) return;
+      state = state.copyWith(
+        isLoadingCareers: false,
+        errorCareers: 'No se pudieron cargar las carreras: $e',
       );
     }
   }
 
   /// Selecciona una carrera y reinicia asignaturas, profesores e indicadores
   /// de carga de niveles hijos, luego carga las asignaturas del repositorio.
+  /// Preserva campos no relacionados (Universidad, Año, Tipo).
   Future<void> selectCareer(String? careerId) async {
     if (state.selectedCareerId == careerId) return;
 
@@ -460,13 +527,38 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
       if (_subjectsGen != myGen) return;
       state = state.copyWith(
         isLoadingSubjects: false,
-        errorSubjects: e.toString(),
+        errorSubjects: 'No se pudieron cargar las asignaturas: $e',
+      );
+    }
+  }
+
+  /// Reintenta la carga de asignaturas para la carrera seleccionada.
+  /// Preserva campos no relacionados (Universidad, Carrera, Año, Tipo).
+  Future<void> retrySubjects() async {
+    final careerId = state.selectedCareerId;
+    if (careerId == null) return;
+
+    final myGen = ++_subjectsGen;
+    state = state.copyWith(
+      isLoadingSubjects: true,
+      clearErrorSubjects: true,
+    );
+    try {
+      final subjects = await _repo.fetchSubjectsByCareer(careerId);
+      if (_subjectsGen != myGen) return;
+      state = state.copyWith(subjects: subjects, isLoadingSubjects: false);
+    } catch (e) {
+      if (_subjectsGen != myGen) return;
+      state = state.copyWith(
+        isLoadingSubjects: false,
+        errorSubjects: 'No se pudieron cargar las asignaturas: $e',
       );
     }
   }
 
   /// Selecciona una asignatura y reinicia el profesor e indicador de carga
   /// del nivel hijo, luego carga los profesores del repositorio.
+  /// Preserva campos no relacionados (Universidad, Carrera, Año, Tipo).
   Future<void> selectSubject(String? subjectId) async {
     if (state.selectedSubjectId == subjectId) return;
 
@@ -500,7 +592,31 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
       if (_professorsGen != myGen) return;
       state = state.copyWith(
         isLoadingProfessors: false,
-        errorProfessors: e.toString(),
+        errorProfessors: 'No se pudieron cargar los profesores: $e',
+      );
+    }
+  }
+
+  /// Reintenta la carga de profesores para la asignatura seleccionada.
+  /// Preserva campos no relacionados (Universidad, Carrera, Asignatura, Año, Tipo).
+  Future<void> retryProfessors() async {
+    final subjId = state.selectedSubjectId;
+    if (subjId == null) return;
+
+    final myGen = ++_professorsGen;
+    state = state.copyWith(
+      isLoadingProfessors: true,
+      clearErrorProfessors: true,
+    );
+    try {
+      final professors = await _repo.fetchProfessorsBySubject(subjId);
+      if (_professorsGen != myGen) return;
+      state = state.copyWith(professors: professors, isLoadingProfessors: false);
+    } catch (e) {
+      if (_professorsGen != myGen) return;
+      state = state.copyWith(
+        isLoadingProfessors: false,
+        errorProfessors: 'No se pudieron cargar los profesores: $e',
       );
     }
   }
@@ -521,13 +637,14 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
     );
   }
 
-  /// Selecciona o limpia el anio academico (nivel 5).
+  /// Selecciona o limpia el año académico (nivel 5).
   void selectYear(int? year) {
     if (state.selection.academicYear == year) return;
     state = state.copyWith(
       selection: state.selection.copyWith(
         academicYear: year,
         clearYear: year == null,
+        clearAcademicYear: year == null,
       ),
     );
   }
@@ -542,6 +659,7 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
       selection: state.selection.copyWith(
         materialType: validType,
         clearType: validType == null,
+        clearMaterialType: validType == null,
       ),
     );
   }
@@ -550,8 +668,8 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
   // Resets
   // -------------------------------------------------------------------------
 
-  /// Reinicia la seleccion activa manteniendo universidades cargadas.
-  /// Tambien limpia todos los loadings de niveles hijos.
+  /// Reinicia la selección activa manteniendo universidades cargadas.
+  /// También limpia todos los loadings y errores de niveles hijos.
   void resetSelection() {
     // Invalida cualquier petición async pendiente antes de limpiar.
     _careersGen++;
@@ -581,7 +699,7 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
   }
 
   // -------------------------------------------------------------------------
-  // Setters directos (para tests de integracion ligeros o inicializacion)
+  // Setters directos (para tests de integración ligeros o inicialización)
   // -------------------------------------------------------------------------
 
   void setUniversities(List<UniversityModel> list) {
@@ -643,19 +761,29 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
       clearErrorProfessors: error == null,
     );
   }
+
+  /// Carga datos mock para pruebas locales de UI o prototipado.
+  void loadMockHierarchy() {
+    state = state.copyWith(
+      universities: UniversityModel.mockList(),
+      careers: CareerModel.mockList(),
+      subjects: SubjectModel.mockList(),
+      professors: ProfessorModel.mockList(),
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
 // Providers
 // ---------------------------------------------------------------------------
 
-/// Provider principal de Riverpod para gestionar la jerarquia academica.
+/// Provider principal de Riverpod para gestionar la jerarquía académica.
 final academicHierarchyProvider =
     NotifierProvider<AcademicHierarchyNotifier, AcademicHierarchyState>(
       AcademicHierarchyNotifier.new,
     );
 
-/// Provider computado que indica si hay algun filtro jerarquico activo.
+/// Provider computado que indica si hay algún filtro jerárquico activo.
 final hasAcademicHierarchyFiltersProvider = Provider<bool>((ref) {
   return ref.watch(academicHierarchyProvider).hasActiveFilters;
 });

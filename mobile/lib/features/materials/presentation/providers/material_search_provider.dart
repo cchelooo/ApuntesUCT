@@ -27,8 +27,7 @@ class MaterialSearchState {
   });
 }
 
-/// Preparado para una futura respuesta paginada del dominio. No conecta ni
-/// reemplaza el mock de Descubrir Materiales mientras Search sea un stub.
+/// Búsqueda paginada mediante el contrato público de Search por Gateway.
 class MaterialSearchController extends Notifier<MaterialSearchState> {
   int _generation = 0;
 

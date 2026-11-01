@@ -7,7 +7,7 @@ import 'package:apuntesuct_mobile/models/university_model.dart';
 /// de la jerarquía académica.
 ///
 /// El proveedor [AcademicHierarchyNotifier] recibe esta dependencia
-/// como parámetro, lo que permite sustituirla en tests sin tocar
+/// como parámetro o vía Riverpod, lo que permite sustituirla en tests sin tocar
 /// el código de producción.
 abstract class IAcademicHierarchyRepository {
   /// Devuelve todas las universidades disponibles.
@@ -24,7 +24,7 @@ abstract class IAcademicHierarchyRepository {
 }
 
 // ---------------------------------------------------------------------------
-// Implementación Mock (datos en memoria para desarrollo/prototipado)
+// Implementación Mock (datos en memoria para desarrollo y pruebas)
 // ---------------------------------------------------------------------------
 
 /// Implementación de [IAcademicHierarchyRepository] que devuelve datos
@@ -38,7 +38,9 @@ class MockAcademicHierarchyRepository implements IAcademicHierarchyRepository {
   Future<List<CareerModel>> fetchCareersByUniversity(
     String universityId,
   ) async =>
-      CareerModel.mockList();
+      CareerModel.mockList()
+          .where((c) => c.universityId == universityId)
+          .toList();
 
   @override
   Future<List<SubjectModel>> fetchSubjectsByCareer(String careerId) async =>

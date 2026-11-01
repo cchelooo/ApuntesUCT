@@ -6,8 +6,10 @@
 > el listado básico de Material reutilizan `apiclientProvider`, con
 > `ApiConfig.gatewayBaseUrl` como única entrada HTTP. Mobile ya no lee
 > `CATALOG_SERVICE_URL`. La conexión real y los errores 502 se verificaron contra
-> Gateway, Catalog, Material y PostgreSQL temporales. Búsqueda sigue con fixtures;
-> los providers HTTP de Material están preparados para su integración en pantallas.
+> Gateway, Catalog, Material y PostgreSQL temporales. La búsqueda ya está
+> disponible en el Gateway (`/api/v1/search`) sin conocer el puerto 3005; la app
+> Mobile conserva sus fixtures hasta que integre esa ruta. Los providers HTTP de
+> Material están preparados para su integración en pantallas.
 > Consultar [`mobile/README.md`](../../mobile/README.md#configuración-de-red-y-conexión-con-api-gateway).
 > El resto de contratos y resultados
 > de Sprint 1 de esta guía conservan su carácter histórico, especialmente Auth;
@@ -111,10 +113,19 @@ servicio incompleto. Con los servicios levantados:
 
 | Petición | Respuesta | Motivo |
 |---|---|---|
-| `GET /api/v1/search?q=datos` | `200` con `results: []` | El endpoint existe pero la búsqueda desacoplada es un stub |
+| `GET /api/v1/search?q=datos&page=1&pageSize=20` | `200` con `{ query, page, pageSize, total, results, context }` | Search compone Material + Catalog (#250) |
+| `GET /api/v1/search?page=0` o `pageSize=101` | `400` | Validación local de paginación |
+| `GET /api/v1/search?page=2147483647&pageSize=100` | `400` | Material rechaza el desplazamiento y Search lo trata como solicitud inválida |
+| `GET /api/v1/search` con Catalog o Material caído | `503` | Dependencia de Search no disponible |
+| `GET /api/v1/search` con una dependencia devolviendo un payload inválido | `502` | Search rechaza la respuesta de la dependencia |
+| `GET /api/v1/search` con Search parado | `502` | Destino inalcanzable (`Search Service no disponible`) |
 | `GET /api/v1/materials` | `200` con `items: []` | El listado paginado está implementado (#318); la base no tiene datos |
 | `GET /api/v1/materials/:id/download` | `200` con el archivo | Descarga implementada (#236); transmite la última versión o la de `?versionId=` |
 | `GET /api/v1/materials` con el servicio parado | `502` | Destino inalcanzable |
+
+Los parámetros `q`, `page` y `pageSize`, la paginación y los errores `400`,
+`502` y `503` están documentados tanto en el Swagger de Search como en la ruta
+pública `/api/v1/search` del Swagger del Gateway (`/api/docs/gateway`).
 
 ---
 
@@ -321,7 +332,7 @@ Todos responden `200` con un arreglo JSON y `400` si el UUID del filtro es invá
 | `year`/`type` fuera de Catalog | **Resuelto (#221)** | No forman parte del contrato de Catalog: son de Material Service y la búsqueda por año/tipo de Search Service |
 | Proxy Gateway → `/catalog` | Usado por Mobile (#272) | `CatalogRepository` usa el cliente central del Gateway; no consulta `:3002` directamente (sección 1.2) |
 | Endpoints de Material | **Parcial** | `/api/v1/materials` está enrutada (#222); `material-service` (#311) expone el listado paginado (#318), la creación/subida real (#233) y la descarga `GET /api/v1/materials/:id/download` (#236, última versión o `?versionId=`); subida multipart y descarga binaria validadas a través del Gateway en el puerto 3000 (#237, `docs/reports/validacion-proxy-gateway-2026-10-12.md`); el detalle y el preview siguen pendientes |
-| Búsqueda en `/api/v1/search` | **Pendiente** | La ruta está enrutada (#222) y `search-service` existe (#305), pero `GET /api/v1/search?q=` devuelve un stub con `results: []` y `total: 0` |
+| Búsqueda en `/api/v1/search` | **Disponible** | Search compone Material + Catalog (#250), está enrutada por el Gateway (#222/#251) y responde `200` con `{ query, page, pageSize, total, results, context }`; Web/Mobile no necesitan conocer el puerto 3005. La integración de la pantalla de búsqueda en Mobile sigue pendiente |
 | Proxy Gateway → `/quality` | **Pendiente** | El gateway no enruta `/api/v1/quality` y el servicio sigue siendo un placeholder |
 
 ---

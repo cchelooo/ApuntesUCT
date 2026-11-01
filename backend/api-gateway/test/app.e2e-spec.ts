@@ -72,7 +72,7 @@ describe('API Gateway (e2e)', () => {
       });
   });
 
-  it('/api/docs (GET) lista Material y Search y aclara qué responden hoy (#222)', () => {
+  it('/api/docs (GET) lista Material y Search y describe la integración actual (#251)', () => {
     return request(app.getHttpServer())
       .get('/api/docs')
       .expect(200)
@@ -83,10 +83,19 @@ describe('API Gateway (e2e)', () => {
         expect(res.text).toContain('http://localhost:3003/api/docs');
         expect(res.text).toContain('http://localhost:3005/api/docs');
         expect(res.text).toContain('Quality Service todavía no está enrutado');
-        // El listado de Material ya está implementado (#318); Search sigue siendo stub.
-        expect(res.text).toContain('devuelve el listado paginado de materiales');
-        expect(res.text).toContain('la búsqueda sigue siendo un stub');
+        expect(res.text).toContain(
+          'devuelve el listado paginado de materiales',
+        );
+        expect(res.text).toContain(
+          'compone esos materiales con el contexto académico',
+        );
+        // Web/Mobile usan las rutas del Gateway y no necesitan conocer :3005.
+        expect(res.text).toContain(
+          'necesitan conocer el puerto <code>3005</code>',
+        );
         expect(res.text).toContain('servicio caído');
+        expect(res.text).toContain('dependencia de Search no');
+        expect(res.text).not.toContain('la búsqueda sigue siendo un stub');
         expect(res.text).not.toContain('todavía no expone rutas de materiales');
         expect(res.text).not.toContain('responden 502 hasta que exista');
       });
@@ -110,6 +119,31 @@ describe('API Gateway (e2e)', () => {
           expect(res.body.paths[path].get.responses['200']).toBeDefined();
         }
         expect(res.body.paths['/api/v1/api/v1/health']).toBeUndefined();
+
+        // La spec del Gateway documenta la ruta pública de Search para que
+        // Web/Mobile no dependan de consultar el Swagger de :3005.
+        const search = res.body.paths['/api/v1/search']?.get;
+        expect(search).toBeDefined();
+        const parameterNames = search.parameters.map(
+          (parameter: { name: string }) => parameter.name,
+        );
+        expect(parameterNames.sort()).toEqual([
+          'careerId',
+          'order',
+          'page',
+          'pageSize',
+          'professorId',
+          'q',
+          'sortBy',
+          'subjectId',
+          'type',
+          'universityId',
+          'year',
+        ]);
+        for (const status of ['200', '400', '502', '503']) {
+          expect(search.responses[status]).toBeDefined();
+        }
+        expect(res.body.components.schemas.SearchResponse).toBeDefined();
       });
   });
 
