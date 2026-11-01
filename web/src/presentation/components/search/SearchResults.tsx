@@ -70,7 +70,7 @@ export function SearchResults({
         materials={materials}
         isLoading={isLoading}
         emptyTitle={query ? `Sin resultados para “${query}”` : 'Sin resultados'}
-        emptyDescription="Prueba con otras palabras, cambia los filtros o revisa la ortografía."
+        emptyDescription="Prueba con otras palabras o revisa la ortografía."
       />
       {data && (
         <MaterialPagination
