@@ -1,23 +1,25 @@
 import 'package:apuntesuct_mobile/core/network/api_client.dart';
+import 'package:apuntesuct_mobile/core/errors/api_exception.dart';
+import 'package:apuntesuct_mobile/features/materials/data/dio_catalog_selector_repository.dart';
 import 'package:apuntesuct_mobile/features/materials/data/dio_material_repository.dart';
 import 'package:apuntesuct_mobile/features/materials/data/dio_search_repository.dart';
-import 'package:apuntesuct_mobile/features/materials/data/mock_materials_repository.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_requests.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/repositories/materials_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Implementación real conectada al Gateway (Search Service y Material Service)
-/// con fallback a MockMaterialsRepository en entornos desconectados o pruebas de UI.
+/// Consumo de Discovery mediante Gateway. Los mocks requieren un override
+/// explícito y nunca se usan para recuperar silenciosamente errores HTTP.
 class DioMaterialsDiscoveryRepository implements MaterialsRepository {
   final DioSearchRepository _searchRepo;
   final DioMaterialRepository _materialRepo;
-  final MockMaterialsRepository _fallbackMock = MockMaterialsRepository();
+  final CatalogSelectorRepository _catalogRepo;
 
   DioMaterialsDiscoveryRepository({
     required this._searchRepo,
     required this._materialRepo,
+    required this._catalogRepo,
   });
 
   @override
@@ -33,53 +35,33 @@ class DioMaterialsDiscoveryRepository implements MaterialsRepository {
     // 1. Si hay texto o filtro de asignatura, consultar a Search Service vía Gateway
     if (cleanQuery.isNotEmpty ||
         (cleanSubject != null && cleanSubject.isNotEmpty)) {
-      try {
-        final pageResult = await _searchRepo.search(
-          MaterialSearchQuery(text: cleanQuery, subjectId: cleanSubject),
-          page: page,
-          pageSize: pageSize,
-        );
-        return pageResult.items;
-      } catch (_) {
-        // Fallback para entornos sin conexión o pruebas locales
-        return _fallbackMock.getMaterials(
-          query: cleanQuery,
-          subject: cleanSubject,
-          page: page,
-          pageSize: pageSize,
-        );
-      }
-    }
-
-    // 2. Listado general sin filtros: consultar a Material Service vía Gateway
-    try {
-      final pageResult = await _materialRepo.list(
+      final pageResult = await _searchRepo.search(
+        MaterialSearchQuery(text: cleanQuery, subjectId: cleanSubject),
         page: page,
         pageSize: pageSize,
       );
       return pageResult.items;
-    } catch (_) {
-      // Fallback para entornos sin conexión o pruebas locales
-      return _fallbackMock.getMaterials(
-        query: cleanQuery,
-        subject: cleanSubject,
-        page: page,
-        pageSize: pageSize,
-      );
     }
+
+    // 2. Listado general sin filtros: consultar a Material Service vía Gateway
+    final pageResult = await _materialRepo.list(page: page, pageSize: pageSize);
+    return pageResult.items;
   }
 
   @override
   Future<List<String>> getAvailableSubjects() async {
-    return _fallbackMock.getAvailableSubjects();
+    return (await _catalogRepo.listSubjects())
+        .map((subject) => subject.name)
+        .toList();
   }
 
   @override
   Future<MaterialDetail> getMaterialDetail(String id) async {
     try {
       return await _materialRepo.getDetail(id);
-    } catch (_) {
-      return _fallbackMock.getMaterialDetail(id);
+    } on ApiException catch (error) {
+      if (error.statusCode == 404) throw MaterialNotFoundException(id);
+      rethrow;
     }
   }
 }
@@ -89,6 +71,7 @@ final materialsRepositoryProvider = Provider<MaterialsRepository>((ref) {
   return DioMaterialsDiscoveryRepository(
     searchRepo: DioSearchRepository(apiClient),
     materialRepo: DioMaterialRepository(apiClient),
+    catalogRepo: CatalogSelectorRepository(apiClient),
   );
 });
 
@@ -190,12 +173,15 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
         hasMore: results.length >= pageSize,
         clearError: true,
       );
-    } catch (_) {
+    } catch (error) {
       if (requestId != _activeRequestId) return;
       state = state.copyWith(
         isLoading: false,
-        errorMessage:
-            'Error al cargar materiales disponibles. Verifica tu conexión.',
+        errorMessage: apiErrorMessage(
+          error,
+          fallback:
+              'Error al cargar materiales disponibles. Verifica tu conexión.',
+        ),
       );
     }
   }
@@ -275,9 +261,15 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
         hasMore: nextItems.length >= pageSize,
         isLoadingMore: false,
       );
-    } catch (_) {
+    } catch (error) {
       if (requestId != _activeRequestId) return;
-      state = state.copyWith(isLoadingMore: false);
+      state = state.copyWith(
+        isLoadingMore: false,
+        errorMessage: apiErrorMessage(
+          error,
+          fallback: 'No fue posible cargar más materiales.',
+        ),
+      );
     }
   }
 }

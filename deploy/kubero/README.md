@@ -124,7 +124,7 @@ migraciones cuando exista un proceso de release propio.
    estrategia Recreate si la plataforma la ofrece para evitar escritores simultáneos.
    La imagen usa UID/GID 1000: el volumen debe permitir escritura a ese usuario
    (por ejemplo `fsGroup: 1000` en la configuración del pod).
-   Health: `/minio/health/live`. No agregar dominio público para la API S3.
+   Health: `/minio/health/live`. Restringir el acceso externo a la API S3.
 5. Crear un bucket privado `materials` con la consola interna o `mc`, y un usuario
    de servicio con lectura/escritura/borrado sobre ese bucket. Configurar sus
    credenciales en Material. No publicar las claves ni habilitar acceso anónimo.
@@ -132,42 +132,53 @@ migraciones cuando exista un proceso de release propio.
    la tabla. Las imágenes se ingresan sin `:tag`; poner la etiqueta en su campo.
 7. Publicar HTTPS solo para Web y Gateway, con subdominios disponibles del curso,
    por ejemplo `apuntesuct.inf.uct.cl` y `apuntesuct-api.inf.uct.cl`. Mantener los
-   otros servicios sin dominio. Verificar el nombre de servicio interno real:
-   las guías usan `<app>-kuberoapp`; los addons usan `<app>-postgres`.
+   otros servicios sin dominio si la plataforma lo permite. La UI UCT
+   `1.0.0-rc.20` exige un dominio en todas las apps: para las internas, configurar
+   Networking → Whitelist Source Range como `127.0.0.1/32` y comprobar que el
+   ingreso externo devuelve `403`. Esto restringe el ingress; no crea una
+   NetworkPolicy entre pods. No habilitar acceso anónimo a MinIO.
+
+El servicio Kubernetes `<app>-kuberoapp` escucha en **80**, aunque el contenedor
+escuche en 3000, 3001, etc. Usar las URLs siguientes sin el puerto del contenedor;
+MinIO también se consume por 80. Los addons PostgreSQL `<app>-postgres` sí usan
+5432. Estos valores corresponden a Kubero; el Compose local conserva sus propios
+nombres y puertos. Verificar el Service si otra instalación cambia estos valores.
 
 Las apps deben compartir el namespace/fase del pipeline. Sustituir los DNS de
 ejemplo si la instalación genera otros. Nunca usar `localhost` para comunicarse
 entre contenedores. Configurar startup grace suficiente para migraciones (por
 ejemplo 60 s), y readiness/liveness con las rutas de la tabla, en el puerto real.
+En Seguridad, conservar la raíz de solo lectura y la escalada de privilegios
+deshabilitada. Activar Run as Non-Root con UID/GID `1000` en backend/MinIO y `101`
+en Web. PostgreSQL mantiene la configuración propia de su addon.
 
 ### Variables por app
 
-Todas las imágenes backend traen `NODE_ENV=production`. Establecer `PORT` según
-la tabla. Las contraseñas son valores privados que se cargan en Kubero.
+Todas las imágenes backend traen `NODE_ENV=production`. Configurar **Container
+Port** según la tabla: Kubero genera y reserva `PORT`, por lo que no debe añadirse
+manualmente en Environment Variables. Las contraseñas son valores privados que
+se cargan en Kubero.
 
 **Auth**:
 
 ```dotenv
-PORT=3001
 DATABASE_URL=postgresql://USUARIO:CLAVE_CODIFICADA@auth-postgres:5432/auth_db?schema=public
 ```
 
 **Catalog**:
 
 ```dotenv
-PORT=3002
 DATABASE_URL=postgresql://USUARIO:CLAVE_CODIFICADA@catalog-postgres:5432/catalog_db?schema=public
 ```
 
 **Material** (su URL de Catalog sí incluye `/api/v1`):
 
 ```dotenv
-PORT=3003
 DATABASE_URL=postgresql://USUARIO:CLAVE_CODIFICADA@material-postgres:5432/material_db?schema=public
-CATALOG_SERVICE_URL=http://catalog-kuberoapp:3002/api/v1
+CATALOG_SERVICE_URL=http://catalog-kuberoapp/api/v1
 CATALOG_TIMEOUT_MS=5000
 MINIO_ENDPOINT=minio-kuberoapp
-MINIO_PORT=9000
+MINIO_PORT=80
 MINIO_USE_SSL=false
 MINIO_BUCKET=materials
 MINIO_ACCESS_KEY=CLAVE_DEL_USUARIO_DE_SERVICIO
@@ -178,19 +189,17 @@ MATERIAL_LOCAL_AUTHOR_ENABLED=false
 **Search** (orígenes sin `/api/v1`):
 
 ```dotenv
-PORT=3005
-CATALOG_SERVICE_URL=http://catalog-kuberoapp:3002
-MATERIAL_SERVICE_URL=http://material-kuberoapp:3003
+CATALOG_SERVICE_URL=http://catalog-kuberoapp
+MATERIAL_SERVICE_URL=http://material-kuberoapp
 ```
 
 **Gateway** (orígenes sin `/api/v1`):
 
 ```dotenv
-PORT=3000
-AUTH_SERVICE_URL=http://auth-kuberoapp:3001
-CATALOG_SERVICE_URL=http://catalog-kuberoapp:3002
-MATERIAL_SERVICE_URL=http://material-kuberoapp:3003
-SEARCH_SERVICE_URL=http://search-kuberoapp:3005
+AUTH_SERVICE_URL=http://auth-kuberoapp
+CATALOG_SERVICE_URL=http://catalog-kuberoapp
+MATERIAL_SERVICE_URL=http://material-kuberoapp
+SEARCH_SERVICE_URL=http://search-kuberoapp
 ```
 
 Los enlaces del índice Swagger conservan sus valores locales por defecto. Para
@@ -200,7 +209,7 @@ solo para abrir ese índice. Los contratos fuente se mantienen en Backend.
 **Web**:
 
 ```dotenv
-GATEWAY_UPSTREAM=http://gateway-kuberoapp:3000
+GATEWAY_UPSTREAM=http://gateway-kuberoapp
 ```
 
 Web incorpora `VITE_API_URL=/api/v1` al compilar. Nginx reenvía `/api/` al Gateway
