@@ -32,9 +32,9 @@ function page(items: unknown[], extra: Record<string, unknown> = {}) {
 }
 
 interface Handlers {
-  materials: (url: URL) => Response;
-  subjects?: () => Response;
-  professors?: () => Response;
+  materials: (url: URL) => Response | Promise<Response>;
+  subjects?: () => Response | Promise<Response>;
+  professors?: () => Response | Promise<Response>;
 }
 
 const fetchMock = vi.fn();
@@ -84,6 +84,27 @@ describe('MaterialListSection', () => {
     vi.stubGlobal('fetch', fetchMock);
   });
   afterEach(() => vi.unstubAllGlobals());
+
+  it('muestra el estado de carga (loading) con esqueletos mientras espera respuesta del servidor', async () => {
+    let resolveMaterials: (val: Response) => void;
+    mockApi({
+      materials: () =>
+        new Promise<Response>((resolve) => {
+          resolveMaterials = resolve;
+        }),
+    });
+    renderSection();
+
+    expect(screen.getByRole('status')).toHaveTextContent('Cargando materiales');
+    expect(screen.getAllByTestId('material-card-skeleton')).toHaveLength(4);
+    expect(screen.queryByText('Aún no hay materiales')).not.toBeInTheDocument();
+
+    resolveMaterials!(json(page([material()])));
+    expect(
+      await screen.findByText('Certamen 1 - Algoritmos')
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
 
   it('muestra carga y luego año, tipo, asignatura y profesor del contrato real', async () => {
     mockApi({ materials: () => json(page([material()])) });
