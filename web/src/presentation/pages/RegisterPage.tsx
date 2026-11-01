@@ -1,8 +1,79 @@
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
+import { Select } from '../components/Select';
+import { Alert } from '../components/Alert';
+
+type RegisterField = 'name' | 'email' | 'password' | 'career';
+type RegisterValues = Record<RegisterField, string>;
+type RegisterErrors = Partial<Record<RegisterField, string>>;
+
+const CAREER_OPTIONS = [
+  { value: '1', label: 'Ingeniería Civil Informática' },
+  { value: '2', label: 'Medicina Veterinaria' },
+  { value: '3', label: 'Derecho' },
+  { value: '4', label: 'Arquitectura' },
+];
 
 export function RegisterPage() {
+  const formRef = useRef<HTMLFormElement>(null);
+  const [values, setValues] = useState<RegisterValues>({
+    name: '',
+    email: '',
+    password: '',
+    career: '',
+  });
+  const [errors, setErrors] = useState<RegisterErrors>({});
+  const [status, setStatus] = useState('');
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+
+  function updateField(field: RegisterField, value: string) {
+    setValues((current) => ({ ...current, [field]: value }));
+    setStatus('');
+    if (errors[field]) {
+      setErrors((current) => ({ ...current, [field]: undefined }));
+    }
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setHasAttemptedSubmit(true);
+
+    const nextErrors: RegisterErrors = {};
+    if (!values.name.trim()) {
+      nextErrors.name = 'Ingresa tu nombre completo.';
+    }
+    if (!values.email.trim()) {
+      nextErrors.email = 'Ingresa tu correo electrónico.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
+      nextErrors.email = 'Ingresa un correo electrónico válido.';
+    }
+    if (!values.password) {
+      nextErrors.password = 'Ingresa una contraseña.';
+    } else if (values.password.length < 8) {
+      nextErrors.password = 'La contraseña debe tener al menos 8 caracteres.';
+    }
+    if (!values.career) {
+      nextErrors.career = 'Selecciona tu carrera.';
+    }
+
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      setStatus('');
+      requestAnimationFrame(() => {
+        formRef.current
+          ?.querySelector<HTMLElement>('[aria-invalid="true"]')
+          ?.focus();
+      });
+      return;
+    }
+
+    setStatus(
+      'Los datos son válidos, pero el registro de cuentas aún no está habilitado.'
+    );
+  }
+
   return (
     <div className="min-h-screen flex lg:h-screen">
       {/* Panel Izquierdo */}
@@ -109,19 +180,45 @@ export function RegisterPage() {
             </div>
 
             <form
+              ref={formRef}
               className="space-y-4"
-              onSubmit={(event) => event.preventDefault()}
+              onSubmit={handleSubmit}
+              noValidate
+              aria-describedby={status ? 'register-status' : undefined}
             >
+              {hasAttemptedSubmit && Object.keys(errors).length > 0 && (
+                <Alert
+                  variant="error"
+                  message="Revisa los campos indicados antes de continuar."
+                />
+              )}
+              {status && (
+                <p id="register-status" role="status" className="text-sm text-uct-navy">
+                  {status}
+                </p>
+              )}
               <Input
                 label="Nombre completo"
+                name="name"
                 placeholder="Valentina Torres"
                 type="text"
+                autoComplete="name"
+                required
+                value={values.name}
+                error={errors.name}
+                onChange={(event) => updateField('name', event.target.value)}
               />
 
               <Input
                 label="Correo electrónico"
+                name="email"
                 placeholder="v.torres@uct.cl"
                 type="email"
+                autoComplete="email"
+                required
+                value={values.email}
+                error={errors.email}
+                onChange={(event) => updateField('email', event.target.value)}
                 helperText={
                   <span className="flex items-center gap-1 text-uct-sky mt-1">
                     Te recomendamos usar tu correo institucional UCT
@@ -131,32 +228,29 @@ export function RegisterPage() {
 
               <Input
                 label="Contraseña"
+                name="password"
                 placeholder="••••••••"
                 type="password"
+                autoComplete="new-password"
+                minLength={8}
+                required
+                value={values.password}
+                error={errors.password}
+                onChange={(event) =>
+                  updateField('password', event.target.value)
+                }
               />
 
-              {/* Selector de Carrera */}
-              <div className="flex flex-col gap-1.5 w-full">
-                <label
-                  htmlFor="career"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  Carrera *
-                </label>
-                <select
-                  id="career"
-                  defaultValue=""
-                  className="block w-full rounded-md border border-gray-300 text-sm transition-colors px-3 py-2 outline-hidden focus:ring-2 focus:ring-uct-sky focus:border-uct-sky text-gray-900 bg-white"
-                >
-                  <option value="" disabled>
-                    Selecciona tu carrera
-                  </option>
-                  <option value="1">Ingeniería Civil Informática</option>
-                  <option value="2">Medicina Veterinaria</option>
-                  <option value="3">Derecho</option>
-                  <option value="4">Arquitectura</option>
-                </select>
-              </div>
+              <Select
+                label="Carrera"
+                name="career"
+                required
+                value={values.career}
+                error={errors.career}
+                placeholder="Selecciona tu carrera"
+                options={CAREER_OPTIONS}
+                onChange={(event) => updateField('career', event.target.value)}
+              />
 
               <div className="pt-2">
                 <Button type="submit" className="w-full">
@@ -171,7 +265,7 @@ export function RegisterPage() {
               ¿Ya tienes cuenta?{' '}
               <Link
                 to="/login"
-                className="font-semibold text-uct-blue hover:text-uct-sky transition-colors"
+                className="font-semibold text-uct-blue hover:text-uct-sky transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-uct-sky focus-visible:ring-offset-2"
               >
                 Ingresar
               </Link>
@@ -181,7 +275,7 @@ export function RegisterPage() {
               Al crear una cuenta aceptas nuestros{' '}
               <a
                 href="#"
-                className="text-black hover:text-gray-500 transition-colors"
+                className="text-black hover:text-gray-500 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-uct-sky focus-visible:ring-offset-2"
               >
                 Términos de uso y Política de privacidad.
               </a>

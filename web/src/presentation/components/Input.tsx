@@ -2,7 +2,7 @@ import { useId } from 'react';
 import type { InputHTMLAttributes, ReactNode } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
+  label: string;
   error?: string;
   helperText?: ReactNode;
   fullWidth?: boolean;
@@ -29,11 +29,11 @@ export const Input = ({
   const containerWidthClass = fullWidth ? 'w-full' : 'w-auto';
 
   const baseInputClass =
-    'block w-full rounded-md border text-sm transition-colors px-3 py-2 outline-hidden focus:ring-2 focus:ring-offset-2';
+    'block w-full rounded-md border text-sm transition-colors px-3 py-2 outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2';
 
   const stateClass = error
-    ? 'border-red-500 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500'
-    : 'border-gray-300 text-gray-900 placeholder-gray-400 focus:border-uct-sky focus:ring-uct-sky';
+    ? 'border-red-500 text-red-900 placeholder-red-300 focus-visible:border-red-500 focus-visible:ring-red-500'
+    : 'border-gray-300 text-gray-900 placeholder-gray-400 focus-visible:border-uct-sky focus-visible:ring-uct-sky';
 
   const disabledClass = disabled
     ? 'bg-gray-100 opacity-75 cursor-not-allowed'
@@ -46,11 +46,9 @@ export const Input = ({
     <div
       className={`flex flex-col gap-1.5 ${containerWidthClass} ${containerClassName}`.trim()}
     >
-      {label && (
-        <label htmlFor={inputId} className="text-sm font-medium text-gray-700">
-          {label}
-        </label>
-      )}
+      <label htmlFor={inputId} className="text-sm font-medium text-gray-700">
+        {label}
+      </label>
       <input
         id={inputId}
         disabled={disabled}

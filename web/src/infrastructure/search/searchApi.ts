@@ -7,6 +7,7 @@ import {
 import { MaterialRequestError } from '../material/materialApi';
 import { mapRawSearchPage } from './mapSearch';
 import type { RawSearchPage } from './rawSearch';
+import { getApiBaseUrl } from '../apiBaseUrl';
 
 export const DEFAULT_SEARCH_PAGE_SIZE = 20;
 
@@ -20,12 +21,7 @@ const SEARCH_API_SORT: Record<
 };
 
 function getSearchUrl(): string {
-  const envUrl = import.meta.env.VITE_API_URL;
-  if (envUrl === '') {
-    throw new Error('VITE_API_URL is not configured');
-  }
-  const baseUrl = envUrl ?? 'http://localhost:3000/api/v1';
-  return `${baseUrl.replace(/\/+$/, '')}/search`;
+  return `${getApiBaseUrl()}/search`;
 }
 
 export async function fetchSearch(
@@ -44,11 +40,10 @@ export async function fetchSearch(
     pageSize: String(pageSize),
   });
 
+  const url = `${getSearchUrl()}?${params.toString()}`;
   let response: Response;
   try {
-    response = await fetch(`${getSearchUrl()}?${params.toString()}`, {
-      signal,
-    });
+    response = await fetch(url, { signal });
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw error;
