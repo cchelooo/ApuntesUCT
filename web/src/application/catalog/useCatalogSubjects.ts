@@ -9,6 +9,7 @@ interface UseCatalogSubjectsResult {
   total: number;
   isLoading: boolean;
   isError: boolean;
+  retry: () => void;
 }
 
 function normalizeText(value: string): string {
@@ -21,7 +22,7 @@ function normalizeText(value: string): string {
 
 export function useCatalogSubjects(): UseCatalogSubjectsResult {
   const [query, setQuery] = useState('');
-  const { data, isLoading, isError } = useCatalogSubjectsQuery();
+  const { data, isLoading, isError, refetch } = useCatalogSubjectsQuery();
 
   const allSubjects = useMemo(() => data ?? [], [data]);
 
@@ -43,5 +44,8 @@ export function useCatalogSubjects(): UseCatalogSubjectsResult {
     total: allSubjects.length,
     isLoading,
     isError,
+    retry: () => {
+      void refetch();
+    },
   };
 }

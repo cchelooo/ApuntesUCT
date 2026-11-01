@@ -40,7 +40,9 @@ describe('Pruebas de Integración - CatalogPage', () => {
     );
 
     // Verificamos que se muestra el texto de carga o los elementos con animación (skeleton)
-    expect(screen.getByText(/cargando asignaturas/i)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Cargando asignaturas'
+    );
   });
 
   it('2. Debe mostrar alerta de error cuando la API falla', async () => {
@@ -64,9 +66,10 @@ describe('Pruebas de Integración - CatalogPage', () => {
       ).toBeInTheDocument();
     });
 
-    expect(
-      screen.getByText(/intenta recargar la página en unos minutos/i)
-    ).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'No se pudo cargar el catálogo. Comprueba tu conexión e inténtalo nuevamente.'
+    );
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeEnabled();
   });
 
   it('3. Debe renderizar los datos del backend correctamente (contrato válido)', async () => {

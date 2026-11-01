@@ -131,6 +131,7 @@ export function MaterialUploadButton({
         ref={fileInputRef}
         onChange={handleFileChange}
         className="hidden"
+        aria-label="Seleccionar archivo para subir"
         data-testid="file-upload-input"
         accept=".pdf,.doc,.docx,.ppt,.pptx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
       />
