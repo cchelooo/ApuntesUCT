@@ -1,17 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:apuntesuct_mobile/core/network/api_client.dart';
+import 'package:apuntesuct_mobile/features/catalog/data/gateway_academic_hierarchy_repository.dart';
 import 'package:apuntesuct_mobile/features/catalog/domain/academic_hierarchy_repository.dart';
 import 'package:apuntesuct_mobile/models/career_model.dart';
 import 'package:apuntesuct_mobile/models/professor_model.dart';
 import 'package:apuntesuct_mobile/models/subject_model.dart';
 import 'package:apuntesuct_mobile/models/university_model.dart';
 
-/// Provider de repositorio que puede ser sobreescrito en tests
-/// mediante [ProviderContainer.overrides].
+/// Provider de repositorio de jerarquía académica.
+/// Por defecto consulta los selectores académicos de Catalog Service vía Gateway (#288).
+/// Puede ser sobreescrito en tests mediante [ProviderContainer.overrides]
+/// (por ejemplo, con [MockAcademicHierarchyRepository]).
 final academicHierarchyRepositoryProvider =
-    Provider<IAcademicHierarchyRepository>(
-      (_) => MockAcademicHierarchyRepository(),
-    );
+    Provider<IAcademicHierarchyRepository>((ref) {
+      final apiClient = ref.watch(apiclientProvider);
+      return GatewayAcademicHierarchyRepository(apiClient);
+    });
 
 // ---------------------------------------------------------------------------
 // AcademicHierarchySelection — 6 niveles (Issue #281, #282 y #289)
@@ -688,6 +693,9 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
       clearErrorProfessors: true,
     );
   }
+
+  /// Alias de [resetSelection] para compatibilidad de interfaz con otros filtros.
+  void clearFilters() => resetSelection();
 
   /// Reinicia todo el estado a valores iniciales por defecto.
   void resetAll() {

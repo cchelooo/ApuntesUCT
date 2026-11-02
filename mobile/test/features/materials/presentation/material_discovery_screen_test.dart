@@ -4,6 +4,8 @@ import 'package:apuntesuct_mobile/features/materials/data/mock_materials_reposit
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_fixtures.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/providers/materials_discovery_provider.dart';
+import 'package:apuntesuct_mobile/features/catalog/domain/academic_hierarchy_repository.dart';
+import 'package:apuntesuct_mobile/features/catalog/presentation/providers/academic_hierarchy_provider.dart';
 import 'package:apuntesuct_mobile/features/catalog/presentation/widgets/academic_filter_sheet.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_discovery_screen.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_summary_card.dart';
@@ -14,13 +16,17 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   Widget buildScreen({List<dynamic> overrides = const []}) {
     return ProviderScope(
-      overrides: overrides.isEmpty
-          ? [
-              materialsRepositoryProvider.overrideWithValue(
-                MockMaterialsRepository(),
-              ),
-            ]
-          : overrides.cast(),
+      overrides: [
+        academicHierarchyRepositoryProvider.overrideWithValue(
+          MockAcademicHierarchyRepository(),
+        ),
+        if (overrides.isEmpty)
+          materialsRepositoryProvider.overrideWithValue(
+            MockMaterialsRepository(),
+          )
+        else
+          ...overrides.cast(),
+      ],
       child: const MaterialApp(home: MaterialDiscoveryScreen()),
     );
   }
