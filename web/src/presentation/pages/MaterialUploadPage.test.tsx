@@ -182,7 +182,9 @@ describe('Formulario de subida de material', () => {
         return catalogFetch(input);
       });
 
-      const submitButton = screen.getByRole('button', { name: 'Subir material' });
+      const submitButton = screen.getByRole('button', {
+        name: 'Subir material',
+      });
       await user.click(submitButton);
 
       const errorAlert = await screen.findByRole('alert');
@@ -191,12 +193,16 @@ describe('Formulario de subida de material', () => {
         screen.queryByText('¡Material subido exitosamente!')
       ).not.toBeInTheDocument();
       expect(submitButton).toBeEnabled();
-      expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === 'POST')).toBe(true);
+      expect(
+        vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === 'POST')
+      ).toBe(true);
 
       await user.type(screen.getByLabelText('Título'), ' corregida');
       await user.click(submitButton);
 
-      expect(await screen.findByText('¡Material subido exitosamente!')).toBeInTheDocument();
+      expect(
+        await screen.findByText('¡Material subido exitosamente!')
+      ).toBeInTheDocument();
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
       expect(postAttempts).toBe(2);
     }
