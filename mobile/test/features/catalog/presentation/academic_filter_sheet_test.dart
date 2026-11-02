@@ -422,10 +422,13 @@ void main() {
     );
 
     testWidgets(
-      'Al seleccionar UFRO con repositorio por defecto solo se muestran carreras de UFRO, no las de UCT',
+      'Al seleccionar UFRO solo se muestran carreras de UFRO, no las de UCT',
       (tester) async {
-        // Se utiliza el contenedor sin overrides para usar MockAcademicHierarchyRepository por defecto
-        final container = ProviderContainer();
+        final container = ProviderContainer(
+          overrides: [
+            academicHierarchyRepositoryProvider.overrideWithValue(fakeRepo),
+          ],
+        );
 
         await tester.pumpWidget(buildTestWidget(container: container));
         await tester.tap(find.text('Abrir filtros'));
