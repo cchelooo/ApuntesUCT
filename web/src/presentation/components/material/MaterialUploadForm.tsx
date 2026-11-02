@@ -29,6 +29,8 @@ const MATERIAL_TYPE_OPTIONS = [
   { value: 'LINK', label: 'Enlace' },
 ];
 
+const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
+
 export function MaterialUploadForm({
   onSuccess,
   onError,
@@ -66,6 +68,15 @@ export function MaterialUploadForm({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] ?? null;
+    if (selectedFile && selectedFile.size > MAX_FILE_SIZE_BYTES) {
+      setFile(null);
+      setError(
+        'El archivo supera el tamaño máximo permitido de 15 MB. Por favor, selecciona un archivo de menor tamaño.'
+      );
+      setSuccess(null);
+      e.target.value = '';
+      return;
+    }
     setFile(selectedFile);
     setError(null);
     if (selectedFile) {
