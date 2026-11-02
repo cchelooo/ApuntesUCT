@@ -347,6 +347,130 @@
             "description": "Búsqueda compuesta Gateway → Search → Material/Catalog. Soporta filtros por contexto académico, año, tipo, paginación y ordenamiento."
           },
           "response": []
+        },
+        {
+          "name": "Listar materiales a través del gateway",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/v1/materials?page=1&pageSize=20",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "materials"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Ruta proxeada hacia Material Service. Paginación."
+          },
+          "response": []
+        },
+        {
+          "name": "Subir material (multipart) a través del gateway",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/v1/materials",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "materials"
+              ]
+            },
+            "description": "multipart/form-data con archivo y metadatos."
+          },
+          "response": []
+        },
+        {
+          "name": "Detalle de material a través del gateway",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "materials",
+                "{{materialId}}"
+              ]
+            },
+            "description": "Detalle con historial de versiones."
+          },
+          "response": []
+        },
+        {
+          "name": "Descargar material a través del gateway",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}/download",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "materials",
+                "{{materialId}}",
+                "download"
+              ],
+              "query": [
+                {
+                  "key": "versionId",
+                  "value": "{{versionId}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Descarga versión actual o específica."
+          },
+          "response": []
         }
       ]
     },
