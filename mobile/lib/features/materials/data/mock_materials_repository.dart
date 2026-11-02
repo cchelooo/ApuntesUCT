@@ -7,6 +7,7 @@ class MockMaterialsRepository implements MaterialsRepository {
   final List<MaterialSummary> _dataset;
   final List<String> _subjectsCatalog;
   final Duration delay;
+  final bool _isCustomDataset;
 
   static const List<String> defaultAcademicSubjects = [
     'Cálculo I',
@@ -23,12 +24,19 @@ class MockMaterialsRepository implements MaterialsRepository {
   }) : _dataset =
            customDataset ??
            List<MaterialSummary>.from(MaterialFixtures.sampleSummaries),
-       _subjectsCatalog = customSubjects ?? defaultAcademicSubjects;
+       _subjectsCatalog = customSubjects ?? defaultAcademicSubjects,
+       _isCustomDataset = customDataset != null;
 
   @override
   Future<List<MaterialSummary>> getMaterials({
     String? query,
     String? subject,
+    String? universityId,
+    String? careerId,
+    String? subjectId,
+    String? professorId,
+    int? year,
+    String? type,
     int page = 1,
     int pageSize = 10,
   }) async {
@@ -53,6 +61,70 @@ class MockMaterialsRepository implements MaterialsRepository {
 
     if (subject != null && subject.trim().isNotEmpty) {
       results = results.where((m) => m.subjectName == subject).toList();
+    } else if (subjectId != null && subjectId.trim().isNotEmpty) {
+      final sId = subjectId.trim().toLowerCase();
+      final filtered = results
+          .where(
+            (m) =>
+                m.subject?.id.toLowerCase() == sId ||
+                m.subjectName.toLowerCase() == sId ||
+                m.subjectName.toLowerCase().contains(sId),
+          )
+          .toList();
+      if (_isCustomDataset || filtered.isNotEmpty) {
+        results = filtered;
+      }
+    }
+
+    if (universityId != null && universityId.trim().isNotEmpty) {
+      final uId = universityId.trim().toLowerCase();
+      final filtered = results
+          .where(
+            (m) =>
+                m.university?.id.toLowerCase() == uId ||
+                (m.university?.name?.toLowerCase().contains(uId) ?? false),
+          )
+          .toList();
+      if (_isCustomDataset) {
+        results = filtered;
+      }
+    }
+
+    if (careerId != null && careerId.trim().isNotEmpty) {
+      final cId = careerId.trim().toLowerCase();
+      final filtered = results
+          .where(
+            (m) =>
+                m.career?.id.toLowerCase() == cId ||
+                (m.career?.name?.toLowerCase().contains(cId) ?? false) ||
+                m.careerName.toLowerCase().contains(cId),
+          )
+          .toList();
+      if (_isCustomDataset) {
+        results = filtered;
+      }
+    }
+
+    if (professorId != null && professorId.trim().isNotEmpty) {
+      final pId = professorId.trim().toLowerCase();
+      results = results
+          .where(
+            (m) =>
+                m.professorReference?.id.toLowerCase() == pId ||
+                (m.professor?.toLowerCase().contains(pId) ?? false),
+          )
+          .toList();
+    }
+
+    if (year != null) {
+      results = results.where((m) => m.academicYear == year).toList();
+    }
+
+    if (type != null && type.trim().isNotEmpty) {
+      final t = type.trim().toLowerCase();
+      results = results
+          .where((m) => m.materialType.toLowerCase() == t)
+          .toList();
     }
 
     final startIndex = (page - 1) * pageSize;
@@ -81,10 +153,6 @@ class MockMaterialsRepository implements MaterialsRepository {
     if (delay > Duration.zero) {
       await Future.delayed(delay);
     }
-    // Primero busca en el dataset inyectado (respeta customDataset de tests),
-    // luego en los fixtures conocidos. Nunca devuelve un detalle ajeno:
-    // si el ID no existe se lanza NotFound para que la ruta muestre
-    // «Material no encontrado» en lugar del contenido equivocado.
     for (final summary in _dataset) {
       if (summary.id == id) {
         final fixture = MaterialFixtures.detailForId(id);
