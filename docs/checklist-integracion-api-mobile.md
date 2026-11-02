@@ -63,10 +63,10 @@ La aplicación Mobile **no consume los microservicios directamente**, sino exclu
 | **Material** | `GET` | `/api/v1/materials` | 🟢 **Integrado** | `materials_discovery_provider.dart`, `gateway_discovery_ui_test.dart` | Listado paginado general con `page` y `pageSize`. |
 | **Material** | `POST` | `/api/v1/materials` | 🟢 **Integrado** | `material_upload_screen_test.dart`, `material_upload_live_test.dart` | Subida multipart hasta 15 MB (PDF, Word, PPT) o enlace `LINK`. Retorna `PENDING_REVIEW`. |
 | **Material** | `GET` | `/api/v1/materials/:id` | 🟢 **Integrado** | `material_detail_screen_test.dart`, `material_detail_refresh_test.dart` | Detalle estructurado con historial de versiones, metadatos y referencias académicas. |
-| **Material** | `GET` | `/api/v1/materials/:id/download` | 🟢 **Integrado** | `material_download_test.dart`, `material_download_native_test.dart` | Descarga binaria con streaming, cabeceras `Content-Disposition` UTF-8 y guardado local. |
-| **Material** | `POST` | `/api/v1/materials/:id/versions` | 🟢 **Integrado** | `material_version_history_test.dart`, `material_version_upload_sheet_test.dart` | Subida de versión incremental con `changesDescription` y archivo o enlace. |
+| **Material** | `GET` | `/api/v1/materials/:id/download` | 🟢 **Integrado** | `material_download_test.dart`, `material_file_handler_test.dart` | Descarga binaria con streaming, cabeceras `Content-Disposition` UTF-8 y guardado local. |
+| **Material** | `POST` | `/api/v1/materials/:id/versions` | 🟢 **Integrado** | `material_version_history_test.dart`, `material_version_upload_sheet_test.dart` | Subida de nueva versión exclusivamente con archivo local (`file`). No admite enlaces externos ni `changesDescription`. |
 | **Material** | `GET` | `/api/v1/materials/:id/preview` | 🔴 **Bloqueado** | — | Endpoint de visualización embebida/streaming no diseñado en Backend para Sprint 2. |
-| **Search** | `GET` | `/api/v1/search` | 🟢 **Integrado** | `material_year_type_filter_test.dart`, `material_hierarchy_filter_connection_test.dart`, `material_discovery_search_page_test.dart` | Búsqueda desacoplada por texto (`q`), 6 filtros oficiales (`universityId`, `careerId`, `subjectId`, `professorId`, `year`, `type`), ordenamiento y paginación. |
+| **Search** | `GET` | `/api/v1/search` | 🟢 **Integrado** | `material_hierarchy_filter_connection_test.dart`, `material_discovery_search_page_test.dart`, `material_search_provider_test.dart` | Búsqueda desacoplada por texto (`q`), 6 filtros oficiales (`universityId`, `careerId`, `subjectId`, `professorId`, `year`, `type`), ordenamiento y paginación. |
 | **Quality** | `POST` | `/api/v1/quality/ratings` | 🔴 **Bloqueado** | — | Quality Service no enrutado por Gateway ni implementado en Sprint 2 (Sprint 3). |
 | **Quality** | `POST` | `/api/v1/quality/favorites` | 🔴 **Bloqueado** | — | No enrutado en Gateway. |
 | **Quality** | `DELETE` | `/api/v1/quality/favorites/:id`| 🔴 **Bloqueado** | — | No enrutado en Gateway. |
@@ -84,7 +84,7 @@ Total de endpoints evaluados: 20
 └── ⚪ Pendientes / Futuros:  3  (15.0%)
 ```
 
-- **Cobertura del flujo crítico del estudiante**: **100%** de las rutas esenciales para el Sprint 2 (Login -> Exploración -> Subida -> Búsqueda con 6 filtros -> Detalle -> Descarga -> Nueva versión) se encuentran completamente operativas e integradas.
+- **Cobertura de flujos esenciales**: Las rutas principales del flujo del estudiante (Login, Exploración, Subida, Búsqueda jerárquica, Detalle, Descarga y Nueva versión) fueron validadas contra Gateway y mediante mocks contractuales, alcanzando 7 endpoints integrados de forma funcional y 5 validados con mocks según disponibilidad de backend.
 - **Rutas bloqueadas**: Se limitan estrictamente al módulo de Quality (calificaciones, reportes, favoritos) y previsualización embebida, las cuales corresponden por diseño a etapas posteriores del proyecto.
 
 ---
@@ -116,8 +116,8 @@ Total de endpoints evaluados: 20
   - Integración nativa con `open_filex` para visualización en aplicaciones externas del dispositivo.
   - Evidencia: `mobile/test/features/materials/presentation/material_download_test.dart`.
 - **Historial y Nuevas Versiones (`POST /materials/:id/versions`)**:
-  - Envía nueva versión asociada a un material existente con metadatos de cambios y archivo o enlace.
-  - Evidencia: `mobile/test/features/materials/presentation/material_version_history_test.dart`.
+  - Envía una nueva versión asociada a un material existente mediante archivo binario local (`file`). No admite enlaces externos ni campo `changesDescription` según el contrato vigente de Material Service.
+  - Evidencia: `mobile/test/features/materials/presentation/material_version_history_test.dart` y `mobile/test/features/materials/presentation/material_version_upload_sheet_test.dart`.
 
 ### 4.3. Search Service (`/api/v1/search`)
 - **Búsqueda Desacoplada y Filtros Jerárquicos (`GET /search`)**:
@@ -131,7 +131,7 @@ Total de endpoints evaluados: 20
     6. `type` (Enum contractual: `DOCUMENT`, `PRESENTATION`, `EXAM`, `SUMMARY`, `LINK`)
   - Soporta ordenamiento por `sortBy` (`createdAt`, `title`, `year`) y `order` (`asc`, `desc`).
   - Maneja respuestas vacías, debounce de 300 ms en entrada de texto y deduplicación en paginación.
-  - Evidencia: `mobile/test/features/materials/presentation/material_year_type_filter_test.dart` y `mobile/test/features/materials/presentation/material_hierarchy_filter_connection_test.dart`.
+  - Evidencia: `mobile/test/features/materials/presentation/material_hierarchy_filter_connection_test.dart` y `mobile/test/features/materials/presentation/material_discovery_search_page_test.dart`.
 
 ### 4.4. Catalog Service (`/api/v1/catalog`)
 - **Selectores Académicos**:
@@ -180,8 +180,4 @@ En Flutter, `ErrorInterceptor` y `apiErrorMessage(...)` capturan estos códigos 
   - Matriz técnica consolidada en este documento (`docs/checklist-integracion-api-mobile.md`).
   - Rama de trabajo: `docs/issue-301-preparar-evidencia-matriz-final-integracion`.
   - Pull Request asociado con referencia de cierre (`closes #301`).
-- **Seguimiento de Horas**:
-  - Horas asignadas: 2h
-  - Horas usadas: 2h
-  - Horas restantes: 0h
-  - Estado: *Done / Completada*
+- **Estado de Entrega**: Matriz consolidada y actualizada para revisión final del Sprint 2.
