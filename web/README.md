@@ -27,10 +27,14 @@ archivo; para el tipo Enlace se muestra una URL. El selector informa los
 formatos PDF, Word y PowerPoint y el límite de 15 MB del contrato backend.
 Cambiar entre archivo y enlace limpia el adjunto anterior.
 
-**Revisar material** muestra un resumen local editable. Esta tarea es de
-maquetación: no hace POST ni persiste los datos al salir o recargar. La
-validación de tamaño, MIME, año y relaciones de dominio permanece en Material
-Service; el navegador solo comprueba campos requeridos y sintaxis de URL.
+**Revisar material** muestra un resumen editable antes de confirmar. Al
+seleccionar **Subir material**, el formulario envía los metadatos y el archivo
+como `multipart/form-data` mediante `POST /api/v1/materials`; Material Service
+valida y persiste la solicitud. Una creación exitosa queda en estado
+`PENDING_REVIEW`, por lo que no aparece inmediatamente en las vistas públicas
+que solo muestran materiales publicados. En desarrollo, la subida necesita el
+contexto local de autor de Material Service habilitado; el login mock no
+autoriza esta operación.
 
 La vista usa la paleta clara de mobile: azul para acciones, amarillo como
 acento, fondos blancos/celestes y controles de 54 px. En celular los campos
@@ -130,12 +134,20 @@ en vez de usar un origen alternativo.
 - `useCreateMaterialMutation(accessToken?)` invalida las consultas de materiales
   al completar la creación. La integración real con Auth sigue pendiente en
   backend; el token simulado de login no habilita la creación.
-- `fetchMaterial` y `downloadMaterial` son operaciones provisionales: las rutas
-  `/materials/:id` y `/materials/:id/download` todavía no están publicadas en
-  el contrato de backend. No conectarlas a la UI hasta que se confirmen. El
-  detalle devuelve `unknown` y la descarga una `Response` sin interpretar;
-  no se presupone un esquema de detalle ni un archivo binario. Sus pruebas
-  verifican únicamente el transporte con respuestas simuladas.
+- `fetchMaterial` consulta el detalle real de `GET /materials/:id`. La ruta
+  `/material/:materialId` presenta metadatos e historial de versiones; requiere
+  un material publicado.
+- `downloadMaterial` consulta `GET /materials/:id/download`. En la vista de
+  detalle, el botón descarga el archivo como `Blob`; el servicio responde con
+  el stream y las cabeceras de descarga. Solo hay archivo descargable si el
+  material publicado tiene una versión disponible; los enlaces no tienen
+  archivo.
+- `fetchSearch` consulta `GET /search`; la vista `/search` ofrece búsqueda,
+  orden y paginación a través del API Gateway.
+
+La regresión manual de los siete flujos (incluidos requisitos de MinIO, datos
+publicados y contexto local) está documentada en
+[`docs/testing/regresion-stack-real.md`](../docs/testing/regresion-stack-real.md).
 
 El contrato de creación corresponde a los DTO Swagger de Material Service.
 Los campos marcados opcionales en Swagger permanecen opcionales en TypeScript,
