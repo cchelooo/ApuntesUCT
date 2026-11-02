@@ -658,6 +658,78 @@ describe('MaterialUploadForm - Cobertura de pruebas, contratos y regresión (#24
   });
 
   describe('Robustez de errores y validaciones adicionales (#243, #244)', () => {
+    it('rechaza localmente un archivo mayor que 15 MB y no llama a la API', async () => {
+      const uploadFn = vi.fn().mockResolvedValue({ id: 'no-debe-crearse' });
+      render(<MaterialUploadForm uploadFn={uploadFn} />);
+
+      const largeFile = new File(['contenido'], 'apunte-grande.pdf', {
+        type: 'application/pdf',
+      });
+      Object.defineProperty(largeFile, 'size', {
+        value: 15 * 1024 * 1024 + 1,
+      });
+
+      await userEvent.upload(
+        screen.getByTestId('upload-file-input'),
+        largeFile
+      );
+
+      expect(
+        screen.getByText(/El archivo supera el tamaño máximo permitido de 15 MB/i)
+      ).toBeInTheDocument();
+      expect(uploadFn).not.toHaveBeenCalled();
+    });
+
+    it('muestra el feedback de validación ante una respuesta API 400', async () => {
+      const uploadFn = vi.fn().mockRejectedValueOnce({ status: 400 });
+
+      render(<MaterialUploadForm uploadFn={uploadFn} />);
+
+      fireEvent.change(screen.getByTestId('upload-title-input'), {
+        target: { value: 'Apunte con datos inválidos' },
+      });
+      await selectAcademic();
+      fireEvent.change(screen.getByTestId('upload-year-input'), {
+        target: { value: '2026' },
+      });
+      await userEvent.upload(
+        screen.getByTestId('upload-file-input'),
+        new File(['content'], 'apunte.pdf', { type: 'application/pdf' })
+      );
+
+      fireEvent.click(screen.getByTestId('upload-submit-button'));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'La solicitud es incorrecta. Por favor, revisa los datos e intenta de nuevo.'
+      );
+      expect(uploadFn).toHaveBeenCalledTimes(1);
+    });
+
+    it('muestra el feedback de indisponibilidad ante una respuesta API 503', async () => {
+      const uploadFn = vi.fn().mockRejectedValueOnce({ status: 503 });
+
+      render(<MaterialUploadForm uploadFn={uploadFn} />);
+
+      fireEvent.change(screen.getByTestId('upload-title-input'), {
+        target: { value: 'Apunte temporalmente indisponible' },
+      });
+      await selectAcademic();
+      fireEvent.change(screen.getByTestId('upload-year-input'), {
+        target: { value: '2026' },
+      });
+      await userEvent.upload(
+        screen.getByTestId('upload-file-input'),
+        new File(['content'], 'apunte.pdf', { type: 'application/pdf' })
+      );
+
+      fireEvent.click(screen.getByTestId('upload-submit-button'));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Error temporal en el servidor. Por favor, intenta más tarde.'
+      );
+      expect(uploadFn).toHaveBeenCalledTimes(1);
+    });
+
     it('muestra alerta informando la necesidad de autenticación ante un error 401 (Unauthorized)', async () => {
       const uploadFn = vi.fn().mockRejectedValueOnce({ status: 401 });
 

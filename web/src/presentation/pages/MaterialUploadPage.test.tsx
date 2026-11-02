@@ -13,36 +13,35 @@ import { MaterialUploadPage } from './MaterialUploadPage';
 
 let client: QueryClient;
 
+async function catalogFetch(input: RequestInfo | URL) {
+  const resource = new URL(String(input)).pathname.split('/').at(-1);
+  const data: Record<string, unknown[]> = {
+    universities: [
+      { id: 'u1', name: 'Universidad Católica de Temuco' },
+      { id: 'u2', name: 'Otra universidad' },
+    ],
+    careers: [{ id: 'c1', name: 'Ingeniería Informática' }],
+    subjects: [
+      {
+        id: 's1',
+        name: 'Álgebra',
+        code: 'ALG',
+        semester: 1,
+        active: true,
+        careerId: 'c1',
+      },
+    ],
+    professors: [{ id: 'p1', name: 'Ana Pérez' }],
+  };
+  return {
+    ok: true,
+    json: async () => data[resource ?? ''] ?? [],
+  } as Response;
+}
+
 beforeEach(() => {
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (input: string) => {
-      const resource = new URL(input).pathname.split('/').at(-1);
-      const data: Record<string, unknown[]> = {
-        universities: [
-          { id: 'u1', name: 'Universidad Católica de Temuco' },
-          { id: 'u2', name: 'Otra universidad' },
-        ],
-        careers: [{ id: 'c1', name: 'Ingeniería Informática' }],
-        subjects: [
-          {
-            id: 's1',
-            name: 'Álgebra',
-            code: 'ALG',
-            semester: 1,
-            active: true,
-            careerId: 'c1',
-          },
-        ],
-        professors: [{ id: 'p1', name: 'Ana Pérez' }],
-      };
-      return {
-        ok: true,
-        json: async () => data[resource ?? ''] ?? [],
-      } as Response;
-    })
-  );
+  vi.stubGlobal('fetch', vi.fn(catalogFetch));
 });
 
 afterEach(() => {
@@ -138,6 +137,76 @@ describe('Formulario de subida de material', () => {
     expect(body.get('careerId')).toBe('c1');
     expect(body.get('file')).toBe(file);
   });
+
+  it.each([
+    {
+      status: 400,
+      message: 'Datos de validación inválidos',
+      visibleMessage:
+        'La solicitud es incorrecta. Por favor, revisa los datos e intenta de nuevo.',
+    },
+    {
+      status: 413,
+      message: 'El archivo supera el tamaño máximo',
+      visibleMessage:
+        'El archivo supera el tamaño máximo permitido de 15 MB. Por favor, selecciona un archivo de menor tamaño.',
+    },
+    {
+      status: 503,
+      message: 'Servicio temporalmente no disponible',
+      visibleMessage:
+        'Error temporal en el servidor. Por favor, intenta más tarde.',
+    },
+  ])(
+    'muestra el error HTTP $status, permite corregir y reintentar',
+    async ({ status, message, visibleMessage }) => {
+      const user = setup('test-token');
+      await fillMetadata(user);
+      await user.upload(
+        screen.getByLabelText('Selecciona tu archivo'),
+        new File(['apuntes'], 'resumen.pdf', { type: 'application/pdf' })
+      );
+
+      let postAttempts = 0;
+      vi.mocked(fetch).mockImplementation(async (input, init) => {
+        if (init?.method === 'POST') {
+          postAttempts += 1;
+          if (postAttempts === 1) {
+            return Response.json({ message }, { status });
+          }
+          return Response.json({
+            id: 'material-reintentado',
+            title: 'Guía de álgebra corregida',
+          });
+        }
+        return catalogFetch(input);
+      });
+
+      const submitButton = screen.getByRole('button', {
+        name: 'Subir material',
+      });
+      await user.click(submitButton);
+
+      const errorAlert = await screen.findByRole('alert');
+      expect(errorAlert).toHaveTextContent(visibleMessage);
+      expect(
+        screen.queryByText('¡Material subido exitosamente!')
+      ).not.toBeInTheDocument();
+      expect(submitButton).toBeEnabled();
+      expect(
+        vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === 'POST')
+      ).toBe(true);
+
+      await user.type(screen.getByLabelText('Título'), ' corregida');
+      await user.click(submitButton);
+
+      expect(
+        await screen.findByText('¡Material subido exitosamente!')
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(postAttempts).toBe(2);
+    }
+  );
 
   it('permite completar metadatos y revisar un archivo sin publicar', async () => {
     const user = setup();
