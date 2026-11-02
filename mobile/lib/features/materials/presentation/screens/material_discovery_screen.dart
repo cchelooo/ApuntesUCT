@@ -54,10 +54,11 @@ class _MaterialDiscoveryScreenState
     });
   }
 
-  void _onClearSearch() {
+  void _onClearAll() {
     _debounceTimer?.cancel();
     _searchController.clear();
     setState(() {});
+    ref.read(academicHierarchyProvider.notifier).resetSelection();
     ref.read(discoveryMaterialsProvider.notifier).clearFilters();
   }
 
@@ -67,10 +68,62 @@ class _MaterialDiscoveryScreenState
       onApply: () {
         final hierarchy = ref.read(academicHierarchyProvider);
         final selectedSubject = hierarchy.selectedSubject;
-        ref
-            .read(discoveryMaterialsProvider.notifier)
-            .setSubject(selectedSubject?.name);
+        final notifier = ref.read(discoveryMaterialsProvider.notifier);
+        notifier.setSubject(selectedSubject?.name);
+        notifier.setYear(hierarchy.selectedYear);
+        notifier.setType(hierarchy.selectedType);
       },
+    );
+  }
+
+  Widget _buildActiveFilterChips(DiscoveryMaterialsState state) {
+    if (!state.hasHierarchyFilters) return const SizedBox.shrink();
+
+    final notifier = ref.read(discoveryMaterialsProvider.notifier);
+    final academicNotifier = ref.read(academicHierarchyProvider.notifier);
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(
+        children: [
+          if (state.selectedSubject != null) ...[
+            Chip(
+              avatar: const Icon(Icons.menu_book_outlined, size: 16),
+              label: Text(state.selectedSubject!),
+              onDeleted: () {
+                notifier.setSubjectHierarchy(null);
+                academicNotifier.selectSubject(null);
+              },
+            ),
+            const SizedBox(width: 8),
+          ],
+          if (state.selectedYear != null) ...[
+            Chip(
+              key: const Key('chip_active_year'),
+              avatar: const Icon(Icons.calendar_today, size: 16),
+              label: Text('Año: ${state.selectedYear}'),
+              onDeleted: () => notifier.clearYear(),
+            ),
+            const SizedBox(width: 8),
+          ],
+          if (state.selectedType != null) ...[
+            Chip(
+              key: const Key('chip_active_type'),
+              avatar: const Icon(Icons.category, size: 16),
+              label: Text('Tipo: ${state.selectedType}'),
+              onDeleted: () => notifier.clearType(),
+            ),
+            const SizedBox(width: 8),
+          ],
+          ActionChip(
+            key: const Key('chip_clear_all_filters'),
+            avatar: const Icon(Icons.close, size: 16),
+            label: const Text('Limpiar todo'),
+            onPressed: _onClearAll,
+          ),
+        ],
+      ),
     );
   }
 
@@ -96,10 +149,11 @@ class _MaterialDiscoveryScreenState
                     hintText: 'Buscar apuntes, ramos, docentes...',
                     leading: const Icon(Icons.search),
                     trailing: [
-                      if (_searchController.text.isNotEmpty)
+                      if (_searchController.text.isNotEmpty || state.hasHierarchyFilters)
                         IconButton(
+                          key: const Key('clear_search_button'),
                           icon: const Icon(Icons.clear),
-                          onPressed: _onClearSearch,
+                          onPressed: _onClearAll,
                         ),
                     ],
                     onChanged: _onSearchChanged,
@@ -107,7 +161,7 @@ class _MaterialDiscoveryScreenState
                 ),
                 const SizedBox(width: 8),
                 Badge(
-                  isLabelVisible: hasHierarchyFilters,
+                  isLabelVisible: hasHierarchyFilters || state.hasHierarchyFilters,
                   smallSize: 8,
                   child: IconButton.filledTonal(
                     icon: const Icon(Icons.tune_rounded),
@@ -118,25 +172,7 @@ class _MaterialDiscoveryScreenState
               ],
             ),
           ),
-          if (state.selectedSubject != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Chip(
-                  avatar: const Icon(Icons.check, size: 16),
-                  label: Text(state.selectedSubject!),
-                  onDeleted: () {
-                    ref
-                        .read(discoveryMaterialsProvider.notifier)
-                        .setSubject(null);
-                    ref
-                        .read(academicHierarchyProvider.notifier)
-                        .selectSubject(null);
-                  },
-                ),
-              ),
-            ),
+          _buildActiveFilterChips(state),
           Expanded(
             child: RefreshIndicator(
               onRefresh: () async {
@@ -175,6 +211,12 @@ class _MaterialDiscoveryScreenState
       final subjectText = state.selectedSubject != null
           ? ' en "${state.selectedSubject}"'
           : '';
+      final yearText = state.selectedYear != null
+          ? ' año ${state.selectedYear}'
+          : '';
+      final typeText = state.selectedType != null
+          ? ' tipo ${state.selectedType}'
+          : '';
 
       return Center(
         child: SingleChildScrollView(
@@ -189,14 +231,15 @@ class _MaterialDiscoveryScreenState
                       ? 'Sin coincidencias'
                       : 'Catálogo de materiales vacío',
                   subtitle: isFiltered
-                      ? 'No encontramos materiales$queryText$subjectText.'
+                      ? 'No encontramos materiales$queryText$subjectText$yearText$typeText.'
                       : 'Aún no se han registrado materiales académicos.',
                 ),
                 // Criterio 4: Opción visible para limpiar filtros y búsqueda
                 if (isFiltered) ...[
                   const SizedBox(height: 16),
                   FilledButton.icon(
-                    onPressed: _onClearSearch,
+                    key: const Key('empty_state_clear_button'),
+                    onPressed: _onClearAll,
                     icon: const Icon(Icons.refresh_rounded),
                     label: const Text('Limpiar filtros y búsqueda'),
                   ),

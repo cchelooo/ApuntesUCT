@@ -158,15 +158,13 @@ class AcademicHierarchySelection {
 /// activas para los 6 niveles (Issues #281, #282 y #289).
 class AcademicHierarchyState {
   static const List<int> defaultYears = [2026, 2025, 2024, 2023, 2022, 2021];
+  /// Tipos contractuales de material publicados en Swagger / Material Service (Issue #295).
   static const List<String> defaultTypes = [
-    'apunte',
-    'certamen',
-    'guia',
-    'prueba',
-    'examen',
-    'control',
-    'resumen',
-    'formulario',
+    'DOCUMENT',
+    'PRESENTATION',
+    'EXAM',
+    'SUMMARY',
+    'LINK',
   ];
 
   final AcademicHierarchySelection selection;
@@ -667,6 +665,9 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
   // -------------------------------------------------------------------------
   // Resets
   // -------------------------------------------------------------------------
+
+  /// Alias de [resetSelection] para restablecer la selección académica completa (Issue #295).
+  void clearFilters() => resetSelection();
 
   /// Reinicia la selección activa manteniendo universidades cargadas.
   /// También limpia todos los loadings y errores de niveles hijos.

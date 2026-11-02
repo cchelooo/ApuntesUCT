@@ -10,13 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class MockSearchMaterialsRepository implements MaterialsRepository {
-  final List<MaterialSummary> Function({
-    String? query,
-    String? subject,
-    int page,
-    int pageSize,
-  })
-  onGetMaterials;
+  final Function onGetMaterials;
 
   MockSearchMaterialsRepository({required this.onGetMaterials});
 
@@ -24,15 +18,38 @@ class MockSearchMaterialsRepository implements MaterialsRepository {
   Future<List<MaterialSummary>> getMaterials({
     String? query,
     String? subject,
+    String? universityId,
+    String? careerId,
+    String? subjectId,
+    String? professorId,
+    int? year,
+    String? type,
     int page = 1,
     int pageSize = 10,
   }) async {
-    return onGetMaterials(
-      query: query,
-      subject: subject,
-      page: page,
-      pageSize: pageSize,
-    );
+    dynamic raw;
+    try {
+      raw = (onGetMaterials as dynamic)(
+        query: query,
+        subject: subject,
+        universityId: universityId,
+        careerId: careerId,
+        subjectId: subjectId,
+        professorId: professorId,
+        year: year,
+        type: type,
+        page: page,
+        pageSize: pageSize,
+      );
+    } catch (_) {
+      raw = (onGetMaterials as dynamic)(
+        query: query,
+        subject: subject,
+        page: page,
+        pageSize: pageSize,
+      );
+    }
+    return (raw as List).cast<MaterialSummary>();
   }
 
   @override

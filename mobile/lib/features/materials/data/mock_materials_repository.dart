@@ -29,6 +29,12 @@ class MockMaterialsRepository implements MaterialsRepository {
   Future<List<MaterialSummary>> getMaterials({
     String? query,
     String? subject,
+    String? universityId,
+    String? careerId,
+    String? subjectId,
+    String? professorId,
+    int? year,
+    String? type,
     int page = 1,
     int pageSize = 10,
   }) async {
@@ -53,6 +59,35 @@ class MockMaterialsRepository implements MaterialsRepository {
 
     if (subject != null && subject.trim().isNotEmpty) {
       results = results.where((m) => m.subjectName == subject).toList();
+    }
+
+    if (universityId != null && universityId.trim().isNotEmpty) {
+      final u = universityId.trim();
+      results = results.where((m) => m.university?.id == u).toList();
+    }
+
+    if (careerId != null && careerId.trim().isNotEmpty) {
+      final c = careerId.trim();
+      results = results.where((m) => m.career?.id == c).toList();
+    }
+
+    if (subjectId != null && subjectId.trim().isNotEmpty) {
+      final s = subjectId.trim();
+      results = results.where((m) => m.subject?.id == s).toList();
+    }
+
+    if (professorId != null && professorId.trim().isNotEmpty) {
+      final p = professorId.trim();
+      results = results.where((m) => m.professorReference?.id == p).toList();
+    }
+
+    if (year != null) {
+      results = results.where((m) => m.academicYear == year).toList();
+    }
+
+    if (type != null && type.trim().isNotEmpty) {
+      final t = type.trim().toUpperCase();
+      results = results.where((m) => m.materialType.toUpperCase() == t).toList();
     }
 
     final startIndex = (page - 1) * pageSize;
