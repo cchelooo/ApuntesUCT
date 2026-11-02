@@ -33,11 +33,11 @@ export const Input = ({
 
   const stateClass = error
     ? 'border-red-500 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500'
-    : 'border-gray-300 text-gray-900 placeholder-gray-400 focus:border-uct-sky focus:ring-uct-sky';
+    : 'border-catalog-line bg-catalog-paper text-catalog-ink placeholder-uct-muted focus:border-uct-sky focus:ring-uct-sky';
 
   const disabledClass = disabled
-    ? 'bg-gray-100 opacity-75 cursor-not-allowed'
-    : 'bg-white';
+    ? 'bg-catalog-bg opacity-75 cursor-not-allowed'
+    : 'bg-catalog-paper';
 
   const combinedDescribedBy =
     [ariaDescribedBy, descriptionId].filter(Boolean).join(' ') || undefined;
@@ -47,7 +47,7 @@ export const Input = ({
       className={`flex flex-col gap-1.5 ${containerWidthClass} ${containerClassName}`.trim()}
     >
       {label && (
-        <label htmlFor={inputId} className="text-sm font-medium text-gray-700">
+        <label htmlFor={inputId} className="text-sm font-medium text-catalog-ink">
           {label}
         </label>
       )}
@@ -62,7 +62,7 @@ export const Input = ({
       {(error || helperText) && (
         <p
           id={descriptionId}
-          className={`text-xs ${error ? 'text-red-500' : 'text-gray-500'}`}
+          className={`text-xs ${error ? 'text-red-500' : 'text-uct-muted'}`}
         >
           {error || helperText}
         </p>

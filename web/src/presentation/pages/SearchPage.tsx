@@ -36,6 +36,8 @@ export function SearchPage() {
   const [draft, setDraft] = useState(q);
   const [yearDraft, setYearDraft] = useState<string | null>(null);
   const [yearError, setYearError] = useState<string | null>(null);
+  const [draftUrlQ, setDraftUrlQ] = useState(q);
+  const displayedDraft = draftUrlQ === q ? draft : q;
 
   const hasCriteria = q.length > 0 || hasSearchFilters(filters);
   const hasFiltersToClear =
@@ -75,7 +77,10 @@ export function SearchPage() {
     }
     setYearError(null);
     setYearDraft(null);
-    update({ q: draft.trim(), filters: { ...filters, year } });
+    const nextQ = displayedDraft.trim();
+    setDraft(nextQ);
+    setDraftUrlQ(nextQ);
+    update({ q: nextQ, filters: { ...filters, year } });
   }
 
   function handleAcademicChange(selection: AcademicSelection) {
@@ -135,8 +140,11 @@ export function SearchPage() {
               label="Buscar materiales"
               type="search"
               name="q"
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
+              value={displayedDraft}
+              onChange={(event) => {
+                setDraft(event.target.value);
+                setDraftUrlQ(q);
+              }}
               placeholder="Ej. Estructuras de datos certamen"
               containerClassName="flex-1"
             />
