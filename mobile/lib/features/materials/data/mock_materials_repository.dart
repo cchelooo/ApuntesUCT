@@ -127,35 +127,6 @@ class MockMaterialsRepository implements MaterialsRepository {
           .toList();
     }
 
-    if (universityId != null && universityId.trim().isNotEmpty) {
-      final u = universityId.trim();
-      results = results.where((m) => m.university?.id == u).toList();
-    }
-
-    if (careerId != null && careerId.trim().isNotEmpty) {
-      final c = careerId.trim();
-      results = results.where((m) => m.career?.id == c).toList();
-    }
-
-    if (subjectId != null && subjectId.trim().isNotEmpty) {
-      final s = subjectId.trim();
-      results = results.where((m) => m.subject?.id == s).toList();
-    }
-
-    if (professorId != null && professorId.trim().isNotEmpty) {
-      final p = professorId.trim();
-      results = results.where((m) => m.professorReference?.id == p).toList();
-    }
-
-    if (year != null) {
-      results = results.where((m) => m.academicYear == year).toList();
-    }
-
-    if (type != null && type.trim().isNotEmpty) {
-      final t = type.trim().toUpperCase();
-      results = results.where((m) => m.materialType.toUpperCase() == t).toList();
-    }
-
     final startIndex = (page - 1) * pageSize;
     if (startIndex >= results.length) return [];
 

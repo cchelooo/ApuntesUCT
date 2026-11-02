@@ -228,32 +228,32 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verifica chips visibles
-      expect(find.byKey(const Key('chip_active_year')), findsOneWidget);
+      expect(find.byKey(const Key('active_chip_year')), findsOneWidget);
       expect(find.text('Año: 2026'), findsOneWidget);
-      expect(find.byKey(const Key('chip_active_type')), findsOneWidget);
+      expect(find.byKey(const Key('active_chip_type')), findsOneWidget);
       expect(find.text('Tipo: PRESENTATION'), findsOneWidget);
-      expect(find.byKey(const Key('chip_clear_all_filters')), findsOneWidget);
+      expect(find.byKey(const Key('clear_all_filters_button')), findsOneWidget);
 
       // Borrado individual del filtro Año
       await tester.tap(find.descendant(
-        of: find.byKey(const Key('chip_active_year')),
+        of: find.byKey(const Key('active_chip_year')),
         matching: find.byType(InkWell),
       ).last);
       await tester.pumpAndSettle();
 
       expect(container.read(discoveryMaterialsProvider).selectedYear, isNull);
-      expect(find.byKey(const Key('chip_active_year')), findsNothing);
-      expect(find.byKey(const Key('chip_active_type')), findsOneWidget);
+      expect(find.byKey(const Key('active_chip_year')), findsNothing);
+      expect(find.byKey(const Key('active_chip_type')), findsOneWidget);
 
       // Botón Limpiar todo
-      await tester.tap(find.byKey(const Key('chip_clear_all_filters')));
+      await tester.tap(find.byKey(const Key('clear_all_filters_button')));
       await tester.pumpAndSettle();
 
       final state = container.read(discoveryMaterialsProvider);
       expect(state.selectedYear, isNull);
       expect(state.selectedType, isNull);
-      expect(find.byKey(const Key('chip_active_type')), findsNothing);
-      expect(find.byKey(const Key('chip_clear_all_filters')), findsNothing);
+      expect(find.byKey(const Key('active_chip_type')), findsNothing);
+      expect(find.byKey(const Key('clear_all_filters_button')), findsNothing);
     });
 
     testWidgets('Criterio 3: Estado sin resultados ofrece botón para limpiar filtros y búsqueda', (

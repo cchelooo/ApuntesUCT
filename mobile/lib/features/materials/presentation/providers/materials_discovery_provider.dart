@@ -1,5 +1,6 @@
 import 'package:apuntesuct_mobile/core/network/api_client.dart';
 import 'package:apuntesuct_mobile/core/errors/api_exception.dart';
+import 'package:apuntesuct_mobile/features/catalog/presentation/providers/academic_hierarchy_provider.dart';
 import 'package:apuntesuct_mobile/features/materials/data/dio_catalog_selector_repository.dart';
 import 'package:apuntesuct_mobile/features/materials/data/dio_material_repository.dart';
 import 'package:apuntesuct_mobile/features/materials/data/dio_search_repository.dart';
@@ -502,6 +503,7 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
   }
 
   Future<void> clearFilters() async {
+    ref.read(academicHierarchyProvider.notifier).resetSelection();
     state = state.copyWith(
       query: '',
       clearSubject: true,
