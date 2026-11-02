@@ -112,8 +112,9 @@ export default defineConfig([
 ## Cliente de Material (#223)
 
 `VITE_API_URL` debe apuntar al API Gateway (por ejemplo,
-`http://localhost:3000/api/v1`). El cliente de Material no usa un origen
-alternativo cuando falta esta configuración.
+`http://localhost:3000/api/v1`). Es obligatoria para todas las llamadas
+públicas de la web; si falta o está vacía, la solicitud falla explícitamente
+en vez de usar un origen alternativo.
 
 - `fetchMaterials(params, signal)` conserva el mapeo del listado para la UI,
   incluyendo `totalPages`, y permite cancelar solicitudes con TanStack Query.

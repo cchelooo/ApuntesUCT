@@ -1,4 +1,4 @@
-const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1';
+import { getApiBaseUrl } from '../apiBaseUrl';
 
 interface NamedEntity {
   id: string;
@@ -9,7 +9,9 @@ async function fetchNamedEntities(
   resource: 'subjects' | 'professors',
   signal?: AbortSignal
 ): Promise<NamedEntity[]> {
-  const response = await fetch(`${baseUrl}/catalog/${resource}`, { signal });
+  const response = await fetch(`${getApiBaseUrl()}/catalog/${resource}`, {
+    signal,
+  });
   if (!response.ok) {
     throw new Error(
       `No se pudo obtener ${resource} del catálogo (status ${response.status})`

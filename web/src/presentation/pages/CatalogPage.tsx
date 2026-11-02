@@ -2,9 +2,11 @@ import { useCatalogSubjects } from '../../application/catalog/useCatalogSubjects
 import { CatalogFilterSidebar } from '../components/catalog/CatalogFilterSidebar';
 import { CatalogGrid } from '../components/catalog/CatalogGrid';
 import { Input } from '../components/Input';
+import { Alert } from '../components/Alert';
+import { Button } from '../components/Button';
 
 export function CatalogPage() {
-  const { subjects, query, setQuery, total, isLoading, isError } =
+  const { subjects, query, setQuery, total, isLoading, isError, retry } =
     useCatalogSubjects();
 
   return (
@@ -31,11 +33,11 @@ export function CatalogPage() {
             <path d="m16 16-3.2-3.2" />
           </svg>
           <Input
+            label="Buscar asignaturas por nombre o código"
             type="text"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Buscar por nombre o código"
-            aria-label="Buscar asignaturas por nombre o código"
             className="w-full !bg-transparent text-sm !text-catalog-ink placeholder:!text-catalog-ink/40 focus:!outline-hidden !border-none focus:!ring-0 focus:!ring-offset-0 !p-0 !m-0 !shadow-none"
             containerClassName="flex-1"
           />
@@ -52,22 +54,31 @@ export function CatalogPage() {
         <CatalogFilterSidebar />
         <div className="min-w-0 flex-1">
           {isError ? (
-            <div className="rounded-xs border border-dashed border-catalog-line bg-catalog-paperMuted px-6 py-12 text-center">
-              <p className="font-display text-lg text-catalog-ink">
-                No se pudo cargar el catálogo
-              </p>
-              <p className="mt-1 text-sm text-catalog-ink/60">
-                Intenta recargar la página en unos minutos.
-              </p>
+            <div className="space-y-3">
+              <Alert
+                variant="error"
+                message="No se pudo cargar el catálogo. Comprueba tu conexión e inténtalo nuevamente."
+              />
+              <Button type="button" onClick={retry}>
+                Reintentar
+              </Button>
             </div>
           ) : isLoading ? (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-40 animate-pulse rounded-xs border border-catalog-line bg-catalog-paperMuted"
-                />
-              ))}
+            <div aria-busy="true">
+              <p role="status" className="sr-only">
+                Cargando asignaturas…
+              </p>
+              <div
+                aria-hidden="true"
+                className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              >
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-40 animate-pulse rounded-xs border border-catalog-line bg-catalog-paperMuted"
+                  />
+                ))}
+              </div>
             </div>
           ) : (
             <CatalogGrid subjects={subjects} query={query} />

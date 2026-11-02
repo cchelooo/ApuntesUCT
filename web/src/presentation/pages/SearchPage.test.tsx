@@ -106,6 +106,7 @@ describe('SearchPage', () => {
     expect(first.searchParams.get('order')).toBe('desc');
     expect(first.searchParams.has('sort')).toBe(false);
     expect(first.searchParams.get('page')).toBe('1');
+    expect(`${first.origin}${first.pathname}`).toBe(`${GATEWAY}/search`);
   });
 
   describe('paginación', () => {
