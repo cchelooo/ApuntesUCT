@@ -1,323 +1,186 @@
-# Checklist de Integración API — Mobile (INT4)
+# Checklist y Matriz Final de Integración API — Mobile (INT4)
 
-**Sprint 1 · Actualización de Integración con Auth y Catálogo** — Registro y seguimiento de endpoints, contratos de datos, validaciones y estado de integración requeridos por la aplicación Mobile (INT4) para conectarse a los microservicios backend a través del API Gateway NestJS.
+**Sprint 2 — Cierre de Integración y Matriz de Estado (Semana 4)** — Registro oficial y seguimiento de endpoints, contratos de datos, validaciones y estado de integración de la aplicación Mobile (INT4) conectada a los microservicios backend a través del API Gateway NestJS.
 
-> **Estado**: Actualizado con el estado real del backend (INT2) a partir de los PRs #76, #91, #92, #97 y los requerimientos de pantallas maquetadas en Mobile (Login, Register, Catálogo, Perfil).
+> **Estado**: Actualizado al cierre del Sprint 2 (Semana 4) conforme a los entregables de Backend (INT2) y Mobile (INT4).
+> **Referencia de Tarea**: [Issue #301](https://github.com/cchelooo/ApuntesUCT/issues/301) — Preparar evidencia y matriz final de integración.
 
 ---
 
 ## 1. Configuración de Red y Conectividad (API Gateway)
 
-La aplicación Mobile no consume los microservicios directamente, sino a través del **API Gateway** (puerto `3000`), el cual centraliza el enrutamiento mediante proxy HTTP inverso:
+La aplicación Mobile **no consume los microservicios directamente**, sino exclusivamente a través del **API Gateway** (puerto `3000`), el cual centraliza el enrutamiento mediante proxy HTTP inverso hacia cada servicio:
 
-| Entorno / Plataforma | URL Base Gateway | Parámetro / Configuración |
+| Entorno / Plataforma | URL Base Gateway | Configuración / Resolución |
 |---|---|---|
 | **Android Emulador** | `http://10.0.2.2:3000/api/v1` | Resuelto automáticamente por `ApiConfig.gatewayBaseUrl` |
-| **Web / Desktop / Local** | `http://localhost:3000/api/v1` | Valor por defecto en desarrollo local |
-| **Variable de entorno** | Configurable vía `--dart-define=API_GATEWAY_URL=...` | Prioridad máxima en `mobile/lib/core/config/api_config.dart` |
+| **Dispositivo Android Físico** | `http://<IP_HOST>:3000/api/v1` | Configurable vía `--dart-define=API_GATEWAY_URL=...` |
+| **Web / Desktop / Local** | `http://localhost:3000/api/v1` | Valor por defecto en desarrollo de escritorio |
+| **Variable de entorno** | Definible en tiempo de build | Prioridad máxima en `mobile/lib/core/config/api_config.dart` |
 
-- **Prefijo global**: `/api/v1`
-- **Headers obligatorios**:
-  - `Content-Type: application/json`
+### Parámetros Globales
+- **Prefijo unificado de rutas**: `/api/v1`
+- **Headers estándar**:
+  - `Content-Type: application/json` (o `multipart/form-data` en subidas binarias)
   - `Authorization: Bearer <accessToken>` (en rutas protegidas)
-- **Documentación Swagger activa**:
-  - Gateway: `http://localhost:3000/api/docs`
-  - Auth Service: `http://localhost:3001/api/docs` (JSON spec en `/api/docs-json`)
-  - Catalog Service: `http://localhost:3002/api/docs` (JSON spec en `/api/docs-json`)
-  - Material Service: `http://localhost:3003/api/docs` (JSON spec en `/api/docs-json`)
-  - Search Service: `http://localhost:3005/api/docs` (JSON spec en `/api/docs-json`)
-
----
-
-## 2. Endpoints Requeridos: Auth Service (`/api/v1/auth`)
-
-Microservicio responsable de autenticación, emisión de tokens y gestión de usuarios. Enrutado por el Gateway mediante proxy hacia el puerto `3001` (#91).
-
-### 2.1. `POST /auth/login` — Autenticación de Usuario
-- **Estado Backend**:  **Implementado como Mock JWT** (#92).
-- **Estado Mobile**:  Listo para consumir con `ApiClient` y `UserModel`.
-- **Propósito**: Permitir al estudiante/docente iniciar sesión en la app móvil.
-- **Request Body (`LoginDto`)**:
-  ```json
-  {
-    "email": "estudiante@alu.uct.cl",
-    "password": "miPasswordSegura123"
-  }
+- **Topología de red verificada**:
   ```
-- **Validaciones clave**:
-  - `email`: Debe ser un correo con formato válido.
-  - `password`: No puede estar vacía ni compuesta únicamente por espacios en blanco (400 Bad Request, #92).
-- **Respuesta esperada (`200 OK`)**:
-  ```json
-  {
-    "accessToken": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0....",
-    "tokenType": "Bearer",
-    "expiresIn": 3600,
-    "user": {
-      "id": "00000000-0000-4000-8000-000000000092",
-      "name": "Estudiante de prueba",
-      "email": "estudiante@alu.uct.cl",
-      "role": "STUDENT",
-      "active": true
-    }
-  }
-  ```
-- **Notas de integración**:
-  - El token mock actual no tiene firma (`alg: none`) y contiene el claim `mock: true`. Sirve para persistir sesión localmente y probar la navegación en Flutter.
-  - *Pendiente Backend*: Sustituir mock por autenticación real con hash bcrypt en PostgreSQL y JWT firmado.
-
----
-
-### 2.2. `POST /auth/register` — Registro de Nuevos Usuarios
-- **Estado Backend**: ⏳ **Pendiente** (devuelve `404 Not Found` en el Gateway).
-- **Estado Mobile**:  Formulario y validaciones maquetadas en `RegisterScreen`.
-- **Propósito**: Crear cuentas de nuevos estudiantes en la plataforma.
-- **Request Body requerido por Mobile (`RegisterDto`)**:
-  ```json
-  {
-    "name": "Nelson Quiñinao",
-    "email": "nquininao2023@alu.uct.cl",
-    "password": "PasswordSegura123!"
-  }
-  ```
-- **Validaciones clave (RF-01, RN-U01)**:
-  - Dominio de correo restringido estrictamente a `@uct.cl` o `@alu.uct.cl`.
-  - Normalización en backend (trim y conversión a minúsculas antes de persistir).
-  - Rol asignado automáticamente como `STUDENT`.
-  - Contraseña con requisitos de seguridad mínimos.
-- **Respuesta esperada (`201 Created`)**:
-  ```json
-  {
-    "user": {
-      "id": "b3c8f1e0-7d42-4b2a-89a1-2d7c1a9e8f43",
-      "name": "Nelson Quiñinao",
-      "email": "nquininao2023@alu.uct.cl",
-      "role": "STUDENT",
-      "active": true,
-      "createdAt": "2026-09-20T18:00:00.000Z"
-    },
-    "accessToken": "eyJhbGci...",
-    "tokenType": "Bearer",
-    "expiresIn": 3600
-  }
-  ```
-  *(Opcionalmente devolver sesión directa para no obligar a un segundo paso de login).*
-
----
-
-### 2.3. `GET /auth/me` (o `/auth/profile`) — Datos de Perfil del Usuario
-- **Estado Backend**: ⏳ **Pendiente**.
-- **Estado Mobile**:  Pantalla de Perfil maquetada (#57) esperando endpoint para sincronizar datos en vivo.
-- **Propósito**: Obtener la información del usuario autenticado a partir de su Bearer token para mostrar en la cabecera del perfil, estadísticas y ajustes.
-- **Headers**: `Authorization: Bearer <accessToken>`.
-- **Respuesta esperada (`200 OK`)**:
-  ```json
-  {
-    "id": "b3c8f1e0-7d42-4b2a-89a1-2d7c1a9e8f43",
-    "name": "Nelson Quiñinao",
-    "email": "nquininao2023@alu.uct.cl",
-    "role": "STUDENT",
-    "active": true,
-    "createdAt": "2026-09-10T14:30:00.000Z"
-  }
+  App Mobile (Android / Flutter)
+               │
+               ▼
+      API Gateway :3000
+    ┌──────────┬──────────┬──────────┬──────────┐
+    ▼          ▼          ▼          ▼          ▼
+  Auth      Catalog    Material    Search    Quality
+  :3001      :3002      :3003      :3005     (no enrutado)
+                          │
+                          ▼
+                        MinIO
+                        :9000
   ```
 
 ---
 
-### 2.4. `POST /auth/logout` — Cierre de Sesión
-- **Estado Backend**: ⏳ **Pendiente**.
-- **Estado Mobile**:  Limpia estado local (Riverpod / Secure Storage); requiere confirmación en backend para invalidar refresh token.
-- **Headers**: `Authorization: Bearer <accessToken>`.
-- **Respuesta esperada (`200 OK` / `204 No Content`)**.
+## 2. Matriz Final de Integración (Sprint 2 — Cierre)
+
+### Leyenda de Estados
+- 🟢 **Integrado**: Endpoint enrutado por Gateway, implementado en Backend y consumido en Mobile de forma funcional contra datos reales o backend de pruebas.
+- 🟡 **Probado con Mock**: Lógica, modelos y UI completamente implementados en Mobile y validados con mocks/fixtures con contratos idénticos al Swagger, a la espera de despliegue conjunto de Gateway.
+- 🔴 **Bloqueado**: Funcionalidad no disponible en Backend (servicio no enrutado, placeholder o sin endpoint publicado) que impide la integración en Mobile durante el Sprint 2.
+- ⚪ **Pendiente**: Endpoint planificado para fases posteriores o secundario que no bloquea el flujo principal del sprint.
+
+| Servicio | Método | Ruta Pública (Gateway) | Estado | Evidencia Técnica en Mobile / Repo | Limitaciones / Dependencias Backend |
+|---|---|---|:---:|---|---|
+| **Auth** | `POST` | `/api/v1/auth/login` | 🟢 **Integrado** | `login_dio_test.dart`, `dio_auth_repository.dart` | Autenticación mock JWT con claim `mock: true`. |
+| **Auth** | `POST` | `/api/v1/auth/register` | ⚪ **Pendiente** | `RegisterScreen`, `register_navigation_test.dart` | Devuelve `404 Not Found` en Gateway; backend no expone registro aún. |
+| **Auth** | `GET` | `/api/v1/auth/me` | ⚪ **Pendiente** | `profile_screen_test.dart`, `profile_screen.dart` | No publicado en Swagger; Mobile preserva datos del usuario autenticado en login. |
+| **Auth** | `POST` | `/api/v1/auth/logout` | ⚪ **Pendiente** | `home_screen_test.dart`, `auth_notifier.dart` | Mobile realiza logout local seguro (limpieza de tokens y estado en Riverpod). |
+| **Catalog** | `GET` | `/api/v1/catalog/universities` | 🟡 **Probado con Mock** | `academic_filter_sheet_test.dart`, `academic_hierarchy_provider_test.dart` | Backend implementó #221 en `main`. Mobile maquetó selector con validación de fallback. |
+| **Catalog** | `GET` | `/api/v1/catalog/careers` | 🟡 **Probado con Mock** | `academic_filter_sheet_test.dart` (cascada aislada por `universityId`) | Cascada dependiente del padre; validado con fixtures idénticos al contrato. |
+| **Catalog** | `GET` | `/api/v1/catalog/subjects` | 🟡 **Probado con Mock** | `academic_filter_sheet_test.dart` (cascada por `careerId`) | Cascada dependiente del padre; validado con fixtures idénticos al contrato. |
+| **Catalog** | `GET` | `/api/v1/catalog/professors` | 🟡 **Probado con Mock** | `academic_filter_sheet_test.dart` (profesores por `subjectId`) | Cascada dependiente del padre; validado con fixtures idénticos al contrato. |
+| **Catalog** | `GET` | `/api/v1/catalog/filter` | 🟡 **Probado con Mock** | `catalog_screen_test.dart`, `catalog_repository_test.dart` | Endpoint de consulta jerárquica combinada. |
+| **Material** | `GET` | `/api/v1/materials` | 🟢 **Integrado** | `materials_discovery_provider.dart`, `gateway_discovery_ui_test.dart` | Listado paginado general con `page` y `pageSize`. |
+| **Material** | `POST` | `/api/v1/materials` | 🟢 **Integrado** | `material_upload_screen_test.dart`, `material_upload_live_test.dart` | Subida multipart hasta 15 MB (PDF, Word, PPT) o enlace `LINK`. Retorna `PENDING_REVIEW`. |
+| **Material** | `GET` | `/api/v1/materials/:id` | 🟢 **Integrado** | `material_detail_screen_test.dart`, `material_detail_refresh_test.dart` | Detalle estructurado con historial de versiones, metadatos y referencias académicas. |
+| **Material** | `GET` | `/api/v1/materials/:id/download` | 🟢 **Integrado** | `material_download_test.dart`, `material_download_native_test.dart` | Descarga binaria con streaming, cabeceras `Content-Disposition` UTF-8 y guardado local. |
+| **Material** | `POST` | `/api/v1/materials/:id/versions` | 🟢 **Integrado** | `material_version_history_test.dart`, `material_version_upload_sheet_test.dart` | Subida de versión incremental con `changesDescription` y archivo o enlace. |
+| **Material** | `GET` | `/api/v1/materials/:id/preview` | 🔴 **Bloqueado** | — | Endpoint de visualización embebida/streaming no diseñado en Backend para Sprint 2. |
+| **Search** | `GET` | `/api/v1/search` | 🟢 **Integrado** | `material_year_type_filter_test.dart`, `material_hierarchy_filter_connection_test.dart`, `material_discovery_search_page_test.dart` | Búsqueda desacoplada por texto (`q`), 6 filtros oficiales (`universityId`, `careerId`, `subjectId`, `professorId`, `year`, `type`), ordenamiento y paginación. |
+| **Quality** | `POST` | `/api/v1/quality/ratings` | 🔴 **Bloqueado** | — | Quality Service no enrutado por Gateway ni implementado en Sprint 2 (Sprint 3). |
+| **Quality** | `POST` | `/api/v1/quality/favorites` | 🔴 **Bloqueado** | — | No enrutado en Gateway. |
+| **Quality** | `DELETE` | `/api/v1/quality/favorites/:id`| 🔴 **Bloqueado** | — | No enrutado en Gateway. |
+| **Quality** | `POST` | `/api/v1/quality/reports` | 🔴 **Bloqueado** | — | No enrutado en Gateway. |
 
 ---
 
-### 2.5. `POST /auth/refresh` — Renovación de Token de Acceso
-- **Estado Backend**: ⏳ **Pendiente** (el modelo Prisma ya contempla `RefreshToken`).
-- **Estado Mobile**:  Interceptor preparado para renovación transparente ante error `401 Unauthorized`.
-- **Request Body**:
-  ```json
-  {
-    "refreshToken": "string"
-  }
-  ```
-- **Respuesta esperada (`200 OK`)**:
-  ```json
-  {
-    "accessToken": "nuevo_jwt_aqui",
-    "tokenType": "Bearer",
-    "expiresIn": 3600
-  }
-  ```
+## 3. Resumen Cuantitativo del Cierre de Sprint 2
+
+```
+Total de endpoints evaluados: 20
+├── 🟢 Integrados:            7  (35.0%)
+├── 🟡 Probados con Mock:     5  (25.0%)
+├── 🔴 Bloqueados (Backend):  5  (25.0%)
+└── ⚪ Pendientes / Futuros:  3  (15.0%)
+```
+
+- **Cobertura del flujo crítico del estudiante**: **100%** de las rutas esenciales para el Sprint 2 (Login -> Exploración -> Subida -> Búsqueda con 6 filtros -> Detalle -> Descarga -> Nueva versión) se encuentran completamente operativas e integradas.
+- **Rutas bloqueadas**: Se limitan estrictamente al módulo de Quality (calificaciones, reportes, favoritos) y previsualización embebida, las cuales corresponden por diseño a etapas posteriores del proyecto.
 
 ---
 
-## 3. Endpoints Requeridos: Catalog Service (`/api/v1/catalog`)
+## 4. Detalle de Integración por Microservicio
 
-Microservicio encargado de la estructura académica: Universidades, Carreras, Asignaturas, Profesores y Ofertas Académicas. Expuesto en puerto `3002` (#76, #97).
+### 4.1. Auth Service (`/api/v1/auth`)
+- **Login (`POST /auth/login`)**:
+  - Implementado con `DioAuthRepository` utilizando el cliente HTTP centralizado `ApiClient`.
+  - Envía `LoginDto` (`email`, `password`) validando formato de correo institucional y rechazando cadenas vacías.
+  - Almacena el `accessToken` en memoria y sesión local.
+  - Evidencia: `mobile/test/features/auth/presentation/login_dio_test.dart`.
+- **Dependencias pendientes**:
+  - El backend actualmente opera con token mock JWT sin firma criptográfica (`alg: none`) con claim `mock: true`. La integración con hash bcrypt y PostgreSQL real quedó pospuesta por Backend.
+  - Registro de usuarios (`POST /auth/register`) retorna `404 Not Found`; la pantalla `RegisterScreen` cuenta con validaciones completas a nivel cliente listas para conectar.
 
-### 3.1. `GET /catalog/filter` — Búsqueda y Filtrado Jerárquico
-- **Estado Backend**:  **Implementado** (#71, #74, #97).
-- **Estado Mobile**:  Listo para consumir en `CatalogScreen` y barra de búsqueda.
-- **Propósito**: Obtener asignaturas filtradas por jerarquía académica con sus relaciones pre-cargadas.
-- **Query Parameters (`FilterCatalogDto`)**:
-  - `universityId` (UUID, opcional)
-  - `careerId` (UUID, opcional — requiere `universityId`)
-  - `subjectId` (UUID, opcional — requiere `careerId`)
-  - `professorId` (UUID, opcional — requiere `subjectId`)
-- **Comportamiento**:
-  - Sin parámetros: Devuelve todas las asignaturas.
-  - Con filtros válidos: Devuelve asignaturas coincidentes con sus relaciones (`career`, `university`, `professors`).
-  - Combinación no existente: Retorna arreglo vacío `[]`.
-  - Salto de secuencia obligatoria: Retorna `400 Bad Request`.
-- **Respuesta esperada (`200 OK`)**:
-  ```json
-  [
-    {
-      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-      "name": "Ingeniería de Software",
-      "code": "INF-310",
-      "career": {
-        "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-        "name": "Ingeniería Civil en Informática",
-        "university": {
-          "id": "f0e1d2c3-b4a5-6789-0123-456789abcdef",
-          "name": "Universidad Católica de Temuco",
-          "acronym": "UCT"
-        }
-      },
-      "professors": [
-        {
-          "id": "11223344-5566-7788-99aa-bbccddeeff00",
-          "name": "Profesor Ejemplo",
-          "email": "profesor@uct.cl"
-        }
-      ]
-    }
-  ]
-  ```
+### 4.2. Material Service (`/api/v1/materials`)
+- **Listado Paginado (`GET /materials`)**:
+  - Permite recuperar materiales activos sin filtros con parámetros `page` y `pageSize`.
+- **Subida de Material (`POST /materials`)**:
+  - Envía formulario `multipart/form-data` con archivo binario (máx. 15 MB, formatos permitidos: `.pdf`, `.doc`, `.docx`, `.ppt`, `.pptx`) o enlace externo `externalLink` para tipo `LINK`.
+  - Estado inicial devuelto por el servidor: `PENDING_REVIEW`.
+  - Evidencia: `mobile/test/features/materials/presentation/material_upload_screen_test.dart` y `mobile/test/integration/material_upload_live_test.dart`.
+- **Detalle de Material (`GET /materials/:id`)**:
+  - Resuelve metadatos, autor, carrera, asignatura, profesor y el historial completo de versiones publicadas.
+  - Evidencia: `mobile/test/features/materials/presentation/material_detail_screen_test.dart`.
+- **Descarga de Binarios (`GET /materials/:id/download`)**:
+  - Descarga mediante streaming binario conservando cabeceras `Content-Type` y `Content-Disposition` con soporte para nombres UTF-8 (`filename*`).
+  - Integración nativa con `open_filex` para visualización en aplicaciones externas del dispositivo.
+  - Evidencia: `mobile/test/features/materials/presentation/material_download_test.dart`.
+- **Historial y Nuevas Versiones (`POST /materials/:id/versions`)**:
+  - Envía nueva versión asociada a un material existente con metadatos de cambios y archivo o enlace.
+  - Evidencia: `mobile/test/features/materials/presentation/material_version_history_test.dart`.
 
----
+### 4.3. Search Service (`/api/v1/search`)
+- **Búsqueda Desacoplada y Filtros Jerárquicos (`GET /search`)**:
+  - Consume el endpoint unificado `/api/v1/search` enrutado por el Gateway.
+  - Soporta los 6 filtros oficiales del Sprint 2:
+    1. `universityId` (UUID)
+    2. `careerId` (UUID)
+    3. `subjectId` (UUID)
+    4. `professorId` (UUID)
+    5. `year` (Número entero de 4 dígitos: 1900–2099)
+    6. `type` (Enum contractual: `DOCUMENT`, `PRESENTATION`, `EXAM`, `SUMMARY`, `LINK`)
+  - Soporta ordenamiento por `sortBy` (`createdAt`, `title`, `year`) y `order` (`asc`, `desc`).
+  - Maneja respuestas vacías, debounce de 300 ms en entrada de texto y deduplicación en paginación.
+  - Evidencia: `mobile/test/features/materials/presentation/material_year_type_filter_test.dart` y `mobile/test/features/materials/presentation/material_hierarchy_filter_connection_test.dart`.
 
-### 3.2. Endpoints REST Individuales para Selectores en Mobile
+### 4.4. Catalog Service (`/api/v1/catalog`)
+- **Selectores Académicos**:
+  - Mobile maquetó el modal interactivo `AcademicFilterSheet` que implementa la cascada dependiente: Universidad -> Carrera -> Asignatura -> Profesor -> Año -> Tipo.
+  - El reseteo de niveles superiores invalida y limpia automáticamente las selecciones hijas.
+  - Evidencia: `mobile/test/features/catalog/presentation/academic_filter_sheet_test.dart` y `mobile/test/features/catalog/presentation/academic_hierarchy_provider_test.dart`.
 
-Para poblar dinámicamente los dropdowns en los filtros de búsqueda y el formulario de subida de material sin transferir árboles jerárquicos pesados, el Catalog Service expone los siguientes endpoints independientes (#221). Devuelven únicamente entidades **activas** ordenadas por nombre:
-
-| Método | Endpoint | Query / Params | Respuesta esperada | Modelo Mobile |
-|---|---|---|---|---|
-| **GET** | `/catalog/universities` | — | `UniversityModel[]` | `UniversityModel` |
-| **GET** | `/catalog/careers` | `?universityId=<uuid>` | `CareerModel[]` filtrado por universidad | `CareerModel` |
-| **GET** | `/catalog/subjects` | `?careerId=<uuid>` | `SubjectModel[]` filtrado por carrera | `SubjectModel` |
-| **GET** | `/catalog/professors` | `?subjectId=<uuid>` | `ProfessorModel[]` asociados a la asignatura | `ProfessorModel` |
-
-> 💡 El filtro por el padre (`universityId`, `careerId`, `subjectId`) es **opcional**: sin él, el listado devuelve todas las entidades activas de ese nivel.
+### 4.5. Quality Service (`/api/v1/quality`)
+- **Estado**: Totalmente bloqueado. El Gateway no enruta ninguna ruta de `/api/v1/quality` y el microservicio correspondiente no fue implementado por el equipo de backend para el Sprint 2.
 
 ---
 
-## 4. Matriz de Estado de Endpoints (Mobile vs. Backend)
+## 5. Formato Estándar de Errores y Resiliencia
 
-| Servicio | Método | Ruta del Endpoint | Estado Backend (INT2) | Estado Mobile (INT4) | Prioridad |
-|---|---|---|---|---|---|
-| **Auth** | POST | `/api/v1/auth/login` |  Implementado (Mock JWT #92) |  Integrado con `ApiClient` | **P0 (Crítica)** |
-| **Auth** | POST | `/api/v1/auth/register` | ⏳ Pendiente (404 en Gateway) |  Maquetado con validaciones | **P0 (Crítica)** |
-| **Auth** | GET | `/api/v1/auth/me` | ⏳ Pendiente |  Pantalla de Perfil lista (#57) | **P1 (Alta)** |
-| **Auth** | POST | `/api/v1/auth/logout` | ⏳ Pendiente |  Limpieza local implementada | **P2 (Media)** |
-| **Auth** | POST | `/api/v1/auth/refresh` | ⏳ Pendiente |  Interceptor preparado | **P2 (Media)** |
-| **Catalog**| GET | `/api/v1/catalog/filter` |  Implementado (#71, #97) |  Consumo en Catálogo | **P0 (Crítica)** |
-| **Catalog**| GET | `/api/v1/catalog/universities` |  Implementado (#221) |  Modelo Dart definido | **P1 (Alta)** |
-| **Catalog**| GET | `/api/v1/catalog/careers` |  Implementado (#221) |  Modelo Dart definido | **P1 (Alta)** |
-| **Catalog**| GET | `/api/v1/catalog/subjects` |  Implementado (#221) |  Modelo Dart definido | **P1 (Alta)** |
-| **Catalog**| GET | `/api/v1/catalog/professors`|  Implementado (#221) |  Modelo Dart definido | **P1 (Alta)** |
-
----
-
-## 5. Formato Estándar de Errores
-
-El Gateway y los microservicios NestJS responden con el formato RFC / NestJS estándar, el cual es interceptado por `ErrorInterceptor` en Flutter:
+El Gateway y los microservicios responden bajo la estructura estándar RFC / NestJS:
 
 ```json
 {
   "statusCode": 400,
-  "message": "El correo debe pertenecer al dominio institucional @uct.cl o @alu.uct.cl",
+  "message": "year debe ser un año válido de 4 dígitos (ej. 2026)",
   "error": "Bad Request"
 }
 ```
 
-En caso de indisponibilidad de microservicios (por ejemplo si Auth Service está caído), el Gateway devuelve:
-```json
-{
-  "statusCode": 502,
-  "message": "Auth Service no disponible"
-}
-```
+En caso de indisponibilidad o fallo de microservicio aguas abajo:
+- **`502 Bad Gateway`**: `{ "statusCode": 502, "message": "Search Service no disponible" }`
+- **`503 Service Unavailable`**: `{ "statusCode": 503, "message": "Almacenamiento no disponible" }`
+
+En Flutter, `ErrorInterceptor` y `apiErrorMessage(...)` capturan estos códigos y presentan mensajes comprensibles con opciones de reintento (`ErrorState`) sin provocar cierres inesperados de la aplicación.
 
 ---
 
-## 6. Endpoints en Rutas por Gateway
+## 6. Seguridad y Protección de Datos
 
-Estas rutas **ya están enrutadas por el Gateway** (#222) y sus servicios están
-integrados en `main` (#311 y #305), así que Mobile puede llamar a `:3000`. La
-diferencia con la sección 5 es qué responden hoy con el servicio levantado.
-
-### Search Service — `/api/v1/search` (enrutado e implementado)
-- `GET /search?q=&page=&pageSize=` — Búsqueda compuesta (#250): Material aporta
-  los candidatos y Catalog resuelve el contexto académico. Devuelve
-  `{ "query": ..., "page": 1, "pageSize": 20, "total": ..., "results": [...], "context": [...] }`.
-  `q` se refleja en `query`; `page` y `pageSize` se reenvían a Material (máx. 100).
-- Errores controlados: `400` por parámetros o paginación inválidos (incluido el
-  rechazo de Material), `502` si una dependencia devuelve un payload inválido y
-  `503` si Catalog o Material no están disponibles. Si Search está caído, el
-  Gateway responde `502` con `Search Service no disponible`.
-- Web/Mobile consumen `/api/v1/search` en `:3000`; no necesitan conocer el puerto
-  `3005` ni consultar el Swagger de Search directamente.
-- El healthcheck del servicio está en `http://localhost:3005/api/v1/health` y su
-  Swagger en `http://localhost:3005/api/docs` (también documentado en
-  `/api/docs/gateway`).
-
-### Material Service — `/api/v1/materials` (enrutado, subida, listado y descarga implementados)
-- `GET /materials` — Listado paginado ya implementado (#318): devuelve
-  `{ "items": [], "page": 1, "pageSize": 20, "total": 0 }` con la base vacía.
-  Acepta `page` y `pageSize`; no hace búsqueda textual.
-- `GET /materials/:id/download` — Descarga ya implementada (#236): resuelve la
-  **última versión** publicada y la transmite como `StreamableFile` con
-  `Content-Type` del archivo y
-  `Content-Disposition: attachment; filename="<ASCII>"; filename*=UTF-8''<nombre original>`.
-  Acepta `versionId` (query, UUID opcional) para pedir una versión concreta.
-  - `id` inválido (no UUID) → `400`.
-  - Material inexistente/no publicado o versión inexistente → `404`.
-  - Almacenamiento no disponible → `503`.
-  - La clave interna de MinIO nunca viaja al cliente.
-- `POST /materials` — Subida multipart ya implementada (#233) y validada a través del
-  Gateway junto a la descarga binaria (#237): máx. 15MB, PDF/Word/PPT, o `externalLink`
-  para tipo `LINK`. El proxy conserva el cuerpo `multipart/form-data` y los binarios sin
-  alterarlos.
-- El healthcheck del servicio está en `http://localhost:3003/api/v1/health` y su
-  Swagger en `http://localhost:3003/api/docs`.
-- El `502` del Gateway (`Material Service no disponible`) solo aparece cuando el
-  servicio está caído.
-- Contrato pendiente cuando se implemente:
-  - `GET /materials/:id` — Detalle del material y versiones.
-  - `GET /materials/:id/preview` — URL / Stream para visor embebido.
-
-### Quality Service — `/api/v1/quality` (no enrutado)
-El gateway **no** enruta `/api/v1/quality` y el servicio sigue siendo un
-placeholder sin implementación.
-- `POST /quality/ratings` — Calificación y reseña (1 a 5 estrellas).
-- `POST /quality/favorites` / `DELETE /quality/favorites/:id` — Guardar/quitar de favoritos.
-- `POST /quality/reports` — Reportar material con motivo obligatorio.
+- **Ausencia de secretos**: No se incluyen tokens JWT válidos, contraseñas de producción ni variables privadas en el repositorio.
+- **Datos controlados**: Los datos de prueba utilizados en pruebas de integración y ejemplos utilizan correos de formato institucional genérico (`estudiante@alu.uct.cl`) y UUIDs estándar RFC 4122 generados aleatoriamente.
+- **Seguridad en almacenamiento local**: Los tokens de sesión se gestionan mediante almacenamiento seguro sin exposición a logs o capturas de pantalla.
 
 ---
 
-## 7. Registro y Evidencia de la Tarea (#58)
+## 7. Registro de Control y Entrega (#301)
 
-- **Issue**: [#58 Actualizar checklist de endpoints requeridos](https://github.com/cchelooo/ApuntesUCT/issues/58)
+- **Issue**: [#301 Preparar evidencia y matriz final de integración](https://github.com/cchelooo/ApuntesUCT/issues/301)
 - **Responsable**: Nelson Quiñinao Isla (Equipo INT4 - Mobile)
 - **Evidencia**:
-  - Documentación técnica actualizada en este archivo (`docs/checklist-integracion-api-mobile.md`).
-  - Rama de trabajo: `feature/issue-58-actualizar-checklist-endpoints`.
-  - Pull Request asociado con referencia de cierre (`Closes #58`).
-- **Seguimiento de Horas (GitHub Projects)**:
-  - Tarea: *Actualizar checklist de endpoints requeridos*
+  - Matriz técnica consolidada en este documento (`docs/checklist-integracion-api-mobile.md`).
+  - Rama de trabajo: `docs/issue-301-preparar-evidencia-matriz-final-integracion`.
+  - Pull Request asociado con referencia de cierre (`closes #301`).
+- **Seguimiento de Horas**:
   - Horas asignadas: 2h
   - Horas usadas: 2h
   - Horas restantes: 0h
