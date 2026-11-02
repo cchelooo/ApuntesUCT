@@ -7,9 +7,32 @@ import 'package:apuntesuct_mobile/features/materials/presentation/providers/mate
 import 'package:apuntesuct_mobile/features/catalog/presentation/widgets/academic_filter_sheet.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_discovery_screen.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_summary_card.dart';
+import 'package:apuntesuct_mobile/core/widgets/error_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class FailingMaterialsRepository extends MockMaterialsRepository {
+  bool shouldFail = false;
+
+  @override
+  Future<List<MaterialSummary>> getMaterials({
+    String? query,
+    String? subject,
+    int page = 1,
+    int pageSize = 10,
+  }) async {
+    if (shouldFail) {
+      throw Exception('Error de conexión simulado');
+    }
+    return super.getMaterials(
+      query: query,
+      subject: subject,
+      page: page,
+      pageSize: pageSize,
+    );
+  }
+}
 
 void main() {
   Widget buildScreen({List<dynamic> overrides = const []}) {
@@ -283,6 +306,45 @@ void main() {
         // El filtro de asignatura previo debe haberse limpiado y mostrar todos los materiales (2)
         expect(find.byType(MaterialSummaryCard), findsNWidgets(2));
         expect(find.textContaining('Asignatura: Cálculo I'), findsNothing);
+      },
+    );
+    testWidgets(
+      'Datos → refresh fallido expone ErrorState y permite recuperar (#302)',
+      (WidgetTester tester) async {
+        final mockRepo = FailingMaterialsRepository();
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              materialsRepositoryProvider.overrideWithValue(mockRepo),
+            ],
+            child: const MaterialApp(home: MaterialDiscoveryScreen()),
+          ),
+        );
+
+        // 1. Carga inicial exitosa
+        await tester.pumpAndSettle();
+        expect(find.byType(MaterialSummaryCard), findsWidgets);
+
+        // 2. Simulamos que la red se cae y hacemos refresh (drag hacia abajo)
+        mockRepo.shouldFail = true;
+        await tester.drag(
+          find.byType(MaterialSummaryCard).first,
+          const Offset(0, 500),
+        );
+        await tester.pumpAndSettle();
+
+        // 3. Verificamos que aparece el ErrorState en lugar de crashear
+        expect(find.byType(ErrorState), findsOneWidget);
+
+        // 4. Simulamos que la red vuelve y presionamos Reintentar
+        mockRepo.shouldFail = false;
+        await tester.tap(find.text('Reintentar'));
+        await tester.pumpAndSettle();
+
+        // 5. Los datos vuelven a estar visibles
+        expect(find.byType(MaterialSummaryCard), findsWidgets);
+        expect(find.byType(ErrorState), findsNothing);
       },
     );
   });
