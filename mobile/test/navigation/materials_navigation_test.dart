@@ -8,6 +8,8 @@ import 'package:apuntesuct_mobile/features/catalog/domain/catalog_item.dart';
 import 'package:apuntesuct_mobile/features/catalog/presentation/screens/catalog_screen.dart';
 import 'package:apuntesuct_mobile/features/home/presentation/home_screen.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_detail_screen.dart';
+import 'package:apuntesuct_mobile/features/materials/data/mock_materials_repository.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/providers/materials_discovery_provider.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_discovery_screen.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_upload_screen.dart';
 import 'package:apuntesuct_mobile/main.dart';
@@ -28,6 +30,9 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            materialsRepositoryProvider.overrideWithValue(
+              MockMaterialsRepository(),
+            ),
             authRepositoryProvider.overrideWith(
               (ref) => const MockAuthRepository(simulatedDelay: Duration.zero),
             ),

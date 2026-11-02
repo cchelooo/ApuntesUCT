@@ -71,6 +71,8 @@ class MaterialSearchQuery {
   final String? professorId;
   final int? year;
   final String? type;
+  final String? sortBy;
+  final String? order;
 
   const MaterialSearchQuery({
     this.text = '',
@@ -80,5 +82,7 @@ class MaterialSearchQuery {
     this.professorId,
     this.year,
     this.type,
+    this.sortBy,
+    this.order,
   });
 }

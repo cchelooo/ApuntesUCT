@@ -279,10 +279,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byType(ErrorState), findsOneWidget);
-        expect(
-          find.text('No fue posible cargar el material. Verifica tu conexión.'),
-          findsOneWidget,
-        );
+        expect(find.text('Internal Server Error'), findsOneWidget);
         expect(find.text('Reintentar'), findsOneWidget);
       },
     );

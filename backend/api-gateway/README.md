@@ -107,7 +107,7 @@ Las pruebas del proxy abren servidores HTTP locales: comprueban métodos, rutas,
 JSON, query, Authorization, cookies, errores y Auth caído. También llaman al módulo
 health real de Auth, sin iniciar Prisma ni requerir PostgreSQL.
 
-## Proxy hacia Material y Search (#222)
+## Proxy hacia Material y Search (#222, #251)
 
 El Gateway reenvía `/api/v1/materials` y `/api/v1/search` hacia sus servicios,
 sumándose a Auth y Catalog como punto único de entrada. Ambos proxies usan el
@@ -132,7 +132,13 @@ un fallo se puede atribuir sin ambigüedad.
 > | Ruta del Gateway | Qué responde hoy con el servicio arriba |
 > | --- | --- |
 > | `/api/v1/materials` | `200` con el listado paginado de materiales (`{ items, page, pageSize, total }`); vacío si la base no tiene datos. `POST /api/v1/materials` está declarado como stub. El `502` del Gateway solo aparece si el servicio está caído. |
-> | `/api/v1/search` | `200` con el stub `{ query, results: [], total: 0, message }` de `GET /api/v1/search?q=...`; la búsqueda desacoplada es trabajo en curso. |
+> | `/api/v1/search` | `200` con `{ query, page, pageSize, total, results, context }`: Material aporta los candidatos y Catalog resuelve asignatura, carrera y universidad (#250). `q` se refleja en `query`; la paginación se reenvía a Material. |
+>
+> **Errores controlados de Search (#251).** El Gateway conserva el estado que
+> devuelve Search: `400` por parámetros o paginación inválidos, `502` cuando una
+> dependencia entrega un payload inválido y `503` cuando Catalog o Material no
+> están disponibles. Si Search no acepta la conexión, el Gateway responde su
+> propio `502` con `Search Service no disponible`.
 >
 > La ruta esperada sigue el contrato documentado en
 > `docs/checklist-integracion-api-mobile.md` (`/api/v1/materials`).
@@ -170,6 +176,12 @@ ruta, conservación de método, query, `Authorization`, cookies y cuerpos JSON,
 `PUT`/`PATCH`/`DELETE`, `502` con el mensaje propio cuando el servicio cae, que no
 se capturan rutas ajenas (`/api/v1/materials-other`) y que los puertos
 reservados se usan cuando no se definen las variables de entorno.
+
+La prueba `test/search-gateway.integration.cjs` ejecuta Search y Gateway reales
+con Catalog y Material simulados por HTTP. Recorre la composición `200`, el
+reenvío de `q`/`page`/`pageSize`, los `400` locales y de Material, los `502` por
+payload inválido, el `503` por dependencia caída, la recuperación y el `502`
+propio del Gateway cuando Search no responde.
 
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>

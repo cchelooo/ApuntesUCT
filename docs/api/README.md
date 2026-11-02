@@ -68,19 +68,20 @@ obtienen de `GET /api/v1/catalog/professors?subjectId=` o de
   búsqueda por año/tipo corresponde a Search Service, así que no forman parte del
   contrato de Catalog (los parámetros ajenos se ignoran vía `whitelist`).
 - **Rutas proxeadas**: el gateway enruta `/api/v1/auth`, `/api/v1/catalog`,
-  `/api/v1/materials` y `/api/v1/search` con middleware, así que no aparecen en
-  su OpenAPI. El generador añade explícitamente las de Auth y Catalog (health,
-  login, catálogo, filtro y listados de selectores); Material y Search todavía
-  **no** están en la colección, así que para probarlas hay que llamarlas por su
-  cuenta contra el gateway. Cualquiera de las rutas responde `502` si el servicio
-  no responde. El gateway solo reescribe el health de Auth
-  (`/api/v1/auth/health` → `/api/v1/health` en Auth); los healthchecks de Catalog,
-  Material y Search están en sus puertos directos, sin equivalente vía gateway.
-  Sobre Material y Search conviene distinguir: con `search-service` arriba,
-  `GET /api/v1/search` responde `200` con `results: []` porque su búsqueda sigue
-  siendo un stub; con `material-service` arriba, `GET /api/v1/materials` responde
-  `200` con el listado paginado (vacío si no hay datos). El `502` del gateway solo
-  corresponde al servicio caído.
+  `/api/v1/materials` y `/api/v1/search` con middleware. La especificación servida
+  en `/api/docs/gateway` documenta explícitamente `/api/v1/search` con `q`, `page`,
+  `pageSize` y los errores `400`/`502`/`503` (#251). El generador de esta colección
+  añade a mano las rutas de Auth y Catalog, y todavía **no** incluye Material ni
+  Search, así que para probarlas hay que llamarlas por su cuenta contra el gateway.
+  Cualquiera de las rutas responde `502` si el servicio no responde. El gateway solo
+  reescribe el health de Auth (`/api/v1/auth/health` → `/api/v1/health` en Auth);
+  los healthchecks de Catalog, Material y Search están en sus puertos directos, sin
+  equivalente vía gateway. Con `search-service` arriba, `GET /api/v1/search`
+  responde `200` con `{ query, page, pageSize, total, results, context }`;
+  con `material-service` arriba, `GET /api/v1/materials` responde `200` con el
+  listado paginado (vacío si no hay datos). El `502` del gateway corresponde al
+  servicio caído; Search añade `503` si Catalog o Material no están disponibles y
+  `502` si una dependencia devuelve un payload inválido.
 - **Parámetros del filtro**: `FilterCatalogDto` documenta los cuatro niveles con
   `@ApiProperty`, así que la colección los toma directamente del OpenAPI.
 
