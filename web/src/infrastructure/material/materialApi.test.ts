@@ -40,9 +40,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+const GATEWAY = 'https://gateway.test/api/v1';
+
 describe('materialApi', () => {
   it('gets paginated materials through VITE_API_URL', async () => {
-    vi.stubEnv('VITE_API_URL', 'https://api.example.test/api/v1/');
+    vi.stubEnv('VITE_API_URL', `${GATEWAY}/`);
     const fetchMock = vi
       .fn()
       .mockResolvedValue(
@@ -58,26 +60,26 @@ describe('materialApi', () => {
       totalPages: 1,
     });
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.example.test/api/v1/materials?page=2&pageSize=10',
+      `${GATEWAY}/materials?page=2&pageSize=10`,
       { signal: undefined }
     );
   });
 
   it('gets a material detail through the Gateway', async () => {
-    vi.stubEnv('VITE_API_URL', 'https://api.example.test/api/v1');
+    vi.stubEnv('VITE_API_URL', GATEWAY);
     const fetchMock = vi.fn().mockResolvedValue(Response.json({ id: 'id/1' }));
     vi.stubGlobal('fetch', fetchMock);
 
     await fetchMaterial('id/1');
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.example.test/api/v1/materials/id%2F1',
+      `${GATEWAY}/materials/id%2F1`,
       { signal: undefined }
     );
   });
 
   it('posts metadata and an optional file as multipart form data', async () => {
-    vi.stubEnv('VITE_API_URL', 'https://api.example.test/api/v1');
+    vi.stubEnv('VITE_API_URL', GATEWAY);
     const fetchMock = vi.fn().mockResolvedValue(Response.json(createdResponse));
     vi.stubGlobal('fetch', fetchMock);
 
@@ -101,7 +103,7 @@ describe('materialApi', () => {
   });
 
   it('returns downloaded content and rejects failed responses', async () => {
-    vi.stubEnv('VITE_API_URL', 'https://api.example.test/api/v1');
+    vi.stubEnv('VITE_API_URL', GATEWAY);
     const file = new Blob(['file contents']);
     const successResponse = Response.json({});
     vi.spyOn(successResponse, 'blob').mockResolvedValue(file);
@@ -110,7 +112,7 @@ describe('materialApi', () => {
 
     await expect(downloadMaterial('material-1')).resolves.toBe(successResponse);
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.example.test/api/v1/materials/material-1/download'
+      `${GATEWAY}/materials/material-1/download`
     );
 
     fetchMock.mockResolvedValueOnce(
@@ -129,7 +131,7 @@ describe('materialApi', () => {
   ])(
     'supports the public creation type %s and caller authentication',
     async (type) => {
-      vi.stubEnv('VITE_API_URL', 'https://api.example.test/api/v1/');
+    vi.stubEnv('VITE_API_URL', `${GATEWAY}/`);
       const response = {
         ...createdResponse,
         data: { ...createdResponse.data, type },
@@ -152,7 +154,7 @@ describe('materialApi', () => {
       );
       expect(result).toEqual(response);
       const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
-      expect(url).toBe('https://api.example.test/api/v1/materials');
+      expect(url).toBe(`${GATEWAY}/materials`);
       expect(options.headers).toEqual({ Authorization: 'Bearer test-token' });
       expect(options.signal).toBe(signal);
       const body = options.body as FormData;
@@ -173,7 +175,7 @@ describe('materialApi', () => {
   });
 
   it('preserves list mapping and cancellation from main', async () => {
-    vi.stubEnv('VITE_API_URL', 'https://api.example.test/api/v1');
+    vi.stubEnv('VITE_API_URL', GATEWAY);
     const signal = new AbortController().signal;
     const fetchMock = vi.fn().mockResolvedValue(
       Response.json({
@@ -208,7 +210,7 @@ describe('materialApi', () => {
 
   describe('uploadMaterial', () => {
     it('envía FormData directamente vía POST al endpoint de materiales', async () => {
-      vi.stubEnv('VITE_API_URL', 'https://api.example.test/api/v1');
+    vi.stubEnv('VITE_API_URL', GATEWAY);
       const mockResult = { id: 'mat-100', status: 'uploaded' };
       const fetchMock = vi.fn().mockResolvedValue(Response.json(mockResult));
       vi.stubGlobal('fetch', fetchMock);
@@ -228,13 +230,13 @@ describe('materialApi', () => {
       expect(result).toEqual(mockResult);
       expect(fetchMock).toHaveBeenCalledTimes(1);
       const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
-      expect(url).toBe('https://api.example.test/api/v1/materials');
+      expect(url).toBe(`${GATEWAY}/materials`);
       expect(options.method).toBe('POST');
       expect(options.body).toBe(formData);
     });
 
     it('construye FormData a partir de objeto UploadMaterialInput antes de enviarlo vía POST', async () => {
-      vi.stubEnv('VITE_API_URL', 'https://api.example.test/api/v1');
+      vi.stubEnv('VITE_API_URL', GATEWAY);
       const mockResult = { id: 'mat-200' };
       const fetchMock = vi.fn().mockResolvedValue(Response.json(mockResult));
       vi.stubGlobal('fetch', fetchMock);
@@ -269,7 +271,7 @@ describe('materialApi', () => {
     });
 
     it('propaga MaterialRequestError con status 413 cuando el servidor responde Payload Too Large', async () => {
-      vi.stubEnv('VITE_API_URL', 'https://api.example.test/api/v1');
+      vi.stubEnv('VITE_API_URL', GATEWAY);
       const fetchMock = vi.fn().mockResolvedValue(
         Response.json(
           {
@@ -292,7 +294,7 @@ describe('materialApi', () => {
     });
 
     it('propaga MaterialRequestError con status 415 cuando el servidor responde Unsupported Media Type', async () => {
-      vi.stubEnv('VITE_API_URL', 'https://api.example.test/api/v1');
+      vi.stubEnv('VITE_API_URL', GATEWAY);
       const fetchMock = vi
         .fn()
         .mockResolvedValue(
@@ -312,7 +314,7 @@ describe('materialApi', () => {
     });
 
     it('propaga MaterialRequestError con isNetworkError cuando ocurre un fallo de conectividad', async () => {
-      vi.stubEnv('VITE_API_URL', 'https://api.example.test/api/v1');
+      vi.stubEnv('VITE_API_URL', GATEWAY);
       const fetchMock = vi
         .fn()
         .mockRejectedValue(new TypeError('Failed to fetch'));

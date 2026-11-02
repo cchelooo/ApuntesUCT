@@ -4,6 +4,7 @@ import { mapMaterialDetail } from './mapMaterialDetail';
 
 const SUBJECT_ID = '44444444-4444-4444-8444-444444444444';
 const PROFESSOR_ID = '55555555-5555-4555-8555-555555555555';
+const GATEWAY = 'https://gateway.test/api/v1';
 
 function detail(
   overrides: Partial<MaterialDetailResponse> = {}
@@ -39,7 +40,7 @@ function detail(
 }
 
 describe('mapMaterialDetail (contrato real de GET /materials/:id)', () => {
-  beforeEach(() => vi.stubEnv('VITE_API_URL', 'https://gw.test/api/v1'));
+  beforeEach(() => vi.stubEnv('VITE_API_URL', GATEWAY));
   afterEach(() => vi.unstubAllEnvs());
 
   it('mapea metadatos, versión actual y URL de descarga del Gateway', () => {
@@ -56,7 +57,7 @@ describe('mapMaterialDetail (contrato real de GET /materials/:id)', () => {
       subjectName: 'Estructuras de Datos',
       professorName: 'Carlos Ramírez',
       downloadUrl:
-        'https://gw.test/api/v1/materials/11111111-1111-4111-8111-111111111111/download',
+        `${GATEWAY}/materials/11111111-1111-4111-8111-111111111111/download`,
     });
     expect(result.version).toMatchObject({
       number: 3,

@@ -66,11 +66,13 @@ async function selectAcademic() {
 
 describe('MaterialUploadForm - Cobertura de pruebas, contratos y regresión (#243, #244)', () => {
   beforeEach(() => {
+    vi.stubEnv('VITE_API_URL', 'https://gateway.test/api/v1');
     window.fetch = vi.fn();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   describe('Criterios de aceptación - Selección y reflejo de archivo', () => {
@@ -315,6 +317,9 @@ describe('MaterialUploadForm - Cobertura de pruebas, contratos y regresión (#24
         expect(fetchMock).toHaveBeenCalledTimes(1);
         expect(onError).toHaveBeenCalledTimes(1);
       });
+      expect(fetchMock.mock.calls[0][0]).toBe(
+        'https://gateway.test/api/v1/materials'
+      );
 
       const alert413 = await screen.findByRole('alert');
       expect(alert413).toHaveTextContent(/15 MB/i);

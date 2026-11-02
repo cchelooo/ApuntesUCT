@@ -74,21 +74,21 @@ services:
     networks:
       - apuntes_net
 
-  minio:
-    image: quay.io/minio/minio:latest
-    container_name: apuntes_minio
-    restart: always
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Configura MINIO_ROOT_USER en .env}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Configura MINIO_ROOT_PASSWORD en .env}
-    ports:
-      - "127.0.0.1:9000:9000"
-      - "127.0.0.1:9001:9001"
-    command: server /data --console-address ":9001"
-    volumes:
-      - minio_data:/data
-    networks:
-      - apuntes_net
+  #minio:
+    #image: quay.io/minio/minio:latest
+    #container_name: apuntes_minio
+    #restart: always
+    #environment:
+      ##MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Configura MINIO_ROOT_USER en .env}
+      ##MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Configura MINIO_ROOT_PASSWORD en .env}
+    #ports:
+      #- "127.0.0.1:9000:9000"
+      #- "127.0.0.1:9001:9001"
+    #command: server /data --console-address ":9001"
+    #volumes:
+      #- minio_data:/data
+    #networks:
+      #- apuntes_net
 
 volumes:
   pgdata_auth:
