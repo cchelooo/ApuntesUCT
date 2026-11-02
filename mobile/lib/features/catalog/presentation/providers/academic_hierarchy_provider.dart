@@ -689,6 +689,9 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
     );
   }
 
+  /// Alias de [resetSelection] para compatibilidad de interfaz con otros filtros.
+  void clearFilters() => resetSelection();
+
   /// Reinicia todo el estado a valores iniciales por defecto.
   void resetAll() {
     // Invalida cualquier petición async pendiente antes de limpiar.

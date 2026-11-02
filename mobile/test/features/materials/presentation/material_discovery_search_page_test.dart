@@ -15,8 +15,7 @@ class MockSearchMaterialsRepository implements MaterialsRepository {
     String? subject,
     int page,
     int pageSize,
-  })
-  onGetMaterials;
+  }) onGetMaterials;
 
   MockSearchMaterialsRepository({required this.onGetMaterials});
 
@@ -24,6 +23,12 @@ class MockSearchMaterialsRepository implements MaterialsRepository {
   Future<List<MaterialSummary>> getMaterials({
     String? query,
     String? subject,
+    String? universityId,
+    String? careerId,
+    String? subjectId,
+    String? professorId,
+    int? year,
+    String? type,
     int page = 1,
     int pageSize = 10,
   }) async {

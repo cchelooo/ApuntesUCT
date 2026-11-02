@@ -61,6 +61,12 @@ class _FakeBackend implements MaterialsRepository, MaterialRepository {
   Future<List<MaterialSummary>> getMaterials({
     String? query,
     String? subject,
+    String? universityId,
+    String? careerId,
+    String? subjectId,
+    String? professorId,
+    int? year,
+    String? type,
     int page = 1,
     int pageSize = 10,
   }) => throw UnimplementedError();
