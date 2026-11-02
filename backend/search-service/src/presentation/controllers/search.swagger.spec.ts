@@ -19,6 +19,24 @@ interface DocumentedResponse {
   };
 }
 
+interface SwaggerPathItem {
+  get?: {
+    parameters?: DocumentedParameter[];
+    responses?: Record<string, DocumentedResponse>;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+interface SwaggerDocument {
+  paths?: Record<string, SwaggerPathItem>;
+  components?: {
+    schemas?: Record<string, unknown>;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
 describe('Search Swagger', () => {
   it('documenta los parámetros de consulta, la paginación y los errores', async () => {
     const moduleRef = await Test.createTestingModule({
@@ -41,12 +59,10 @@ describe('Search Swagger', () => {
     await app.init();
 
     try {
-      const document: any = setupSwagger(app);
-      const operation = document.paths['/api/v1/search']?.get;
-      const parameters = (operation?.parameters ??
-        []) as unknown as DocumentedParameter[];
-      const responses = (operation?.responses ??
-        {}) as unknown as Record<string, DocumentedResponse>;
+      const document = setupSwagger(app) as unknown as SwaggerDocument;
+      const operation = document.paths?.['/api/v1/search']?.get;
+      const parameters = operation?.parameters ?? [];
+      const responses = operation?.responses ?? {};
 
       expect(operation).toBeDefined();
       expect(parameters.map((parameter) => parameter.name).sort()).toEqual([
@@ -90,7 +106,7 @@ describe('Search Swagger', () => {
       expect(Object.keys(responses).sort()).toEqual(
         ['200', '400', '502', '503'].sort(),
       );
-      expect(responses['200'].content?.['application/json']?.schema).toEqual({
+      expect(responses['200']?.content?.['application/json']?.schema).toEqual({
         $ref: '#/components/schemas/SearchResponseDto',
       });
       expect(document.components?.schemas?.SearchResponseDto).toBeDefined();
