@@ -74,7 +74,12 @@ void main() {
     }
 
     return ProviderScope(
-      overrides: overrides.cast(),
+      overrides: [
+        academicHierarchyRepositoryProvider.overrideWithValue(
+          MockAcademicHierarchyRepository(),
+        ),
+        ...overrides.cast(),
+      ],
       child: app,
     );
   }
@@ -116,7 +121,13 @@ void main() {
     testWidgets(
       'Mantiene deshabilitados los niveles hijos si no hay padre seleccionado',
       (tester) async {
-        final container = ProviderContainer();
+        final container = ProviderContainer(
+          overrides: [
+            academicHierarchyRepositoryProvider.overrideWithValue(
+              MockAcademicHierarchyRepository(),
+            ),
+          ],
+        );
         container.read(academicHierarchyProvider.notifier).resetAll();
 
         await tester.pumpWidget(buildTestWidget(container: container));
@@ -133,7 +144,13 @@ void main() {
     testWidgets(
       'Al seleccionar universidad carga carreras sin bloquear la cascada',
       (tester) async {
-        final container = ProviderContainer();
+        final container = ProviderContainer(
+          overrides: [
+            academicHierarchyRepositoryProvider.overrideWithValue(
+              MockAcademicHierarchyRepository(),
+            ),
+          ],
+        );
 
         await tester.pumpWidget(buildTestWidget(container: container));
 
@@ -168,7 +185,13 @@ void main() {
       'Botón Limpiar restablece la selección y botón Aplicar dispara callback',
       (tester) async {
         bool applyTriggered = false;
-        final container = ProviderContainer();
+        final container = ProviderContainer(
+          overrides: [
+            academicHierarchyRepositoryProvider.overrideWithValue(
+              MockAcademicHierarchyRepository(),
+            ),
+          ],
+        );
         final notifier = container.read(academicHierarchyProvider.notifier);
         notifier.loadMockHierarchy();
         await notifier.selectUniversity('uct-main-uuid');
