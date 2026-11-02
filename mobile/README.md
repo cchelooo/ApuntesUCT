@@ -88,31 +88,33 @@ Estos adaptadores no demuestran que ese listado esté integrado con Search.
 La subida permanece pendiente de revisión: no es descargable mediante el
 endpoint público hasta que el material esté publicado.
 
-### Search: preparación Mobile (#275)
+### Contrato de Search
 
 `searchRepositoryProvider` comparte `apiclientProvider` con Catalog y Material.
-`DioSearchRepository` solo consume `GET /search` con `q` si hay texto activo,
-recortando espacios exteriores. No usa el puerto de Search ni consulta Material
-como sustituto.
+`DioSearchRepository` consume `GET /search` con `q` si hay texto activo,
+recortando espacios exteriores. Acepta los filtros `universityId`, `careerId`,
+`subjectId`, `professorId`, `year` y `type`, además de `sortBy` y `order`.
+No usa el puerto de Search ni consulta Material como sustituto.
 
-El contrato actual de INT2 es un **stub** (`query`, `results: []`, `total: 0`,
-`message`). El adaptador lo reconoce mediante `SearchContractPendingException`;
-no devuelve una página vacía que sugiera una búsqueda real. Una respuesta no
-acordada produce un error visible. Los errores HTTP conservan código y mensaje.
-Las consultas con filtros activos o paginación no predeterminada se rechazan
-antes del HTTP, evitando ignorar silenciosamente parte de la solicitud.
+El contrato público devuelve `query`, `page`, `pageSize`, `total`, `results` y
+`context`. Los parámetros y DTO están definidos en
+`backend/search-service/src/application/dtos/search-query.dto.ts` y
+`search-response.dto.ts`. Carrera requiere Universidad, Asignatura requiere
+ambos padres y Profesor requiere la jerarquía completa. Año (1900–2099) y Tipo
+(`DOCUMENT`, `PRESENTATION`, `EXAM`, `SUMMARY`, `LINK`) son independientes.
+Los valores de orden son `createdAt`, `title` o `year`, con `asc` o `desc`.
+
+Mobile envía `page` y `pageSize` explícitos y comprueba que la respuesta
+corresponda a esa página. Una respuesta válida con cero resultados es una
+búsqueda vacía. Un DTO inválido produce un error y los fallos HTTP conservan
+código, cuerpo y mensaje. El reconocimiento de `SearchContractPendingException`
+solo protege frente al stub histórico, no describe el servicio actual.
 
 `materialSearchControllerProvider` ofrece carga, datos/error y control de
 respuestas obsoletas. Una consulta nueva limpia resultados y paginación;
 las respuestas antiguas no alteran el estado actual. El controlador está
-preparado para páginas del dominio interno, verificadas con un repositorio
-controlado, **sin atribuir ese formato al JSON de INT2**.
-
-Pendiente cuando INT2 publique #248–#251: mapear los DTOs de resultados, definir
-filtros, orden, página/límite/total y fin de resultados según OpenAPI, y completar
-sus pruebas de contrato. No hay nombres de parámetros supuestos en Mobile.
-Este avance no conecta la pantalla de descubrimiento ni permite cerrar #275
-como integración completa de Search.
+preparado para descartar respuestas atrasadas y conservar la página anterior
+cuando falla la carga de la siguiente.
 
 Las URLs base se resuelven mediante la clase `ApiConfig` (`lib/core/config/api_config.dart`) y pueden ser parametrizadas en tiempo de compilación con `--dart-define`.
 
@@ -210,6 +212,29 @@ flutter test test/features/auth/presentation/login_dio_test.dart
 # Generar reporte de cobertura
 flutter test --coverage
 ```
+
+### Pruebas del contrato público de Search
+
+Desde `mobile/`:
+
+```bash
+flutter test \
+  test/features/materials/data/search_request_contract_test.dart \
+  test/features/materials/data/search_response_contract_test.dart
+```
+
+La primera suite comprueba método, URI completa, parámetros exactos, texto
+Unicode, jerarquías válidas, enums, orden, paginación y cancelación previa.
+La segunda verifica el mapeo de resultados, campos anulables, cero resultados,
+errores visibles en el provider y recuperación tras un `502`. También altera
+campos del DTO para detectar cambios incompatibles sin convertirlos en listas
+vacías.
+
+El fixture `test/fixtures/materials/gateway_search_page.json` es una muestra
+independiente de los DTO públicos de Search, no una salida generada por el
+parser de Mobile. Se sustituye únicamente el transporte HTTP y se conservan
+Dio, los interceptores y los providers reales. Estas pruebas no requieren red
+ni demuestran una ejecución contra un backend desplegado o un dispositivo.
 
 ### Integración HTTP de repositorios, providers e interfaz
 
