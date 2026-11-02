@@ -41,10 +41,10 @@ export function MaterialVersionCard({
 
       <dl className="flex flex-col gap-3">
         {rows.map(({ label, value }) => (
-          <div key={label} className="flex justify-between gap-4 text-sm">
-            <dt className="text-catalog-ink/60">{label}</dt>
+          <div key={label} className="flex min-w-0 justify-between gap-4 text-sm">
+            <dt className="shrink-0 text-catalog-ink/60">{label}</dt>
             <dd
-              className={`text-right ${
+              className={`min-w-0 break-words text-right ${
                 value ? 'text-catalog-ink' : 'text-catalog-ink/40'
               }`}
             >
