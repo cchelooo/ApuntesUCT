@@ -1,5 +1,6 @@
 import {
   DEFAULT_SEARCH_SORT,
+  normalizeSearchFilters,
   type SearchParams,
   type SearchSort,
   type SearchResultPage,
@@ -28,21 +29,39 @@ function getSearchUrl(): string {
   return `${baseUrl.replace(/\/+$/, '')}/search`;
 }
 
+export function buildSearchQuery({
+  q,
+  sort = DEFAULT_SEARCH_SORT,
+  page = 1,
+  pageSize = DEFAULT_SEARCH_PAGE_SIZE,
+  filters,
+}: SearchParams): URLSearchParams {
+  const params = new URLSearchParams();
+  if (q.trim()) params.set('q', q.trim());
+
+  const normalized = normalizeSearchFilters(filters ?? {});
+  if (normalized.universityId)
+    params.set('universityId', normalized.universityId);
+  if (normalized.careerId) params.set('careerId', normalized.careerId);
+  if (normalized.subjectId) params.set('subjectId', normalized.subjectId);
+  if (normalized.professorId) params.set('professorId', normalized.professorId);
+  if (normalized.year !== undefined)
+    params.set('year', String(normalized.year));
+  if (normalized.type) params.set('type', normalized.type);
+
+  const { sortBy, order } = SEARCH_API_SORT[sort];
+  params.set('sortBy', sortBy);
+  params.set('order', order);
+  params.set('page', String(page));
+  params.set('pageSize', String(pageSize));
+  return params;
+}
+
 export async function fetchSearch(
-  {
-    q,
-    sort = DEFAULT_SEARCH_SORT,
-    page = 1,
-    pageSize = DEFAULT_SEARCH_PAGE_SIZE,
-  }: SearchParams,
+  searchParams: SearchParams,
   signal?: AbortSignal
 ): Promise<SearchResultPage> {
-  const params = new URLSearchParams({
-    q,
-    ...SEARCH_API_SORT[sort],
-    page: String(page),
-    pageSize: String(pageSize),
-  });
+  const params = buildSearchQuery(searchParams);
 
   let response: Response;
   try {
@@ -73,5 +92,8 @@ export async function fetchSearch(
     );
   }
 
-  return mapRawSearchPage(body as RawSearchPage, { page, pageSize });
+  return mapRawSearchPage(body as RawSearchPage, {
+    page: searchParams.page ?? 1,
+    pageSize: searchParams.pageSize ?? DEFAULT_SEARCH_PAGE_SIZE,
+  });
 }

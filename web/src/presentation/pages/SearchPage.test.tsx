@@ -249,15 +249,21 @@ describe('SearchPage', () => {
 
   it('muestra el estado de carga (loading) con esqueletos e indicador accesible', async () => {
     let resolveSearch: (val: Response) => void;
-    mockApi(
-      () =>
-        new Promise<Response>((resolve) => {
+    // Mantener Catalog cargando reproduce los dos indicadores presentes en CI.
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      if (new URL(String(input)).pathname.endsWith('/search')) {
+        return new Promise<Response>((resolve) => {
           resolveSearch = resolve;
-        })
-    );
+        });
+      }
+      return new Promise<Response>(() => {});
+    });
     renderPage('/search?q=algebra');
 
-    expect(screen.getByRole('status')).toHaveTextContent('Cargando materiales');
+    expect(
+      screen.getByText('Cargando materiales…', { selector: '[role="status"]' })
+    ).toBeInTheDocument();
+    expect(screen.getByText('Cargando...')).toBeInTheDocument();
     expect(
       screen.getAllByTestId('material-card-skeleton').length
     ).toBeGreaterThan(0);
@@ -273,7 +279,9 @@ describe('SearchPage', () => {
     );
 
     expect(await screen.findByText('Guía de álgebra')).toBeInTheDocument();
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.queryByText('Cargando materiales…')).not.toBeInTheDocument();
+    expect(screen.queryAllByTestId('material-card-skeleton')).toHaveLength(0);
+    expect(screen.getByText('Cargando...')).toBeInTheDocument();
   });
 
   it('muestra el estado vacío con el stub actual de Search', async () => {

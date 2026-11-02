@@ -1,48 +1,116 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import {
+  buildSearchParams,
+  parseSearchUrl,
+  type SearchUrlState,
+} from '../../application/search/searchUrlState';
 import { useSearchQuery } from '../../application/search/useSearchQuery';
 import {
-  DEFAULT_SEARCH_SORT,
-  isSearchSort,
+  SEARCH_TYPE_OPTIONS,
+  SEARCH_YEAR_MAX,
+  SEARCH_YEAR_MIN,
+  hasSearchFilters,
+  normalizeSearchFilters,
+  parseSearchYear,
   type SearchSort,
 } from '../../domain/search/search';
 import { DEFAULT_SEARCH_PAGE_SIZE } from '../../infrastructure/search/searchApi';
 import { Button } from '../components/Button';
+import {
+  AcademicSelectors,
+  type AcademicSelection,
+} from '../components/catalog/AcademicSelectors';
 import { Input } from '../components/Input';
+import { Select } from '../components/Select';
 import { SearchResults } from '../components/search/SearchResults';
 import { SearchSortSelect } from '../components/search/SearchSortSelect';
 
-function parsePage(value: string | null): number {
-  const page = Number(value);
-  return Number.isInteger(page) && page >= 1 ? page : 1;
-}
+const YEAR_ERROR = `El año debe estar entre ${SEARCH_YEAR_MIN} y ${SEARCH_YEAR_MAX}.`;
 
 export function SearchPage() {
   const [params, setParams] = useSearchParams();
-  const q = (params.get('q') ?? '').trim();
-  const sortParam = params.get('sort');
-  const sort: SearchSort = isSearchSort(sortParam)
-    ? sortParam
-    : DEFAULT_SEARCH_SORT;
-  const page = parsePage(params.get('page'));
+  const state = parseSearchUrl(params);
+  const { q, sort, page, filters } = state;
 
   const [draft, setDraft] = useState(q);
+  const [yearDraft, setYearDraft] = useState<string | null>(null);
+  const [yearError, setYearError] = useState<string | null>(null);
+
+  const hasCriteria = q.length > 0 || hasSearchFilters(filters);
+  const hasFiltersToClear =
+    hasSearchFilters(filters) || Boolean(yearDraft?.trim());
 
   const { data, isLoading, isFetching, isError, error, refetch } =
-    useSearchQuery({ q, sort, page, pageSize: DEFAULT_SEARCH_PAGE_SIZE });
+    useSearchQuery({
+      q,
+      sort,
+      page,
+      pageSize: DEFAULT_SEARCH_PAGE_SIZE,
+      filters,
+    });
 
-  function update(next: { q?: string; sort?: SearchSort; page?: number }) {
-    const merged = {
-      q: next.q ?? q,
-      sort: next.sort ?? sort,
+  function update(next: Partial<SearchUrlState>) {
+    const merged: SearchUrlState = {
+      ...state,
+      ...next,
       page: next.page ?? 1,
     };
-    const nextParams = new URLSearchParams();
-    if (merged.q) nextParams.set('q', merged.q);
-    nextParams.set('sort', merged.sort);
-    if (merged.page > 1) nextParams.set('page', String(merged.page));
-    setParams(nextParams);
+    merged.filters = normalizeSearchFilters(merged.filters);
+    setParams(buildSearchParams(merged));
   }
+
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    const rawYear = (
+      yearDraft ?? (filters.year !== undefined ? String(filters.year) : '')
+    ).trim();
+    let year: number | undefined;
+    if (rawYear) {
+      year = parseSearchYear(rawYear);
+      if (year === undefined) {
+        setYearError(YEAR_ERROR);
+        return;
+      }
+    }
+    setYearError(null);
+    setYearDraft(null);
+    update({ q: draft.trim(), filters: { ...filters, year } });
+  }
+
+  function handleAcademicChange(selection: AcademicSelection) {
+    update({
+      filters: {
+        ...filters,
+        universityId: selection.universityId,
+        careerId: selection.careerId,
+        subjectId: selection.subjectId,
+        professorId: selection.professorId,
+      },
+    });
+  }
+
+  function handleClearFilters() {
+    setYearDraft(null);
+    setYearError(null);
+    update({ filters: {} });
+  }
+
+  const academicValue: AcademicSelection = {
+    universityId: filters.universityId ?? '',
+    careerId: filters.careerId ?? '',
+    subjectId: filters.subjectId ?? '',
+    professorId: filters.professorId ?? '',
+  };
+
+  const typeOptions = SEARCH_TYPE_OPTIONS.some(
+    (option) => option.value === (filters.type ?? '')
+  )
+    ? SEARCH_TYPE_OPTIONS.map((option) => ({ ...option }))
+    : [
+        ...SEARCH_TYPE_OPTIONS.map((option) => ({ ...option })),
+        { value: filters.type!, label: filters.type! },
+      ];
 
   return (
     <section className="bg-catalog-bg px-4 py-8 font-body text-catalog-ink sm:px-6 md:px-10 md:py-10">
@@ -58,31 +126,96 @@ export function SearchPage() {
 
         <form
           role="search"
-          className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end"
-          onSubmit={(event) => {
-            event.preventDefault();
-            update({ q: draft.trim(), page: 1 });
-          }}
+          className="mb-6 flex flex-col gap-5"
+          onSubmit={handleSubmit}
+          noValidate
         >
-          <Input
-            label="Buscar materiales"
-            type="search"
-            name="q"
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder="Ej. Estructuras de datos certamen"
-            containerClassName="flex-1"
-          />
-          <SearchSortSelect
-            value={sort}
-            onChange={(next) => update({ sort: next, page: 1 })}
-          />
-          <Button type="submit" className="min-h-10">
-            Buscar
-          </Button>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+            <Input
+              label="Buscar materiales"
+              type="search"
+              name="q"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              placeholder="Ej. Estructuras de datos certamen"
+              containerClassName="flex-1"
+            />
+            <SearchSortSelect
+              value={sort}
+              onChange={(next: SearchSort) => update({ sort: next })}
+            />
+            <Button type="submit" className="min-h-10">
+              Buscar
+            </Button>
+          </div>
+
+          <fieldset className="rounded-xs border border-catalog-line bg-catalog-paper p-4 sm:p-5">
+            <legend className="px-2 font-display text-lg text-catalog-ink">
+              Filtros
+            </legend>
+            <p className="mb-4 text-sm text-catalog-ink/60">
+              Elige universidad, carrera, asignatura y profesor en ese orden;
+              cada nivel acota las opciones del siguiente.
+            </p>
+
+            <AcademicSelectors
+              showHeading={false}
+              value={academicValue}
+              onChange={handleAcademicChange}
+            />
+
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Input
+                label="Año"
+                name="year"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="Ej. 2026"
+                value={
+                  yearDraft ??
+                  (filters.year !== undefined ? String(filters.year) : '')
+                }
+                onChange={(event) => {
+                  setYearDraft(event.target.value);
+                  setYearError(null);
+                }}
+                error={yearError ?? undefined}
+                helperText={
+                  yearError ? undefined : 'Se aplica al presionar Buscar.'
+                }
+              />
+              <Select
+                label="Tipo de material"
+                name="type"
+                value={filters.type ?? ''}
+                options={typeOptions}
+                onChange={(event) =>
+                  update({
+                    filters: {
+                      ...filters,
+                      type: event.target.value || undefined,
+                    },
+                  })
+                }
+              />
+            </div>
+
+            {hasFiltersToClear && (
+              <div className="mt-4">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearFilters}
+                >
+                  Limpiar filtros
+                </Button>
+              </div>
+            )}
+          </fieldset>
         </form>
 
-        {q ? (
+        {hasCriteria ? (
           <SearchResults
             query={q}
             data={data}
@@ -102,7 +235,8 @@ export function SearchPage() {
               Escribe lo que buscas
             </p>
             <p className="mx-auto mt-1 max-w-md text-sm text-catalog-ink/60">
-              Los resultados aparecerán aquí, con opciones de orden y páginas.
+              También puedes empezar eligiendo filtros. Los resultados
+              aparecerán aquí, con opciones de orden y páginas.
             </p>
           </div>
         )}
