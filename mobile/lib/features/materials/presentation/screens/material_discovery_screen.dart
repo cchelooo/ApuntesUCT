@@ -54,12 +54,19 @@ class _MaterialDiscoveryScreenState
     });
   }
 
+  void _onClearSearch() {
+    _debounceTimer?.cancel();
+    _searchController.clear();
+    setState(() {});
+    ref.read(discoveryMaterialsProvider.notifier).setQuery('');
+  }
+
   void _onClearAll() {
     _debounceTimer?.cancel();
     _searchController.clear();
     setState(() {});
-    ref.read(academicHierarchyProvider.notifier).resetSelection();
     ref.read(discoveryMaterialsProvider.notifier).clearFilters();
+    ref.read(academicHierarchyProvider.notifier).clearFilters();
   }
 
   void _openFiltersModal(BuildContext context) {
@@ -67,70 +74,28 @@ class _MaterialDiscoveryScreenState
       context,
       onApply: () {
         final hierarchy = ref.read(academicHierarchyProvider);
-        final selectedSubject = hierarchy.selectedSubject;
-        final notifier = ref.read(discoveryMaterialsProvider.notifier);
-        notifier.setSubject(selectedSubject?.name);
-        notifier.setYear(hierarchy.selectedYear);
-        notifier.setType(hierarchy.selectedType);
+        ref.read(discoveryMaterialsProvider.notifier).applyHierarchyFilters(
+          universityId: hierarchy.selectedUniversityId,
+          careerId: hierarchy.selectedCareerId,
+          subjectId: hierarchy.selectedSubjectId,
+          professorId: hierarchy.selectedProfessorId,
+          year: hierarchy.selectedYear,
+          type: hierarchy.selectedType,
+          universityName: hierarchy.selectedUniversity?.name,
+          careerName: hierarchy.selectedCareer?.name,
+          subjectName: hierarchy.selectedSubject?.name,
+          professorName: hierarchy.selectedProfessor?.name,
+        );
       },
-    );
-  }
-
-  Widget _buildActiveFilterChips(DiscoveryMaterialsState state) {
-    if (!state.hasHierarchyFilters) return const SizedBox.shrink();
-
-    final notifier = ref.read(discoveryMaterialsProvider.notifier);
-    final academicNotifier = ref.read(academicHierarchyProvider.notifier);
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Row(
-        children: [
-          if (state.selectedSubject != null) ...[
-            Chip(
-              avatar: const Icon(Icons.menu_book_outlined, size: 16),
-              label: Text(state.selectedSubject!),
-              onDeleted: () {
-                notifier.setSubjectHierarchy(null);
-                academicNotifier.selectSubject(null);
-              },
-            ),
-            const SizedBox(width: 8),
-          ],
-          if (state.selectedYear != null) ...[
-            Chip(
-              key: const Key('chip_active_year'),
-              avatar: const Icon(Icons.calendar_today, size: 16),
-              label: Text('Año: ${state.selectedYear}'),
-              onDeleted: () => notifier.clearYear(),
-            ),
-            const SizedBox(width: 8),
-          ],
-          if (state.selectedType != null) ...[
-            Chip(
-              key: const Key('chip_active_type'),
-              avatar: const Icon(Icons.category, size: 16),
-              label: Text('Tipo: ${state.selectedType}'),
-              onDeleted: () => notifier.clearType(),
-            ),
-            const SizedBox(width: 8),
-          ],
-          ActionChip(
-            key: const Key('chip_clear_all_filters'),
-            avatar: const Icon(Icons.close, size: 16),
-            label: const Text('Limpiar todo'),
-            onPressed: _onClearAll,
-          ),
-        ],
-      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(discoveryMaterialsProvider);
-    final hasHierarchyFilters = ref.watch(hasAcademicHierarchyFiltersProvider);
+    final hierarchyState = ref.watch(academicHierarchyProvider);
+    final hasHierarchyFilters =
+        hierarchyState.hasActiveFilters || state.hasHierarchyFilters;
 
     return Scaffold(
       appBar: AppBar(
@@ -149,11 +114,10 @@ class _MaterialDiscoveryScreenState
                     hintText: 'Buscar apuntes, ramos, docentes...',
                     leading: const Icon(Icons.search),
                     trailing: [
-                      if (_searchController.text.isNotEmpty || state.hasHierarchyFilters)
+                      if (_searchController.text.isNotEmpty)
                         IconButton(
-                          key: const Key('clear_search_button'),
                           icon: const Icon(Icons.clear),
-                          onPressed: _onClearAll,
+                          onPressed: _onClearSearch,
                         ),
                     ],
                     onChanged: _onSearchChanged,
@@ -161,7 +125,7 @@ class _MaterialDiscoveryScreenState
                 ),
                 const SizedBox(width: 8),
                 Badge(
-                  isLabelVisible: hasHierarchyFilters || state.hasHierarchyFilters,
+                  isLabelVisible: hasHierarchyFilters,
                   smallSize: 8,
                   child: IconButton.filledTonal(
                     icon: const Icon(Icons.tune_rounded),
@@ -172,7 +136,7 @@ class _MaterialDiscoveryScreenState
               ],
             ),
           ),
-          _buildActiveFilterChips(state),
+          if (state.hasHierarchyFilters) _buildActiveFilterChips(state),
           Expanded(
             child: RefreshIndicator(
               onRefresh: () async {
@@ -182,6 +146,129 @@ class _MaterialDiscoveryScreenState
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildActiveFilterChips(DiscoveryMaterialsState state) {
+    final chips = <Widget>[];
+
+    if (state.selectedUniversityId != null &&
+        state.selectedUniversityId!.isNotEmpty) {
+      chips.add(
+        Chip(
+          key: const Key('active_chip_university'),
+          avatar: const Icon(Icons.account_balance_outlined, size: 16),
+          label: Text(
+            state.selectedUniversityName ?? state.selectedUniversityId!,
+          ),
+          onDeleted: () {
+            ref.read(discoveryMaterialsProvider.notifier).setUniversity(null);
+            ref
+                .read(academicHierarchyProvider.notifier)
+                .selectUniversity(null);
+          },
+        ),
+      );
+    }
+
+    if (state.selectedCareerId != null &&
+        state.selectedCareerId!.isNotEmpty) {
+      chips.add(
+        Chip(
+          key: const Key('active_chip_career'),
+          avatar: const Icon(Icons.school_outlined, size: 16),
+          label: Text(state.selectedCareerName ?? state.selectedCareerId!),
+          onDeleted: () {
+            ref.read(discoveryMaterialsProvider.notifier).setCareer(null);
+            ref.read(academicHierarchyProvider.notifier).selectCareer(null);
+          },
+        ),
+      );
+    }
+
+    final effectiveSubject = state.selectedSubjectName ??
+        state.selectedSubject ??
+        state.selectedSubjectId;
+    if (effectiveSubject != null && effectiveSubject.isNotEmpty) {
+      chips.add(
+        Chip(
+          key: const Key('active_chip_subject'),
+          avatar: const Icon(Icons.menu_book_outlined, size: 16),
+          label: Text(effectiveSubject),
+          onDeleted: () {
+            ref
+                .read(discoveryMaterialsProvider.notifier)
+                .setSubjectHierarchy(null);
+            ref.read(academicHierarchyProvider.notifier).selectSubject(null);
+          },
+        ),
+      );
+    }
+
+    if (state.selectedProfessorId != null &&
+        state.selectedProfessorId!.isNotEmpty) {
+      chips.add(
+        Chip(
+          key: const Key('active_chip_professor'),
+          avatar: const Icon(Icons.person_outline, size: 16),
+          label: Text(
+            state.selectedProfessorName ?? state.selectedProfessorId!,
+          ),
+          onDeleted: () {
+            ref.read(discoveryMaterialsProvider.notifier).setProfessor(null);
+            ref.read(academicHierarchyProvider.notifier).selectProfessor(null);
+          },
+        ),
+      );
+    }
+
+    if (state.selectedYear != null) {
+      chips.add(
+        Chip(
+          key: const Key('active_chip_year'),
+          avatar: const Icon(Icons.calendar_today_outlined, size: 16),
+          label: Text('Año: ${state.selectedYear}'),
+          onDeleted: () {
+            ref.read(discoveryMaterialsProvider.notifier).setYear(null);
+            ref.read(academicHierarchyProvider.notifier).selectYear(null);
+          },
+        ),
+      );
+    }
+
+    if (state.selectedType != null && state.selectedType!.isNotEmpty) {
+      chips.add(
+        Chip(
+          key: const Key('active_chip_type'),
+          avatar: const Icon(Icons.category_outlined, size: 16),
+          label: Text('Tipo: ${state.selectedType!.toUpperCase()}'),
+          onDeleted: () {
+            ref.read(discoveryMaterialsProvider.notifier).setType(null);
+            ref.read(academicHierarchyProvider.notifier).selectType(null);
+          },
+        ),
+      );
+    }
+
+    if (chips.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: [
+            ...chips.expand((c) => [c, const SizedBox(width: 8)]),
+            ActionChip(
+              key: const Key('clear_all_filters_button'),
+              avatar: const Icon(Icons.close_rounded, size: 16),
+              label: const Text('Limpiar todo'),
+              onPressed: _onClearAll,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -208,15 +295,8 @@ class _MaterialDiscoveryScreenState
     if (state.items.isEmpty) {
       final isFiltered = state.isSearchActive;
       final queryText = state.query.isNotEmpty ? ' para "${state.query}"' : '';
-      final subjectText = state.selectedSubject != null
-          ? ' en "${state.selectedSubject}"'
-          : '';
-      final yearText = state.selectedYear != null
-          ? ' año ${state.selectedYear}'
-          : '';
-      final typeText = state.selectedType != null
-          ? ' tipo ${state.selectedType}'
-          : '';
+      final subjectLabel = state.selectedSubjectName ?? state.selectedSubject;
+      final subjectText = subjectLabel != null ? ' en "$subjectLabel"' : '';
 
       return Center(
         child: SingleChildScrollView(
@@ -231,14 +311,13 @@ class _MaterialDiscoveryScreenState
                       ? 'Sin coincidencias'
                       : 'Catálogo de materiales vacío',
                   subtitle: isFiltered
-                      ? 'No encontramos materiales$queryText$subjectText$yearText$typeText.'
+                      ? 'No encontramos materiales$queryText$subjectText.'
                       : 'Aún no se han registrado materiales académicos.',
                 ),
                 // Criterio 4: Opción visible para limpiar filtros y búsqueda
                 if (isFiltered) ...[
                   const SizedBox(height: 16),
                   FilledButton.icon(
-                    key: const Key('empty_state_clear_button'),
                     onPressed: _onClearAll,
                     icon: const Icon(Icons.refresh_rounded),
                     label: const Text('Limpiar filtros y búsqueda'),

@@ -1,6 +1,5 @@
-import 'package:apuntesuct_mobile/core/errors/api_exception.dart';
 import 'package:apuntesuct_mobile/core/network/api_client.dart';
-import 'package:apuntesuct_mobile/features/catalog/presentation/providers/academic_hierarchy_provider.dart';
+import 'package:apuntesuct_mobile/core/errors/api_exception.dart';
 import 'package:apuntesuct_mobile/features/materials/data/dio_catalog_selector_repository.dart';
 import 'package:apuntesuct_mobile/features/materials/data/dio_material_repository.dart';
 import 'package:apuntesuct_mobile/features/materials/data/dio_search_repository.dart';
@@ -15,14 +14,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Consumo de Discovery mediante Gateway. Los mocks requieren un override
 /// explícito y nunca se usan para recuperar silenciosamente errores HTTP.
 class DioMaterialsDiscoveryRepository implements MaterialsRepository {
-  final SearchRepository searchRepo;
-  final MaterialRepository materialRepo;
-  final CatalogSelectorRepository catalogRepo;
+  final SearchRepository _searchRepo;
+  final MaterialRepository _materialRepo;
+  final CatalogSelectorRepository _catalogRepo;
 
   DioMaterialsDiscoveryRepository({
-    required this.searchRepo,
-    required this.materialRepo,
-    required this.catalogRepo,
+    required this._searchRepo,
+    required this._materialRepo,
+    required this._catalogRepo,
   });
 
   @override
@@ -40,28 +39,46 @@ class DioMaterialsDiscoveryRepository implements MaterialsRepository {
   }) async {
     final cleanQuery = query?.trim() ?? '';
     final cleanSubject = subject?.trim();
-    final cleanType = type?.trim();
+    final effectiveSubjectId =
+        (subjectId != null && subjectId.trim().isNotEmpty)
+            ? subjectId.trim()
+            : ((cleanSubject != null && cleanSubject.isNotEmpty)
+                ? cleanSubject
+                : null);
 
-    final hasFilters = cleanQuery.isNotEmpty ||
-        (cleanSubject != null && cleanSubject.isNotEmpty) ||
-        (universityId != null && universityId.trim().isNotEmpty) ||
-        (careerId != null && careerId.trim().isNotEmpty) ||
-        (subjectId != null && subjectId.trim().isNotEmpty) ||
-        (professorId != null && professorId.trim().isNotEmpty) ||
+    final cleanUniversityId =
+        (universityId != null && universityId.trim().isNotEmpty)
+            ? universityId.trim()
+            : null;
+    final cleanCareerId =
+        (careerId != null && careerId.trim().isNotEmpty)
+            ? careerId.trim()
+            : null;
+    final cleanProfessorId =
+        (professorId != null && professorId.trim().isNotEmpty)
+            ? professorId.trim()
+            : null;
+    final cleanType =
+        (type != null && type.trim().isNotEmpty) ? type.trim() : null;
+
+    final hasFilter =
+        cleanQuery.isNotEmpty ||
+        effectiveSubjectId != null ||
+        cleanUniversityId != null ||
+        cleanCareerId != null ||
+        cleanProfessorId != null ||
         year != null ||
-        (cleanType != null && cleanType.isNotEmpty);
+        cleanType != null;
 
-    // 1. Si hay texto o cualquier filtro (incluidos año y tipo), consultar a Search Service vía Gateway
-    if (hasFilters) {
-      final pageResult = await searchRepo.search(
+    // 1. Si hay texto o algún filtro jerárquico/académico, consultar a Search Service vía Gateway
+    if (hasFilter) {
+      final pageResult = await _searchRepo.search(
         MaterialSearchQuery(
           text: cleanQuery,
-          universityId: universityId?.trim(),
-          careerId: careerId?.trim(),
-          subjectId: subjectId?.trim().isNotEmpty == true
-              ? subjectId?.trim()
-              : cleanSubject,
-          professorId: professorId?.trim(),
+          universityId: cleanUniversityId,
+          careerId: cleanCareerId,
+          subjectId: effectiveSubjectId,
+          professorId: cleanProfessorId,
           year: year,
           type: cleanType,
         ),
@@ -72,13 +89,13 @@ class DioMaterialsDiscoveryRepository implements MaterialsRepository {
     }
 
     // 2. Listado general sin filtros: consultar a Material Service vía Gateway
-    final pageResult = await materialRepo.list(page: page, pageSize: pageSize);
+    final pageResult = await _materialRepo.list(page: page, pageSize: pageSize);
     return pageResult.items;
   }
 
   @override
   Future<List<String>> getAvailableSubjects() async {
-    return (await catalogRepo.listSubjects())
+    return (await _catalogRepo.listSubjects())
         .map((subject) => subject.name)
         .toList();
   }
@@ -86,7 +103,7 @@ class DioMaterialsDiscoveryRepository implements MaterialsRepository {
   @override
   Future<MaterialDetail> getMaterialDetail(String id) async {
     try {
-      return await materialRepo.getDetail(id);
+      return await _materialRepo.getDetail(id);
     } on ApiException catch (error) {
       if (error.statusCode == 404) throw MaterialNotFoundException(id);
       rethrow;
@@ -124,6 +141,10 @@ class DiscoveryMaterialsState {
   final String? selectedProfessorId;
   final int? selectedYear;
   final String? selectedType;
+  final String? selectedUniversityName;
+  final String? selectedCareerName;
+  final String? selectedSubjectName;
+  final String? selectedProfessorName;
   final String? errorMessage;
 
   const DiscoveryMaterialsState({
@@ -140,28 +161,39 @@ class DiscoveryMaterialsState {
     this.selectedProfessorId,
     this.selectedYear,
     this.selectedType,
+    this.selectedUniversityName,
+    this.selectedCareerName,
+    this.selectedSubjectName,
+    this.selectedProfessorName,
     this.errorMessage,
   });
 
   bool get hasHierarchyFilters =>
-      selectedUniversityId != null ||
-      selectedCareerId != null ||
-      selectedSubjectId != null ||
-      selectedProfessorId != null ||
+      (selectedUniversityId != null && selectedUniversityId!.isNotEmpty) ||
+      (selectedCareerId != null && selectedCareerId!.isNotEmpty) ||
+      (selectedSubjectId != null && selectedSubjectId!.isNotEmpty) ||
+      (selectedProfessorId != null && selectedProfessorId!.isNotEmpty) ||
       selectedYear != null ||
-      selectedType != null ||
-      selectedSubject != null;
+      (selectedType != null && selectedType!.isNotEmpty) ||
+      (selectedSubject != null && selectedSubject!.isNotEmpty);
 
   bool get isSearchActive => query.trim().isNotEmpty || hasHierarchyFilters;
 
   int get activeFiltersCount {
     var count = 0;
-    if (selectedUniversityId != null) count++;
-    if (selectedCareerId != null) count++;
-    if (selectedSubjectId != null || selectedSubject != null) count++;
-    if (selectedProfessorId != null) count++;
+    if (selectedUniversityId != null && selectedUniversityId!.isNotEmpty) {
+      count++;
+    }
+    if (selectedCareerId != null && selectedCareerId!.isNotEmpty) count++;
+    if ((selectedSubjectId != null && selectedSubjectId!.isNotEmpty) ||
+        (selectedSubject != null && selectedSubject!.isNotEmpty)) {
+      count++;
+    }
+    if (selectedProfessorId != null && selectedProfessorId!.isNotEmpty) {
+      count++;
+    }
     if (selectedYear != null) count++;
-    if (selectedType != null) count++;
+    if (selectedType != null && selectedType!.isNotEmpty) count++;
     return count;
   }
 
@@ -175,17 +207,25 @@ class DiscoveryMaterialsState {
     String? selectedSubject,
     bool clearSubject = false,
     String? selectedUniversityId,
-    bool clearUniversity = false,
+    bool clearUniversityId = false,
     String? selectedCareerId,
-    bool clearCareer = false,
+    bool clearCareerId = false,
     String? selectedSubjectId,
     bool clearSubjectId = false,
     String? selectedProfessorId,
-    bool clearProfessor = false,
+    bool clearProfessorId = false,
     int? selectedYear,
     bool clearYear = false,
     String? selectedType,
     bool clearType = false,
+    String? selectedUniversityName,
+    bool clearUniversityName = false,
+    String? selectedCareerName,
+    bool clearCareerName = false,
+    String? selectedSubjectName,
+    bool clearSubjectName = false,
+    String? selectedProfessorName,
+    bool clearProfessorName = false,
     String? errorMessage,
     bool clearError = false,
   }) {
@@ -199,20 +239,32 @@ class DiscoveryMaterialsState {
       selectedSubject: clearSubject
           ? null
           : (selectedSubject ?? this.selectedSubject),
-      selectedUniversityId: clearUniversity
+      selectedUniversityId: clearUniversityId
           ? null
           : (selectedUniversityId ?? this.selectedUniversityId),
-      selectedCareerId: clearCareer
+      selectedCareerId: clearCareerId
           ? null
           : (selectedCareerId ?? this.selectedCareerId),
       selectedSubjectId: clearSubjectId
           ? null
           : (selectedSubjectId ?? this.selectedSubjectId),
-      selectedProfessorId: clearProfessor
+      selectedProfessorId: clearProfessorId
           ? null
           : (selectedProfessorId ?? this.selectedProfessorId),
       selectedYear: clearYear ? null : (selectedYear ?? this.selectedYear),
       selectedType: clearType ? null : (selectedType ?? this.selectedType),
+      selectedUniversityName: clearUniversityName
+          ? null
+          : (selectedUniversityName ?? this.selectedUniversityName),
+      selectedCareerName: clearCareerName
+          ? null
+          : (selectedCareerName ?? this.selectedCareerName),
+      selectedSubjectName: clearSubjectName
+          ? null
+          : (selectedSubjectName ?? this.selectedSubjectName),
+      selectedProfessorName: clearProfessorName
+          ? null
+          : (selectedProfessorName ?? this.selectedProfessorName),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
@@ -291,112 +343,13 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
   Future<void> setSubject(String? subject) async {
     state = state.copyWith(
       selectedSubject: subject,
+      selectedSubjectId: subject,
+      selectedSubjectName: subject,
       clearSubject: subject == null,
-      isLoading: true,
-      page: 1,
-      clearError: true,
-    );
-    await _loadInitial();
-  }
-
-  Future<void> setYear(int? year) async {
-    if (state.selectedYear == year) return;
-    state = state.copyWith(
-      selectedYear: year,
-      clearYear: year == null,
-      isLoading: true,
-      page: 1,
-      clearError: true,
-    );
-    await _loadInitial();
-  }
-
-  Future<void> setType(String? type) async {
-    final clean = type?.trim();
-    if (state.selectedType == clean) return;
-    state = state.copyWith(
-      selectedType: clean,
-      clearType: clean == null || clean.isEmpty,
-      isLoading: true,
-      page: 1,
-      clearError: true,
-    );
-    await _loadInitial();
-  }
-
-  Future<void> clearYear() async {
-    ref.read(academicHierarchyProvider.notifier).selectYear(null);
-    state = state.copyWith(
-      clearYear: true,
-      isLoading: true,
-      page: 1,
-      clearError: true,
-    );
-    await _loadInitial();
-  }
-
-  Future<void> clearType() async {
-    ref.read(academicHierarchyProvider.notifier).selectType(null);
-    state = state.copyWith(
-      clearType: true,
-      isLoading: true,
-      page: 1,
-      clearError: true,
-    );
-    await _loadInitial();
-  }
-
-  Future<void> setUniversity(String? universityId) async {
-    if (state.selectedUniversityId == universityId) return;
-    state = state.copyWith(
-      selectedUniversityId: universityId,
-      clearUniversity: universityId == null,
-      clearCareer: true,
-      clearSubjectId: true,
-      clearSubject: true,
-      clearProfessor: true,
-      isLoading: true,
-      page: 1,
-      clearError: true,
-    );
-    await _loadInitial();
-  }
-
-  Future<void> setCareer(String? careerId) async {
-    if (state.selectedCareerId == careerId) return;
-    state = state.copyWith(
-      selectedCareerId: careerId,
-      clearCareer: careerId == null,
-      clearSubjectId: true,
-      clearSubject: true,
-      clearProfessor: true,
-      isLoading: true,
-      page: 1,
-      clearError: true,
-    );
-    await _loadInitial();
-  }
-
-  Future<void> setSubjectHierarchy(String? subjectId, [String? subjectName]) async {
-    if (state.selectedSubjectId == subjectId && state.selectedSubject == subjectName) return;
-    state = state.copyWith(
-      selectedSubjectId: subjectId,
-      clearSubjectId: subjectId == null,
-      selectedSubject: subjectName,
-      clearSubject: subjectName == null,
-      clearProfessor: true,
-      isLoading: true,
-      page: 1,
-      clearError: true,
-    );
-    await _loadInitial();
-  }
-
-  Future<void> setProfessor(String? professorId) async {
-    if (state.selectedProfessorId == professorId) return;
-    state = state.copyWith(
-      selectedProfessorId: professorId,
-      clearProfessor: professorId == null,
+      clearSubjectId: subject == null,
+      clearSubjectName: subject == null,
+      clearProfessorId: true,
+      clearProfessorName: true,
       isLoading: true,
       page: 1,
       clearError: true,
@@ -408,24 +361,137 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
     String? universityId,
     String? careerId,
     String? subjectId,
-    String? subjectName,
     String? professorId,
     int? year,
     String? type,
+    String? universityName,
+    String? careerName,
+    String? subjectName,
+    String? professorName,
   }) async {
     state = state.copyWith(
       selectedUniversityId: universityId,
-      clearUniversity: universityId == null,
+      clearUniversityId: universityId == null,
       selectedCareerId: careerId,
-      clearCareer: careerId == null,
+      clearCareerId: careerId == null,
       selectedSubjectId: subjectId,
       clearSubjectId: subjectId == null,
-      selectedSubject: subjectName,
-      clearSubject: subjectName == null,
       selectedProfessorId: professorId,
-      clearProfessor: professorId == null,
+      clearProfessorId: professorId == null,
       selectedYear: year,
       clearYear: year == null,
+      selectedType: type,
+      clearType: type == null,
+      selectedUniversityName: universityName,
+      clearUniversityName: universityName == null,
+      selectedCareerName: careerName,
+      clearCareerName: careerName == null,
+      selectedSubjectName: subjectName,
+      clearSubjectName: subjectName == null,
+      selectedProfessorName: professorName,
+      clearProfessorName: professorName == null,
+      selectedSubject: subjectName ?? subjectId,
+      clearSubject: subjectName == null && subjectId == null,
+      isLoading: true,
+      page: 1,
+      clearError: true,
+    );
+    await _loadInitial();
+  }
+
+  /// Limpia niveles inferiores incompatibles al cambiar universidad y reinicia paginación a página 1.
+  Future<void> setUniversity(
+    String? universityId, {
+    String? universityName,
+  }) async {
+    state = state.copyWith(
+      selectedUniversityId: universityId,
+      clearUniversityId: universityId == null,
+      selectedUniversityName: universityName,
+      clearUniversityName: universityName == null,
+      clearCareerId: true,
+      clearCareerName: true,
+      clearSubjectId: true,
+      clearSubjectName: true,
+      clearSubject: true,
+      clearProfessorId: true,
+      clearProfessorName: true,
+      isLoading: true,
+      page: 1,
+      clearError: true,
+    );
+    await _loadInitial();
+  }
+
+  /// Limpia niveles inferiores incompatibles al cambiar carrera y reinicia paginación a página 1.
+  Future<void> setCareer(String? careerId, {String? careerName}) async {
+    state = state.copyWith(
+      selectedCareerId: careerId,
+      clearCareerId: careerId == null,
+      selectedCareerName: careerName,
+      clearCareerName: careerName == null,
+      clearSubjectId: true,
+      clearSubjectName: true,
+      clearSubject: true,
+      clearProfessorId: true,
+      clearProfessorName: true,
+      isLoading: true,
+      page: 1,
+      clearError: true,
+    );
+    await _loadInitial();
+  }
+
+  /// Limpia niveles inferiores incompatibles al cambiar asignatura y reinicia paginación a página 1.
+  Future<void> setSubjectHierarchy(
+    String? subjectId, {
+    String? subjectName,
+  }) async {
+    state = state.copyWith(
+      selectedSubjectId: subjectId,
+      clearSubjectId: subjectId == null,
+      selectedSubjectName: subjectName,
+      clearSubjectName: subjectName == null,
+      selectedSubject: subjectName ?? subjectId,
+      clearSubject: subjectName == null && subjectId == null,
+      clearProfessorId: true,
+      clearProfessorName: true,
+      isLoading: true,
+      page: 1,
+      clearError: true,
+    );
+    await _loadInitial();
+  }
+
+  Future<void> setProfessor(
+    String? professorId, {
+    String? professorName,
+  }) async {
+    state = state.copyWith(
+      selectedProfessorId: professorId,
+      clearProfessorId: professorId == null,
+      selectedProfessorName: professorName,
+      clearProfessorName: professorName == null,
+      isLoading: true,
+      page: 1,
+      clearError: true,
+    );
+    await _loadInitial();
+  }
+
+  Future<void> setYear(int? year) async {
+    state = state.copyWith(
+      selectedYear: year,
+      clearYear: year == null,
+      isLoading: true,
+      page: 1,
+      clearError: true,
+    );
+    await _loadInitial();
+  }
+
+  Future<void> setType(String? type) async {
+    state = state.copyWith(
       selectedType: type,
       clearType: type == null,
       isLoading: true,
@@ -435,12 +501,24 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
     await _loadInitial();
   }
 
-  /// Limpia todos los filtros activos, restablece consulta y reinicia paginación a la página 1 (Issue #295).
   Future<void> clearFilters() async {
-    // Restablece la jerarquía académica si está activa
-    ref.read(academicHierarchyProvider.notifier).resetSelection();
-
-    state = const DiscoveryMaterialsState(isLoading: true, page: 1);
+    state = state.copyWith(
+      query: '',
+      clearSubject: true,
+      clearUniversityId: true,
+      clearCareerId: true,
+      clearSubjectId: true,
+      clearProfessorId: true,
+      clearYear: true,
+      clearType: true,
+      clearUniversityName: true,
+      clearCareerName: true,
+      clearSubjectName: true,
+      clearProfessorName: true,
+      isLoading: true,
+      page: 1,
+      clearError: true,
+    );
     await _loadInitial();
   }
 
