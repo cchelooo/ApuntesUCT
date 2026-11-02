@@ -46,6 +46,7 @@ describe('Catalog Service - Regresión Reforzada (e2e)', () => {
   let subjectId: string;
   let professorActiveId: string;
   let professorInactiveId: string;
+  const professorOtherId = randomUUID();
 
   const missingId = '00000000-0000-4000-8000-000000000001';
 
@@ -57,7 +58,9 @@ describe('Catalog Service - Regresión Reforzada (e2e)', () => {
     app = moduleRef.createNestApplication();
 
     app.setGlobalPrefix('api/v1', { exclude: ['health'] });
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
 
     await app.init();
     prisma = app.get(PrismaService);
@@ -69,12 +72,22 @@ describe('Catalog Service - Regresión Reforzada (e2e)', () => {
     universityId = uni.id;
 
     const car = await prisma.career.create({
-      data: { name: `Reg Career ${run}`, code: `REG-C-${run}`, universityId, active: true },
+      data: {
+        name: `Reg Career ${run}`,
+        code: `REG-C-${run}`,
+        universityId,
+        active: true,
+      },
     });
     careerId = car.id;
 
     const sub = await prisma.subject.create({
-      data: { name: `Reg Subject ${run}`, code: `REG-S-${run}`, careerId, active: true },
+      data: {
+        name: `Reg Subject ${run}`,
+        code: `REG-S-${run}`,
+        careerId,
+        active: true,
+      },
     });
     subjectId = sub.id;
 
@@ -97,17 +110,43 @@ describe('Catalog Service - Regresión Reforzada (e2e)', () => {
       },
     });
     professorInactiveId = profInact.id;
+
+    await prisma.subject.create({
+      data: {
+        name: `Reg Otra Asignatura ${run}`,
+        code: `REG-S-OTHER-${run}`,
+        careerId,
+        professors: {
+          create: {
+            id: professorOtherId,
+            name: `Reg Prof Ajeno ${run}`,
+            email: email('other'),
+            active: true,
+          },
+        },
+      },
+    });
   });
 
   afterAll(async () => {
-    // 2. LIMPIEZA ESTRICTA AL TERMINAR
-    await prisma.professor.deleteMany({
-      where: { email: { in: [email('act'), email('inact')] } },
-    });
-    await prisma.university.deleteMany({
-      where: { id: universityId },
-    });
-    await app.close();
+    try {
+      if (prisma) {
+        await prisma.professor.deleteMany({
+          where: {
+            email: { in: [email('act'), email('inact'), email('other')] },
+          },
+        });
+        // Si la siembra falla antes de asignar el ID, no ejecutar un borrado
+        // cuyo filtro undefined sería omitido por Prisma.
+        if (universityId) {
+          await prisma.university.deleteMany({
+            where: { id: universityId },
+          });
+        }
+      }
+    } finally {
+      await app?.close();
+    }
   });
 
   // =========================================================================
@@ -122,7 +161,9 @@ describe('Catalog Service - Regresión Reforzada (e2e)', () => {
       expect(Array.isArray(body)).toBe(true);
 
       // Buscamos explícitamente nuestra universidad sembrada en el árbol
-      const targetUni = (body as TestUniversity[]).find((u) => u.id === universityId);
+      const targetUni = (body as TestUniversity[]).find(
+        (u) => u.id === universityId,
+      );
       expect(targetUni).toBeDefined();
       expect(targetUni?.name).toBe(`Reg Uni ${run}`);
 
@@ -132,7 +173,9 @@ describe('Catalog Service - Regresión Reforzada (e2e)', () => {
       expect(targetCareer?.name).toBe(`Reg Career ${run}`);
 
       // Validamos que la carrera contenga la asignatura correspondiente
-      const targetSubject = targetCareer?.subjects?.find((s) => s.id === subjectId);
+      const targetSubject = targetCareer?.subjects?.find(
+        (s) => s.id === subjectId,
+      );
       expect(targetSubject).toBeDefined();
       expect(targetSubject?.name).toBe(`Reg Subject ${run}`);
     });
@@ -160,7 +203,9 @@ describe('Catalog Service - Regresión Reforzada (e2e)', () => {
       expect(subjectResult.id).toBe(subjectId);
 
       // Comprobamos que el profesor retornado sea efectivamente el activo
-      const returnedProf = subjectResult.professors?.find((p) => p.id === professorActiveId);
+      const returnedProf = subjectResult.professors?.find(
+        (p) => p.id === professorActiveId,
+      );
       expect(returnedProf).toBeDefined();
     });
 
@@ -179,20 +224,26 @@ describe('Catalog Service - Regresión Reforzada (e2e)', () => {
       expect(body).toEqual([]); // No debe filtrar asignaturas con profesores inactivos
     });
 
-    it('devuelve arreglo vacío [] al filtrar por un profesor AJENO / inexistente', async () => {
-      const { body } = await request(app.getHttpServer())
-        .get('/api/v1/catalog/filter')
-        .query({
-          universityId,
-          careerId,
-          subjectId,
-          professorId: missingId,
-        })
-        .expect(200);
+    it.each([
+      ['AJENO (vinculado a otra asignatura)', professorOtherId],
+      ['INEXISTENTE', missingId],
+    ])(
+      'devuelve arreglo vacío al filtrar por un profesor %s',
+      async (_label, professorId) => {
+        const { body } = await request(app.getHttpServer())
+          .get('/api/v1/catalog/filter')
+          .query({
+            universityId,
+            careerId,
+            subjectId,
+            professorId,
+          })
+          .expect(200);
 
-      expect(Array.isArray(body)).toBe(true);
-      expect(body).toEqual([]);
-    });
+        expect(Array.isArray(body)).toBe(true);
+        expect(body).toEqual([]);
+      },
+    );
   });
 
   // =========================================================================
@@ -233,7 +284,9 @@ describe('Catalog Service - Regresión Reforzada (e2e)', () => {
         .get('/api/v1/catalog/universities')
         .expect(200);
 
-      const found = (body as TestUniversity[]).find((u) => u.id === universityId);
+      const found = (body as TestUniversity[]).find(
+        (u) => u.id === universityId,
+      );
       expect(found).toBeDefined();
     });
 
