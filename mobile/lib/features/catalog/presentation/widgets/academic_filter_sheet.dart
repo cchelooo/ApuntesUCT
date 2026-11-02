@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:apuntesuct_mobile/core/theme/uct_palette.dart';
 import 'package:apuntesuct_mobile/features/catalog/presentation/providers/academic_hierarchy_provider.dart';
-import 'package:apuntesuct_mobile/models/university_model.dart';
 
 /// Modal inferior interactivo para configurar y aplicar los 6 filtros oficiales del Catálogo:
 /// 1. Universidad
@@ -45,9 +44,7 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final state = ref.read(academicHierarchyProvider);
       if (state.universities.isEmpty && !state.isLoadingUniversities) {
-        ref
-            .read(academicHierarchyProvider.notifier)
-            .setUniversities(UniversityModel.mockList());
+        ref.read(academicHierarchyProvider.notifier).loadUniversities();
       }
     });
   }
@@ -208,13 +205,22 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                 label: '1. Universidad',
                 icon: Icons.account_balance_outlined,
                 isLoading: hierarchyState.isLoadingUniversities,
+                errorMessage: hierarchyState.errorUniversities,
+                onRetry: () => notifier.retryUniversities(),
+                retryKey: const Key('retry_university_button'),
                 dropdown: KeyedSubtree(
                   key: ValueKey('university_${hierarchyState.selectedUniversityId}'),
                   child: DropdownButtonFormField<String>(
                     key: const Key('filter_university_dropdown'),
                     initialValue: hierarchyState.selectedUniversityId,
                     isExpanded: true,
-                    hint: const Text('Seleccionar universidad...'),
+                    hint: Text(
+                      hierarchyState.universities.isEmpty &&
+                              !hierarchyState.isLoadingUniversities &&
+                              hierarchyState.errorUniversities == null
+                          ? 'No hay universidades disponibles'
+                          : 'Seleccionar universidad...',
+                    ),
                     decoration: _inputDecoration(
                       colorFondoCampo,
                       colorBordeCampo,
@@ -239,8 +245,13 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                 label: '2. Carrera',
                 icon: Icons.school_outlined,
                 isLoading: hierarchyState.isLoadingCareers,
+                errorMessage: hierarchyState.errorCareers,
+                onRetry: () => notifier.retryCareers(),
+                retryKey: const Key('retry_career_button'),
                 dropdown: KeyedSubtree(
-                  key: ValueKey('career_${hierarchyState.selectedCareerId}'),
+                  key: ValueKey(
+                    'career_${hierarchyState.selectedUniversityId}_${hierarchyState.selectedCareerId}',
+                  ),
                   child: DropdownButtonFormField<String>(
                     key: const Key('filter_career_dropdown'),
                     initialValue: hierarchyState.selectedCareerId,
@@ -248,9 +259,14 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                     hint: Text(
                       !hierarchyState.isUniversitySelected
                           ? 'Selecciona una universidad primero'
-                          : 'Seleccionar carrera...',
+                          : (hierarchyState.careers.isEmpty &&
+                                  !hierarchyState.isLoadingCareers &&
+                                  hierarchyState.errorCareers == null
+                              ? 'No hay carreras disponibles'
+                              : 'Seleccionar carrera...'),
                       style: TextStyle(
-                        color: !hierarchyState.canSelectCareer
+                        color: (!hierarchyState.canSelectCareer ||
+                                hierarchyState.careers.isEmpty)
                             ? (isDark
                                   ? UctPalette.textoTenueOscuro
                                   : UctPalette.textoCampoClaro)
@@ -260,19 +276,25 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                     decoration: _inputDecoration(
                       colorFondoCampo,
                       colorBordeCampo,
-                      enabled: hierarchyState.canSelectCareer,
+                      enabled: hierarchyState.canSelectCareer &&
+                          hierarchyState.careers.isNotEmpty,
                     ),
-                    items: hierarchyState.canSelectCareer
+                    items: (hierarchyState.canSelectCareer &&
+                            hierarchyState.careers.isNotEmpty)
                         ? hierarchyState.careers
                               .map(
                                 (c) => DropdownMenuItem(
                                   value: c.id,
-                                  child: Text(c.name, overflow: TextOverflow.ellipsis),
+                                  child: Text(
+                                    c.name,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
                               )
                               .toList()
                         : null,
-                    onChanged: hierarchyState.canSelectCareer
+                    onChanged: (hierarchyState.canSelectCareer &&
+                            hierarchyState.careers.isNotEmpty)
                         ? (val) => notifier.selectCareer(val)
                         : null,
                   ),
@@ -286,8 +308,13 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                 label: '3. Asignatura',
                 icon: Icons.menu_book_outlined,
                 isLoading: hierarchyState.isLoadingSubjects,
+                errorMessage: hierarchyState.errorSubjects,
+                onRetry: () => notifier.retrySubjects(),
+                retryKey: const Key('retry_subject_button'),
                 dropdown: KeyedSubtree(
-                  key: ValueKey('subject_${hierarchyState.selectedSubjectId}'),
+                  key: ValueKey(
+                    'subject_${hierarchyState.selectedCareerId}_${hierarchyState.selectedSubjectId}',
+                  ),
                   child: DropdownButtonFormField<String>(
                     key: const Key('filter_subject_dropdown'),
                     initialValue: hierarchyState.selectedSubjectId,
@@ -295,7 +322,11 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                     hint: Text(
                       !hierarchyState.isCareerSelected
                           ? 'Selecciona una carrera primero'
-                          : 'Seleccionar asignatura...',
+                          : (hierarchyState.subjects.isEmpty &&
+                                  !hierarchyState.isLoadingSubjects &&
+                                  hierarchyState.errorSubjects == null
+                              ? 'No hay asignaturas disponibles'
+                              : 'Seleccionar asignatura...'),
                       style: TextStyle(
                         color: !hierarchyState.canSelectSubject
                             ? (isDark
@@ -336,8 +367,13 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                 label: '4. Profesor / Docente',
                 icon: Icons.person_outline,
                 isLoading: hierarchyState.isLoadingProfessors,
+                errorMessage: hierarchyState.errorProfessors,
+                onRetry: () => notifier.retryProfessors(),
+                retryKey: const Key('retry_professor_button'),
                 dropdown: KeyedSubtree(
-                  key: ValueKey('professor_${hierarchyState.selectedProfessorId}'),
+                  key: ValueKey(
+                    'professor_${hierarchyState.selectedSubjectId}_${hierarchyState.selectedProfessorId}',
+                  ),
                   child: DropdownButtonFormField<String>(
                     key: const Key('filter_professor_dropdown'),
                     initialValue: hierarchyState.selectedProfessorId,
@@ -345,9 +381,14 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                     hint: Text(
                       !hierarchyState.isSubjectSelected
                           ? 'Selecciona una asignatura primero'
-                          : 'Seleccionar profesor (opcional)...',
+                          : (hierarchyState.professors.isEmpty &&
+                                  !hierarchyState.isLoadingProfessors &&
+                                  hierarchyState.errorProfessors == null
+                              ? 'No hay profesores disponibles'
+                              : 'Seleccionar profesor (opcional)...'),
                       style: TextStyle(
-                        color: !hierarchyState.canSelectProfessor
+                        color: (!hierarchyState.canSelectProfessor ||
+                                hierarchyState.professors.isEmpty)
                             ? (isDark
                                   ? UctPalette.textoTenueOscuro
                                   : UctPalette.textoCampoClaro)
@@ -357,9 +398,11 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                     decoration: _inputDecoration(
                       colorFondoCampo,
                       colorBordeCampo,
-                      enabled: hierarchyState.canSelectProfessor,
+                      enabled: hierarchyState.canSelectProfessor &&
+                          hierarchyState.professors.isNotEmpty,
                     ),
-                    items: hierarchyState.canSelectProfessor
+                    items: (hierarchyState.canSelectProfessor &&
+                            hierarchyState.professors.isNotEmpty)
                         ? hierarchyState.professors
                               .map(
                                 (p) => DropdownMenuItem(
@@ -372,7 +415,8 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                               )
                               .toList()
                         : null,
-                    onChanged: hierarchyState.canSelectProfessor
+                    onChanged: (hierarchyState.canSelectProfessor &&
+                            hierarchyState.professors.isNotEmpty)
                         ? (val) => notifier.selectProfessor(val)
                         : null,
                   ),
@@ -480,7 +524,12 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
     required IconData icon,
     required Widget dropdown,
     bool isLoading = false,
+    String? errorMessage,
+    VoidCallback? onRetry,
+    Key? retryKey,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -504,6 +553,56 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
         ),
         const SizedBox(height: 6),
         dropdown,
+        if (errorMessage != null) ...[
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.red.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.red.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.error_outline_rounded,
+                  color: Colors.redAccent,
+                  size: 16,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    errorMessage,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? const Color(0xFFFF8A80) : Colors.red[800],
+                    ),
+                  ),
+                ),
+                if (onRetry != null)
+                  TextButton(
+                    key: retryKey,
+                    onPressed: onRetry,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: const Size(0, 28),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      'Reintentar',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? UctPalette.amarillo : UctPalette.azul,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }

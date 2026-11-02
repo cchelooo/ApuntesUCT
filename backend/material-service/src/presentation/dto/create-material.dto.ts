@@ -11,10 +11,10 @@ export enum MaterialType {
 
 /** Public POST codes map to the name of a local MaterialType record. */
 export const MATERIAL_TYPE_DESCRIPTION =
-  'Código público del tipo de material. Al implementar persistencia, type se resolverá ' +
+  'Código público del tipo de material. type se resuelve ' +
   'por coincidencia exacta con MaterialType.name de un registro activo y su id se ' +
-  'guardará como materialTypeId. GET /materials expone ese id como materialTypeId ' +
-  'y el nombre como materialType. Este POST simulado no consulta ni crea tipos en BD. ' +
+  'guarda como materialTypeId. GET /materials expone ese id como materialTypeId ' +
+  'y el nombre como materialType. Los tipos deben existir y estar activos en BD. ' +
   'El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.';
 
 export const MATERIAL_MIME_TYPES = [
@@ -38,6 +38,7 @@ export class CreateMaterialDto {
   })
   @IsString()
   @IsNotEmpty()
+  @Matches(/\S/u, { message: 'title debe contener al menos un carácter que no sea espacio' })
   title!: string;
 
   @ApiPropertyOptional({
@@ -65,24 +66,35 @@ export class CreateMaterialDto {
   type!: MaterialType;
 
   @ApiProperty({
-    description: 'OBLIGATORIO. Identificador académico único de la asignatura.',
-    example: 'SUBJ-102',
+    format: 'uuid',
+    description:
+      'OBLIGATORIO. UUID de una asignatura activa existente en Catalog, con carrera y universidad ' +
+      'activas. Debe ser compatible con la universidad del contexto de autor cuando se configure. ' +
+      'El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.',
+    example: '33333333-3333-4333-8333-333333333333',
   })
   @IsString()
   @IsNotEmpty()
+  @Matches(/\S/u, { message: 'subjectId debe contener al menos un carácter que no sea espacio' })
   subjectId!: string;
 
   @ApiPropertyOptional({
-    description: 'OPCIONAL. Identificador académico de la carrera o programa.',
-    example: 'CAREER-INF-01',
+    format: 'uuid',
+    description:
+      'OPCIONAL. UUID de una carrera activa existente en Catalog a la que pertenece la asignatura. ' +
+      'El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.',
+    example: '22222222-2222-4222-8222-222222222222',
   })
   @IsOptional()
   @IsString()
   careerId?: string;
 
   @ApiPropertyOptional({
-    description: 'OPCIONAL. Identificador único (ID/UUID) del profesor asignado.',
-    example: 'prof_88321',
+    format: 'uuid',
+    description:
+      'OPCIONAL. UUID de un profesor activo existente en Catalog y vinculado a la asignatura. ' +
+      'El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.',
+    example: '44444444-4444-4444-8444-444444444444',
   })
   @IsOptional()
   @IsString()
@@ -94,14 +106,13 @@ export class CreateMaterialDto {
     example: 'https://drive.google.com/file/d/xyz/view',
   })
   @IsOptional()
-  @IsUrl({}, { message: 'externalLink debe ser una URL válida (ej. https://...)' })
+  @IsUrl(
+    { protocols: ['http', 'https'], require_protocol: true },
+    { message: 'externalLink debe ser una URL válida (ej. https://...)' },
+  )
   externalLink?: string;
 
-  @ApiPropertyOptional({
-    type: 'string',
-    format: 'binary',
-    description: MATERIAL_FILE_DESCRIPTION,
-  })
+  @ApiPropertyOptional({ type: 'string', format: 'binary', description: MATERIAL_FILE_DESCRIPTION })
   @IsOptional()
   file?: Express.Multer.File;
 }

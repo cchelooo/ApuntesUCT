@@ -17,12 +17,16 @@ export interface AcademicSelectorsProps {
   value: AcademicSelection;
   onChange: (selection: AcademicSelection) => void;
   className?: string;
+  required?: boolean;
+  showHeading?: boolean;
 }
 
 export const AcademicSelectors = ({
   value,
   onChange,
   className = '',
+  required = false,
+  showHeading = true,
 }: AcademicSelectorsProps) => {
   const {
     data: universities,
@@ -99,16 +103,22 @@ export const AcademicSelectors = ({
         />
       )}
 
-      <div className="flex items-center gap-2 mb-2">
-        <h3 className="text-lg font-medium text-gray-800">
-          Selección Académica
-        </h3>
-        {isAnyLoading && <Spinner size="sm" className="text-uct-blue" />}
-      </div>
+      {(showHeading || isAnyLoading) && (
+        <div className="flex items-center gap-2 mb-2">
+          {showHeading && (
+            <h3 className="text-lg font-medium text-uct-navy">
+              Selección Académica
+            </h3>
+          )}
+          {isAnyLoading && <Spinner size="sm" className="text-uct-blue" />}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Select
           label="Universidad"
+          name="universityId"
+          required={required}
           placeholder="Selecciona una universidad..."
           value={value.universityId}
           onChange={handleUniversityChange}
@@ -121,6 +131,8 @@ export const AcademicSelectors = ({
 
         <Select
           label="Carrera"
+          name="careerId"
+          required={required}
           placeholder={
             !value.universityId
               ? 'Selecciona una universidad primero'
@@ -137,6 +149,8 @@ export const AcademicSelectors = ({
 
         <Select
           label="Asignatura"
+          name="subjectId"
+          required={required}
           placeholder={
             !value.careerId
               ? 'Selecciona una carrera primero'
@@ -153,20 +167,25 @@ export const AcademicSelectors = ({
 
         <Select
           label="Profesor"
+          name="professorId"
+          helperText="Opcional"
           placeholder={
-            !value.subjectId
-              ? 'Selecciona una asignatura primero'
-              : 'Selecciona un profesor...'
+            !value.subjectId ? 'Selecciona una asignatura primero' : undefined
           }
           value={value.professorId}
           onChange={handleProfessorChange}
           disabled={
             !value.subjectId || isLoadingProfessors || !!errorProfessors
           }
-          options={(professors || []).map((p) => ({
-            value: p.id,
-            label: p.name,
-          }))}
+          options={[
+            ...(value.subjectId
+              ? [{ value: '', label: 'Sin profesor asociado' }]
+              : []),
+            ...(professors || []).map((p) => ({
+              value: p.id,
+              label: p.name,
+            })),
+          ]}
         />
       </div>
     </div>

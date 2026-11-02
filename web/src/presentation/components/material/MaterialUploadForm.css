@@ -1,0 +1,85 @@
+@reference "../../../index.css";
+
+/* Paleta compartida con mobile, a través de los tokens de Tailwind.
+   Alcance local para conservar el aspecto de las otras vistas. */
+.material-upload .upload-section {
+  min-width: 0;
+  @apply border border-uct-border;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  @apply bg-catalog-paper;
+}
+
+.material-upload legend {
+  padding-inline: 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  @apply text-uct-navy;
+}
+
+.material-upload legend span {
+  margin-right: 0.5rem;
+  @apply text-uct-blue;
+  font-size: 0.875rem;
+}
+
+.material-upload input,
+.material-upload select,
+.material-upload textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 3.375rem;
+  @apply border border-uct-border;
+  border-radius: 0.75rem;
+  padding: 0.875rem 1rem;
+  @apply bg-uct-mist;
+  @apply text-uct-navy;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.material-upload select {
+  padding-right: 2.25rem;
+}
+.material-upload textarea {
+  resize: vertical;
+}
+.material-upload label {
+  @apply text-uct-navy;
+}
+.material-upload input::placeholder,
+.material-upload textarea::placeholder {
+  @apply text-uct-muted;
+}
+.material-upload input:focus-visible,
+.material-upload select:focus-visible,
+.material-upload textarea:focus-visible {
+  @apply outline-2 outline-solid outline-uct-blue;
+  outline-offset: 3px;
+}
+.material-upload select:disabled {
+  opacity: 0.65;
+}
+.material-upload input[type='file'] {
+  max-width: 100%;
+  padding: 0.5rem;
+  @apply bg-catalog-paper;
+  font-size: 0.875rem;
+}
+.material-upload input::file-selector-button {
+  min-height: 2.75rem;
+  margin-right: 0.75rem;
+  border: 0;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  @apply bg-uct-blue;
+  color: white;
+  font: inherit;
+  cursor: pointer;
+}
+@media (min-width: 640px) {
+  .material-upload .upload-section {
+    padding: 2rem;
+  }
+}

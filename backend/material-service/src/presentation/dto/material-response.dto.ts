@@ -7,7 +7,7 @@ export enum MaterialStatus {
 
 export class MaterialDataDto {
   @ApiProperty({
-    example: 'mat_987654321',
+    example: '25f7b25a-76b9-4d0c-a389-679e562870d1',
     description: 'Identificador único generado para el material.',
   })
   id!: string;
@@ -60,17 +60,20 @@ export class MaterialDataDto {
   professorId!: string | null;
 
   @ApiPropertyOptional({
+    type: String,
+    nullable: true,
     example: 'UNIV-UCT-01',
     description:
       'Identificador de la universidad, derivado automáticamente del contexto académico.',
   })
-  universityId!: string;
+  universityId!: string | null;
 
   @ApiPropertyOptional({
     type: String,
-    example: 'https://storage.academico.cl/materials/2026/mat_987654321.pdf',
+    example: null,
     nullable: true,
-    description: 'URL pública de descarga del archivo local.',
+    description:
+      'Siempre null: la descarga usa GET /materials/:id/download sin exponer una URL de MinIO.',
   })
   fileUrl!: string | null;
 
@@ -110,8 +113,9 @@ export class CreateMaterialResponseDto {
   status!: string;
 
   @ApiProperty({
-    example: true,
-    description: 'Indica si la respuesta proviene de un contrato simulado (Stub).',
+    example: false,
+    description:
+      'false: material persistido en PostgreSQL y archivo almacenado cuando corresponde.',
   })
   isSimulatedResponse!: boolean;
 

@@ -10,7 +10,13 @@ export function MainLayout() {
         >
           ApuntesUCT
         </Link>
-        <nav className="mt-3 flex w-full flex-wrap items-center justify-between gap-2 sm:mt-0 sm:w-auto sm:justify-end sm:gap-6">
+        <nav className="mt-3 grid w-full grid-cols-4 items-center gap-1 text-center sm:mt-0 sm:flex sm:w-auto sm:flex-wrap sm:justify-end sm:gap-6">
+          <Link
+            to="/materials/upload"
+            className="col-span-4 mb-2 inline-flex min-h-11 items-center justify-center rounded-xl bg-uct-blue px-4 py-2 text-sm font-semibold text-white hover:bg-uct-blueDark focus:outline-hidden focus:ring-2 focus:ring-uct-sky focus:ring-offset-2 sm:mb-0"
+          >
+            Subir material
+          </Link>
           <Link
             to="/catalog"
             className="p-2 text-sm font-medium text-catalog-ink/80 hover:text-catalog-ink focus:outline-hidden focus:ring-2 focus:ring-catalog-primary rounded-xs"

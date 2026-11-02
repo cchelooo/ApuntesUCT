@@ -37,6 +37,7 @@ model Material {
   materialType       MaterialType      @relation(fields: [materialTypeId], references: [id], onDelete: Restrict)
   title              String
   description        String?
+  externalLink       String?           @map("external_link")
   academicYear       Int               @map("academic_year")
   status             MaterialStatus    @default(PENDING_REVIEW)
   verified           Boolean           @default(false)

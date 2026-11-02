@@ -4,13 +4,14 @@ import { NestFactory } from '@nestjs/core';
 import { configureRoutes } from './configure-routes';
 import { AppModule } from './app.module';
 import { setupApiDocs } from './api-docs';
+import { corsOptions } from './cors';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
   // Habilitar CORS
-  app.enableCors();
+  app.enableCors(corsOptions);
 
   // Prefijo global /api/v1 y rutas públicas de health
   configureRoutes(app);
@@ -35,3 +36,4 @@ async function bootstrap() {
   );
 }
 bootstrap();
+

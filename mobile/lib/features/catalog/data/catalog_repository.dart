@@ -1,11 +1,10 @@
-import 'package:apuntesuct_mobile/core/config/api_config.dart';
 import 'package:apuntesuct_mobile/core/network/api_client.dart';
 import 'package:apuntesuct_mobile/features/catalog/domain/catalog_item.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final catalogApiClientProvider = Provider<ApiClient>((ref) {
-  return ApiClient(baseUrl: ApiConfig.catalogBaseUrl);
+  return ref.watch(apiclientProvider);
 });
 
 final catalogRepositoryProvider = Provider<CatalogRepository>((ref) {

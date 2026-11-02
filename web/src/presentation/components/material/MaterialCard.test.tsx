@@ -69,4 +69,14 @@ describe('MaterialCard', () => {
     expect(screen.getByText('Año por definir')).toBeInTheDocument();
     expect(screen.getByText('Por definir')).toBeInTheDocument();
   });
+
+  it('no muestra calificaciones inventadas ni estrellas', () => {
+    const { container } = renderCard(buildMaterial());
+
+    expect(container.textContent).not.toMatch(
+      /★|⭐|rating|calificaci[óo]n|puntuaci[óo]n|\/5|\/10/i
+    );
+    expect(screen.queryByText(/★/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/rating/i)).not.toBeInTheDocument();
+  });
 });

@@ -1,0 +1,4 @@
+# Fixtures binarios: conservar exactamente sus bytes en todos los sistemas.
+*.pdf binary
+*.doc binary
+*.ppt binary

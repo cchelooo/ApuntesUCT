@@ -11,6 +11,11 @@ class MaterialDetail {
   final List<MaterialVersion> versions;
   final String? currentVersionId;
 
+  /// null en fixtures/detalles sin esta información; true para el POST stub.
+  final bool? isSimulatedResponse;
+  final String? mimeType;
+  final String? externalLink;
+
   MaterialDetail({
     required this.summary,
     this.downloadUrl = '',
@@ -19,6 +24,9 @@ class MaterialDetail {
     this.viewCount = 0,
     List<MaterialVersion> versions = const [],
     this.currentVersionId,
+    this.isSimulatedResponse,
+    this.mimeType,
+    this.externalLink,
   }) : tags = List.unmodifiable(tags),
        versions = List.unmodifiable(versions);
 
@@ -30,6 +38,10 @@ class MaterialDetail {
   }
 
   factory MaterialDetail.fromJson(Map<String, dynamic> json) {
+    final simulated = json['isSimulatedResponse'];
+    if (simulated != null && simulated is! bool) {
+      throw const FormatException('isSimulatedResponse debe ser un booleano.');
+    }
     final summary = MaterialSummary.fromJson(json);
     final versions = MaterialJson.list(
       json,
@@ -52,6 +64,9 @@ class MaterialDetail {
       viewCount: MaterialJson.integer(json, 'viewCount') ?? 0,
       versions: versions,
       currentVersionId: MaterialJson.text(json, 'currentVersionId'),
+      isSimulatedResponse: simulated as bool?,
+      mimeType: MaterialJson.text(json, 'mimeType'),
+      externalLink: MaterialJson.text(json, 'externalLink'),
     );
   }
 
@@ -63,5 +78,8 @@ class MaterialDetail {
     'viewCount': viewCount,
     'versions': versions.map((version) => version.toJson()).toList(),
     if (currentVersionId != null) 'currentVersionId': currentVersionId,
+    if (isSimulatedResponse != null) 'isSimulatedResponse': isSimulatedResponse,
+    if (mimeType != null) 'mimeType': mimeType,
+    if (externalLink != null) 'externalLink': externalLink,
   };
 }

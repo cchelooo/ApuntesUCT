@@ -5,14 +5,14 @@
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+    "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "target": "ES2021",
     "sourceMap": true,
     "outDir": "./dist",
-    "rootDir": "./src",
-    "incremental": true,
+    "rootDir": ".",
     "skipLibCheck": true,
-    "types": ["node"],
+    "types": ["jest", "node"],
     "ignoreDeprecations": "5.0",
     "strictNullChecks": false,
     "noImplicitAny": false,
@@ -20,6 +20,6 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*", "test/**/*"],
+  "exclude": ["node_modules", "dist", "coverage", "coverage-e2e"]
 }

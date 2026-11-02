@@ -77,6 +77,16 @@ class MaterialFixtures {
     currentVersionId: sampleVersion1.id,
   );
 
+  static final sampleDetail2 = MaterialDetail(
+    summary: sampleSummary2,
+    downloadUrl: 'https://storage.uct.cl/materials/mat-102.pdf',
+    fileSizeBytes: 1820000,
+    tags: ['Límites', 'Derivadas', 'Guía'],
+    viewCount: 203,
+    versions: [sampleVersion2],
+    currentVersionId: sampleVersion2.id,
+  );
+
   static final sampleVersion1 = MaterialVersion(
     id: 'version-101',
     materialId: sampleSummary1.id,
@@ -87,6 +97,30 @@ class MaterialFixtures {
     storageKey: 'materials/mat-101/v1.pdf',
     createdAt: DateTime.utc(2026, 3, 15),
   );
+
+  static final sampleVersion2 = MaterialVersion(
+    id: 'version-102',
+    materialId: sampleSummary2.id,
+    versionNumber: 1,
+    originalFileName: 'calculo-guia.pdf',
+    mimeType: 'application/pdf',
+    fileSizeBytes: 1820000,
+    storageKey: 'materials/mat-102/v1.pdf',
+    createdAt: DateTime.utc(2026, 3, 20),
+  );
+
+  /// Resuelve el detalle correcto por ID o retorna null si no existe.
+  /// Evita que /materials/mat-102 muestre el contenido de mat-101.
+  static MaterialDetail? detailForId(String id) {
+    switch (id) {
+      case 'mat-101':
+        return sampleDetail1;
+      case 'mat-102':
+        return sampleDetail2;
+      default:
+        return null;
+    }
+  }
 
   static MaterialPage get samplePage => MaterialPage(
     items: sampleSummaries,

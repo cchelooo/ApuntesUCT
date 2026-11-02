@@ -1,3 +1,6 @@
+import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_detail_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_detail_screen.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_summary_card.dart';
@@ -18,8 +21,14 @@ void main() {
         'status': 'PENDING_REVIEW',
       });
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(body: MaterialSummaryCard(material: material)),
+        ProviderScope(
+          overrides: [
+            materialDetailProvider(material.id)
+                .overrideWith((_) async => MaterialDetail(summary: material)),
+          ],
+          child: MaterialApp(
+            home: Scaffold(body: MaterialSummaryCard(material: material)),
+          ),
         ),
       );
       expect(find.text('EN REVISIÓN'), findsOneWidget);

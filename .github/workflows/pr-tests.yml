@@ -1,0 +1,199 @@
+name: PR tests
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      # El script raíz genera los tres clientes Prisma antes de ejecutar Jest.
+      - run: npm run test:ci -- --coverage
+      - name: Upload backend coverage
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/*/coverage/
+          if-no-files-found: warn
+          retention-days: 14
+
+  frontend:
+    name: Frontend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run test:run -- --coverage --exclude '**/*.integration.test.tsx'
+      - name: Upload frontend coverage
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: web/coverage/
+          if-no-files-found: warn
+          retention-days: 14
+
+  mobile:
+    name: Mobile tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.2'
+          channel: stable
+          cache: true
+          pub-cache-key: pub-${{ runner.os }}-flutter-3.47.2-${{ hashFiles('mobile/pubspec.lock') }}
+      - run: flutter pub get
+      - run: flutter test --coverage
+      - name: Upload mobile coverage
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-coverage
+          path: mobile/coverage/lcov.info
+          if-no-files-found: warn
+          retention-days: 14
+
+  backend-e2e:
+    name: Backend E2E (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [api-gateway, auth-service, catalog-service, material-service]
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci-disposable
+          POSTGRES_DB: ci
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U ci -d ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      CI_SERVICE: ${{ matrix.service }}
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run prisma:generate
+      - name: Configure disposable database URL
+        env:
+          CI_DATABASE_URL: postgresql://ci:ci-disposable@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/ci?schema=public
+        run: echo "DATABASE_URL=$CI_DATABASE_URL" >> "$GITHUB_ENV"
+      - name: Migrate disposable database
+        if: matrix.service == 'auth-service' || matrix.service == 'catalog-service'
+        run: npm run prisma:deploy --workspace="$CI_SERVICE"
+      - name: Run existing E2E suite
+        run: npm run test:e2e --workspace="$CI_SERVICE" -- --ci --runInBand --json --outputFile="$RUNNER_TEMP/e2e-results.json"
+      - name: Upload E2E results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-${{ matrix.service }}
+          path: ${{ runner.temp }}/e2e-results.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  frontend-integration:
+    name: Frontend integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run test:run -- src/presentation/pages/CatalogPage.integration.test.tsx --coverage
+      - name: Upload integration coverage
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-integration-coverage
+          path: web/coverage/
+          if-no-files-found: warn
+          retention-days: 14
+
+  material-integration:
+    name: Material integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+        working-directory: backend
+      - run: npm run build
+        working-directory: backend
+      - name: Build isolated MinIO image from existing source definition
+        run: docker build -f deploy/kubero/minio.Dockerfile -t apuntesuct/pr-test-minio:local .
+      - name: Run existing Material integration suites with disposable services
+        run: bash .github/scripts/run-material-integration.sh
+      - name: Upload integration and service logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: material-integration-logs
+          path: ${{ runner.temp }}/apuntes-material-integration.*/*.log
+          if-no-files-found: warn
+          retention-days: 14

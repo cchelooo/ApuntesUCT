@@ -140,7 +140,9 @@ class _ButtonContent extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (icon != null) ...[Icon(icon, size: 20), const SizedBox(width: 8)],
-        Text(label),
+        // Etiquetas largas (p. ej. «Confirmar subida de v3») se ajustan en
+        // varias líneas en vez de desbordar en pantallas pequeñas (#299).
+        Flexible(child: Text(label, textAlign: TextAlign.center)),
       ],
     );
   }

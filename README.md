@@ -37,5 +37,6 @@ Microservicios + API Gateway.
 - [Sistematización](docs/project/SRS_ApuntesUCT.pdf)
 - [Requisitos](docs/requirements/requisitos_tecnologias.md)
 - [Backend: puertos y ejecución local](backend/README.md)
+- [Despliegue en Kubero: imágenes, variables y validación](deploy/kubero/README.md)
 - [Integración API Mobile](docs/mobile/integracion-api-mobile.md)
 - [Tema visual Mobile](docs/mobile/tema-visual.md)

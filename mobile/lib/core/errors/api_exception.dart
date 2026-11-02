@@ -1,5 +1,15 @@
 import 'package:dio/dio.dart';
 
+/// Mensaje público compartido por las pantallas que consumen el Gateway.
+String apiErrorMessage(Object? error, {required String fallback}) {
+  final api = error is ApiException
+      ? error
+      : error is DioException && error.error is ApiException
+      ? error.error as ApiException
+      : null;
+  return api != null && api.message.trim().isNotEmpty ? api.message : fallback;
+}
+
 /// Clase centralizada para manejar excepciones de la API
 class ApiException implements Exception {
   final String message;
@@ -34,6 +44,12 @@ class ApiException implements Exception {
           if (responseData.containsKey('message') &&
               responseData['message'] is String) {
             message = responseData['message'];
+          } else if (responseData['message'] is List &&
+              (responseData['message'] as List).isNotEmpty &&
+              (responseData['message'] as List).every(
+                (item) => item is String,
+              )) {
+            message = (responseData['message'] as List).join('\n');
           } else if (responseData.containsKey('detail') &&
               responseData['detail'] is String) {
             message = responseData['detail'];
