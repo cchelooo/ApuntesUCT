@@ -1,0 +1,31 @@
+{
+  "startedAt": "2026-11-03T00:14:29.241Z",
+  "base": "http://localhost:3000",
+  "steps": [
+    {
+      "name": "create",
+      "method": "POST",
+      "url": "http://localhost:3000/api/v1/materials",
+      "status": 502,
+      "body": {
+        "statusCode": 502,
+        "error": "Bad Gateway",
+        "message": "No se pudo almacenar el archivo. Intenta nuevamente.",
+        "timestamp": "2026-11-03T00:14:29.341Z",
+        "path": "/api/v1/materials"
+      },
+      "contentType": "application/json; charset=utf-8",
+      "disposition": null
+    }
+  ],
+  "academicIds": {
+    "universityId": "3011ac30-9027-49bf-bdaf-78c06ef869b4",
+    "careerId": "423bbb11-59d3-48c6-9ecf-d32770fd8f27",
+    "subjectId": "0752a0b9-19e4-41d2-8bd9-88f76161c65a",
+    "professorId": "a85691d7-27d9-49ce-a2bb-848df6923639"
+  },
+  "title": "E2E263-1793664869280",
+  "originalSha256": "4f0721b2855d0ba9449d707e357a71b818155573a87bd0b3bb57f66627230175",
+  "error": "{\"statusCode\":502,\"error\":\"Bad Gateway\",\"message\":\"No se pudo almacenar el archivo. Intenta nuevamente.\",\"timestamp\":\"2026-11-03T00:14:29.341Z\",\"path\":\"/api/v1/materials\"}\n\n502 !== 201\n",
+  "passed": false
+}
