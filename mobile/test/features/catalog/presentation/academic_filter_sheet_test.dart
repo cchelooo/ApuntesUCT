@@ -26,9 +26,9 @@ class FakeAcademicHierarchyRepository implements IAcademicHierarchyRepository {
     String universityId,
   ) async {
     if (onFetchCareers != null) return onFetchCareers!(universityId);
-    final all = CareerModel.mockList();
-    final matching = all.where((c) => c.universityId == universityId).toList();
-    return matching.isNotEmpty ? matching : all;
+    return CareerModel.mockList()
+        .where((c) => c.universityId == universityId)
+        .toList();
   }
 
   @override
@@ -303,6 +303,12 @@ void main() {
 
         // El dropdown de carrera debe indicar que no hay carreras disponibles
         expect(find.text('No hay carreras disponibles'), findsOneWidget);
+
+        // Y debe estar deshabilitado y sin acción disponible
+        final dropdownWidget = tester.widget<DropdownButtonFormField<String>>(
+          find.byKey(const Key('filter_career_dropdown')),
+        );
+        expect(dropdownWidget.onChanged, isNull);
       },
     );
 
@@ -412,6 +418,39 @@ void main() {
           container.read(academicHierarchyProvider).selectedUniversityId,
           'uct-main-uuid',
         );
+      },
+    );
+
+    testWidgets(
+      'Al seleccionar UFRO solo se muestran carreras de UFRO, no las de UCT',
+      (tester) async {
+        final container = ProviderContainer(
+          overrides: [
+            academicHierarchyRepositoryProvider.overrideWithValue(fakeRepo),
+          ],
+        );
+
+        await tester.pumpWidget(buildTestWidget(container: container));
+        await tester.tap(find.text('Abrir filtros'));
+        await tester.pumpAndSettle();
+
+        // Seleccionar UFRO en el dropdown de universidades
+        await tester.tap(find.byKey(const Key('filter_university_dropdown')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Universidad de La Frontera').last);
+        await tester.pumpAndSettle();
+
+        // Abrir dropdown de Carrera
+        await tester.tap(find.byKey(const Key('filter_career_dropdown')));
+        await tester.pumpAndSettle();
+
+        // Deben mostrarse carreras de UFRO
+        expect(
+          find.text('Ingeniería Civil en Computación e Informática').last,
+          findsOneWidget,
+        );
+        // NO deben mostrarse carreras de UCT
+        expect(find.text('Ingeniería Civil en Informática'), findsNothing);
       },
     );
   });
