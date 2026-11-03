@@ -29,6 +29,13 @@ import { SearchSortSelect } from '../components/search/SearchSortSelect';
 const YEAR_ERROR = `El año debe estar entre ${SEARCH_YEAR_MIN} y ${SEARCH_YEAR_MAX}.`;
 
 export function SearchPage() {
+  const [params] = useSearchParams();
+  const { q } = parseSearchUrl(params);
+
+  return <SearchPageView key={q} />;
+}
+
+function SearchPageView() {
   const [params, setParams] = useSearchParams();
   const state = parseSearchUrl(params);
   const { q, sort, page, filters } = state;
@@ -75,7 +82,9 @@ export function SearchPage() {
     }
     setYearError(null);
     setYearDraft(null);
-    update({ q: draft.trim(), filters: { ...filters, year } });
+    const nextQ = draft.trim();
+    setDraft(nextQ);
+    update({ q: nextQ, filters: { ...filters, year } });
   }
 
   function handleAcademicChange(selection: AcademicSelection) {
@@ -136,7 +145,9 @@ export function SearchPage() {
               type="search"
               name="q"
               value={draft}
-              onChange={(event) => setDraft(event.target.value)}
+              onChange={(event) => {
+                setDraft(event.target.value);
+              }}
               placeholder="Ej. Estructuras de datos certamen"
               containerClassName="flex-1"
             />

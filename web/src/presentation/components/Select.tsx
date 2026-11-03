@@ -42,10 +42,10 @@ export const Select = ({
 
   const stateClass = error
     ? 'border-red-500 text-red-900 focus:border-red-500 focus:ring-red-500'
-    : 'border-gray-300 text-gray-900 focus:border-uct-sky focus:ring-uct-sky';
+    : 'border-catalog-line bg-catalog-paper text-catalog-ink focus:border-uct-sky focus:ring-uct-sky';
 
   const disabledClass = disabled
-    ? 'bg-gray-100 opacity-75 cursor-not-allowed'
+    ? 'bg-catalog-bg opacity-75 cursor-not-allowed'
     : '';
 
   const combinedDescribedBy =
@@ -56,7 +56,7 @@ export const Select = ({
       className={`flex flex-col gap-1.5 ${containerWidthClass} ${containerClassName}`.trim()}
     >
       {label && (
-        <label htmlFor={selectId} className="text-sm font-medium text-gray-700">
+        <label htmlFor={selectId} className="text-sm font-medium text-catalog-ink">
           {label}
         </label>
       )}
@@ -80,7 +80,7 @@ export const Select = ({
             </option>
           ))}
         </select>
-        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-catalog-ink">
           <svg
             className="h-4 w-4"
             fill="none"
@@ -99,7 +99,7 @@ export const Select = ({
       {(error || helperText) && (
         <p
           id={descriptionId}
-          className={`text-xs ${error ? 'text-red-500' : 'text-gray-500'}`}
+          className={`text-xs ${error ? 'text-red-500' : 'text-uct-muted'}`}
         >
           {error || helperText}
         </p>

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SearchSort } from '../../domain/search/search';
 import { SearchPage } from './SearchPage';
@@ -62,6 +62,23 @@ function renderPage(path = '/search?q=algebra') {
         <SearchPage />
       </MemoryRouter>
     </QueryClientProvider>
+  );
+}
+
+function SearchHistoryControls() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  return (
+    <>
+      <SearchPage />
+      <button type="button" onClick={() => navigate(-1)}>
+        Navegar atrás
+      </button>
+      <button type="button" onClick={() => navigate(1)}>
+        Navegar adelante
+      </button>
+      <output aria-label="URL actual">{location.search}</output>
+    </>
   );
 }
 
@@ -289,6 +306,65 @@ describe('SearchPage', () => {
     mockApi(() => json({ query: 'algebra', results: [], total: 0 }));
     renderPage();
     expect(await screen.findByText(/Sin resultados para/)).toBeInTheDocument();
+  });
+
+  it('sincroniza campo, URL y resultados al navegar hacia atrás', async () => {
+    mockApi((url) => {
+      const q = url.searchParams.get('q') ?? '';
+      return json({
+        results: [result(`result-${q}`, `Resultado de ${q}`)],
+        page: 1,
+        pageSize: PAGE_SIZE,
+        total: 1,
+      });
+    });
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const user = userEvent.setup();
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/search']}>
+          <SearchHistoryControls />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+
+    let searchInput = screen.getByLabelText('Buscar materiales');
+    await user.type(searchInput, 'algebra');
+    await user.click(screen.getByRole('button', { name: 'Buscar' }));
+    expect(await screen.findByText('Resultado de algebra')).toBeInTheDocument();
+
+    searchInput = screen.getByLabelText('Buscar materiales');
+    await user.clear(searchInput);
+    await user.type(searchInput, 'calculo');
+    await user.click(screen.getByRole('button', { name: 'Buscar' }));
+    expect(await screen.findByText('Resultado de calculo')).toBeInTheDocument();
+    expect(searchInput).toHaveValue('calculo');
+
+    searchInput = screen.getByLabelText('Buscar materiales');
+    await user.clear(searchInput);
+    await user.type(searchInput, 'borrador');
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Navegar atrás' })
+    );
+
+    expect(await screen.findByText('Resultado de algebra')).toBeInTheDocument();
+    expect(screen.getByLabelText('Buscar materiales')).toHaveValue('algebra');
+    expect(screen.getByLabelText('URL actual')).toHaveTextContent(
+      '?q=algebra&sort=recent'
+    );
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Navegar adelante' })
+    );
+
+    expect(await screen.findByText('Resultado de calculo')).toBeInTheDocument();
+    expect(screen.getByLabelText('Buscar materiales')).toHaveValue('calculo');
+    expect(screen.getByLabelText('URL actual')).toHaveTextContent(
+      '?q=calculo&sort=recent'
+    );
   });
 
   it('muestra el error y permite reintentar', async () => {
