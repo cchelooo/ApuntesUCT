@@ -1,0 +1,180 @@
+{
+  "startedAt": "2026-11-03T00:15:19.756Z",
+  "base": "http://localhost:3000",
+  "steps": [
+    {
+      "name": "health",
+      "method": "GET",
+      "url": "http://localhost:3000/api/v1/health",
+      "status": 200,
+      "body": {
+        "status": "ok",
+        "service": "API Gateway",
+        "timestamp": "2026-11-03T00:15:19.779Z"
+      },
+      "contentType": "application/json; charset=utf-8",
+      "disposition": null
+    },
+    {
+      "name": "login",
+      "method": "POST",
+      "url": "http://localhost:3000/api/v1/auth/login",
+      "status": 200,
+      "body": {
+        "accessToken": "[REDACTED]",
+        "tokenType": "Bearer",
+        "expiresIn": 3600,
+        "user": {
+          "id": "00000000-0000-4000-8000-000000000092",
+          "name": "Estudiante de prueba",
+          "email": "estudiante@alu.uct.cl",
+          "role": "STUDENT",
+          "active": true
+        }
+      },
+      "contentType": "application/json; charset=utf-8",
+      "disposition": null
+    },
+    {
+      "name": "catalog tree",
+      "method": "GET",
+      "url": "http://localhost:3000/api/v1/catalog",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "disposition": null,
+      "responseSummary": {
+        "count": 1,
+        "total": null
+      }
+    },
+    {
+      "name": "professors",
+      "method": "GET",
+      "url": "http://localhost:3000/api/v1/catalog/professors?subjectId=0752a0b9-19e4-41d2-8bd9-88f76161c65a",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "disposition": null,
+      "responseSummary": {
+        "count": 1,
+        "total": null
+      }
+    },
+    {
+      "name": "create",
+      "method": "POST",
+      "url": "http://localhost:3000/api/v1/materials",
+      "status": 201,
+      "body": {
+        "status": "success",
+        "isSimulatedResponse": false,
+        "message": "Material registrado exitosamente en estado PENDING_REVIEW.",
+        "data": {
+          "id": "2007cb26-e081-4609-b34c-0fc9c40c57a4",
+          "title": "E2E263-1793664919795",
+          "description": "Real Gateway E2E issue 263",
+          "year": "2026",
+          "type": "DOCUMENT",
+          "status": "PENDING_REVIEW",
+          "subjectId": "0752a0b9-19e4-41d2-8bd9-88f76161c65a",
+          "careerId": "423bbb11-59d3-48c6-9ecf-d32770fd8f27",
+          "professorId": "a85691d7-27d9-49ce-a2bb-848df6923639",
+          "universityId": null,
+          "fileUrl": null,
+          "fileSize": 77,
+          "mimeType": "application/pdf",
+          "externalLink": null,
+          "createdAt": "2026-11-03T00:15:19.873Z"
+        }
+      },
+      "contentType": "application/json; charset=utf-8",
+      "disposition": null
+    },
+    {
+      "name": "list",
+      "method": "GET",
+      "url": "http://localhost:3000/api/v1/materials?page=1&pageSize=100",
+      "status": 200,
+      "contentType": "application/json; charset=utf-8",
+      "disposition": null,
+      "containsCreated": false,
+      "responseSummary": {
+        "count": 1,
+        "total": 1
+      }
+    },
+    {
+      "name": "detail",
+      "method": "GET",
+      "url": "http://localhost:3000/api/v1/materials/2007cb26-e081-4609-b34c-0fc9c40c57a4",
+      "status": 404,
+      "body": {
+        "statusCode": 404,
+        "error": "Not Found",
+        "message": "Material no encontrado.",
+        "timestamp": "2026-11-03T00:15:19.890Z",
+        "path": "/api/v1/materials/2007cb26-e081-4609-b34c-0fc9c40c57a4"
+      },
+      "contentType": "application/json; charset=utf-8",
+      "disposition": null
+    },
+    {
+      "name": "download",
+      "method": "GET",
+      "url": "http://localhost:3000/api/v1/materials/2007cb26-e081-4609-b34c-0fc9c40c57a4/download",
+      "status": 404,
+      "body": {
+        "statusCode": 404,
+        "error": "Not Found",
+        "message": "Material no encontrado.",
+        "timestamp": "2026-11-03T00:15:19.892Z",
+        "path": "/api/v1/materials/2007cb26-e081-4609-b34c-0fc9c40c57a4/download"
+      },
+      "contentType": "application/json; charset=utf-8",
+      "disposition": null
+    },
+    {
+      "name": "search",
+      "method": "GET",
+      "url": "http://localhost:3000/api/v1/search?q=E2E263-1793664919795",
+      "status": 200,
+      "body": {
+        "query": "E2E263-1793664919795",
+        "page": 1,
+        "pageSize": 20,
+        "total": 0,
+        "results": [],
+        "context": []
+      },
+      "contentType": "application/json; charset=utf-8",
+      "disposition": null,
+      "containsCreated": false
+    },
+    {
+      "name": "versions",
+      "method": "GET",
+      "url": "http://localhost:3000/api/v1/materials/2007cb26-e081-4609-b34c-0fc9c40c57a4",
+      "status": 404,
+      "body": {
+        "statusCode": 404,
+        "error": "Not Found",
+        "message": "Material no encontrado.",
+        "timestamp": "2026-11-03T00:15:19.902Z",
+        "path": "/api/v1/materials/2007cb26-e081-4609-b34c-0fc9c40c57a4"
+      },
+      "contentType": "application/json; charset=utf-8",
+      "disposition": null,
+      "hasVersions": false
+    }
+  ],
+  "academicIds": {
+    "universityId": "3011ac30-9027-49bf-bdaf-78c06ef869b4",
+    "careerId": "423bbb11-59d3-48c6-9ecf-d32770fd8f27",
+    "subjectId": "0752a0b9-19e4-41d2-8bd9-88f76161c65a",
+    "professorId": "a85691d7-27d9-49ce-a2bb-848df6923639"
+  },
+  "title": "E2E263-1793664919795",
+  "originalSha256": "4f0721b2855d0ba9449d707e357a71b818155573a87bd0b3bb57f66627230175",
+  "materialId": "2007cb26-e081-4609-b34c-0fc9c40c57a4",
+  "passed": false,
+  "evidenceNote": "Catalog, professor and list bodies summarized; token redacted. Existing local service builds used."
+}
