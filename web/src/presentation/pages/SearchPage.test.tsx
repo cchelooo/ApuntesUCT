@@ -74,6 +74,9 @@ function SearchHistoryControls() {
       <button type="button" onClick={() => navigate(-1)}>
         Navegar atrás
       </button>
+      <button type="button" onClick={() => navigate(1)}>
+        Navegar adelante
+      </button>
       <output aria-label="URL actual">{location.search}</output>
     </>
   );
@@ -326,16 +329,21 @@ describe('SearchPage', () => {
       </QueryClientProvider>
     );
 
-    const searchInput = screen.getByLabelText('Buscar materiales');
+    let searchInput = screen.getByLabelText('Buscar materiales');
     await user.type(searchInput, 'algebra');
     await user.click(screen.getByRole('button', { name: 'Buscar' }));
     expect(await screen.findByText('Resultado de algebra')).toBeInTheDocument();
 
+    searchInput = screen.getByLabelText('Buscar materiales');
     await user.clear(searchInput);
     await user.type(searchInput, 'calculo');
     await user.click(screen.getByRole('button', { name: 'Buscar' }));
     expect(await screen.findByText('Resultado de calculo')).toBeInTheDocument();
     expect(searchInput).toHaveValue('calculo');
+
+    searchInput = screen.getByLabelText('Buscar materiales');
+    await user.clear(searchInput);
+    await user.type(searchInput, 'borrador');
 
     await userEvent.click(
       screen.getByRole('button', { name: 'Navegar atrás' })
@@ -345,6 +353,16 @@ describe('SearchPage', () => {
     expect(screen.getByLabelText('Buscar materiales')).toHaveValue('algebra');
     expect(screen.getByLabelText('URL actual')).toHaveTextContent(
       '?q=algebra&sort=recent'
+    );
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Navegar adelante' })
+    );
+
+    expect(await screen.findByText('Resultado de calculo')).toBeInTheDocument();
+    expect(screen.getByLabelText('Buscar materiales')).toHaveValue('calculo');
+    expect(screen.getByLabelText('URL actual')).toHaveTextContent(
+      '?q=calculo&sort=recent'
     );
   });
 

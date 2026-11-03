@@ -29,6 +29,13 @@ import { SearchSortSelect } from '../components/search/SearchSortSelect';
 const YEAR_ERROR = `El año debe estar entre ${SEARCH_YEAR_MIN} y ${SEARCH_YEAR_MAX}.`;
 
 export function SearchPage() {
+  const [params] = useSearchParams();
+  const { q } = parseSearchUrl(params);
+
+  return <SearchPageView key={q} />;
+}
+
+function SearchPageView() {
   const [params, setParams] = useSearchParams();
   const state = parseSearchUrl(params);
   const { q, sort, page, filters } = state;
@@ -36,8 +43,6 @@ export function SearchPage() {
   const [draft, setDraft] = useState(q);
   const [yearDraft, setYearDraft] = useState<string | null>(null);
   const [yearError, setYearError] = useState<string | null>(null);
-  const [draftUrlQ, setDraftUrlQ] = useState(q);
-  const displayedDraft = draftUrlQ === q ? draft : q;
 
   const hasCriteria = q.length > 0 || hasSearchFilters(filters);
   const hasFiltersToClear =
@@ -77,9 +82,8 @@ export function SearchPage() {
     }
     setYearError(null);
     setYearDraft(null);
-    const nextQ = displayedDraft.trim();
+    const nextQ = draft.trim();
     setDraft(nextQ);
-    setDraftUrlQ(nextQ);
     update({ q: nextQ, filters: { ...filters, year } });
   }
 
@@ -140,10 +144,9 @@ export function SearchPage() {
               label="Buscar materiales"
               type="search"
               name="q"
-              value={displayedDraft}
+              value={draft}
               onChange={(event) => {
                 setDraft(event.target.value);
-                setDraftUrlQ(q);
               }}
               placeholder="Ej. Estructuras de datos certamen"
               containerClassName="flex-1"
