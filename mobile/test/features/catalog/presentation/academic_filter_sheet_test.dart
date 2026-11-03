@@ -374,12 +374,12 @@ void main() {
         await tester.ensureVisible(find.byKey(const Key('filter_type_dropdown')));
         await tester.tap(find.byKey(const Key('filter_type_dropdown')));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('APUNTE').last);
+        await tester.tap(find.text('DOCUMENT').last);
         await tester.pumpAndSettle();
 
         // Verificar que los campos no relacionados quedaron seleccionados
         expect(container.read(academicHierarchyProvider).selectedYear, 2026);
-        expect(container.read(academicHierarchyProvider).selectedType, 'apunte');
+        expect(container.read(academicHierarchyProvider).selectedType, 'DOCUMENT');
 
         // 2. Seleccionar universidad (provoca fallo de red en carreras)
         await tester.ensureVisible(
@@ -413,7 +413,7 @@ void main() {
 
         // Y lo más importante: los campos no relacionados Año y Tipo se mantuvieron intactos
         expect(container.read(academicHierarchyProvider).selectedYear, 2026);
-        expect(container.read(academicHierarchyProvider).selectedType, 'apunte');
+        expect(container.read(academicHierarchyProvider).selectedType, 'DOCUMENT');
         expect(
           container.read(academicHierarchyProvider).selectedUniversityId,
           'uct-main-uuid',

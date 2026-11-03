@@ -318,6 +318,7 @@ class _MaterialDiscoveryScreenState
                 if (isFiltered) ...[
                   const SizedBox(height: 16),
                   FilledButton.icon(
+                    key: const Key('empty_state_clear_button'),
                     onPressed: _onClearAll,
                     icon: const Icon(Icons.refresh_rounded),
                     label: const Text('Limpiar filtros y búsqueda'),
