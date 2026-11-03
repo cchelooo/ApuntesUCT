@@ -1,0 +1,359 @@
+{
+  "startedAt": "2026-11-03T03:34:48.600Z",
+  "commit": "9b9bbf07a77b8266c9ffade96cc9da11a780f062",
+  "platform": "linux 7.0.0-38-generic",
+  "node": "v22.22.3",
+  "health": {
+    "auth": 200,
+    "catalog": 200,
+    "material": 200,
+    "search": 200,
+    "gateway": 200
+  },
+  "flows": [
+    {
+      "name": "catalogo",
+      "status": "PASS",
+      "http": 200
+    },
+    {
+      "name": "login",
+      "status": "PASS",
+      "http": 200,
+      "mock": true,
+      "sessionPersisted": false
+    },
+    {
+      "name": "subida",
+      "status": "PASS",
+      "http": 201,
+      "materialId": "284950df-45f8-41ed-ae0d-7ecb643e3b55",
+      "initialStatus": "PENDING_REVIEW",
+      "version": 1,
+      "objectExists": true
+    },
+    {
+      "name": "listado",
+      "status": "PASS",
+      "http": 200,
+      "materialId": "284950df-45f8-41ed-ae0d-7ecb643e3b55"
+    },
+    {
+      "name": "detalle",
+      "status": "PASS",
+      "http": 200,
+      "materialId": "284950df-45f8-41ed-ae0d-7ecb643e3b55"
+    },
+    {
+      "name": "descarga",
+      "status": "PASS",
+      "http": 200,
+      "filename": "regresion268.pdf",
+      "contentDisposition": "attachment; filename=\"regresion268.pdf\"; filename*=UTF-8''regresion268.pdf",
+      "bytes": 414,
+      "sha256": "a2b4945b6565b105cbf8ab4dc1d86bfc925d1e3eaa91cfb6ea770d292c333d28"
+    },
+    {
+      "name": "busqueda",
+      "status": "PASS",
+      "http": 200,
+      "materialId": "284950df-45f8-41ed-ae0d-7ecb643e3b55"
+    }
+  ],
+  "network": [
+    {
+      "flow": "catalogo",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/filter",
+      "status": 200
+    },
+    {
+      "flow": "login",
+      "method": "POST",
+      "url": "http://127.0.0.1:43647/api/v1/auth/login",
+      "status": 200
+    },
+    {
+      "flow": "subida",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/universities",
+      "status": 200
+    },
+    {
+      "flow": "subida",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/careers?universityId=b51321d3-21c6-4ae4-ad0d-807f988e939b",
+      "status": 200
+    },
+    {
+      "flow": "subida",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/subjects?careerId=273eb27c-1d5b-4ce7-9688-ca67f0ef01df",
+      "status": 200
+    },
+    {
+      "flow": "subida",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/professors?subjectId=2b2816f1-183d-4803-ba95-04ac7ffd58d2",
+      "status": 200
+    },
+    {
+      "flow": "subida",
+      "method": "POST",
+      "url": "http://127.0.0.1:43647/api/v1/materials",
+      "status": 201
+    },
+    {
+      "flow": "listado",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/subjects",
+      "status": 200
+    },
+    {
+      "flow": "listado",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/professors",
+      "status": 200
+    },
+    {
+      "flow": "listado",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/materials?page=1&pageSize=20",
+      "status": 200
+    },
+    {
+      "flow": "detalle",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/subjects",
+      "status": 200
+    },
+    {
+      "flow": "detalle",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/professors",
+      "status": 200
+    },
+    {
+      "flow": "detalle",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/materials/284950df-45f8-41ed-ae0d-7ecb643e3b55",
+      "status": 200
+    },
+    {
+      "flow": "descarga",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/materials/284950df-45f8-41ed-ae0d-7ecb643e3b55/download",
+      "status": 200
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/subjects",
+      "status": 200
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/professors",
+      "status": 200
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/search?q=qa268-c2a899c4&sortBy=createdAt&order=desc&page=1&pageSize=20",
+      "status": 200
+    }
+  ],
+  "requests": [
+    {
+      "flow": "catalogo",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/filter"
+    },
+    {
+      "flow": "login",
+      "method": "POST",
+      "url": "http://127.0.0.1:43647/api/v1/auth/login"
+    },
+    {
+      "flow": "subida",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/universities"
+    },
+    {
+      "flow": "subida",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/careers?universityId=b51321d3-21c6-4ae4-ad0d-807f988e939b"
+    },
+    {
+      "flow": "subida",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/subjects?careerId=273eb27c-1d5b-4ce7-9688-ca67f0ef01df"
+    },
+    {
+      "flow": "subida",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/professors?subjectId=2b2816f1-183d-4803-ba95-04ac7ffd58d2"
+    },
+    {
+      "flow": "subida",
+      "method": "POST",
+      "url": "http://127.0.0.1:43647/api/v1/materials"
+    },
+    {
+      "flow": "listado",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/materials?page=1&pageSize=20"
+    },
+    {
+      "flow": "listado",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/subjects"
+    },
+    {
+      "flow": "listado",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/professors"
+    },
+    {
+      "flow": "listado",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/materials?page=1&pageSize=20"
+    },
+    {
+      "flow": "listado",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/subjects"
+    },
+    {
+      "flow": "listado",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/professors"
+    },
+    {
+      "flow": "detalle",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/materials/284950df-45f8-41ed-ae0d-7ecb643e3b55"
+    },
+    {
+      "flow": "detalle",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/subjects"
+    },
+    {
+      "flow": "detalle",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/professors"
+    },
+    {
+      "flow": "detalle",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/materials/284950df-45f8-41ed-ae0d-7ecb643e3b55"
+    },
+    {
+      "flow": "detalle",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/subjects"
+    },
+    {
+      "flow": "detalle",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/professors"
+    },
+    {
+      "flow": "descarga",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/materials/284950df-45f8-41ed-ae0d-7ecb643e3b55/download"
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/subjects"
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/professors"
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/search?q=qa268-c2a899c4&sortBy=createdAt&order=desc&page=1&pageSize=20"
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/subjects"
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:43647/api/v1/catalog/professors"
+    }
+  ],
+  "failedRequests": [
+    {
+      "url": "http://127.0.0.1:43647/api/v1/materials?page=1&pageSize=20",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:43647/api/v1/catalog/subjects",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:43647/api/v1/catalog/professors",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:43647/api/v1/materials/284950df-45f8-41ed-ae0d-7ecb643e3b55",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:43647/api/v1/catalog/subjects",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:43647/api/v1/catalog/professors",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:43647/api/v1/catalog/subjects",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:43647/api/v1/catalog/professors",
+      "error": "net::ERR_ABORTED"
+    }
+  ],
+  "images": {
+    "qa268-c2a899c4-postgres": "sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73",
+    "qa268-c2a899c4-minio": "sha256:b67a0ceab0c7de04ca036c765990a092929aa0a24580e3e1f30e15126e125c1f"
+  },
+  "scriptSha256": "32e8afda7f306447ac1c7ad4cf46ebd81987c0ae51964b98c55c06334398e454",
+  "pageErrors": [],
+  "cleanup": [
+    {
+      "container": "qa268-c2a899c4-postgres",
+      "removed": true
+    },
+    {
+      "container": "qa268-c2a899c4-minio",
+      "removed": true
+    }
+  ],
+  "urls": {
+    "web": "http://127.0.0.1:36707",
+    "gateway": "http://127.0.0.1:43647/api/v1"
+  },
+  "fixture": {
+    "universityId": "b51321d3-21c6-4ae4-ad0d-807f988e939b",
+    "careerId": "273eb27c-1d5b-4ce7-9688-ca67f0ef01df",
+    "subjectId": "2b2816f1-183d-4803-ba95-04ac7ffd58d2",
+    "title": "Regresion268 qa268-c2a899c4",
+    "materialId": "284950df-45f8-41ed-ae0d-7ecb643e3b55",
+    "publication": "Actualización directa solo en la base desechable; moderación fuera de alcance."
+  },
+  "browser": "153.0.8010.12",
+  "result": "PASS",
+  "finishedAt": "2026-11-03T03:34:59.094Z"
+}

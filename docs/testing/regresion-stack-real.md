@@ -5,6 +5,12 @@ locales reales: catálogo, login mock, listado, subida, detalle, descarga y
 búsqueda. Las peticiones de la Web pasan por API Gateway. No es una suite E2E
 automatizada ni se ejecuta en CI.
 
+**Ejecución verificada (2026-11-03):** los siete flujos pasaron en Chromium
+contra servicios, PostgreSQL y MinIO reales. Véase el
+[informe con resultados, capturas y registro HTTP](../reports/regresion-web-gateway-268-2026-11-03.md).
+El [script reproducible](../../.github/scripts/web-gateway-regression.cjs) automatiza
+esa corrida en infraestructura desechable; todavía no se ejecuta en CI.
+
 ## Alcance y condiciones
 
 - Docker Compose levanta PostgreSQL y MinIO; los microservicios y la Web se
