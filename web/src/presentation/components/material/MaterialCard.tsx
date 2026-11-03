@@ -49,7 +49,7 @@ export function MaterialCard({ material }: MaterialCardProps) {
         <DocumentIcon />
 
         <div className="min-w-0 flex-1">
-          <h3 className="line-clamp-2 font-display text-lg leading-snug text-catalog-ink">
+          <h3 className="line-clamp-2 break-words font-display text-lg leading-snug text-catalog-ink">
             {title}
           </h3>
 
@@ -59,7 +59,7 @@ export function MaterialCard({ material }: MaterialCardProps) {
               <dd
                 className={`line-clamp-1 ${
                   subjectName ? 'text-catalog-ink/80' : 'text-catalog-ink/40'
-                }`}
+                } min-w-0 break-words`}
               >
                 {subjectName ?? 'Asignatura por definir'}
               </dd>
@@ -69,7 +69,7 @@ export function MaterialCard({ material }: MaterialCardProps) {
               <dd
                 className={`line-clamp-1 ${
                   professorName ? 'text-catalog-ink/60' : 'text-catalog-ink/40'
-                }`}
+                } min-w-0 break-words`}
               >
                 {professorName ?? 'Profesor por definir'}
               </dd>

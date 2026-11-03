@@ -1,16 +1,23 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
-import type { MaterialViewStatus } from '../../domain/material/material';
+import type {
+  MaterialDetail,
+  MaterialViewStatus,
+} from '../../domain/material/material';
 import { MaterialDetailPage } from './MaterialDetailPage';
 
-function renderAt(path: string, status?: MaterialViewStatus) {
+function renderAt(
+  path: string,
+  status?: MaterialViewStatus,
+  material?: MaterialDetail | null
+) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route
           path="/material/:materialId"
-          element={<MaterialDetailPage status={status} />}
+          element={<MaterialDetailPage status={status} material={material} />}
         />
         <Route path="/catalog" element={<p>Catálogo</p>} />
       </Routes>
@@ -35,6 +42,26 @@ describe('MaterialDetailPage', () => {
     expect(
       screen.getByRole('button', { name: /descargar material/i })
     ).toBeInTheDocument();
+  });
+
+  it('permite partir un título largo sin espacios dentro del contenedor', () => {
+    const longTitle = `Título${'LargoSinEspacios'.repeat(30)}`;
+    renderAt('/material/abc-123', 'ready', {
+      id: 'abc-123',
+      title: longTitle,
+      description: null,
+      type: null,
+      year: null,
+      subjectName: null,
+      professorName: null,
+      version: null,
+      downloadUrl: null,
+    });
+
+    const title = screen.getByRole('heading', { level: 1 });
+    expect(title).toHaveTextContent(longTitle);
+    expect(title).toHaveClass('break-words');
+    expect(title).toHaveClass('[overflow-wrap:anywhere]');
   });
 
   it.each(['unavailable', 'not-found'] as const)(

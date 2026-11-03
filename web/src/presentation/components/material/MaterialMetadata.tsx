@@ -29,7 +29,7 @@ export function MaterialMetadata({ material }: MaterialMetadataProps) {
         Datos del material
       </h2>
 
-      <p className="mt-3 text-sm leading-relaxed text-catalog-ink/70">
+      <p className="mt-3 break-words text-sm leading-relaxed text-catalog-ink/70">
         {material?.description ?? 'La descripción del material aparecerá aquí.'}
       </p>
 
@@ -38,7 +38,7 @@ export function MaterialMetadata({ material }: MaterialMetadataProps) {
           <div key={label}>
             <dt className="text-xs text-catalog-ink/60">{label}</dt>
             <dd
-              className={`mt-0.5 text-sm ${
+              className={`mt-0.5 break-words text-sm ${
                 value ? 'text-catalog-ink' : 'text-catalog-ink/40'
               }`}
             >
