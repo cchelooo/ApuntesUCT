@@ -1,7 +1,6 @@
 import { mapRawSubjectsToSubjects } from './mapCatalogSubject';
 import type { RawCatalogSubject } from './rawCatalogSubject';
-
-const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1';
+import { getApiBaseUrl } from '../apiBaseUrl';
 export interface CatalogFilters {
   universityId?: string;
   careerId?: string;
@@ -25,7 +24,7 @@ export async function fetchCatalogSubjects(
   filters: CatalogFilters = {}
 ): Promise<RawCatalogSubject[]> {
   const response = await fetch(
-    `${baseUrl}/catalog/filter${buildQuery(filters)}`
+    `${getApiBaseUrl()}/catalog/filter${buildQuery(filters)}`
   );
 
   if (!response.ok) {
@@ -40,7 +39,7 @@ export async function fetchCatalogSubjects(
 export async function fetchUniversities(): Promise<
   import('../../domain/catalog/university').University[]
 > {
-  const response = await fetch(`${baseUrl}/catalog/universities`);
+  const response = await fetch(`${getApiBaseUrl()}/catalog/universities`);
   if (!response.ok) {
     throw new Error(
       `No se pudieron obtener las universidades (status ${response.status})`
@@ -53,7 +52,7 @@ export async function fetchCareers(
   universityId: string
 ): Promise<import('../../domain/catalog/career').Career[]> {
   const response = await fetch(
-    `${baseUrl}/catalog/careers?universityId=${universityId}`
+    `${getApiBaseUrl()}/catalog/careers?universityId=${universityId}`
   );
   if (!response.ok) {
     throw new Error(
@@ -67,7 +66,7 @@ export async function fetchSubjectsByCareer(
   careerId: string
 ): Promise<import('../../domain/catalog/subject').Subject[]> {
   const response = await fetch(
-    `${baseUrl}/catalog/subjects?careerId=${careerId}`
+    `${getApiBaseUrl()}/catalog/subjects?careerId=${careerId}`
   );
   if (!response.ok) {
     throw new Error(
@@ -83,7 +82,7 @@ export async function fetchProfessorsBySubject(
   subjectId: string
 ): Promise<import('../../domain/catalog/professor').Professor[]> {
   const response = await fetch(
-    `${baseUrl}/catalog/professors?subjectId=${subjectId}`
+    `${getApiBaseUrl()}/catalog/professors?subjectId=${subjectId}`
   );
   if (!response.ok) {
     throw new Error(

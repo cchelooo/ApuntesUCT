@@ -41,12 +41,14 @@ async function catalogFetch(input: RequestInfo | URL) {
 
 beforeEach(() => {
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  vi.stubEnv('VITE_API_URL', 'https://gateway.test/api/v1');
   vi.stubGlobal('fetch', vi.fn(catalogFetch));
 });
 
 afterEach(() => {
   client.clear();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 function setup(accessToken?: string) {
@@ -122,9 +124,10 @@ describe('Formulario de subida de material', () => {
       ).toBeInTheDocument()
     );
 
-    const [, options] = vi
+    const [url, options] = vi
       .mocked(fetch)
       .mock.calls.find(([, init]) => init?.method === 'POST')!;
+    expect(url).toBe('https://gateway.test/api/v1/materials');
     expect(options?.headers).toEqual({ Authorization: 'Bearer test-token' });
     expect(options?.headers).not.toHaveProperty('Content-Type');
     expect(options?.body).toBeInstanceOf(FormData);

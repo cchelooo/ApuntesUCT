@@ -97,8 +97,15 @@ Se ejecuta en **Frontend integration**; **Frontend tests** excluye únicamente
 `**/*.integration.test.tsx` para separar esas pruebas, que siguen ejecutándose
 en el job de integración. El resto pasó **23 archivos / 149 pruebas**.
 
-No hay pruebas E2E de navegador implementadas. Las pruebas de páginas y
-componentes con repositorios simulados siguen en el job de Web existente.
+En el inventario inicial no había pruebas E2E de navegador. Desde 2026-11-03,
+[`.github/scripts/web-gateway-regression.cjs`](../../.github/scripts/web-gateway-regression.cjs)
+ejecuta los siete flujos de #268 con Chromium y servicios reales aislados.
+Resultado local: **7/7 aprobados**; [evidencia](../reports/regresion-web-gateway-268-2026-11-03.md).
+No está incorporado a CI. Las pruebas de páginas y componentes con respuestas
+simuladas siguen en el job de Web existente.
+La guía de regresión manual de los siete flujos contra servicios reales está en
+[Regresión contra el stack real](regresion-stack-real.md); sus verificaciones no
+son una suite automatizada ni un check de CI.
 
 ## Mobile: no validadas, fuera de checks de integración
 
