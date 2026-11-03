@@ -23,8 +23,8 @@ export function MaterialDetailPage({
   const effectiveStatus: MaterialViewStatus = materialId ? status : 'not-found';
 
   return (
-    <section className="bg-catalog-bg px-4 py-8 font-body text-catalog-ink sm:px-6 md:px-10 md:py-10">
-      <div className="mx-auto max-w-5xl">
+    <section className="min-w-0 overflow-x-hidden bg-catalog-bg px-4 py-8 font-body text-catalog-ink sm:px-6 md:px-10 md:py-10">
+      <div className="mx-auto min-w-0 max-w-5xl">
         <nav aria-label="Ruta de navegación" className="text-sm">
           <Link
             to="/catalog"
@@ -47,8 +47,8 @@ export function MaterialDetailPage({
           </div>
         ) : (
           <>
-            <header className="mt-4">
-              <h1 className="font-display text-3xl text-catalog-ink sm:text-4xl">
+            <header className="mt-4 min-w-0">
+              <h1 className="min-w-0 max-w-full break-words font-display text-3xl text-catalog-ink [overflow-wrap:anywhere] sm:text-4xl">
                 {effectiveStatus === 'loading'
                   ? 'Cargando material…'
                   : (material?.title ?? 'Detalle del material')}
