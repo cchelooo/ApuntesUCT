@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import type {
   MaterialDetail,
@@ -8,12 +9,14 @@ import { MaterialUnavailable } from '../components/material/MaterialUnavailable'
 import { MaterialVersionCard } from '../components/material/MaterialVersionCard';
 
 interface MaterialDetailPageProps {
+  versionUpload?: ReactNode;
   materialId?: string;
   material?: MaterialDetail | null;
   status?: MaterialViewStatus;
 }
 
 export function MaterialDetailPage({
+  versionUpload,
   materialId: materialIdProp,
   material = null,
   status = 'ready',
@@ -65,10 +68,31 @@ export function MaterialDetailPage({
               aria-busy={effectiveStatus === 'loading'}
             >
               <MaterialMetadata material={material} />
-              <MaterialVersionCard
-                version={material?.version}
-                downloadUrl={material?.downloadUrl}
-              />
+              <div className="flex min-w-0 flex-col gap-4">
+                {material?.versions?.length ? (
+                  <>
+                    <h2 className="font-display text-xl">
+                      Historial de versiones
+                    </h2>
+                    {material.versions.map((version) => (
+                      <MaterialVersionCard
+                        key={version.id}
+                        version={version}
+                        isCurrent={version.id === material.version?.id}
+                        downloadUrl={version.downloadUrl}
+                      />
+                    ))}
+                  </>
+                ) : (
+                  <MaterialVersionCard
+                    version={material?.version}
+                    downloadUrl={material?.downloadUrl}
+                  />
+                )}
+                {effectiveStatus === 'ready' &&
+                  material?.type !== 'LINK' &&
+                  versionUpload}
+              </div>
             </div>
           </>
         )}

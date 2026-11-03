@@ -79,6 +79,7 @@ export interface MaterialCurrentVersion {
 }
 
 export interface MaterialDetailResponse extends MaterialSummary {
+  versions?: MaterialCurrentVersion[];
   externalLink: string | null;
   currentVersion: MaterialCurrentVersion | null;
 }

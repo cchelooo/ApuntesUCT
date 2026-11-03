@@ -7,7 +7,8 @@ export interface MaterialApiError {
   response?: { status?: number };
 }
 
-export type MaterialErrorContext = 'upload' | 'download' | 'general';
+export type MaterialErrorContext =
+  'upload' | 'download' | 'general' | 'version';
 
 /**
  * Mapea un error de la API de Materiales a un mensaje amigable en español.
@@ -51,15 +52,23 @@ export function mapMaterialError(
       case 400:
         return 'La solicitud es incorrecta. Por favor, revisa los datos e intenta de nuevo.';
       case 401:
+        if (context === 'version')
+          return 'No hay un contexto de autor válido. La subida requiere la identidad temporal del entorno de desarrollo.';
         return context === 'upload'
           ? 'Debes iniciar sesión para subir material. Por favor, autentícate para continuar.'
           : 'No tienes autorización para realizar esta acción. Por favor, inicia sesión nuevamente.';
+      case 403:
+        return 'Solo el autor del material puede subir una nueva versión.';
       case 413:
+        if (context === 'version')
+          return 'El archivo supera el límite de 15 MiB.';
         return 'El archivo supera el tamaño máximo permitido de 15 MB. Por favor, selecciona un archivo de menor tamaño.';
       case 415:
         return 'El formato del archivo no es soportado. Formatos aceptados: PDF, Word (.doc, .docx) y PowerPoint (.ppt, .pptx).';
       case 404:
-        return 'El material solicitado no fue encontrado.';
+        return context === 'download'
+          ? 'El material, la versión o el archivo no están disponibles.'
+          : 'El material solicitado no fue encontrado.';
       case 500:
       case 502:
       case 503:

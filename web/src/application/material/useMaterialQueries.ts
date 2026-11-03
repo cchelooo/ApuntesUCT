@@ -5,6 +5,7 @@ import type {
 } from '../../domain/material/materialApi';
 import {
   createMaterial,
+  createMaterialVersion,
   downloadMaterial,
   fetchMaterial,
   isMaterialNotFound,
@@ -49,5 +50,16 @@ export function useCreateMaterialMutation(accessToken?: string) {
 export function useDownloadMaterialMutation() {
   return useMutation({
     mutationFn: (materialId: string) => downloadMaterial(materialId),
+  });
+}
+
+export function useCreateMaterialVersionMutation(materialId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => createMaterialVersion(materialId, file),
+    retry: false,
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: materialQueryKeys.all });
+    },
   });
 }

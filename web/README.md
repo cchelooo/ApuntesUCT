@@ -152,3 +152,53 @@ publicados y contexto local) está documentada en
 El contrato de creación corresponde a los DTO Swagger de Material Service.
 Los campos marcados opcionales en Swagger permanecen opcionales en TypeScript,
 aunque la implementación actual los incluya con valores null.
+
+## Versiones de materiales (Sprint 2)
+
+El detalle `/material/:materialId` muestra `versions` del endpoint de detalle,
+ordenadas por número descendente, con nombre, fecha, tamaño y descarga individual.
+`currentVersion` identifica la vigente. Si un servidor anterior no entrega
+`versions`, se conserva la tarjeta y descarga actuales sin inventar historial.
+Los enlaces mantienen su comportamiento y no ofrecen subida de archivos.
+
+La Web envía las consultas y el `FormData` (solo campo `file`) al API Gateway
+configurado en `VITE_API_URL`. El Gateway conserva ruta, query y cuerpo hasta
+Material Service. Este valida archivo y autor, guarda el contenido en MinIO y
+registra la versión incremental en PostgreSQL. Para descargar, consulta la
+versión en PostgreSQL y transmite el objeto de MinIO a través del Gateway.
+Tras subir, TanStack Query invalida las consultas de materiales y vuelve a
+consultar el detalle activo; no se agregan versiones optimistas ni ficticias.
+No se reintenta automáticamente el POST.
+
+### Autorización temporal y prueba manual
+
+1. Inicia Gateway, Material Service, PostgreSQL y MinIO con la configuración de
+   desarrollo existente. Usa un material publicado cuyo `uploaderId` coincida
+   con `MATERIAL_LOCAL_UPLOADER_ID` del servidor. Material Service requiere
+   `NODE_ENV=development` y `MATERIAL_LOCAL_AUTHOR_ENABLED=true` para resolver
+   esa identidad; no habilitar esta opción en producción.
+2. En `web/.env.local`, configura `VITE_API_URL` y
+   `VITE_MATERIAL_VERSION_UPLOAD_ENABLED=true`; reinicia `npm run dev`.
+3. Abre `/material/<id>`, comprueba el historial y descarga versiones anteriores.
+4. Pulsa **Subir nueva versión**, elige un PDF, DOC, DOCX, PPT o PPTX válido
+   (hasta 15 MiB) y confirma. Durante la petición los controles se bloquean.
+   Tras el éxito debe aparecer el nuevo número como **Versión actual**, y las
+   anteriores deben continuar descargándose.
+5. Prueba un archivo vacío, uno mayor que 15 MiB y un formato no admitido.
+   La extensión se comprueba en la Web; el servidor verifica el contenido real
+   y puede devolver 415 incluso si la extensión es aceptada.
+6. Prueba con un material de otro autor (403), sin contexto local (401) y con
+   almacenamiento no disponible (502 al subir). No debe mostrarse éxito.
+7. Abre un material LINK: no debe haber formulario. Desactiva la opción Web o
+   usa un build de producción: tampoco debe aparecer la subida.
+
+La opción Web está desactivada por defecto y exige `import.meta.env.DEV`.
+Solo habilita una interfaz de pruebas: no acredita propiedad ni sustituye la
+validación del servidor. No existe identidad confiable en el frontend y el
+login simulado no autoriza versiones. No se envían IDs de autor, tokens nuevos
+ni parámetros para eludir controles. Auth/JWT y Quality Service quedan fuera
+de este cambio. Un fallo de red después del POST puede ocultar una subida
+aceptada; revisa el historial antes de volver a enviar.
+
+Verificación local: `npm run lint`, `npx tsc -b --pretty false`,
+`npm run test:run` y `npm run build` desde `web/`.
