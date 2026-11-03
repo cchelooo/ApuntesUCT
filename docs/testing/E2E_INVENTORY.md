@@ -99,6 +99,9 @@ en el job de integración. El resto pasó **23 archivos / 149 pruebas**.
 
 No hay pruebas E2E de navegador implementadas. Las pruebas de páginas y
 componentes con repositorios simulados siguen en el job de Web existente.
+La guía de regresión manual de los siete flujos contra servicios reales está en
+[Regresión contra el stack real](regresion-stack-real.md); sus verificaciones no
+son una suite automatizada ni un check de CI.
 
 ## Mobile: no validadas, fuera de checks de integración
 
