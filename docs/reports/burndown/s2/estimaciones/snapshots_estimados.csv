@@ -1,0 +1,49 @@
+snapshot_date,sprint,scope,key,name,equipo,items,horas_asignadas,horas_usadas,horas_restantes,horas_excedidas,origen
+2026-10-03,S2,Equipo,INT4,INT4,INT4,32,80,5.5,74.5,0,registro
+2026-10-03,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,0,20,0,registro
+2026-10-04,S2,Equipo,INT4,INT4,INT4,32,80,7.5,72.5,0,registro
+2026-10-04,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,0,20,0,registro
+2026-10-05,S2,Equipo,INT4,INT4,INT4,32,80,8.5,71.5,0,registro
+2026-10-05,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,0,20,0,registro
+2026-10-06,S2,Equipo,INT4,INT4,INT4,32,80,8.5,71.5,0,registro
+2026-10-06,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,0,20,0,registro
+2026-10-09,S2,Equipo,INT4,INT4,INT4,32,80,14.5,65.5,0,registro
+2026-10-09,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,3,17,0,registro
+2026-10-10,S2,Equipo,INT4,INT4,INT4,32,80,22.5,57.5,0,registro
+2026-10-10,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,5,15,0,registro
+2026-10-11,S2,Equipo,INT4,INT4,INT4,32,80,26.5,53.5,0,registro
+2026-10-11,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,5,15,0,registro
+2026-10-14,S2,Equipo,INT4,INT4,INT4,32,80,29.5,50.5,0,registro
+2026-10-14,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,5,15,0,registro
+2026-10-18,S2,Equipo,INT4,INT4,INT4,32,80,33,48,1,registro
+2026-10-18,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,7,13,0,registro
+2026-10-19,S2,Equipo,INT4,INT4,INT4,32,80,37,44,1,estimacion-retrospectiva
+2026-10-19,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,9,11,0,estimacion-retrospectiva
+2026-10-20,S2,Equipo,INT4,INT4,INT4,32,80,38.5,42.5,1,estimacion-retrospectiva
+2026-10-20,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,10,10,0,estimacion-retrospectiva
+2026-10-21,S2,Equipo,INT4,INT4,INT4,32,80,38.5,42.5,1,estimacion-retrospectiva
+2026-10-21,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,10,10,0,estimacion-retrospectiva
+2026-10-22,S2,Equipo,INT4,INT4,INT4,32,80,39.5,41.5,1,estimacion-retrospectiva
+2026-10-22,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,11,9,0,estimacion-retrospectiva
+2026-10-23,S2,Equipo,INT4,INT4,INT4,32,80,43.5,37.5,1,estimacion-retrospectiva
+2026-10-23,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,11,9,0,estimacion-retrospectiva
+2026-10-24,S2,Equipo,INT4,INT4,INT4,32,80,46.5,33.5,1,estimacion-retrospectiva
+2026-10-24,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,11,9,0,estimacion-retrospectiva
+2026-10-25,S2,Equipo,INT4,INT4,INT4,32,80,52,28,1,estimacion-retrospectiva
+2026-10-25,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,12,8,0,estimacion-retrospectiva
+2026-10-26,S2,Equipo,INT4,INT4,INT4,32,80,53.5,26.5,1,estimacion-retrospectiva
+2026-10-26,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,12,8,0,estimacion-retrospectiva
+2026-10-27,S2,Equipo,INT4,INT4,INT4,32,80,58.5,21.5,1,estimacion-retrospectiva
+2026-10-27,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,14,6,0,estimacion-retrospectiva
+2026-10-28,S2,Equipo,INT4,INT4,INT4,32,80,61.5,19.5,1,estimacion-retrospectiva
+2026-10-28,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,14,6,0,estimacion-retrospectiva
+2026-10-29,S2,Equipo,INT4,INT4,INT4,32,80,65,18,3,estimacion-retrospectiva
+2026-10-29,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,15,5,0,estimacion-retrospectiva
+2026-10-30,S2,Equipo,INT4,INT4,INT4,32,80,67,16,3,estimacion-retrospectiva
+2026-10-30,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,15,5,0,estimacion-retrospectiva
+2026-10-31,S2,Equipo,INT4,INT4,INT4,32,80,68,15,3,estimacion-retrospectiva
+2026-10-31,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,16,4,0,estimacion-retrospectiva
+2026-11-01,S2,Equipo,INT4,INT4,INT4,32,80,72,11,3,estimacion-retrospectiva
+2026-11-01,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,17,3,0,estimacion-retrospectiva
+2026-11-02,S2,Equipo,INT4,INT4,INT4,32,80,73,10,3,estimacion-retrospectiva
+2026-11-02,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,17,3,0,estimacion-retrospectiva
