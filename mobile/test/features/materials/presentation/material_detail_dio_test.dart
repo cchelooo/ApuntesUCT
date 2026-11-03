@@ -283,5 +283,45 @@ void main() {
         expect(find.text('Reintentar'), findsOneWidget);
       },
     );
+    testWidgets(
+      'Recorrido tarjeta -> detalle con timeout muestra título e ícono de error de conexión (#304)',
+      (WidgetTester tester) async {
+        final dio = Dio();
+        dio.httpClientAdapter = MockHttpAdapter((options) {
+          return ResponseBody.fromString(
+            jsonEncode({
+              'statusCode': 504,
+              'message': 'Gateway timeout: Material Service no disponible',
+            }),
+            504,
+            headers: {
+              Headers.contentTypeHeader: [Headers.jsonContentType],
+            },
+          );
+        });
+
+        final apiClient = ApiClient(customDio: dio);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [apiclientProvider.overrideWithValue(apiClient)],
+            child: MaterialApp(
+              home: MaterialDetailScreen.byId(materialId: 'mat_timeout'),
+            ),
+          ),
+        );
+
+        await tester.pumpAndSettle();
+
+        // Verificamos que se muestra el ErrorState inteligente con el título correcto de conexión/servidor
+        expect(find.byType(ErrorState), findsOneWidget);
+        expect(
+          find.text('Error de conexión'),
+          findsOneWidget,
+        ); // O 'Error del servidor' según prefieras
+        expect(find.byIcon(Icons.wifi_off_rounded), findsOneWidget);
+        expect(find.text('Reintentar'), findsOneWidget);
+      },
+    );
   });
 }

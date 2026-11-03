@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:apuntesuct_mobile/core/errors/api_exception.dart'; // Asegúrate de tener este import
 
 class ErrorState extends StatelessWidget {
   final String title;
@@ -14,41 +15,45 @@ class ErrorState extends StatelessWidget {
     this.onRetry,
   });
 
-  /// Constructor inteligente que infiere el ícono y el título basándose en el mensaje
+  /// Constructor inteligente basado en ApiException, statusCode o mensajes del Gateway
   factory ErrorState.fromMessage({
     Key? key,
+    Object? error,
     required String message,
     VoidCallback? onRetry,
   }) {
     String title = 'Ocurrió un problema';
     IconData icon = Icons.error_outline_rounded;
 
+    int? statusCode;
+    if (error is ApiException) {
+      statusCode = error.statusCode;
+    }
+
     final lowerMessage = message.toLowerCase();
 
-    // Errores de red
-    if (lowerMessage.contains('conexión') || 
-        lowerMessage.contains('tiempo de espera') ||
-        lowerMessage.contains('red')) {
-      title = 'Error de conexión';
-      icon = Icons.wifi_off_rounded;
-    } 
-    // Errores de validación / cliente
-    else if (lowerMessage.contains('validación') || 
-             lowerMessage.contains('archivo') ||
-             lowerMessage.contains('incompleto')) {
-      title = 'Revisa los datos';
-      icon = Icons.rule_rounded;
-    } 
-    // Errores de no encontrado
-    else if (lowerMessage.contains('no encontrado') || 
-             lowerMessage.contains('no existe')) {
+    // 1. Clasificación por Código HTTP o tipo de error de red
+    if (statusCode == 401 || statusCode == 403) {
+      title = 'Acceso no autorizado';
+      icon = Icons.lock_outline_rounded;
+    } else if (statusCode == 404) {
       title = 'No encontrado';
       icon = Icons.find_in_page_rounded;
-    }
-    // Errores de servidor
-    else if (lowerMessage.contains('servidor')) {
+    } else if (statusCode != null && statusCode >= 500) {
       title = 'Error del servidor';
       icon = Icons.cloud_off_rounded;
+    } else if (lowerMessage.contains('timeout') || 
+               lowerMessage.contains('tiempo de espera') || 
+               lowerMessage.contains('conexión') ||
+               lowerMessage.contains('red') ||
+               lowerMessage.contains('no disponible')) {
+      title = 'Error de conexión';
+      icon = Icons.wifi_off_rounded;
+    } else if (lowerMessage.contains('validación') || 
+               lowerMessage.contains('archivo') ||
+               statusCode == 400) {
+      title = 'Revisa los datos';
+      icon = Icons.rule_rounded;
     }
 
     return ErrorState(
