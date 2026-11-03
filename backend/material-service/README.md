@@ -558,3 +558,43 @@ MATERIAL_TEST_MINIO=1 MATERIAL_TEST_GATEWAY=1 \
 
 El Gateway y Material Service usan puertos temporales locales durante la prueba;
 no es necesario arrancarlos por separado.
+
+### Pruebas críticas de Material Service (#259)
+
+Desde `backend`, los comandos estándar incluyen las pruebas unitarias y E2E HTTP
+de Material Service:
+
+```bash
+npm test -- --runInBand
+npm run test:ci
+```
+
+Para ejecutar solo este servicio (con el cliente Prisma generado):
+
+```bash
+npm run prisma:generate --workspace=material-service
+npm test --workspace=material-service -- --runInBand
+# Solo las E2E:
+npm run test:e2e --workspace=material-service -- --runInBand
+```
+
+Las E2E arrancan Nest con `setupApp` y ejercitan las rutas mediante Supertest.
+Usan dobles de Prisma, del puerto `ObjectStorage` y de Catalog (o un servidor HTTP
+local para el contrato de Catalog). No requieren PostgreSQL, MinIO ni Catalog en
+ejecución; sí requieren poder abrir puertos locales. La creación de versiones
+usa el caso de uso real, con mocks únicamente en las dependencias externas y el
+contexto de autor.
+
+| Caso crítico | Cobertura principal |
+| --- | --- |
+| Listado, paginación y filtro de publicados | `materials.service.spec.ts`, `material.e2e-spec.ts` |
+| Creación y estado `PENDING_REVIEW` | `create-material.spec.ts`, `material.e2e-spec.ts` |
+| Tamaño máximo y MIME/contenido inválido | `material.e2e-spec.ts`, `create-material-version.e2e-spec.ts` |
+| Detalle e historial de versiones | `materials.service.spec.ts`, `material-detail.e2e-spec.ts` |
+| Descarga actual e histórica, errores de almacenamiento | `materials.service.spec.ts`, `material-download.e2e-spec.ts` |
+| Nueva versión, autor, LINK y fallos de almacenamiento | `create-material-version.spec.ts`, `create-material-version.e2e-spec.ts` |
+| Material inexistente | `materials.service.spec.ts`, E2E de detalle, descarga y nueva versión |
+
+Estas pruebas no verifican bloqueos ni commits reales de PostgreSQL ni operaciones
+reales de MinIO. Las pruebas de integración optativas descritas arriba cubren esas
+dependencias con recursos temporales y configuración explícita.

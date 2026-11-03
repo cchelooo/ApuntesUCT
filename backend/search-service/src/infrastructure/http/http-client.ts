@@ -4,17 +4,19 @@ const DEFAULT_TIMEOUT_MS = 5000;
 
 export async function getJson<T>(url: string, service: string): Promise<T> {
   let response: Response;
+  // La misma señal cubre encabezados y lectura del cuerpo. Consultarla evita
+  // depender de instanceof Error entre los contextos de Node, fetch y Jest.
+  const signal = AbortSignal.timeout(DEFAULT_TIMEOUT_MS);
 
   try {
     response = await fetch(url, {
       headers: { accept: 'application/json' },
-      signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
+      signal,
     });
   } catch (error) {
     const timedOut =
-      error instanceof Error &&
-      (error.name === 'TimeoutError' || error.name === 'AbortError');
-
+      signal.aborted ||
+      (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError'));
     throw new DependencyError(
       service,
       timedOut ? 'timeout' : 'unavailable',
@@ -38,9 +40,8 @@ export async function getJson<T>(url: string, service: string): Promise<T> {
     return (await response.json()) as T;
   } catch (error) {
     const timedOut =
-      error instanceof Error &&
-      (error.name === 'TimeoutError' || error.name === 'AbortError');
-
+      signal.aborted ||
+      (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError'));
     throw new DependencyError(
       service,
       timedOut ? 'timeout' : 'invalid-response',

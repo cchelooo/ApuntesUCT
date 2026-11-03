@@ -22,7 +22,7 @@ function result(id: string, title: string) {
   return { id, title, academicYear: 2026, materialType: 'EXAM' };
 }
 
-function mockApi(search: (url: URL) => Response) {
+function mockApi(search: (url: URL) => Response | Promise<Response>) {
   fetchMock.mockImplementation((input: RequestInfo | URL) => {
     const url = new URL(String(input));
     if (url.pathname.endsWith('/search')) return Promise.resolve(search(url));
@@ -246,6 +246,43 @@ describe('SearchPage', () => {
       );
       expect(values).toEqual(['recent', 'year_desc', 'title']);
     });
+  });
+
+  it('muestra el estado de carga (loading) con esqueletos e indicador accesible', async () => {
+    let resolveSearch: (val: Response) => void;
+    // Mantener Catalog cargando reproduce los dos indicadores presentes en CI.
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      if (new URL(String(input)).pathname.endsWith('/search')) {
+        return new Promise<Response>((resolve) => {
+          resolveSearch = resolve;
+        });
+      }
+      return new Promise<Response>(() => {});
+    });
+    renderPage('/search?q=algebra');
+
+    expect(
+      screen.getByText('Cargando materiales…', { selector: '[role="status"]' })
+    ).toBeInTheDocument();
+    expect(screen.getByText('Cargando...')).toBeInTheDocument();
+    expect(
+      screen.getAllByTestId('material-card-skeleton').length
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText(/Sin resultados para/)).not.toBeInTheDocument();
+
+    resolveSearch!(
+      json({
+        results: [result('real-uuid-1', 'Guía de álgebra')],
+        page: 1,
+        pageSize: PAGE_SIZE,
+        total: 1,
+      })
+    );
+
+    expect(await screen.findByText('Guía de álgebra')).toBeInTheDocument();
+    expect(screen.queryByText('Cargando materiales…')).not.toBeInTheDocument();
+    expect(screen.queryAllByTestId('material-card-skeleton')).toHaveLength(0);
+    expect(screen.getByText('Cargando...')).toBeInTheDocument();
   });
 
   it('muestra el estado vacío con el stub actual de Search', async () => {
