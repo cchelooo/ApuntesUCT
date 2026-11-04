@@ -56,8 +56,7 @@ describe('mapMaterialDetail (contrato real de GET /materials/:id)', () => {
       year: 2026,
       subjectName: 'Estructuras de Datos',
       professorName: 'Carlos Ramírez',
-      downloadUrl:
-        `${GATEWAY}/materials/11111111-1111-4111-8111-111111111111/download`,
+      downloadUrl: `${GATEWAY}/materials/11111111-1111-4111-8111-111111111111/download`,
     });
     expect(result.version).toMatchObject({
       number: 3,

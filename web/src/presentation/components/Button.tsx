@@ -27,7 +27,8 @@ export const Button: React.FC<ButtonProps> = ({
     secondary:
       'bg-catalog-paperMuted text-catalog-ink hover:bg-uct-border focus:ring-uct-sky',
     danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-    ghost: 'bg-transparent text-catalog-primary hover:bg-catalog-paperMuted focus:ring-uct-sky',
+    ghost:
+      'bg-transparent text-catalog-primary hover:bg-catalog-paperMuted focus:ring-uct-sky',
   };
 
   const sizes: Record<ButtonSize, string> = {

@@ -134,9 +134,7 @@ describe('MaterialListSection', () => {
       'href',
       '/material/real-uuid-1'
     );
-    expect(materialCalls()[0]).toBe(
-      `${GATEWAY}/materials?page=1&pageSize=2`
-    );
+    expect(materialCalls()[0]).toBe(`${GATEWAY}/materials?page=1&pageSize=2`);
     expect(
       fetchMock.mock.calls.every(([url]) => String(url).startsWith(GATEWAY))
     ).toBe(true);

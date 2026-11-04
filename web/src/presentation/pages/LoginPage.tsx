@@ -22,16 +22,13 @@ export function LoginPage() {
       let response: Response;
 
       try {
-        response = await fetch(
-          loginUrl,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(credentials),
-          }
-        );
+        response = await fetch(loginUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(credentials),
+        });
       } catch {
         throw new Error(
           'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo nuevamente.'
