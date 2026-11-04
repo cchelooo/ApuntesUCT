@@ -91,6 +91,7 @@ class DiscoveryMaterialsState {
   final String query;
   final String? selectedSubject;
   final String? errorMessage;
+  final Object? error;
 
   const DiscoveryMaterialsState({
     this.items = const [],
@@ -101,6 +102,7 @@ class DiscoveryMaterialsState {
     this.query = '',
     this.selectedSubject,
     this.errorMessage,
+    this.error,
   });
 
   bool get isSearchActive => query.trim().isNotEmpty || selectedSubject != null;
@@ -115,6 +117,7 @@ class DiscoveryMaterialsState {
     String? selectedSubject,
     bool clearSubject = false,
     String? errorMessage,
+    Object? error,
     bool clearError = false,
   }) {
     return DiscoveryMaterialsState(
@@ -128,6 +131,7 @@ class DiscoveryMaterialsState {
           ? null
           : (selectedSubject ?? this.selectedSubject),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      error: clearError ? null : (error ?? this.error),
     );
   }
 }
@@ -177,6 +181,7 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
       if (requestId != _activeRequestId) return;
       state = state.copyWith(
         isLoading: false,
+        error: error,
         errorMessage: apiErrorMessage(
           error,
           fallback:
@@ -269,6 +274,7 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
           error,
           fallback: 'No fue posible cargar más materiales.',
         ),
+        error: error,
       );
     }
   }

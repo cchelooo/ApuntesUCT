@@ -32,7 +32,7 @@ class MaterialDetailRoute extends ConsumerWidget {
       return Scaffold(
         appBar: AppBar(title: const Text('Detalle del Material')),
         body: Center(
-          child: ErrorState(
+          child: ErrorState.fromMessage(
             message: 'Identificador de material inválido.',
             onRetry: () => context.go('/materials'),
           ),
@@ -72,7 +72,8 @@ class MaterialDetailRoute extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  ErrorState(
+                  ErrorState.fromMessage(
+                    error: error,
                     message: apiErrorMessage(
                       error,
                       fallback: 'No fue posible cargar el material solicitado.',

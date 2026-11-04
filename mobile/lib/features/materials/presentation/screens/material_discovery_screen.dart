@@ -160,7 +160,8 @@ class _MaterialDiscoveryScreenState
       return Center(
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          child: ErrorState(
+          child: ErrorState.fromMessage(
+            error: state.error,
             message: state.errorMessage!,
             onRetry: () =>
                 ref.read(discoveryMaterialsProvider.notifier).refresh(),

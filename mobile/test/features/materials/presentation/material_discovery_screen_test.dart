@@ -1,5 +1,7 @@
 import 'package:apuntesuct_mobile/core/widgets/empty_state.dart';
+import 'package:apuntesuct_mobile/core/widgets/error_state.dart';
 import 'package:apuntesuct_mobile/core/widgets/loading_state.dart';
+import 'package:apuntesuct_mobile/core/errors/api_exception.dart';
 import 'package:apuntesuct_mobile/features/materials/data/mock_materials_repository.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_fixtures.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
@@ -7,7 +9,6 @@ import 'package:apuntesuct_mobile/features/materials/presentation/providers/mate
 import 'package:apuntesuct_mobile/features/catalog/presentation/widgets/academic_filter_sheet.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_discovery_screen.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_summary_card.dart';
-import 'package:apuntesuct_mobile/core/widgets/error_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,6 +20,12 @@ class FailingMaterialsRepository extends MockMaterialsRepository {
   Future<List<MaterialSummary>> getMaterials({
     String? query,
     String? subject,
+    String? universityId,
+    String? careerId,
+    String? subjectId,
+    String? professorId,
+    int? year,
+    String? type,
     int page = 1,
     int pageSize = 10,
   }) async {
@@ -30,6 +37,27 @@ class FailingMaterialsRepository extends MockMaterialsRepository {
       subject: subject,
       page: page,
       pageSize: pageSize,
+    );
+  }
+}
+
+class _Error502MockRepository extends MockMaterialsRepository {
+  @override
+  Future<List<MaterialSummary>> getMaterials({
+    String? query,
+    String? subject,
+    String? universityId,
+    String? careerId,
+    String? subjectId,
+    String? professorId,
+    int? year,
+    String? type,
+    int page = 1,
+    int pageSize = 10,
+  }) async {
+    throw ApiException(
+      statusCode: 502,
+      message: 'Error de Material 502',
     );
   }
 }
@@ -87,7 +115,6 @@ void main() {
     testWidgets(
       'Distingue entre catálogo sin materiales y búsqueda sin coincidencias manteniendo asignaturas',
       (WidgetTester tester) async {
-        // Catálogo académico con asignaturas existentes pero sin ningún material subido
         await tester.pumpWidget(
           buildScreen(
             overrides: [
@@ -106,7 +133,6 @@ void main() {
         expect(find.byType(EmptyState), findsOneWidget);
         expect(find.text('Catálogo de materiales vacío'), findsOneWidget);
 
-        // Caso con materiales pero búsqueda sin coincidencias
         await tester.pumpWidget(
           buildScreen(
             overrides: [
@@ -186,7 +212,6 @@ void main() {
 
       final notifier = container.read(discoveryMaterialsProvider.notifier);
 
-      // Se disparan dos búsquedas seguidas
       final firstSearch = notifier.setQuery('Cálculo');
       final secondSearch = notifier.setQuery('Estructuras');
 
@@ -210,44 +235,35 @@ void main() {
         await tester.pumpWidget(buildScreen());
         await tester.pumpAndSettle();
 
-        // Inicialmente muestra los 2 materiales de muestra
         expect(find.byType(MaterialSummaryCard), findsNWidgets(2));
 
-        // Abrir el modal de filtros
         await tester.tap(find.byIcon(Icons.tune_rounded));
         await tester.pumpAndSettle();
 
         expect(find.byType(AcademicFilterSheet), findsOneWidget);
 
-        // Seleccionar Universidad UCT para poblar la cascada
         await tester.tap(find.byKey(const Key('filter_university_dropdown')));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Universidad Católica de Temuco').last);
         await tester.pumpAndSettle();
 
-        // Seleccionar Carrera
         await tester.tap(find.byKey(const Key('filter_career_dropdown')));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Ingeniería Civil en Informática').last);
         await tester.pumpAndSettle();
 
-        // Seleccionar Asignatura "Cálculo I"
         await tester.tap(find.byKey(const Key('filter_subject_dropdown')));
         await tester.pumpAndSettle();
         await tester.tap(find.textContaining('Cálculo I').last);
         await tester.pumpAndSettle();
 
-        // Presionar Aplicar filtros
         await tester.ensureVisible(
           find.byKey(const Key('filter_apply_button')),
         );
         await tester.tap(find.byKey(const Key('filter_apply_button')));
         await tester.pumpAndSettle();
 
-        // El modal debe haberse cerrado
         expect(find.byType(AcademicFilterSheet), findsNothing);
-
-        // Ahora solo debe mostrar 1 material coincidente ("Cálculo I")
         expect(find.byType(MaterialSummaryCard), findsOneWidget);
         expect(find.text('Cálculo I'), findsWidgets);
       },
@@ -259,7 +275,6 @@ void main() {
         await tester.pumpWidget(buildScreen());
         await tester.pumpAndSettle();
 
-        // 1. Abrir modal y seleccionar UCT -> Informática -> Cálculo I
         await tester.tap(find.byIcon(Icons.tune_rounded));
         await tester.pumpAndSettle();
 
@@ -284,10 +299,8 @@ void main() {
         await tester.tap(find.byKey(const Key('filter_apply_button')));
         await tester.pumpAndSettle();
 
-        // Filtro aplicado: 1 material
         expect(find.byType(MaterialSummaryCard), findsOneWidget);
 
-        // 2. Abrir modal de nuevo y cambiar universidad a UFRO (resetea cascada de asignatura)
         await tester.tap(find.byIcon(Icons.tune_rounded));
         await tester.pumpAndSettle();
 
@@ -296,18 +309,17 @@ void main() {
         await tester.tap(find.text('Universidad de La Frontera').last);
         await tester.pumpAndSettle();
 
-        // 3. Aplicar SIN seleccionar asignatura
         await tester.ensureVisible(
           find.byKey(const Key('filter_apply_button')),
         );
         await tester.tap(find.byKey(const Key('filter_apply_button')));
         await tester.pumpAndSettle();
 
-        // El filtro de asignatura previo debe haberse limpiado y mostrar todos los materiales (2)
         expect(find.byType(MaterialSummaryCard), findsNWidgets(2));
         expect(find.textContaining('Asignatura: Cálculo I'), findsNothing);
       },
     );
+
     testWidgets(
       'Datos → refresh fallido expone ErrorState y permite recuperar (#302)',
       (WidgetTester tester) async {
@@ -322,11 +334,9 @@ void main() {
           ),
         );
 
-        // 1. Carga inicial exitosa
         await tester.pumpAndSettle();
         expect(find.byType(MaterialSummaryCard), findsWidgets);
 
-        // 2. Simulamos que la red se cae y hacemos refresh (drag hacia abajo)
         mockRepo.shouldFail = true;
         await tester.drag(
           find.byType(MaterialSummaryCard).first,
@@ -334,17 +344,36 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // 3. Verificamos que aparece el ErrorState en lugar de crashear
         expect(find.byType(ErrorState), findsOneWidget);
 
-        // 4. Simulamos que la red vuelve y presionamos Reintentar
         mockRepo.shouldFail = false;
         await tester.tap(find.text('Reintentar'));
         await tester.pumpAndSettle();
 
-        // 5. Los datos vuelven a estar visibles
         expect(find.byType(MaterialSummaryCard), findsWidgets);
         expect(find.byType(ErrorState), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Error HTTP 502 en Discovery muestra ErrorState con título Error del servidor (#304)',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              materialsRepositoryProvider.overrideWithValue(
+                _Error502MockRepository(),
+              ),
+            ],
+            child: const MaterialApp(home: MaterialDiscoveryScreen()),
+          ),
+        );
+
+        await tester.pumpAndSettle();
+
+        expect(find.byType(ErrorState), findsOneWidget);
+        expect(find.text('Error del servidor'), findsOneWidget);
+        expect(find.byIcon(Icons.cloud_off_rounded), findsOneWidget);
       },
     );
   });
