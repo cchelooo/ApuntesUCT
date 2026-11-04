@@ -1,0 +1,21 @@
+{
+  "gateway": "http://10.0.2.2:50461/api/v1",
+  "responses": [
+    "POST /api/v1/auth/login 200",
+    "GET /api/v1/catalog 200",
+    "GET /api/v1/materials 200",
+    "GET /api/v1/search 200",
+    "GET /api/v1/materials/a7f01fd8-c769-4b86-a89b-c258ebd27d79 200",
+    "GET /api/v1/materials/a7f01fd8-c769-4b86-a89b-c258ebd27d79/download 200"
+  ],
+  "requestUris": [
+    "http://10.0.2.2:50461/api/v1/auth/login",
+    "http://10.0.2.2:50461/api/v1/catalog",
+    "http://10.0.2.2:50461/api/v1/materials?page=1&pageSize=5",
+    "http://10.0.2.2:50461/api/v1/search?q=Integracion278&page=1&pageSize=5",
+    "http://10.0.2.2:50461/api/v1/materials/a7f01fd8-c769-4b86-a89b-c258ebd27d79",
+    "http://10.0.2.2:50461/api/v1/materials/a7f01fd8-c769-4b86-a89b-c258ebd27d79/download?versionId=1cbff057-38be-42bb-a473-9398cbc551eb"
+  ],
+  "materialId": "a7f01fd8-c769-4b86-a89b-c258ebd27d79",
+  "downloadBytes": 414
+}
