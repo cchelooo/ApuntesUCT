@@ -1,13 +1,14 @@
 # Burndown S2
 
 Primer snapshot guardado: 2026-10-03.
-Ultimo snapshot: 2026-11-02.
+Ultimo snapshot: 2026-11-03.
 Corte del 19-10 registrado el 20-10-2026 con los datos actuales de GitHub Projects, por actualización diferida.
 Corte del 27-10 registrado el 28-10-2026 con las horas de la captura original, por actualización diferida.
 Corte del 29-10 registrado el 30-10-2026 con los datos actuales de GitHub Projects, por actualización diferida.
 Corte del 30-10 registrado el 31-10-2026 con los datos actuales de GitHub Projects, por actualización diferida.
 Corte del 01-11 registrado el 02-11-2026 con los datos actuales de GitHub Projects, por actualización diferida.
 Corte del 02-11 registrado el 03-11-2026 con los datos actuales de GitHub Projects, por actualización diferida.
+Corte del 03-11 registrado el 04-11-2026 con los datos actuales de GitHub Projects, por actualización diferida.
 El CSV conserva las capturas registradas. La estimación de Anker se presenta por separado.
 
 ## Ventanas del sprint
@@ -24,7 +25,7 @@ Las tareas con `Equipo = Compartido` quedan fuera del burndown de equipos e inte
 
 | Equipo | Items | Horas asignadas | Horas usadas | Horas restantes | Horas excedidas | Grafico |
 |---|---:|---:|---:|---:|---:|---|
-| INT2 | 50 | 120 | 115.9 | 11 | 6.9 | [ver (2026-09-30 a 2026-11-04)](charts/team-int2.svg) |
+| INT2 | 50 | 120 | 123.4 | 3.5 | 6.9 | [ver (2026-09-30 a 2026-11-04)](charts/team-int2.svg) |
 | INT4 | 32 | 80 | 73 | 10 | 3 | [ver (2026-10-01 a 2026-11-05)](charts/team-int4.svg) |
 
 ## Integrantes
@@ -33,9 +34,9 @@ Las tareas con `Equipo = Compartido` quedan fuera del burndown de equipos e inte
 |---|---|---:|---:|---:|---:|---:|---|
 | INT2 | Ailyn Melillan | 9 | 20 | 20 | 0 | 0 | [ver (2026-09-30 a 2026-11-04)](charts/member-ailynmelillan.svg) |
 | INT2 | Antonio Lara | 8 | 20 | 20.5 | 0 | 0.5 | [ver (2026-09-30 a 2026-11-04)](charts/member-alara2024uct.svg) |
-| INT2 | David Villegas | 9 | 20 | 15.5 | 4.5 | 0 | [ver (2026-09-30 a 2026-11-04)](charts/member-david7985.svg) |
+| INT2 | David Villegas | 9 | 20 | 20 | 0 | 0 | [ver (2026-09-30 a 2026-11-04)](charts/member-david7985.svg) |
 | INT2 | Gabriel Gutierrez | 8 | 20 | 19 | 1 | 0 | [ver (2026-09-30 a 2026-11-04)](charts/member-gabrielgutierrez1.svg) |
-| INT2 | Martina Iturrieta | 8 | 20 | 20.9 | 5.5 | 6.4 | [ver (2026-09-30 a 2026-11-04)](charts/member-kennyaale.svg) |
+| INT2 | Martina Iturrieta | 8 | 20 | 23.9 | 2.5 | 6.4 | [ver (2026-09-30 a 2026-11-04)](charts/member-kennyaale.svg) |
 | INT2 | Raul Rodriguez | 8 | 20 | 20 | 0 | 0 | [ver (2026-09-30 a 2026-11-04)](charts/member-rrodriguez2025.svg) |
 | INT4 | Eduardo Escares | 8 | 20 | 15 | 5 | 0 | [ver (2026-10-01 a 2026-11-05)](charts/member-eduardoscrs.svg) |
 | INT4 | Marcelo Santana | 8 | 20 | 19 | 1 | 0 | [ver (2026-10-01 a 2026-11-05)](charts/member-cchelooo.svg) |
