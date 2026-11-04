@@ -9,7 +9,7 @@ Corte del 30-10 registrado el 31-10-2026 con los datos actuales de GitHub Projec
 Corte del 01-11 registrado el 02-11-2026 con los datos actuales de GitHub Projects, por actualización diferida.
 Corte del 02-11 registrado el 03-11-2026 con los datos actuales de GitHub Projects, por actualización diferida.
 Corte del 03-11 registrado el 04-11-2026 con los datos actuales de GitHub Projects, por actualización diferida.
-El CSV conserva las capturas registradas. La estimación de Anker se presenta por separado.
+El CSV conserva las capturas registradas. Los gráficos de Nelson e INT4 incorporan la distribución retrospectiva documentada.
 
 ## Ventanas del sprint
 
@@ -43,19 +43,19 @@ Las tareas con `Equipo = Compartido` quedan fuera del burndown de equipos e inte
 | INT4 | Nelson Quiñinao Isla | 8 | 20 | 17 | 3 | 0 | [ver (2026-10-01 a 2026-11-05)](charts/member-anker04.svg) |
 | INT4 | Yaninna Alvarez | 8 | 20 | 22 | 1 | 3 | [ver (2026-10-01 a 2026-11-05)](charts/member-yaninna137.svg) |
 
-## Estimación retrospectiva de Anker
+## Distribución retrospectiva
 
-La distribución estimada empieza el **19-10-2026**, después del receso del
-12 al 18 de octubre informado por Marcelo. Parte de 7 horas usadas y reparte
-10 horas adicionales en días de 0, 1 y 2 horas hasta llegar al total actual de
-**17 usadas y 3 restantes**, capturado el 03-11 para el corte del 02-11.
+Los gráficos principales de Nelson e INT4 incorporan la distribución estimada
+del 19-10 al 02-11-2026, después del receso del 12 al 18 de octubre. La base
+es de 7 horas usadas y se reparten 10 horas adicionales hasta llegar a
+17 usadas y 3 restantes. El ajuste de INT4 cambia únicamente esa contribución.
 
-Esta estimación se conserva aparte de los registros de Projects. En los gráficos
-comparativos, la línea azul muestra las capturas y la violeta discontinua muestra
-la estimación. La de INT4 ajusta únicamente la contribución de Anker.
+Se incluye el corte del **03-11**, registrado el **04-11-2026**: Nelson mantiene
+17 horas usadas y 3 restantes, e INT4 mantiene 73 usadas y 10 restantes.
+Las capturas originales se conservan sin cambios en `snapshots.csv`.
+El generador conserva la distribución histórica y utiliza las capturas reales
+para los nuevos cortes.
 
-- [Anker: registro y estimación](estimaciones/member-anker04.svg)
-- [INT4: registro y ajuste estimado de Anker](estimaciones/team-int4.svg)
 - [Distribución diaria y método](estimaciones/README.md)
 
 ## Uso diario

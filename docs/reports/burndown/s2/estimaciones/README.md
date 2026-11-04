@@ -28,8 +28,9 @@ Las horas de cada día son una distribución supuesta, con jornadas de 0, 1 y 2 
 
 - `distribucion-anker04.csv` contiene la asignación diaria estimada.
 - `snapshots_estimados.csv` contiene las series derivadas de Anker e INT4, con su origen por fila.
-- Los dos SVG comparan el registro original en azul con la estimación en violeta discontinua. La línea naranja conserva el ideal del sprint.
+- Los gráficos principales de [Nelson](../charts/member-anker04.svg) e [INT4](../charts/team-int4.svg) incorporan esta distribución. La línea azul muestra las horas restantes y la naranja el ideal del sprint.
+- El corte del 03-11, registrado el 04-11-2026, se añade como captura real: 17 horas usadas y 3 restantes para Nelson, 73 usadas y 10 restantes para INT4.
 
 Para cada día de la curva INT4 se toma la última captura disponible del equipo, se resta la contribución registrada de Anker y se añade su contribución estimada. Los datos de los otros integrantes se mantienen en su última captura disponible, sin reconstruir su trabajo diario. Antes del 19-10 se conserva la serie registrada.
 
-Las dos series coinciden con los totales registrados en el corte del 02-11. Son una reconstrucción limitada a ese periodo, no una captura nueva de los días intermedios.
+Las dos series coinciden con los totales registrados en el corte del 02-11. La reconstrucción se limita a ese periodo. Los cortes posteriores se incorporan desde las capturas de Projects.

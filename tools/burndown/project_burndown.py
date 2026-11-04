@@ -346,6 +346,29 @@ def slug(value: str) -> str:
     return normalized or "chart"
 
 
+def rows_with_estimates(rows: list[dict], estimates_path: Path) -> list[dict]:
+    """Apply documented historical estimates to charts, keeping raw captures intact."""
+    def row_key(row: dict) -> tuple[str, str, str, str]:
+        return row["snapshot_date"], row["sprint"], row["scope"], row["key"]
+
+    latest_dates: dict[tuple[str, str, str], str] = {}
+    for row in rows:
+        group = row["sprint"], row["scope"], row["key"]
+        latest_dates[group] = max(latest_dates.get(group, ""), row["snapshot_date"])
+
+    chart_rows = {row_key(row): row for row in rows}
+    for row in read_snapshot_rows(estimates_path):
+        group = row["sprint"], row["scope"], row["key"]
+        # Never extrapolate an estimate or replace the latest actual capture.
+        if (
+            row.get("origen") == "estimacion-retrospectiva"
+            and group in latest_dates
+            and row["snapshot_date"] < latest_dates[group]
+        ):
+            chart_rows[row_key(row)] = row
+    return list(chart_rows.values())
+
+
 def render_all(
     csv_path: Path,
     output_dir: Path,
@@ -357,6 +380,10 @@ def render_all(
     if not rows:
         raise SystemExit(f"No hay snapshots para {sprint}. Primero ejecuta capture.")
 
+    chart_rows = rows_with_estimates(
+        rows, output_dir / "estimaciones" / "snapshots_estimados.csv"
+    )
+
     chart_dir = output_dir / "charts"
     backup_existing_charts(chart_dir, output_dir / CHART_BACKUP_DIR)
     chart_dir.mkdir(parents=True, exist_ok=True)
@@ -365,12 +392,12 @@ def render_all(
     chart_windows: dict[str, tuple[date, date]] = {}
     for scope in ("Equipo", "Integrante"):
         groups = sorted(
-            {row["key"] for row in rows if row["scope"] == scope},
+            {row["key"] for row in chart_rows if row["scope"] == scope},
             key=lambda key: (0 if key in TEAM_NAMES else 1, key.casefold()),
         )
         for key in groups:
             group_rows = [
-                row for row in rows if row["scope"] == scope and row["key"] == key
+                row for row in chart_rows if row["scope"] == scope and row["key"] == key
             ]
             latest = latest_row(group_rows)
             if scope == "Integrante" and float_value(latest["horas_asignadas"]) == 0:
@@ -575,6 +602,15 @@ def render_chart(
   <text x="24" y="{top + plot_height / 2}" transform="rotate(-90 24,{top + plot_height / 2})" text-anchor="middle" class="axis">Horas</text>
 </svg>
 """
+    if any(row.get("origen") == "estimacion-retrospectiva" for row in rows):
+        note = "Incluye una distribución retrospectiva de horas."
+        svg = svg.replace("  <style>", f"  <desc>{note}</desc>\n  <style>", 1)
+        title_line = f'  <text x="{left}" y="42" class="title">{html.escape(title)}</text>'
+        svg = svg.replace(
+            title_line,
+            title_line + f'\n  <text x="{left}" y="62" class="axis" style="font-size:12px">{note}</text>',
+            1,
+        )
     svg = "\n".join(line.rstrip() for line in svg.splitlines()) + "\n"
     output_path.write_text(svg, encoding="utf-8")
 

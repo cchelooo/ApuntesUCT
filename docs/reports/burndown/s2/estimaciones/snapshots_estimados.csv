@@ -47,3 +47,5 @@ snapshot_date,sprint,scope,key,name,equipo,items,horas_asignadas,horas_usadas,ho
 2026-11-01,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,17,3,0,estimacion-retrospectiva
 2026-11-02,S2,Equipo,INT4,INT4,INT4,32,80,73,10,3,estimacion-retrospectiva
 2026-11-02,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,17,3,0,estimacion-retrospectiva
+2026-11-03,S2,Equipo,INT4,INT4,INT4,32,80,73,10,3,registro
+2026-11-03,S2,Integrante,Anker04,Nelson Quiñinao Isla,INT4,8,20,17,3,0,registro

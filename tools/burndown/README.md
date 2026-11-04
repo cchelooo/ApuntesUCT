@@ -92,3 +92,12 @@ override conserva la ventana propia de cada equipo.
   agrega una linea base visual con `Horas restantes = Horas asignadas`.
 - GitHub Projects no entrega historial diario; `snapshots.csv` es la evidencia
   historica desde que se empieza a capturar.
+
+## Distribuciones retrospectivas documentadas
+
+Cuando existe `estimaciones/snapshots_estimados.csv` en la carpeta del sprint,
+los gráficos incorporan sus filas con origen `estimacion-retrospectiva`.
+Estas filas solo modifican la curva histórica, sin alterar `snapshots.csv`
+ni los totales del resumen. La última captura de cada serie y los cortes
+posteriores conservan los datos registrados. Los gráficos afectados indican
+que incluyen una distribución retrospectiva.
