@@ -30,7 +30,9 @@ describe('MaterialDownloadButton', () => {
     // Debe mostrar la alerta con el mensaje correspondiente al 404
     await waitFor(() => {
       expect(
-        screen.getByText('El material solicitado no fue encontrado.')
+        screen.getByText(
+          'El material, la versión o el archivo no están disponibles.'
+        )
       ).toBeTruthy();
     });
 

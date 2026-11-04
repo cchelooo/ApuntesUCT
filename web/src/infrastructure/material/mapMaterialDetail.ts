@@ -48,6 +48,8 @@ function formatDate(value: unknown): string | null {
 
 function mapVersion(raw: MaterialCurrentVersion): MaterialVersion {
   return {
+    id: raw.id,
+    originalFilename: raw.originalFilename,
     number: integer(raw.versionNumber) ?? 1,
     uploadedAt: formatDate(raw.createdAt),
     uploadedBy: null,
@@ -74,6 +76,12 @@ export function mapMaterialDetail(
     professorName: professorId
       ? (names?.professors[professorId] ?? null)
       : null,
+    versions: [...(raw.versions ?? [])]
+      .sort((a, b) => b.versionNumber - a.versionNumber)
+      .map((item) => ({
+        ...mapVersion(item),
+        downloadUrl: buildMaterialDownloadUrl(String(raw.id), item.id),
+      })),
     version: version ? mapVersion(version) : null,
     downloadUrl: version ? buildMaterialDownloadUrl(String(raw.id)) : null,
   };

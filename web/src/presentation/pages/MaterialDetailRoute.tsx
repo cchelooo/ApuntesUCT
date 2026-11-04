@@ -5,6 +5,7 @@ import { useMaterialQuery } from '../../application/material/useMaterialQueries'
 import type { MaterialViewStatus } from '../../domain/material/material';
 import { mapMaterialDetail } from '../../infrastructure/material/mapMaterialDetail';
 import { isMaterialNotFound } from '../../infrastructure/material/materialApi';
+import { MaterialVersionUpload } from '../components/material/MaterialVersionUpload';
 import { MaterialDetailPage } from './MaterialDetailPage';
 
 export function MaterialDetailRoute() {
@@ -28,6 +29,14 @@ export function MaterialDetailRoute() {
 
   return (
     <MaterialDetailPage
+      versionUpload={
+        import.meta.env.DEV &&
+        import.meta.env.VITE_MATERIAL_VERSION_UPLOAD_ENABLED === 'true' &&
+        material &&
+        material.type !== 'LINK' ? (
+          <MaterialVersionUpload key={material.id} materialId={material.id} />
+        ) : undefined
+      }
       materialId={materialId}
       material={material}
       status={status}

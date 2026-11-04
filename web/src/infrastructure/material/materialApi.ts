@@ -2,6 +2,7 @@ import type {
   CreateMaterialRequest,
   CreateMaterialResponse,
   MaterialDetailResponse,
+  MaterialCurrentVersion,
   ListMaterialsParams,
 } from '../../domain/material/materialApi';
 
@@ -201,8 +202,14 @@ export async function uploadMaterial(
   return (await response.json()) as CreateMaterialResponse;
 }
 
-export function buildMaterialDownloadUrl(materialId: string): string {
-  return getMaterialsUrl(`/${encodeURIComponent(materialId)}/download`);
+export function buildMaterialDownloadUrl(
+  materialId: string,
+  versionId?: string
+): string {
+  return (
+    getMaterialsUrl(`/${encodeURIComponent(materialId)}/download`) +
+    (versionId ? `?${new URLSearchParams({ versionId })}` : '')
+  );
 }
 
 export async function fetchMaterial(
@@ -258,4 +265,28 @@ export async function downloadMaterial(materialId: string): Promise<Response> {
   }
 
   return response;
+}
+
+export async function createMaterialVersion(
+  materialId: string,
+  file: File
+): Promise<MaterialCurrentVersion> {
+  const body = new FormData();
+  body.append('file', file);
+  let response: Response;
+  try {
+    response = await fetch(
+      getMaterialsUrl(`/${encodeURIComponent(materialId)}/versions`),
+      {
+        method: 'POST',
+        body,
+      }
+    );
+  } catch {
+    throw new MaterialRequestError('Fallo de red al subir la versión', {
+      isNetworkError: true,
+    });
+  }
+  if (!response.ok) await throwApiError(response);
+  return (await response.json()) as MaterialCurrentVersion;
 }
