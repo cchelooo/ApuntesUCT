@@ -110,10 +110,7 @@ class _FakeVersionRepository implements MaterialRepository {
     calls++;
     if (failNextWith502) {
       failNextWith502 = false;
-      throw ApiException(
-        message: 'Servicio no disponible.',
-        statusCode: 502,
-      );
+      throw ApiException(message: 'Servicio no disponible.', statusCode: 502);
     }
     final file = source as LocalMaterialFile;
     return MaterialVersion(

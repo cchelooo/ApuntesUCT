@@ -15,7 +15,8 @@ class MockSearchMaterialsRepository implements MaterialsRepository {
     String? subject,
     int page,
     int pageSize,
-  }) onGetMaterials;
+  })
+  onGetMaterials;
 
   MockSearchMaterialsRepository({required this.onGetMaterials});
 

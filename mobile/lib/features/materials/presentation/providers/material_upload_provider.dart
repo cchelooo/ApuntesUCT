@@ -21,8 +21,7 @@ class MaterialUploadState {
   const MaterialUploadState.uploading() : this(isUploading: true);
   const MaterialUploadState.success(MaterialDetail detail)
     : this(created: detail);
-  const MaterialUploadState.error(String message)
-    : this(errorMessage: message);
+  const MaterialUploadState.error(String message) : this(errorMessage: message);
 
   bool get isIdle => !isUploading && created == null && errorMessage == null;
   bool get isSuccess => created != null;

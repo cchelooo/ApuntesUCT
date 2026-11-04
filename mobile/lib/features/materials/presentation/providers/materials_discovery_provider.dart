@@ -42,25 +42,25 @@ class DioMaterialsDiscoveryRepository implements MaterialsRepository {
     final cleanSubject = subject?.trim();
     final effectiveSubjectId =
         (subjectId != null && subjectId.trim().isNotEmpty)
-            ? subjectId.trim()
-            : ((cleanSubject != null && cleanSubject.isNotEmpty)
-                ? cleanSubject
-                : null);
+        ? subjectId.trim()
+        : ((cleanSubject != null && cleanSubject.isNotEmpty)
+              ? cleanSubject
+              : null);
 
     final cleanUniversityId =
         (universityId != null && universityId.trim().isNotEmpty)
-            ? universityId.trim()
-            : null;
-    final cleanCareerId =
-        (careerId != null && careerId.trim().isNotEmpty)
-            ? careerId.trim()
-            : null;
+        ? universityId.trim()
+        : null;
+    final cleanCareerId = (careerId != null && careerId.trim().isNotEmpty)
+        ? careerId.trim()
+        : null;
     final cleanProfessorId =
         (professorId != null && professorId.trim().isNotEmpty)
-            ? professorId.trim()
-            : null;
-    final cleanType =
-        (type != null && type.trim().isNotEmpty) ? type.trim() : null;
+        ? professorId.trim()
+        : null;
+    final cleanType = (type != null && type.trim().isNotEmpty)
+        ? type.trim()
+        : null;
 
     final hasFilter =
         cleanQuery.isNotEmpty ||

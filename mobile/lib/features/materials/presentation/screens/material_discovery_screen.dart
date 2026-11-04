@@ -74,18 +74,20 @@ class _MaterialDiscoveryScreenState
       context,
       onApply: () {
         final hierarchy = ref.read(academicHierarchyProvider);
-        ref.read(discoveryMaterialsProvider.notifier).applyHierarchyFilters(
-          universityId: hierarchy.selectedUniversityId,
-          careerId: hierarchy.selectedCareerId,
-          subjectId: hierarchy.selectedSubjectId,
-          professorId: hierarchy.selectedProfessorId,
-          year: hierarchy.selectedYear,
-          type: hierarchy.selectedType,
-          universityName: hierarchy.selectedUniversity?.name,
-          careerName: hierarchy.selectedCareer?.name,
-          subjectName: hierarchy.selectedSubject?.name,
-          professorName: hierarchy.selectedProfessor?.name,
-        );
+        ref
+            .read(discoveryMaterialsProvider.notifier)
+            .applyHierarchyFilters(
+              universityId: hierarchy.selectedUniversityId,
+              careerId: hierarchy.selectedCareerId,
+              subjectId: hierarchy.selectedSubjectId,
+              professorId: hierarchy.selectedProfessorId,
+              year: hierarchy.selectedYear,
+              type: hierarchy.selectedType,
+              universityName: hierarchy.selectedUniversity?.name,
+              careerName: hierarchy.selectedCareer?.name,
+              subjectName: hierarchy.selectedSubject?.name,
+              professorName: hierarchy.selectedProfessor?.name,
+            );
       },
     );
   }
@@ -164,16 +166,13 @@ class _MaterialDiscoveryScreenState
           ),
           onDeleted: () {
             ref.read(discoveryMaterialsProvider.notifier).setUniversity(null);
-            ref
-                .read(academicHierarchyProvider.notifier)
-                .selectUniversity(null);
+            ref.read(academicHierarchyProvider.notifier).selectUniversity(null);
           },
         ),
       );
     }
 
-    if (state.selectedCareerId != null &&
-        state.selectedCareerId!.isNotEmpty) {
+    if (state.selectedCareerId != null && state.selectedCareerId!.isNotEmpty) {
       chips.add(
         Chip(
           key: const Key('active_chip_career'),
@@ -187,7 +186,8 @@ class _MaterialDiscoveryScreenState
       );
     }
 
-    final effectiveSubject = state.selectedSubjectName ??
+    final effectiveSubject =
+        state.selectedSubjectName ??
         state.selectedSubject ??
         state.selectedSubjectId;
     if (effectiveSubject != null && effectiveSubject.isNotEmpty) {

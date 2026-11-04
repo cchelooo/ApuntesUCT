@@ -13,10 +13,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// que el formulario de subida envíe UUID reales existentes en Catalog en vez
 /// de referencias ficticias (antes `subj-eda-uuid` → 400
 /// «subjectId debe ser un UUID válido de Catalog»).
-final catalogSelectorRepositoryProvider =
-    Provider<CatalogSelectorRepository>((ref) {
-      return CatalogSelectorRepository(ref.watch(apiclientProvider));
-    });
+final catalogSelectorRepositoryProvider = Provider<CatalogSelectorRepository>((
+  ref,
+) {
+  return CatalogSelectorRepository(ref.watch(apiclientProvider));
+});
 
 class CatalogSelectorRepository {
   final ApiClient _apiClient;
@@ -29,9 +30,7 @@ class CatalogSelectorRepository {
   Future<List<CareerModel>> listCareers({String? universityId}) => _getList(
     '/catalog/careers',
     CareerModel.fromJson,
-    query: universityId == null
-        ? null
-        : {'universityId': universityId},
+    query: universityId == null ? null : {'universityId': universityId},
   );
 
   Future<List<SubjectModel>> listSubjects({String? careerId}) => _getList(

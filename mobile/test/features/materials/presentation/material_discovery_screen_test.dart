@@ -57,10 +57,7 @@ class _Error502MockRepository extends MockMaterialsRepository {
     int page = 1,
     int pageSize = 10,
   }) async {
-    throw ApiException(
-      statusCode: 502,
-      message: 'Error de Material 502',
-    );
+    throw ApiException(statusCode: 502, message: 'Error de Material 502');
   }
 }
 

@@ -209,7 +209,9 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                 onRetry: () => notifier.retryUniversities(),
                 retryKey: const Key('retry_university_button'),
                 dropdown: KeyedSubtree(
-                  key: ValueKey('university_${hierarchyState.selectedUniversityId}'),
+                  key: ValueKey(
+                    'university_${hierarchyState.selectedUniversityId}',
+                  ),
                   child: DropdownButtonFormField<String>(
                     key: const Key('filter_university_dropdown'),
                     initialValue: hierarchyState.selectedUniversityId,
@@ -229,7 +231,10 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                         .map(
                           (u) => DropdownMenuItem(
                             value: u.id,
-                            child: Text(u.name, overflow: TextOverflow.ellipsis),
+                            child: Text(
+                              u.name,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         )
                         .toList(),
@@ -260,12 +265,13 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                       !hierarchyState.isUniversitySelected
                           ? 'Selecciona una universidad primero'
                           : (hierarchyState.careers.isEmpty &&
-                                  !hierarchyState.isLoadingCareers &&
-                                  hierarchyState.errorCareers == null
-                              ? 'No hay carreras disponibles'
-                              : 'Seleccionar carrera...'),
+                                    !hierarchyState.isLoadingCareers &&
+                                    hierarchyState.errorCareers == null
+                                ? 'No hay carreras disponibles'
+                                : 'Seleccionar carrera...'),
                       style: TextStyle(
-                        color: (!hierarchyState.canSelectCareer ||
+                        color:
+                            (!hierarchyState.canSelectCareer ||
                                 hierarchyState.careers.isEmpty)
                             ? (isDark
                                   ? UctPalette.textoTenueOscuro
@@ -276,10 +282,12 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                     decoration: _inputDecoration(
                       colorFondoCampo,
                       colorBordeCampo,
-                      enabled: hierarchyState.canSelectCareer &&
+                      enabled:
+                          hierarchyState.canSelectCareer &&
                           hierarchyState.careers.isNotEmpty,
                     ),
-                    items: (hierarchyState.canSelectCareer &&
+                    items:
+                        (hierarchyState.canSelectCareer &&
                             hierarchyState.careers.isNotEmpty)
                         ? hierarchyState.careers
                               .map(
@@ -293,7 +301,8 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                               )
                               .toList()
                         : null,
-                    onChanged: (hierarchyState.canSelectCareer &&
+                    onChanged:
+                        (hierarchyState.canSelectCareer &&
                             hierarchyState.careers.isNotEmpty)
                         ? (val) => notifier.selectCareer(val)
                         : null,
@@ -323,10 +332,10 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                       !hierarchyState.isCareerSelected
                           ? 'Selecciona una carrera primero'
                           : (hierarchyState.subjects.isEmpty &&
-                                  !hierarchyState.isLoadingSubjects &&
-                                  hierarchyState.errorSubjects == null
-                              ? 'No hay asignaturas disponibles'
-                              : 'Seleccionar asignatura...'),
+                                    !hierarchyState.isLoadingSubjects &&
+                                    hierarchyState.errorSubjects == null
+                                ? 'No hay asignaturas disponibles'
+                                : 'Seleccionar asignatura...'),
                       style: TextStyle(
                         color: !hierarchyState.canSelectSubject
                             ? (isDark
@@ -382,12 +391,13 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                       !hierarchyState.isSubjectSelected
                           ? 'Selecciona una asignatura primero'
                           : (hierarchyState.professors.isEmpty &&
-                                  !hierarchyState.isLoadingProfessors &&
-                                  hierarchyState.errorProfessors == null
-                              ? 'No hay profesores disponibles'
-                              : 'Seleccionar profesor (opcional)...'),
+                                    !hierarchyState.isLoadingProfessors &&
+                                    hierarchyState.errorProfessors == null
+                                ? 'No hay profesores disponibles'
+                                : 'Seleccionar profesor (opcional)...'),
                       style: TextStyle(
-                        color: (!hierarchyState.canSelectProfessor ||
+                        color:
+                            (!hierarchyState.canSelectProfessor ||
                                 hierarchyState.professors.isEmpty)
                             ? (isDark
                                   ? UctPalette.textoTenueOscuro
@@ -398,10 +408,12 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                     decoration: _inputDecoration(
                       colorFondoCampo,
                       colorBordeCampo,
-                      enabled: hierarchyState.canSelectProfessor &&
+                      enabled:
+                          hierarchyState.canSelectProfessor &&
                           hierarchyState.professors.isNotEmpty,
                     ),
-                    items: (hierarchyState.canSelectProfessor &&
+                    items:
+                        (hierarchyState.canSelectProfessor &&
                             hierarchyState.professors.isNotEmpty)
                         ? hierarchyState.professors
                               .map(
@@ -415,7 +427,8 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
                               )
                               .toList()
                         : null,
-                    onChanged: (hierarchyState.canSelectProfessor &&
+                    onChanged:
+                        (hierarchyState.canSelectProfessor &&
                             hierarchyState.professors.isNotEmpty)
                         ? (val) => notifier.selectProfessor(val)
                         : null,
@@ -560,9 +573,7 @@ class _AcademicFilterSheetState extends ConsumerState<AcademicFilterSheet> {
             decoration: BoxDecoration(
               color: Colors.red.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: Colors.red.withValues(alpha: 0.3),
-              ),
+              border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
             ),
             child: Row(
               children: [

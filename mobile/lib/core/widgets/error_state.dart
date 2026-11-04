@@ -42,16 +42,16 @@ class ErrorState extends StatelessWidget {
     } else if (statusCode != null && statusCode >= 500) {
       title = 'Error del servidor';
       icon = Icons.cloud_off_rounded;
-    } else if (lowerMessage.contains('timeout') || 
-               lowerMessage.contains('tiempo de espera') || 
-               lowerMessage.contains('conexión') ||
-               lowerMessage.contains('red') ||
-               lowerMessage.contains('no disponible')) {
+    } else if (lowerMessage.contains('timeout') ||
+        lowerMessage.contains('tiempo de espera') ||
+        lowerMessage.contains('conexión') ||
+        lowerMessage.contains('red') ||
+        lowerMessage.contains('no disponible')) {
       title = 'Error de conexión';
       icon = Icons.wifi_off_rounded;
-    } else if (lowerMessage.contains('validación') || 
-               lowerMessage.contains('archivo') ||
-               statusCode == 400) {
+    } else if (lowerMessage.contains('validación') ||
+        lowerMessage.contains('archivo') ||
+        statusCode == 400) {
       title = 'Revisa los datos';
       icon = Icons.rule_rounded;
     }
@@ -75,11 +75,7 @@ class ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 56,
-              color: colorScheme.error,
-            ),
+            Icon(icon, size: 56, color: colorScheme.error),
             const SizedBox(height: 16),
             Text(
               title,
