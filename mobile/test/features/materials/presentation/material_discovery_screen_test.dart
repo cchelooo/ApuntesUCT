@@ -1,5 +1,7 @@
 import 'package:apuntesuct_mobile/core/widgets/empty_state.dart';
+import 'package:apuntesuct_mobile/core/widgets/error_state.dart';
 import 'package:apuntesuct_mobile/core/widgets/loading_state.dart';
+import 'package:apuntesuct_mobile/core/errors/api_exception.dart'; // <-- IMPORTANTE: Agregar este import para el 502
 import 'package:apuntesuct_mobile/features/materials/data/mock_materials_repository.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_fixtures.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
@@ -12,6 +14,57 @@ import 'package:apuntesuct_mobile/features/materials/presentation/widgets/materi
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class FailingMaterialsRepository extends MockMaterialsRepository {
+  bool shouldFail = false;
+
+  @override
+  Future<List<MaterialSummary>> getMaterials({
+    String? query,
+    String? subject,
+    String? universityId,
+    String? careerId,
+    String? subjectId,
+    String? professorId,
+    int? year,
+    String? type,
+    int page = 1,
+    int pageSize = 10,
+  }) async {
+    if (shouldFail) {
+      throw Exception('Error de conexión simulado');
+    }
+    // Como el MockMaterialsRepository base solo acepta query, subject, page y pageSize,
+    // llamamos al padre pasándole solo los que él conoce:
+    return super.getMaterials(
+      query: query,
+      subject: subject,
+      page: page,
+      pageSize: pageSize,
+    );
+  }
+}
+
+class _Error502MockRepository extends MockMaterialsRepository {
+  @override
+  Future<List<MaterialSummary>> getMaterials({
+    String? query,
+    String? subject,
+    String? universityId,
+    String? careerId,
+    String? subjectId,
+    String? professorId,
+    int? year,
+    String? type,
+    int page = 1,
+    int pageSize = 10,
+  }) async {
+    throw ApiException(
+      statusCode: 502,
+      message: 'Error de Material 502',
+    );
+  }
+}
 
 void main() {
   Widget buildScreen({List<dynamic> overrides = const []}) {
@@ -289,6 +342,29 @@ void main() {
         // El filtro de asignatura previo debe haberse limpiado y mostrar todos los materiales (2)
         expect(find.byType(MaterialSummaryCard), findsNWidgets(2));
         expect(find.textContaining('Asignatura: Cálculo I'), findsNothing);
+      },
+    );
+    testWidgets(
+      'Error HTTP 502 en Discovery muestra ErrorState con título Error del servidor (#304)',
+      (WidgetTester tester) async {
+        // Lanzamos directamente el ProviderScope con el mock que dispara el 502
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              materialsRepositoryProvider.overrideWithValue(
+                _Error502MockRepository(),
+              ),
+            ],
+            child: const MaterialApp(home: MaterialDiscoveryScreen()),
+          ),
+        );
+
+        await tester.pumpAndSettle();
+
+        // Verificamos que aparece el ErrorState inteligente con el título de servidor y el ícono correcto
+        expect(find.byType(ErrorState), findsOneWidget);
+        expect(find.text('Error del servidor'), findsOneWidget);
+        expect(find.byIcon(Icons.cloud_off_rounded), findsOneWidget);
       },
     );
   });

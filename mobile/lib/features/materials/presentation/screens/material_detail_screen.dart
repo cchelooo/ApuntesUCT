@@ -103,7 +103,7 @@ class MaterialDetailScreen extends StatelessWidget {
                   return Center(
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      child: ErrorState(
+                      child: ErrorState.fromMessage(
                         message: apiErrorMessage(
                           error,
                           fallback: 'No fue posible cargar el material. Verifica tu conexión.',

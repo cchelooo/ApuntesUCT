@@ -147,6 +147,7 @@ class DiscoveryMaterialsState {
   final String? selectedSubjectName;
   final String? selectedProfessorName;
   final String? errorMessage;
+  final Object? error;
 
   const DiscoveryMaterialsState({
     this.items = const [],
@@ -167,6 +168,7 @@ class DiscoveryMaterialsState {
     this.selectedSubjectName,
     this.selectedProfessorName,
     this.errorMessage,
+    this.error,
   });
 
   bool get hasHierarchyFilters =>
@@ -228,6 +230,7 @@ class DiscoveryMaterialsState {
     String? selectedProfessorName,
     bool clearProfessorName = false,
     String? errorMessage,
+    Object? error,
     bool clearError = false,
   }) {
     return DiscoveryMaterialsState(
@@ -267,6 +270,7 @@ class DiscoveryMaterialsState {
           ? null
           : (selectedProfessorName ?? this.selectedProfessorName),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      error: clearError ? null : (error ?? this.error),
     );
   }
 }
@@ -320,6 +324,7 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
       if (requestId != _activeRequestId) return;
       state = state.copyWith(
         isLoading: false,
+        error: error,
         errorMessage: apiErrorMessage(
           error,
           fallback:
@@ -577,6 +582,7 @@ class DiscoveryMaterialsNotifier extends Notifier<DiscoveryMaterialsState> {
           error,
           fallback: 'No fue posible cargar más materiales.',
         ),
+        error: error,
       );
     }
   }
