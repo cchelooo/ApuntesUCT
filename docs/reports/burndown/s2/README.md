@@ -27,7 +27,7 @@ Las tareas con `Equipo = Compartido` quedan fuera del burndown de equipos e inte
 | Equipo | Items | Horas asignadas | Horas usadas | Horas restantes | Horas excedidas | Grafico |
 |---|---:|---:|---:|---:|---:|---|
 | INT2 | 50 | 120 | 123.4 | 3.5 | 6.9 | [ver (2026-09-30 a 2026-11-04)](charts/team-int2.svg) |
-| INT4 | 32 | 80 | 82 | 0 | 3 | [ver (2026-10-01 a 2026-11-05)](charts/team-int4.svg) |
+| INT4 | 32 | 80 | 83 | 0 | 3 | [ver (2026-10-01 a 2026-11-05)](charts/team-int4.svg) |
 
 ## Integrantes
 
@@ -39,7 +39,7 @@ Las tareas con `Equipo = Compartido` quedan fuera del burndown de equipos e inte
 | INT2 | Gabriel Gutierrez | 8 | 20 | 19 | 1 | 0 | [ver (2026-09-30 a 2026-11-04)](charts/member-gabrielgutierrez1.svg) |
 | INT2 | Martina Iturrieta | 8 | 20 | 23.9 | 2.5 | 6.4 | [ver (2026-09-30 a 2026-11-04)](charts/member-kennyaale.svg) |
 | INT2 | Raul Rodriguez | 8 | 20 | 20 | 0 | 0 | [ver (2026-09-30 a 2026-11-04)](charts/member-rrodriguez2025.svg) |
-| INT4 | Eduardo Escares | 8 | 20 | 19 | 0 | 0 | [ver (2026-10-01 a 2026-11-05)](charts/member-eduardoscrs.svg) |
+| INT4 | Eduardo Escares | 8 | 20 | 20 | 0 | 0 | [ver (2026-10-01 a 2026-11-05)](charts/member-eduardoscrs.svg) |
 | INT4 | Marcelo Santana | 8 | 20 | 20 | 0 | 0 | [ver (2026-10-01 a 2026-11-05)](charts/member-cchelooo.svg) |
 | INT4 | Nelson Quiñinao Isla | 8 | 20 | 20 | 0 | 0 | [ver (2026-10-01 a 2026-11-05)](charts/member-anker04.svg) |
 | INT4 | Yaninna Alvarez | 8 | 20 | 23 | 0 | 3 | [ver (2026-10-01 a 2026-11-05)](charts/member-yaninna137.svg) |
@@ -52,7 +52,7 @@ es de 7 horas usadas y se reparten 10 horas adicionales hasta llegar a
 17 usadas y 3 restantes. El ajuste de INT4 cambia únicamente esa contribución.
 
 Se incluye el corte final del **04-11-2026**: Nelson registra
-20 horas usadas y 0 restantes, e INT4 registra 82 usadas y 0 restantes.
+20 horas usadas y 0 restantes, e INT4 registra 83 usadas y 0 restantes.
 Las capturas originales se conservan sin cambios en `snapshots.csv`.
 El generador conserva la distribución histórica y utiliza las capturas reales
 para los nuevos cortes.
