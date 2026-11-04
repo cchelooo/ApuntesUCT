@@ -13,7 +13,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-// Clases auxiliares Mock (van aquí, fuera del main)
 class FailingMaterialsRepository extends MockMaterialsRepository {
   bool shouldFail = false;
 
@@ -21,12 +20,20 @@ class FailingMaterialsRepository extends MockMaterialsRepository {
   Future<List<MaterialSummary>> getMaterials({
     String? query,
     String? subject,
+    String? universityId,
+    String? careerId,
+    String? subjectId,
+    String? professorId,
+    int? year,
+    String? type,
     int page = 1,
     int pageSize = 10,
   }) async {
     if (shouldFail) {
       throw Exception('Error de conexión simulado');
     }
+    // Como el MockMaterialsRepository base solo acepta query, subject, page y pageSize,
+    // llamamos al padre pasándole solo los que él conoce:
     return super.getMaterials(
       query: query,
       subject: subject,
@@ -36,16 +43,24 @@ class FailingMaterialsRepository extends MockMaterialsRepository {
   }
 }
 
-// AQUÍ ES DONDE VA LA CLASE MOCK DEL 502 QUE ME PREGUNTABAS:
 class _Error502MockRepository extends MockMaterialsRepository {
   @override
   Future<List<MaterialSummary>> getMaterials({
     String? query,
     String? subject,
+    String? universityId,
+    String? careerId,
+    String? subjectId,
+    String? professorId,
+    int? year,
+    String? type,
     int page = 1,
     int pageSize = 10,
   }) async {
-    throw ApiException(statusCode: 502, message: 'Error de Material 502');
+    throw ApiException(
+      statusCode: 502,
+      message: 'Error de Material 502',
+    );
   }
 }
 
