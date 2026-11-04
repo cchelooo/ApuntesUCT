@@ -67,10 +67,7 @@ void main() {
     );
 
     if (container != null) {
-      return UncontrolledProviderScope(
-        container: container,
-        child: app,
-      );
+      return UncontrolledProviderScope(container: container, child: app);
     }
 
     return ProviderScope(
@@ -218,7 +215,9 @@ void main() {
         );
 
         // Tocar Aplicar
-        await tester.ensureVisible(find.byKey(const Key('filter_apply_button')));
+        await tester.ensureVisible(
+          find.byKey(const Key('filter_apply_button')),
+        );
         await tester.tap(find.byKey(const Key('filter_apply_button')));
         await tester.pumpAndSettle();
 
@@ -365,13 +364,17 @@ void main() {
         await tester.pumpAndSettle();
 
         // 1. Configurar campos no relacionados: Año y Tipo
-        await tester.ensureVisible(find.byKey(const Key('filter_year_dropdown')));
+        await tester.ensureVisible(
+          find.byKey(const Key('filter_year_dropdown')),
+        );
         await tester.tap(find.byKey(const Key('filter_year_dropdown')));
         await tester.pumpAndSettle();
         await tester.tap(find.text('2026').last);
         await tester.pumpAndSettle();
 
-        await tester.ensureVisible(find.byKey(const Key('filter_type_dropdown')));
+        await tester.ensureVisible(
+          find.byKey(const Key('filter_type_dropdown')),
+        );
         await tester.tap(find.byKey(const Key('filter_type_dropdown')));
         await tester.pumpAndSettle();
         await tester.tap(find.text('DOCUMENT').last);
@@ -379,7 +382,10 @@ void main() {
 
         // Verificar que los campos no relacionados quedaron seleccionados
         expect(container.read(academicHierarchyProvider).selectedYear, 2026);
-        expect(container.read(academicHierarchyProvider).selectedType, 'DOCUMENT');
+        expect(
+          container.read(academicHierarchyProvider).selectedType,
+          'DOCUMENT',
+        );
 
         // 2. Seleccionar universidad (provoca fallo de red en carreras)
         await tester.ensureVisible(
@@ -406,14 +412,14 @@ void main() {
           find.textContaining('No se pudieron cargar las carreras'),
           findsNothing,
         );
-        expect(
-          container.read(academicHierarchyProvider).careers,
-          isNotEmpty,
-        );
+        expect(container.read(academicHierarchyProvider).careers, isNotEmpty);
 
         // Y lo más importante: los campos no relacionados Año y Tipo se mantuvieron intactos
         expect(container.read(academicHierarchyProvider).selectedYear, 2026);
-        expect(container.read(academicHierarchyProvider).selectedType, 'DOCUMENT');
+        expect(
+          container.read(academicHierarchyProvider).selectedType,
+          'DOCUMENT',
+        );
         expect(
           container.read(academicHierarchyProvider).selectedUniversityId,
           'uct-main-uuid',

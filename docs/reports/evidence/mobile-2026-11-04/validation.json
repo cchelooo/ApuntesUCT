@@ -1,0 +1,60 @@
+{
+  "date": "2026-11-04",
+  "timezone": "America/Santiago",
+  "baseCommit": "98651746ac8f5128dacfba0179a3bd47bc6d9d3b",
+  "flutter": "3.47.2",
+  "dart": "3.13.2",
+  "checks": {
+    "format": {
+      "exitCode": 0,
+      "files": 184,
+      "changed": 0
+    },
+    "analyze": {
+      "exitCode": 0,
+      "issues": 0
+    },
+    "flutterTest": {
+      "exitCode": 0,
+      "passed": 526,
+      "skippedOptIn": 5
+    },
+    "apkDebug": {
+      "exitCode": 0,
+      "target": "lib/main.dart",
+      "bytes": 173327105,
+      "sha256": "a666044cba0ec10ba4d4b3ddeb4911a4f16b3e25f7b92b2cd3ae89d6a19070db"
+    },
+    "iosSimulatorBuild": {
+      "exitCode": 0,
+      "target": "lib/main.dart"
+    },
+    "androidInstallLaunch": {
+      "exitCode": 0,
+      "device": "Medium_Phone / Android 17 API 37"
+    },
+    "iosInstallLaunch": {
+      "exitCode": 0,
+      "device": "iPhone 17 Pro Simulator / iOS 26.5"
+    },
+    "androidDrive": {
+      "exitCode": 0,
+      "report": "android/report.json"
+    },
+    "iosDrive": {
+      "exitCode": 0,
+      "report": "ios/report.json"
+    }
+  },
+  "sourceSha256": {
+    "mobile/tool/start_gateway_smoke.cjs": "1d1356e7b3da726661071dcf17089ffb2125bb59bc581ff5946214a374b9fd1f",
+    "mobile/integration_test/gateway_native_smoke_test.dart": "8177c8754bf1c1bb758a32b533a2f220b54ea8028b51bb25b0e93b7a6846dadf",
+    "mobile/test_driver/gateway_smoke.dart": "0dfc4dbb86009c8a6be15523232741a73b845a28f1ab86aa1122694346793e80"
+  },
+  "limitations": [
+    "Auth login is an HTTP mock, not real authentication",
+    "Fixture publication is a direct update in a disposable database, not moderation",
+    "No physical iPhone, signed IPA, external viewer or production deployment was tested",
+    "Multipart originalFilename contains mojibake for accented filename in INT2 response"
+  ]
+}

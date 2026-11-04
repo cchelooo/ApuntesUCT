@@ -163,6 +163,7 @@ class AcademicHierarchySelection {
 /// activas para los 6 niveles (Issues #281, #282 y #289).
 class AcademicHierarchyState {
   static const List<int> defaultYears = [2026, 2025, 2024, 2023, 2022, 2021];
+
   /// Tipos contractuales de material publicados en Swagger / Material Service (Issue #295).
   static const List<String> defaultTypes = [
     'DOCUMENT',
@@ -472,10 +473,7 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
     if (uniId == null) return;
 
     final myGen = ++_careersGen;
-    state = state.copyWith(
-      isLoadingCareers: true,
-      clearErrorCareers: true,
-    );
+    state = state.copyWith(isLoadingCareers: true, clearErrorCareers: true);
     try {
       final careers = await _repo.fetchCareersByUniversity(uniId);
       if (_careersGen != myGen) return;
@@ -542,10 +540,7 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
     if (careerId == null) return;
 
     final myGen = ++_subjectsGen;
-    state = state.copyWith(
-      isLoadingSubjects: true,
-      clearErrorSubjects: true,
-    );
+    state = state.copyWith(isLoadingSubjects: true, clearErrorSubjects: true);
     try {
       final subjects = await _repo.fetchSubjectsByCareer(careerId);
       if (_subjectsGen != myGen) return;
@@ -590,7 +585,10 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
       final professors = await _repo.fetchProfessorsBySubject(validId);
       // Descarta la respuesta si el usuario ya seleccionó otra asignatura.
       if (_professorsGen != myGen) return;
-      state = state.copyWith(professors: professors, isLoadingProfessors: false);
+      state = state.copyWith(
+        professors: professors,
+        isLoadingProfessors: false,
+      );
     } catch (e) {
       if (_professorsGen != myGen) return;
       state = state.copyWith(
@@ -614,7 +612,10 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
     try {
       final professors = await _repo.fetchProfessorsBySubject(subjId);
       if (_professorsGen != myGen) return;
-      state = state.copyWith(professors: professors, isLoadingProfessors: false);
+      state = state.copyWith(
+        professors: professors,
+        isLoadingProfessors: false,
+      );
     } catch (e) {
       if (_professorsGen != myGen) return;
       state = state.copyWith(

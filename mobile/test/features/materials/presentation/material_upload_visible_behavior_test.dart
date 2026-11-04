@@ -69,9 +69,7 @@ void main() {
       tester,
     ) async {
       final gate = Completer<MaterialDetail>();
-      final fake = _GateUploadRepository(
-        onUpload: (_) => gate.future,
-      );
+      final fake = _GateUploadRepository(onUpload: (_) => gate.future);
       await pumpUploadScreen(
         tester,
         pickFile: () async => MaterialPickedFile(
@@ -217,10 +215,7 @@ class _RetryUploadRepository implements MaterialRepository {
   Future<MaterialDetail> upload(UploadMaterialRequest request) async {
     calls++;
     if (calls == 1) {
-      throw ApiException(
-        message: 'Servicio no disponible.',
-        statusCode: 502,
-      );
+      throw ApiException(message: 'Servicio no disponible.', statusCode: 502);
     }
     return _createdDetail();
   }

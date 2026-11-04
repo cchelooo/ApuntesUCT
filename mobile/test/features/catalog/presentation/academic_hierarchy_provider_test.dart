@@ -19,10 +19,9 @@ class _FakeSuccessRepo implements IAcademicHierarchyRepository {
   @override
   Future<List<CareerModel>> fetchCareersByUniversity(
     String universityId,
-  ) async =>
-      CareerModel.mockList()
-          .where((c) => c.universityId == universityId)
-          .toList();
+  ) async => CareerModel.mockList()
+      .where((c) => c.universityId == universityId)
+      .toList();
 
   @override
   Future<List<SubjectModel>> fetchSubjectsByCareer(String careerId) async =>
@@ -31,8 +30,7 @@ class _FakeSuccessRepo implements IAcademicHierarchyRepository {
   @override
   Future<List<ProfessorModel>> fetchProfessorsBySubject(
     String subjectId,
-  ) async =>
-      ProfessorModel.mockList();
+  ) async => ProfessorModel.mockList();
 }
 
 class _FakeControllableRepo implements IAcademicHierarchyRepository {
@@ -59,8 +57,7 @@ class _FakeControllableRepo implements IAcademicHierarchyRepository {
   @override
   Future<List<ProfessorModel>> fetchProfessorsBySubject(
     String subjectId,
-  ) async =>
-      ProfessorModel.mockList();
+  ) async => ProfessorModel.mockList();
 }
 
 class _FakeErrorRepo implements IAcademicHierarchyRepository {
@@ -71,8 +68,7 @@ class _FakeErrorRepo implements IAcademicHierarchyRepository {
   @override
   Future<List<CareerModel>> fetchCareersByUniversity(
     String universityId,
-  ) async =>
-      throw Exception('Error de red en carreras');
+  ) async => throw Exception('Error de red en carreras');
 
   @override
   Future<List<SubjectModel>> fetchSubjectsByCareer(String careerId) async =>
@@ -81,8 +77,7 @@ class _FakeErrorRepo implements IAcademicHierarchyRepository {
   @override
   Future<List<ProfessorModel>> fetchProfessorsBySubject(
     String subjectId,
-  ) async =>
-      throw Exception('Error de red en profesores');
+  ) async => throw Exception('Error de red en profesores');
 }
 
 /// Repositorio sustituible para simular respuestas vacías, errores de red
@@ -195,19 +190,25 @@ void main() {
       expect(state.universities, isNotEmpty);
     });
 
-    test('loadUniversities registra error cuando el repositorio falla', () async {
-      final errorContainer = _makeContainer(repo: _FakeErrorRepo());
-      addTearDown(errorContainer.dispose);
+    test(
+      'loadUniversities registra error cuando el repositorio falla',
+      () async {
+        final errorContainer = _makeContainer(repo: _FakeErrorRepo());
+        addTearDown(errorContainer.dispose);
 
-      await errorContainer
-          .read(academicHierarchyProvider.notifier)
-          .loadUniversities();
-      final state = errorContainer.read(academicHierarchyProvider);
+        await errorContainer
+            .read(academicHierarchyProvider.notifier)
+            .loadUniversities();
+        final state = errorContainer.read(academicHierarchyProvider);
 
-      expect(state.isLoadingUniversities, isFalse);
-      expect(state.errorUniversities, contains('Error de red en universidades'));
-      expect(state.universities, isEmpty);
-    });
+        expect(state.isLoadingUniversities, isFalse);
+        expect(
+          state.errorUniversities,
+          contains('Error de red en universidades'),
+        );
+        expect(state.universities, isEmpty);
+      },
+    );
 
     // -----------------------------------------------------------------------
     // selectUniversity — via repositorio (fix cascada + loading hijos)
@@ -234,43 +235,49 @@ void main() {
       expect(state.canSelectCareer, isTrue);
     });
 
-    test('selectUniversity con repositorio fallido registra errorCareers', () async {
-      final errorContainer = _makeContainer(repo: _FakeErrorRepo());
-      addTearDown(errorContainer.dispose);
+    test(
+      'selectUniversity con repositorio fallido registra errorCareers',
+      () async {
+        final errorContainer = _makeContainer(repo: _FakeErrorRepo());
+        addTearDown(errorContainer.dispose);
 
-      await errorContainer
-          .read(academicHierarchyProvider.notifier)
-          .selectUniversity('uct-main-uuid');
-      final state = errorContainer.read(academicHierarchyProvider);
+        await errorContainer
+            .read(academicHierarchyProvider.notifier)
+            .selectUniversity('uct-main-uuid');
+        final state = errorContainer.read(academicHierarchyProvider);
 
-      expect(state.isLoadingCareers, isFalse);
-      expect(state.errorCareers, contains('Error de red en carreras'));
-      expect(state.careers, isEmpty);
-    });
+        expect(state.isLoadingCareers, isFalse);
+        expect(state.errorCareers, contains('Error de red en carreras'));
+        expect(state.careers, isEmpty);
+      },
+    );
 
-    test('selectUniversity reinicia en cascada selecciones y listas hijas', () async {
-      final notifier = container.read(academicHierarchyProvider.notifier);
+    test(
+      'selectUniversity reinicia en cascada selecciones y listas hijas',
+      () async {
+        final notifier = container.read(academicHierarchyProvider.notifier);
 
-      await notifier.selectUniversity('uct-main-uuid');
-      await notifier.selectCareer('inf-uct-uuid');
-      await notifier.selectSubject('subj-integra-iv-uuid');
-      notifier.selectProfessor('prof-mellado-uuid');
+        await notifier.selectUniversity('uct-main-uuid');
+        await notifier.selectCareer('inf-uct-uuid');
+        await notifier.selectSubject('subj-integra-iv-uuid');
+        notifier.selectProfessor('prof-mellado-uuid');
 
-      var state = container.read(academicHierarchyProvider);
-      expect(state.selectedProfessorId, 'prof-mellado-uuid');
+        var state = container.read(academicHierarchyProvider);
+        expect(state.selectedProfessorId, 'prof-mellado-uuid');
 
-      await notifier.selectUniversity('otra-uni-uuid');
-      state = container.read(academicHierarchyProvider);
+        await notifier.selectUniversity('otra-uni-uuid');
+        state = container.read(academicHierarchyProvider);
 
-      expect(state.selectedUniversityId, 'otra-uni-uuid');
-      expect(state.selectedCareerId, isNull);
-      expect(state.selectedSubjectId, isNull);
-      expect(state.selectedProfessorId, isNull);
-      expect(state.subjects, isEmpty);
-      expect(state.professors, isEmpty);
-      expect(state.canSelectSubject, isFalse);
-      expect(state.canSelectProfessor, isFalse);
-    });
+        expect(state.selectedUniversityId, 'otra-uni-uuid');
+        expect(state.selectedCareerId, isNull);
+        expect(state.selectedSubjectId, isNull);
+        expect(state.selectedProfessorId, isNull);
+        expect(state.subjects, isEmpty);
+        expect(state.professors, isEmpty);
+        expect(state.canSelectSubject, isFalse);
+        expect(state.canSelectProfessor, isFalse);
+      },
+    );
 
     // -----------------------------------------------------------------------
     // selectCareer — via repositorio
@@ -292,26 +299,29 @@ void main() {
       expect(state.isLoadingProfessors, isFalse);
     });
 
-    test('selectCareer con repositorio fallido registra errorSubjects', () async {
-      final errorContainer = _makeContainer(repo: _FakeErrorRepo());
-      addTearDown(errorContainer.dispose);
+    test(
+      'selectCareer con repositorio fallido registra errorSubjects',
+      () async {
+        final errorContainer = _makeContainer(repo: _FakeErrorRepo());
+        addTearDown(errorContainer.dispose);
 
-      errorContainer
-          .read(academicHierarchyProvider.notifier)
-          .setUniversities(UniversityModel.mockList());
-      errorContainer
-          .read(academicHierarchyProvider.notifier)
-          .setLoadingUniversities(false);
+        errorContainer
+            .read(academicHierarchyProvider.notifier)
+            .setUniversities(UniversityModel.mockList());
+        errorContainer
+            .read(academicHierarchyProvider.notifier)
+            .setLoadingUniversities(false);
 
-      await errorContainer
-          .read(academicHierarchyProvider.notifier)
-          .selectCareer('inf-uct-uuid');
-      final state = errorContainer.read(academicHierarchyProvider);
+        await errorContainer
+            .read(academicHierarchyProvider.notifier)
+            .selectCareer('inf-uct-uuid');
+        final state = errorContainer.read(academicHierarchyProvider);
 
-      expect(state.isLoadingSubjects, isFalse);
-      expect(state.errorSubjects, contains('Error de red en asignaturas'));
-      expect(state.subjects, isEmpty);
-    });
+        expect(state.isLoadingSubjects, isFalse);
+        expect(state.errorSubjects, contains('Error de red en asignaturas'));
+        expect(state.subjects, isEmpty);
+      },
+    );
 
     test('selectCareer reinicia asignatura y profesor', () async {
       final notifier = container.read(academicHierarchyProvider.notifier);
@@ -349,35 +359,41 @@ void main() {
       expect(state.isLoadingProfessors, isFalse);
     });
 
-    test('selectSubject con repositorio fallido registra errorProfessors', () async {
-      final errorContainer = _makeContainer(repo: _FakeErrorRepo());
-      addTearDown(errorContainer.dispose);
+    test(
+      'selectSubject con repositorio fallido registra errorProfessors',
+      () async {
+        final errorContainer = _makeContainer(repo: _FakeErrorRepo());
+        addTearDown(errorContainer.dispose);
 
-      await errorContainer
-          .read(academicHierarchyProvider.notifier)
-          .selectSubject('subj-integra-iv-uuid');
-      final state = errorContainer.read(academicHierarchyProvider);
+        await errorContainer
+            .read(academicHierarchyProvider.notifier)
+            .selectSubject('subj-integra-iv-uuid');
+        final state = errorContainer.read(academicHierarchyProvider);
 
-      expect(state.isLoadingProfessors, isFalse);
-      expect(state.errorProfessors, contains('Error de red en profesores'));
-      expect(state.professors, isEmpty);
-    });
+        expect(state.isLoadingProfessors, isFalse);
+        expect(state.errorProfessors, contains('Error de red en profesores'));
+        expect(state.professors, isEmpty);
+      },
+    );
 
-    test('selectSubject reinicia profesor y carga profesores del nuevo padre', () async {
-      final notifier = container.read(academicHierarchyProvider.notifier);
-      await notifier.selectUniversity('uct-main-uuid');
-      await notifier.selectCareer('inf-uct-uuid');
-      await notifier.selectSubject('ramo-1');
-      notifier.selectProfessor('prof-1');
+    test(
+      'selectSubject reinicia profesor y carga profesores del nuevo padre',
+      () async {
+        final notifier = container.read(academicHierarchyProvider.notifier);
+        await notifier.selectUniversity('uct-main-uuid');
+        await notifier.selectCareer('inf-uct-uuid');
+        await notifier.selectSubject('ramo-1');
+        notifier.selectProfessor('prof-1');
 
-      await notifier.selectSubject('ramo-2');
-      final state = container.read(academicHierarchyProvider);
+        await notifier.selectSubject('ramo-2');
+        final state = container.read(academicHierarchyProvider);
 
-      expect(state.selectedSubjectId, 'ramo-2');
-      expect(state.selectedProfessorId, isNull);
-      expect(state.professors, isNotEmpty);
-      expect(state.isLoadingProfessors, isFalse);
-    });
+        expect(state.selectedSubjectId, 'ramo-2');
+        expect(state.selectedProfessorId, isNull);
+        expect(state.professors, isNotEmpty);
+        expect(state.isLoadingProfessors, isFalse);
+      },
+    );
 
     // -----------------------------------------------------------------------
     // selectProfessor
@@ -445,32 +461,38 @@ void main() {
     // toQueryParams
     // -----------------------------------------------------------------------
 
-    test('toQueryParams serializa correctamente los parametros no nulos', () async {
-      final notifier = container.read(academicHierarchyProvider.notifier);
+    test(
+      'toQueryParams serializa correctamente los parametros no nulos',
+      () async {
+        final notifier = container.read(academicHierarchyProvider.notifier);
 
-      expect(container.read(academicHierarchyProvider).toQueryParams(), isEmpty);
+        expect(
+          container.read(academicHierarchyProvider).toQueryParams(),
+          isEmpty,
+        );
 
-      await notifier.selectUniversity('uct-uuid');
-      await notifier.selectCareer('carr-uuid');
-      expect(container.read(academicHierarchyProvider).toQueryParams(), {
-        'universityId': 'uct-uuid',
-        'careerId': 'carr-uuid',
-      });
+        await notifier.selectUniversity('uct-uuid');
+        await notifier.selectCareer('carr-uuid');
+        expect(container.read(academicHierarchyProvider).toQueryParams(), {
+          'universityId': 'uct-uuid',
+          'careerId': 'carr-uuid',
+        });
 
-      await notifier.selectSubject('subj-uuid');
-      notifier.selectProfessor('prof-uuid');
-      notifier.selectYear(2024);
-      notifier.selectType('apunte');
+        await notifier.selectSubject('subj-uuid');
+        notifier.selectProfessor('prof-uuid');
+        notifier.selectYear(2024);
+        notifier.selectType('apunte');
 
-      expect(container.read(academicHierarchyProvider).toQueryParams(), {
-        'universityId': 'uct-uuid',
-        'careerId': 'carr-uuid',
-        'subjectId': 'subj-uuid',
-        'professorId': 'prof-uuid',
-        'year': '2024',
-        'type': 'apunte',
-      });
-    });
+        expect(container.read(academicHierarchyProvider).toQueryParams(), {
+          'universityId': 'uct-uuid',
+          'careerId': 'carr-uuid',
+          'subjectId': 'subj-uuid',
+          'professorId': 'prof-uuid',
+          'year': '2024',
+          'type': 'apunte',
+        });
+      },
+    );
 
     // -----------------------------------------------------------------------
     // resetSelection
@@ -510,18 +532,21 @@ void main() {
     // resetAll
     // -----------------------------------------------------------------------
 
-    test('resetAll devuelve el estado a valores iniciales por defecto', () async {
-      final notifier = container.read(academicHierarchyProvider.notifier);
+    test(
+      'resetAll devuelve el estado a valores iniciales por defecto',
+      () async {
+        final notifier = container.read(academicHierarchyProvider.notifier);
 
-      await notifier.loadUniversities();
-      await notifier.selectUniversity('uct-main-uuid');
+        await notifier.loadUniversities();
+        await notifier.selectUniversity('uct-main-uuid');
 
-      notifier.resetAll();
-      final state = container.read(academicHierarchyProvider);
+        notifier.resetAll();
+        final state = container.read(academicHierarchyProvider);
 
-      expect(state.universities, isEmpty);
-      expect(state.selectedUniversityId, isNull);
-    });
+        expect(state.universities, isEmpty);
+        expect(state.selectedUniversityId, isNull);
+      },
+    );
 
     // -----------------------------------------------------------------------
     // Gestion de estados de carga y error manuales
@@ -557,101 +582,96 @@ void main() {
     // Provider computado reactivo
     // -----------------------------------------------------------------------
 
-    test('hasAcademicHierarchyFiltersProvider reacciona reactivamente', () async {
-      expect(container.read(hasAcademicHierarchyFiltersProvider), isFalse);
+    test(
+      'hasAcademicHierarchyFiltersProvider reacciona reactivamente',
+      () async {
+        expect(container.read(hasAcademicHierarchyFiltersProvider), isFalse);
 
-      await container
-          .read(academicHierarchyProvider.notifier)
-          .selectUniversity('u1');
-      expect(container.read(hasAcademicHierarchyFiltersProvider), isTrue);
+        await container
+            .read(academicHierarchyProvider.notifier)
+            .selectUniversity('u1');
+        expect(container.read(hasAcademicHierarchyFiltersProvider), isTrue);
 
-      container
-          .read(academicHierarchyProvider.notifier)
-          .resetSelection();
-      expect(container.read(hasAcademicHierarchyFiltersProvider), isFalse);
-    });
+        container.read(academicHierarchyProvider.notifier).resetSelection();
+        expect(container.read(hasAcademicHierarchyFiltersProvider), isFalse);
+      },
+    );
 
     // -----------------------------------------------------------------------
     // Race conditions y descarte de respuestas obsoletas (#326)
     // -----------------------------------------------------------------------
 
-    test(
-      'Descarta respuestas de red obsoletas ante cambios rápidos de universidad (#326)',
-      () async {
-        final slowCompleter = Completer<List<CareerModel>>();
-        final repo = _FakeControllableRepo();
-        repo.onFetchCareers = (uniId) {
-          if (uniId == 'uni-lenta') return slowCompleter.future;
-          return [
-            const CareerModel(
-              id: 'carrera-rapida',
-              universityId: 'uni-rapida',
-              name: 'Carrera Rápida',
-              code: 'CR1',
-              active: true,
-            ),
-          ];
-        };
-
-        final c = _makeContainer(repo: repo);
-        addTearDown(c.dispose);
-        final notifier = c.read(academicHierarchyProvider.notifier);
-
-        final p1 = notifier.selectUniversity('uni-lenta');
-        final p2 = notifier.selectUniversity('uni-rapida');
-
-        await p2;
-        var state = c.read(academicHierarchyProvider);
-        expect(state.selectedUniversityId, 'uni-rapida');
-        expect(state.careers.first.id, 'carrera-rapida');
-
-        slowCompleter.complete([
+    test('Descarta respuestas de red obsoletas ante cambios rápidos de universidad (#326)', () async {
+      final slowCompleter = Completer<List<CareerModel>>();
+      final repo = _FakeControllableRepo();
+      repo.onFetchCareers = (uniId) {
+        if (uniId == 'uni-lenta') return slowCompleter.future;
+        return [
           const CareerModel(
-            id: 'carrera-lenta',
-            universityId: 'uni-lenta',
-            name: 'Carrera Lenta',
-            code: 'CL1',
+            id: 'carrera-rapida',
+            universityId: 'uni-rapida',
+            name: 'Carrera Rápida',
+            code: 'CR1',
             active: true,
           ),
-        ]);
-        await p1;
+        ];
+      };
 
-        state = c.read(academicHierarchyProvider);
-        expect(state.selectedUniversityId, 'uni-rapida');
-        expect(state.careers.first.id, 'carrera-rapida');
-      },
-    );
+      final c = _makeContainer(repo: repo);
+      addTearDown(c.dispose);
+      final notifier = c.read(academicHierarchyProvider.notifier);
 
-    test(
-      'Limpiar filtros mientras hay una petición en vuelo no permite que reaparezcan datos al completarse (#326)',
-      () async {
-        final slowCompleter = Completer<List<CareerModel>>();
-        final repo = _FakeControllableRepo();
-        repo.onFetchCareers = (uniId) => slowCompleter.future;
+      final p1 = notifier.selectUniversity('uni-lenta');
+      final p2 = notifier.selectUniversity('uni-rapida');
 
-        final c = _makeContainer(repo: repo);
-        addTearDown(c.dispose);
-        final notifier = c.read(academicHierarchyProvider.notifier);
+      await p2;
+      var state = c.read(academicHierarchyProvider);
+      expect(state.selectedUniversityId, 'uni-rapida');
+      expect(state.careers.first.id, 'carrera-rapida');
 
-        final p = notifier.selectUniversity('uni-1');
-        notifier.resetSelection();
+      slowCompleter.complete([
+        const CareerModel(
+          id: 'carrera-lenta',
+          universityId: 'uni-lenta',
+          name: 'Carrera Lenta',
+          code: 'CL1',
+          active: true,
+        ),
+      ]);
+      await p1;
 
-        slowCompleter.complete([
-          const CareerModel(
-            id: 'c-1',
-            universityId: 'uni-1',
-            name: 'Carrera 1',
-            code: 'C1',
-            active: true,
-          ),
-        ]);
-        await p;
+      state = c.read(academicHierarchyProvider);
+      expect(state.selectedUniversityId, 'uni-rapida');
+      expect(state.careers.first.id, 'carrera-rapida');
+    });
 
-        final state = c.read(academicHierarchyProvider);
-        expect(state.careers, isEmpty);
-        expect(state.selectedUniversityId, isNull);
-      },
-    );
+    test('Limpiar filtros mientras hay una petición en vuelo no permite que reaparezcan datos al completarse (#326)', () async {
+      final slowCompleter = Completer<List<CareerModel>>();
+      final repo = _FakeControllableRepo();
+      repo.onFetchCareers = (uniId) => slowCompleter.future;
+
+      final c = _makeContainer(repo: repo);
+      addTearDown(c.dispose);
+      final notifier = c.read(academicHierarchyProvider.notifier);
+
+      final p = notifier.selectUniversity('uni-1');
+      notifier.resetSelection();
+
+      slowCompleter.complete([
+        const CareerModel(
+          id: 'c-1',
+          universityId: 'uni-1',
+          name: 'Carrera 1',
+          code: 'C1',
+          active: true,
+        ),
+      ]);
+      await p;
+
+      final state = c.read(academicHierarchyProvider);
+      expect(state.careers, isEmpty);
+      expect(state.selectedUniversityId, isNull);
+    });
   });
 
   group('AcademicHierarchyProvider Tests - Validación y Estados Parciales (Issue #289)', () {
@@ -714,22 +734,27 @@ void main() {
     // Errores de red por nivel
     // -----------------------------------------------------------------------
 
-    test('Error de red en carreras registra mensaje indicando nivel "carreras"', () async {
-      fakeRepo.onFetchCareers = (uniId) => throw Exception('Fallo de red en carreras');
+    test(
+      'Error de red en carreras registra mensaje indicando nivel "carreras"',
+      () async {
+        fakeRepo.onFetchCareers = (uniId) =>
+            throw Exception('Fallo de red en carreras');
 
-      final notifier = container.read(academicHierarchyProvider.notifier);
-      await notifier.selectUniversity('uct-main-uuid');
-      final state = container.read(academicHierarchyProvider);
+        final notifier = container.read(academicHierarchyProvider.notifier);
+        await notifier.selectUniversity('uct-main-uuid');
+        final state = container.read(academicHierarchyProvider);
 
-      expect(state.careers, isEmpty);
-      expect(state.isLoadingCareers, isFalse);
-      expect(state.errorCareers, isNotNull);
-      expect(state.errorCareers, contains('carreras'));
-      expect(state.canSelectCareer, isFalse);
-    });
+        expect(state.careers, isEmpty);
+        expect(state.isLoadingCareers, isFalse);
+        expect(state.errorCareers, isNotNull);
+        expect(state.errorCareers, contains('carreras'));
+        expect(state.canSelectCareer, isFalse);
+      },
+    );
 
     test('Error de red en asignaturas registra mensaje indicando nivel "asignaturas"', () async {
-      fakeRepo.onFetchSubjects = (careerId) => throw Exception('Timeout asignaturas');
+      fakeRepo.onFetchSubjects = (careerId) =>
+          throw Exception('Timeout asignaturas');
 
       final notifier = container.read(academicHierarchyProvider.notifier);
       await notifier.selectUniversity('uct-main-uuid');
@@ -744,7 +769,8 @@ void main() {
     });
 
     test('Error de red en profesores registra mensaje indicando nivel "profesores"', () async {
-      fakeRepo.onFetchProfessors = (subjectId) => throw Exception('Timeout profesores');
+      fakeRepo.onFetchProfessors = (subjectId) =>
+          throw Exception('Timeout profesores');
 
       final notifier = container.read(academicHierarchyProvider.notifier);
       await notifier.selectUniversity('uct-main-uuid');
@@ -760,7 +786,8 @@ void main() {
     });
 
     test('Error de red en universidades registra mensaje indicando nivel "universidades"', () async {
-      fakeRepo.onFetchUniversities = () => throw Exception('Error 500 universidades');
+      fakeRepo.onFetchUniversities = () =>
+          throw Exception('Error 500 universidades');
 
       final notifier = container.read(academicHierarchyProvider.notifier);
       await notifier.loadUniversities();
@@ -803,64 +830,73 @@ void main() {
       expect(state.selectedType, 'resumen');
     });
 
-    test('retrySubjects preserva universidad, carrera, año y tipo al reintentar', () async {
-      var callCount = 0;
-      fakeRepo.onFetchSubjects = (careerId) {
-        callCount++;
-        if (callCount == 1) throw Exception('Fallo de red en asignaturas');
-        return SubjectModel.mockList();
-      };
+    test(
+      'retrySubjects preserva universidad, carrera, año y tipo al reintentar',
+      () async {
+        var callCount = 0;
+        fakeRepo.onFetchSubjects = (careerId) {
+          callCount++;
+          if (callCount == 1) throw Exception('Fallo de red en asignaturas');
+          return SubjectModel.mockList();
+        };
 
-      final notifier = container.read(academicHierarchyProvider.notifier);
-      notifier.selectYear(2023);
-      notifier.selectType('control');
+        final notifier = container.read(academicHierarchyProvider.notifier);
+        notifier.selectYear(2023);
+        notifier.selectType('control');
 
-      await notifier.selectUniversity('uct-main-uuid');
-      await notifier.selectCareer('inf-uct-uuid');
-      var state = container.read(academicHierarchyProvider);
-      expect(state.errorSubjects, isNotNull);
+        await notifier.selectUniversity('uct-main-uuid');
+        await notifier.selectCareer('inf-uct-uuid');
+        var state = container.read(academicHierarchyProvider);
+        expect(state.errorSubjects, isNotNull);
 
-      await notifier.retrySubjects();
-      state = container.read(academicHierarchyProvider);
+        await notifier.retrySubjects();
+        state = container.read(academicHierarchyProvider);
 
-      expect(state.errorSubjects, isNull);
-      expect(state.subjects, isNotEmpty);
-      expect(state.selectedUniversityId, 'uct-main-uuid');
-      expect(state.selectedCareerId, 'inf-uct-uuid');
-      expect(state.selectedYear, 2023);
-      expect(state.selectedType, 'control');
-    });
+        expect(state.errorSubjects, isNull);
+        expect(state.subjects, isNotEmpty);
+        expect(state.selectedUniversityId, 'uct-main-uuid');
+        expect(state.selectedCareerId, 'inf-uct-uuid');
+        expect(state.selectedYear, 2023);
+        expect(state.selectedType, 'control');
+      },
+    );
 
     // -----------------------------------------------------------------------
     // Criterio: Aislamiento de carreras por universidad (#289)
     // -----------------------------------------------------------------------
 
-    test('Elegir UFRO devuelve solo sus propias carreras, no las de UCT', () async {
-      final notifier = container.read(academicHierarchyProvider.notifier);
+    test(
+      'Elegir UFRO devuelve solo sus propias carreras, no las de UCT',
+      () async {
+        final notifier = container.read(academicHierarchyProvider.notifier);
 
-      await notifier.selectUniversity('uct-main-uuid');
-      var state = container.read(academicHierarchyProvider);
-      final uctCareerIds = state.careers.map((c) => c.id).toSet();
-      expect(uctCareerIds, isNotEmpty);
+        await notifier.selectUniversity('uct-main-uuid');
+        var state = container.read(academicHierarchyProvider);
+        final uctCareerIds = state.careers.map((c) => c.id).toSet();
+        expect(uctCareerIds, isNotEmpty);
 
-      await notifier.selectUniversity('ufro-main-uuid');
-      state = container.read(academicHierarchyProvider);
+        await notifier.selectUniversity('ufro-main-uuid');
+        state = container.read(academicHierarchyProvider);
 
-      expect(state.careers, isNotEmpty,
-          reason: 'UFRO debe tener carreras propias en el mock');
-      expect(
-        state.careers.every((c) => c.universityId == 'ufro-main-uuid'),
-        isTrue,
-        reason: 'Todas las carreras deben pertenecer a UFRO',
-      );
+        expect(
+          state.careers,
+          isNotEmpty,
+          reason: 'UFRO debe tener carreras propias en el mock',
+        );
+        expect(
+          state.careers.every((c) => c.universityId == 'ufro-main-uuid'),
+          isTrue,
+          reason: 'Todas las carreras deben pertenecer a UFRO',
+        );
 
-      final ufroCareerIds = state.careers.map((c) => c.id).toSet();
-      expect(
-        ufroCareerIds.intersection(uctCareerIds),
-        isEmpty,
-        reason: 'Las carreras de UCT no deben filtrarse con UFRO',
-      );
-    });
+        final ufroCareerIds = state.careers.map((c) => c.id).toSet();
+        expect(
+          ufroCareerIds.intersection(uctCareerIds),
+          isEmpty,
+          reason: 'Las carreras de UCT no deben filtrarse con UFRO',
+        );
+      },
+    );
 
     test('Elegir universidad sin carreras en el mock devuelve lista vacía, no carreras de otra uni', () async {
       final notifier = container.read(academicHierarchyProvider.notifier);

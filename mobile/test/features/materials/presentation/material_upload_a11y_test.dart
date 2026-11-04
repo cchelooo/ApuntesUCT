@@ -42,17 +42,17 @@ Future<void> _pumpUploadA11y(
           AsyncData(testUniversities()),
         ),
         for (final u in testUniversities())
-          uploadCareersProvider(
-            u.id,
-          ).overrideWithValue(AsyncData(testCareersByUniversity()[u.id] ?? const [])),
+          uploadCareersProvider(u.id).overrideWithValue(
+            AsyncData(testCareersByUniversity()[u.id] ?? const []),
+          ),
         for (final c in testCareersByUniversity().values.expand((e) => e))
-          uploadSubjectsProvider(
-            c.id,
-          ).overrideWithValue(AsyncData(testSubjectsByCareer()[c.id] ?? const [])),
+          uploadSubjectsProvider(c.id).overrideWithValue(
+            AsyncData(testSubjectsByCareer()[c.id] ?? const []),
+          ),
         for (final s in testSubjectsByCareer().values.expand((e) => e))
-          uploadProfessorsProvider(
-            s.id,
-          ).overrideWithValue(AsyncData(testProfessorsBySubject()[s.id] ?? const [])),
+          uploadProfessorsProvider(s.id).overrideWithValue(
+            AsyncData(testProfessorsBySubject()[s.id] ?? const []),
+          ),
       ],
       child: MaterialApp(
         theme: ThemeData.light(),
@@ -392,11 +392,8 @@ class _FakeVersionRepository implements MaterialRepository {
     MaterialSource source, {
     CancelToken? cancelToken,
     ProgressCallback? onSendProgress,
-  }) async => MaterialVersion(
-    id: 'ver-3',
-    materialId: materialId,
-    versionNumber: 3,
-  );
+  }) async =>
+      MaterialVersion(id: 'ver-3', materialId: materialId, versionNumber: 3);
 
   @override
   Future<MaterialDetail> getDetail(String materialId) =>

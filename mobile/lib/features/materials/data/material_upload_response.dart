@@ -8,9 +8,7 @@ import '../domain/models/material_summary.dart';
 /// No reutiliza `MaterialSummary.fromJson`: el contrato devuelve `year`
 /// como cadena, expone `type`/`status` directos y `fileSize` en vez de
 /// `fileSizeBytes`. Falla con [FormatException] si faltan id o título.
-MaterialDetail materialDetailFromUploadResponse(
-  Map<String, dynamic> data,
-) {
+MaterialDetail materialDetailFromUploadResponse(Map<String, dynamic> data) {
   AcademicReference? reference(String key) {
     final id = data[key];
     if (id == null) return null;
@@ -52,8 +50,5 @@ MaterialDetail materialDetailFromUploadResponse(
     createdAt: createdAt,
   );
 
-  return MaterialDetail(
-    summary: summary,
-    fileSizeBytes: fileSizeBytes,
-  );
+  return MaterialDetail(summary: summary, fileSizeBytes: fileSizeBytes);
 }

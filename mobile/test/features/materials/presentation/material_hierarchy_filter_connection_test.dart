@@ -84,7 +84,7 @@ class CapturingMaterialsRepository implements MaterialsRepository {
 class CapturingSearchRepository implements SearchRepository {
   final List<MaterialSearchQuery> recordedQueries = [];
   MaterialPage Function(MaterialSearchQuery query, int page, int pageSize)?
-      onSearch;
+  onSearch;
 
   CapturingSearchRepository({this.onSearch});
 
@@ -99,12 +99,7 @@ class CapturingSearchRepository implements SearchRepository {
     if (onSearch != null) {
       return onSearch!(query, page, pageSize);
     }
-    return MaterialPage(
-      items: const [],
-      total: 0,
-      page: 1,
-      pageSize: 10,
-    );
+    return MaterialPage(items: const [], total: 0, page: 1, pageSize: 10);
   }
 }
 
@@ -127,8 +122,7 @@ class _DummyMaterialRepository implements MaterialRepository {
     MaterialSource source, {
     CancelToken? cancelToken,
     ProgressCallback? onSendProgress,
-  }) =>
-      throw UnimplementedError();
+  }) => throw UnimplementedError();
 }
 
 class _DummyCatalogSelectorRepository implements CatalogSelectorRepository {
@@ -183,46 +177,41 @@ void main() {
         if (hierarchyRepo != null)
           academicHierarchyRepositoryProvider.overrideWithValue(hierarchyRepo),
       ],
-      child: MaterialApp.router(
-        routerConfig: router,
-      ),
+      child: MaterialApp.router(routerConfig: router),
     );
   }
 
   group('Issue #294 — Conexión de Filtros Jerárquicos con Resultados Reales', () {
-    test(
-      'DioMaterialsDiscoveryRepository propaga universityId, careerId, subjectId, professorId, year y type a MaterialSearchQuery',
-      () async {
-        final searchRepo = CapturingSearchRepository();
-        final discoveryRepo = DioMaterialsDiscoveryRepository(
-          searchRepo: searchRepo,
-          materialRepo: _DummyMaterialRepository(),
-          catalogRepo: _DummyCatalogSelectorRepository(),
-        );
+    test('DioMaterialsDiscoveryRepository propaga universityId, careerId, subjectId, professorId, year y type a MaterialSearchQuery', () async {
+      final searchRepo = CapturingSearchRepository();
+      final discoveryRepo = DioMaterialsDiscoveryRepository(
+        searchRepo: searchRepo,
+        materialRepo: _DummyMaterialRepository(),
+        catalogRepo: _DummyCatalogSelectorRepository(),
+      );
 
-        await discoveryRepo.getMaterials(
-          query: 'apunte álgebra',
-          universityId: 'uni-uct-01',
-          careerId: 'car-inf-02',
-          subjectId: 'sub-alg-03',
-          professorId: 'prof-mun-04',
-          year: 2026,
-          type: 'apunte',
-          page: 1,
-          pageSize: 10,
-        );
+      await discoveryRepo.getMaterials(
+        query: 'apunte álgebra',
+        universityId: 'uni-uct-01',
+        careerId: 'car-inf-02',
+        subjectId: 'sub-alg-03',
+        professorId: 'prof-mun-04',
+        year: 2026,
+        type: 'apunte',
+        page: 1,
+        pageSize: 10,
+      );
 
-        expect(searchRepo.recordedQueries.length, 1);
-        final query = searchRepo.recordedQueries.first;
-        expect(query.text, 'apunte álgebra');
-        expect(query.universityId, 'uni-uct-01');
-        expect(query.careerId, 'car-inf-02');
-        expect(query.subjectId, 'sub-alg-03');
-        expect(query.professorId, 'prof-mun-04');
-        expect(query.year, 2026);
-        expect(query.type, 'apunte');
-      },
-    );
+      expect(searchRepo.recordedQueries.length, 1);
+      final query = searchRepo.recordedQueries.first;
+      expect(query.text, 'apunte álgebra');
+      expect(query.universityId, 'uni-uct-01');
+      expect(query.careerId, 'car-inf-02');
+      expect(query.subjectId, 'sub-alg-03');
+      expect(query.professorId, 'prof-mun-04');
+      expect(query.year, 2026);
+      expect(query.type, 'apunte');
+    });
 
     testWidgets(
       'Criterio 1: Combinación válida envía sus IDs correctos al provider de resultados',
@@ -235,7 +224,9 @@ void main() {
         final element = tester.element(find.byType(MaterialDiscoveryScreen));
         final container = ProviderScope.containerOf(element);
 
-        await container.read(discoveryMaterialsProvider.notifier).applyHierarchyFilters(
+        await container
+            .read(discoveryMaterialsProvider.notifier)
+            .applyHierarchyFilters(
               universityId: 'uni-uct-01',
               careerId: 'car-inf-02',
               subjectId: 'sub-calc-03',
@@ -305,7 +296,10 @@ void main() {
         expect(stateAfterUniChange.selectedSubjectId, isNull);
         expect(stateAfterUniChange.selectedProfessorId, isNull);
         expect(stateAfterUniChange.page, 1);
-        expect(stateAfterUniChange.selectedYear, 2026); // Preserva año independiente
+        expect(
+          stateAfterUniChange.selectedYear,
+          2026,
+        ); // Preserva año independiente
         expect(stateAfterUniChange.selectedType, 'apunte'); // Preserva tipo
 
         // Verificar llamada al repositorio
@@ -326,7 +320,9 @@ void main() {
         await notifier.setCareer('car-civil-03', careerName: 'Obras Civiles');
         await tester.pumpAndSettle();
 
-        final stateAfterCareerChange = container.read(discoveryMaterialsProvider);
+        final stateAfterCareerChange = container.read(
+          discoveryMaterialsProvider,
+        );
         expect(stateAfterCareerChange.selectedCareerId, 'car-civil-03');
         expect(stateAfterCareerChange.selectedSubjectId, isNull);
         expect(stateAfterCareerChange.selectedProfessorId, isNull);
@@ -346,7 +342,9 @@ void main() {
         final element = tester.element(find.byType(MaterialDiscoveryScreen));
         final container = ProviderScope.containerOf(element);
 
-        await container.read(discoveryMaterialsProvider.notifier).applyHierarchyFilters(
+        await container
+            .read(discoveryMaterialsProvider.notifier)
+            .applyHierarchyFilters(
               universityId: 'uni-uct-01',
               careerId: 'car-inf-02',
               subjectId: 'sub-calc-03',
@@ -358,7 +356,9 @@ void main() {
         expect(find.byType(EmptyState), findsOneWidget);
         expect(find.text('Sin coincidencias'), findsOneWidget);
         expect(
-          find.textContaining('No encontramos materiales en "Cálculo Avanzado"'),
+          find.textContaining(
+            'No encontramos materiales en "Cálculo Avanzado"',
+          ),
           findsOneWidget,
         );
         expect(find.text('Limpiar filtros y búsqueda'), findsOneWidget);
@@ -425,7 +425,9 @@ void main() {
         final container = ProviderScope.containerOf(element);
 
         // Aplicar filtros jerárquicos
-        await container.read(discoveryMaterialsProvider.notifier).applyHierarchyFilters(
+        await container
+            .read(discoveryMaterialsProvider.notifier)
+            .applyHierarchyFilters(
               universityId: 'uni-uct-01',
               careerId: 'car-inf-02',
               subjectId: 'sub-calc-03',
@@ -449,7 +451,10 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Detalle de Material'), findsOneWidget);
-        expect(find.byKey(const Key('back_to_discovery_button')), findsOneWidget);
+        expect(
+          find.byKey(const Key('back_to_discovery_button')),
+          findsOneWidget,
+        );
 
         // Volver (pop) a la pantalla de descubrimiento
         await tester.tap(find.byKey(const Key('back_to_discovery_button')));
