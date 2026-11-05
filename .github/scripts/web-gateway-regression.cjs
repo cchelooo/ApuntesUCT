@@ -40,6 +40,7 @@ const report = {
   network: [],
   requests: [],
   failedRequests: [],
+  downloads: [],
   images: {},
   scriptSha256: createHash("sha256")
     .update(fs.readFileSync(__filename))
@@ -292,6 +293,12 @@ async function main() {
     acceptDownloads: true,
   });
   page.setDefaultTimeout(15000);
+  page.on("download", (download) => {
+    report.downloads.push({
+      flow: currentFlow,
+      filename: download.suggestedFilename(),
+    });
+  });
   page.on("pageerror", (e) => report.pageErrors.push(e.message));
   page.on("request", (r) => {
     if (["fetch", "xhr"].includes(r.resourceType()))
@@ -443,7 +450,10 @@ async function main() {
   });
   await flow("detalle", async () => {
     const res = apiResponse(`/materials/${materialId}`);
-    await page.goto(`${web}/material/${materialId}`);
+    const card = page.getByRole("link").filter({ hasText: title });
+    assert.equal(await card.getAttribute("href"), `/material/${materialId}`);
+    await card.click();
+    await page.waitForURL(`${web}/material/${materialId}`);
     const r = await res;
     assert.equal(r.status(), 200);
     assert.equal((await r.json()).id, materialId);
@@ -481,7 +491,104 @@ async function main() {
     await page.getByText(title, { exact: true }).first().waitFor();
     return { http: 200, materialId };
   });
+  // #267: activar los escenarios adicionales con QA_MATERIAL_NAVIGATION=1.
+  if (process.env.QA_MATERIAL_NAVIGATION === "1") {
+    await flow("busqueda-detalle-descarga", async () => {
+      const card = page.getByRole("link").filter({ hasText: title });
+      assert.equal(await card.getAttribute("href"), `/material/${materialId}`);
+      const detailResponse = apiResponse(`/materials/${materialId}`);
+      await card.click();
+      await page.waitForURL(`${web}/material/${materialId}`);
+      assert.equal((await detailResponse).status(), 200);
+      await page.getByRole("heading", { name: title, exact: true }).waitFor();
+      const response = apiResponse(`/materials/${materialId}/download`);
+      const pending = page.waitForEvent("download");
+      await page.getByRole("button", { name: /Descargar material/ }).click();
+      const download = await pending;
+      assert.equal((await response).status(), 200);
+      await download.saveAs(path.join(out, "busqueda-descarga.pdf"));
+      assert.deepEqual(
+        fs.readFileSync(path.join(out, "busqueda-descarga.pdf")),
+        pdf,
+      );
+      return { http: 200, materialId, bytes: pdf.length };
+    });
+    const version = await material.materialVersion.findFirstOrThrow({
+      where: { materialId },
+    });
+    // Se elimina únicamente el objeto del fixture en el bucket desechable.
+    await storage.removeObject("qa-materials", version.storageKey);
+    await flow("descarga-404", async () => {
+      const previousDownloads = report.downloads.length;
+      const response = apiResponse(`/materials/${materialId}/download`);
+      await page.getByRole("button", { name: /Descargar material/ }).click();
+      assert.equal((await response).status(), 404);
+      await page
+        .getByRole("alert")
+        .filter({
+          hasText: "El material, la versión o el archivo no están disponibles.",
+        })
+        .waitFor();
+      await page.getByRole("button", { name: /Reintentar descarga/ }).waitFor();
+      await page.getByRole("heading", { name: title, exact: true }).waitFor();
+      assert.equal(report.downloads.length, previousDownloads);
+      return {
+        http: 404,
+        materialId,
+        cause: "Objeto del fixture eliminado de MinIO",
+      };
+    });
+    await storage.putObject(
+      "qa-materials",
+      version.storageKey,
+      pdf,
+      pdf.length,
+      { "Content-Type": "application/pdf" },
+    );
+    await flow("descarga-reintento", async () => {
+      const response = apiResponse(`/materials/${materialId}/download`);
+      const pending = page.waitForEvent("download");
+      await page.getByRole("button", { name: /Reintentar descarga/ }).click();
+      const download = await pending;
+      assert.equal((await response).status(), 200);
+      await download.saveAs(path.join(out, "reintento.pdf"));
+      assert.deepEqual(fs.readFileSync(path.join(out, "reintento.pdf")), pdf);
+      assert.equal(await page.getByRole("alert").count(), 0);
+      return { http: 200, materialId, bytes: pdf.length };
+    });
+    await flow("detalle-404", async () => {
+      const missingId = randomUUID();
+      const response = apiResponse(`/materials/${missingId}`);
+      await page.goto(`${web}/material/${missingId}`);
+      assert.equal((await response).status(), 404);
+      await page
+        .getByText("No encontramos este material", { exact: true })
+        .waitFor();
+      assert.equal(
+        await page.getByRole("button", { name: /Descargar material/ }).count(),
+        0,
+      );
+      await shot("detalle-404-mensaje");
+      await page.getByRole("link", { name: /Volver al catálogo/ }).click();
+      await page.waitForURL(`${web}/catalog`);
+      await page
+        .getByText("Asignatura QA268", { exact: true })
+        .first()
+        .waitFor();
+      return { http: 404, missingId, returnToCatalog: true };
+    });
+  }
   assert.equal(report.pageErrors.length, 0);
+  assert.ok(
+    report.network.every(
+      (r) =>
+        (r.status >= 200 && r.status < 300) ||
+        (process.env.QA_MATERIAL_NAVIGATION === "1" &&
+          ["descarga-404", "detalle-404"].includes(r.flow) &&
+          r.status === 404),
+    ),
+    "No debe haber errores HTTP fuera de los escenarios 404 esperados",
+  );
   // React StrictMode cancela consultas del primer montaje en desarrollo.
   // Solo admitir cancelaciones cuando la misma URL terminó después con éxito;
   // una conexión rechazada, un error HTTP o una consulta sin respuesta falla.
@@ -492,8 +599,8 @@ async function main() {
         report.network.some(
           (completed) =>
             completed.url === r.url &&
-            completed.status >= 200 &&
-            completed.status < 300,
+            ((completed.status >= 200 && completed.status < 300) ||
+              (completed.flow === "detalle-404" && completed.status === 404)),
         ),
     ),
     "Peticiones fallidas sin recuperación",
