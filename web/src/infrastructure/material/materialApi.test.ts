@@ -72,10 +72,9 @@ describe('materialApi', () => {
 
     await fetchMaterial('id/1');
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      `${GATEWAY}/materials/id%2F1`,
-      { signal: undefined }
-    );
+    expect(fetchMock).toHaveBeenCalledWith(`${GATEWAY}/materials/id%2F1`, {
+      signal: undefined,
+    });
   });
 
   it('posts metadata and an optional file as multipart form data', async () => {
@@ -131,7 +130,7 @@ describe('materialApi', () => {
   ])(
     'supports the public creation type %s and caller authentication',
     async (type) => {
-    vi.stubEnv('VITE_API_URL', `${GATEWAY}/`);
+      vi.stubEnv('VITE_API_URL', `${GATEWAY}/`);
       const response = {
         ...createdResponse,
         data: { ...createdResponse.data, type },
@@ -210,7 +209,7 @@ describe('materialApi', () => {
 
   describe('uploadMaterial', () => {
     it('envía FormData directamente vía POST al endpoint de materiales', async () => {
-    vi.stubEnv('VITE_API_URL', GATEWAY);
+      vi.stubEnv('VITE_API_URL', GATEWAY);
       const mockResult = { id: 'mat-100', status: 'uploaded' };
       const fetchMock = vi.fn().mockResolvedValue(Response.json(mockResult));
       vi.stubGlobal('fetch', fetchMock);

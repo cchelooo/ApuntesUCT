@@ -52,7 +52,9 @@ describe('searchApi', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const requestedUrl = new URL(String(fetchMock.mock.calls[0][0]));
-    expect(requestedUrl.origin + requestedUrl.pathname).toBe(`${GATEWAY}/search`);
+    expect(requestedUrl.origin + requestedUrl.pathname).toBe(
+      `${GATEWAY}/search`
+    );
     expect(requestedUrl.searchParams.get('q')).toBe('guía');
     expect(requestedUrl.searchParams.get('page')).toBe('2');
     expect(requestedUrl.pathname).not.toContain('material');
