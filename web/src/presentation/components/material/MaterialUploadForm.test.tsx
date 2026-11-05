@@ -680,7 +680,9 @@ describe('MaterialUploadForm - Cobertura de pruebas, contratos y regresión (#24
       );
 
       expect(
-        screen.getByText(/El archivo supera el tamaño máximo permitido de 15 MB/i)
+        screen.getByText(
+          /El archivo supera el tamaño máximo permitido de 15 MB/i
+        )
       ).toBeInTheDocument();
       expect(uploadFn).not.toHaveBeenCalled();
     });

@@ -56,7 +56,10 @@ export const Select = ({
       className={`flex flex-col gap-1.5 ${containerWidthClass} ${containerClassName}`.trim()}
     >
       {label && (
-        <label htmlFor={selectId} className="text-sm font-medium text-catalog-ink">
+        <label
+          htmlFor={selectId}
+          className="text-sm font-medium text-catalog-ink"
+        >
           {label}
         </label>
       )}
