@@ -20,16 +20,16 @@ snapshot diario para poder graficar burndown por equipo e integrante.
 Desde la raiz del repo:
 
 ```bash
-python3 tools/burndown/project_burndown.py all --sprint S2
+python3 tools/burndown/project_burndown.py all --sprint S3
 ```
 
 Eso actualiza:
 
 ```text
-docs/reports/burndown/s2/snapshots.csv
-docs/reports/burndown/s2/README.md
-docs/reports/burndown/s2/charts/
-docs/reports/burndown/s2/charts_backup_yesterday/
+docs/reports/burndown/s3/snapshots.csv
+docs/reports/burndown/s3/README.md
+docs/reports/burndown/s3/charts/
+docs/reports/burndown/s3/charts_backup_yesterday/
 ```
 
 Antes de regenerar `charts/`, el script copia los SVG anteriores a
@@ -37,8 +37,8 @@ Antes de regenerar `charts/`, el script copia los SVG anteriores a
 duplica filas en el CSV; reemplaza el snapshot del dia y el backup queda con
 los graficos inmediatamente anteriores a la ultima ejecucion.
 
-El sprint por defecto es S2. Las ventanas de S1 tienen cuatro semanas y las
-de S2 se extienden a cinco semanas:
+El sprint por defecto es S3. Las ventanas de S1 y S3 tienen cuatro semanas;
+las de S2 se extienden a cinco semanas:
 
 | Sprint | Equipo | Inicio | Término |
 |---|---|---|---|
@@ -46,31 +46,40 @@ de S2 se extienden a cinco semanas:
 | S1 | INT4 | 2026-09-03 | 2026-10-01 |
 | S2 | INT2 | 2026-09-30 | 2026-11-04 |
 | S2 | INT4 | 2026-10-01 | 2026-11-05 |
+| S3 | INT2 | 2026-11-04 | 2026-12-02 |
+| S3 | INT4 | 2026-11-05 | 2026-12-03 |
 
-S2 conserva miércoles para INT2 y jueves para INT4. Estas ventanas definen
+S3 comienza en la fecha de cierre de S2 y conserva miércoles para INT2 y
+jueves para INT4. Estas ventanas definen
 el horizonte de los gráficos y el cierre de la línea ideal. Las horas
 asignadas, usadas y restantes se obtienen de las tareas de GitHub Projects.
 
-Se conserva el historial de S1 en `docs/reports/burndown/s1/`. Para regenerar
-sus gráficos sin modificar el CSV histórico:
+Se conservan los historiales de S1 y S2 en `docs/reports/burndown/s1/` y
+`docs/reports/burndown/s2/`. Para regenerar sus gráficos sin modificar los CSV
+históricos:
 
 ```bash
 python3 tools/burndown/project_burndown.py render --sprint S1
+python3 tools/burndown/project_burndown.py render --sprint S2
 ```
 
 La fecha de captura automática usa `America/Santiago`. Para una captura
 explícita del día actual se puede usar `--date AAAA-MM-DD`; no usarlo para
 atribuir las horas actuales a un día pasado.
 
-GitHub Projects no entrega historial diario. S2 comienza a guardar evidencia
-desde su primera captura; no se rellenan los días anteriores con datos inventados.
+GitHub Projects no entrega historial diario. Cada sprint comienza a guardar
+evidencia desde su primera captura; no se rellenan los días anteriores con
+datos inventados. La primera captura de S3 es del 06-11-2026; las líneas base
+del 04-11 (INT2) y 05-11 (INT4) son referencias visuales de planificación.
+En la primera captura no hay gráficos anteriores de S3 que respaldar;
+`charts_backup_yesterday/` se crea en la siguiente regeneración.
 La captura solicita hasta 1000 items y se detiene si la respuesta es incompleta,
 para evitar omitir tareas del Project.
 
 Si necesitas probar otro rango para todos los graficos, puedes sobreescribirlo:
 
 ```bash
-python3 tools/burndown/project_burndown.py all --sprint S2 --start-date 2026-10-01 --end-date 2026-11-05
+python3 tools/burndown/project_burndown.py all --sprint S3 --start-date 2026-11-05 --end-date 2026-12-03
 ```
 
 Ese override aplica el mismo rango a ambos equipos. El comando diario sin

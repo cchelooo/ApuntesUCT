@@ -25,7 +25,7 @@ from zoneinfo import ZoneInfo
 
 PROJECT_OWNER = "cchelooo"
 PROJECT_NUMBER = 2
-DEFAULT_SPRINT = "S2"
+DEFAULT_SPRINT = "S3"
 CHART_BACKUP_DIR = "charts_backup_yesterday"
 TEAM_NAMES = ("INT2", "INT4")
 SPRINT_WINDOWS = {
@@ -36,6 +36,10 @@ SPRINT_WINDOWS = {
     "S2": {
         "INT2": ("2026-09-30", "2026-11-04"),
         "INT4": ("2026-10-01", "2026-11-05"),
+    },
+    "S3": {
+        "INT2": ("2026-11-04", "2026-12-02"),
+        "INT4": ("2026-11-05", "2026-12-03"),
     },
 }
 WORK_STARTED_ON = {"S1": "2026-09-04"}
