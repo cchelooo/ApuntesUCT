@@ -20,6 +20,26 @@ class MaterialRatingControl extends StatelessWidget {
     final activeColor = theme.colorScheme.primary;
     final disabledColor = theme.disabledColor;
 
+    // Si está enviando, mostramos un indicador visual y etiqueta accesible de envío
+    if (isSubmitting) {
+      return Semantics(
+        container: true,
+        label: 'Enviando calificación, por favor espere.',
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+            SizedBox(width: 12),
+            Text('Enviando calificación...'),
+          ],
+        ),
+      );
+    }
+
     return Semantics(
       container: true,
       label: 'Control de calificación. Escala de 1 a 5 estrellas.',
@@ -41,7 +61,7 @@ class MaterialRatingControl extends StatelessWidget {
                 ? (isSelected ? activeColor : theme.iconTheme.color)
                 : disabledColor,
             tooltip: '$starValue estrellas',
-            onPressed: (isEnabled && !isSubmitting)
+            onPressed: isEnabled
                 ? () => onRatingSelected?.call(starValue)
                 : null,
           );

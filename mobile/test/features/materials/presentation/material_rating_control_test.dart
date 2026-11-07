@@ -18,16 +18,13 @@ void main() {
         ),
       );
 
-      // Debe encontrar 5 iconos de estrella en total
       expect(find.byType(IconButton), findsNWidgets(5));
 
-      // Las primeras 3 deben estar seleccionadas (rellenas)
-      // Tocamos la estrella 5 para probar el callback
       await tester.tap(find.byType(IconButton).at(4));
       expect(selectedValue, 5);
     });
 
-    testWidgets('Deshabilita los botones cuando isEnabled es falso o está enviando', (WidgetTester tester) async {
+    testWidgets('Deshabilita los botones cuando isEnabled es falso', (WidgetTester tester) async {
       bool tapped = false;
 
       await tester.pumpWidget(
@@ -44,6 +41,26 @@ void main() {
 
       await tester.tap(find.byType(IconButton).first);
       expect(tapped, isFalse);
+    });
+
+    testWidgets('Muestra indicador visual y etiqueta accesible cuando isSubmitting es verdadero', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: MaterialRatingControl(
+              rating: 4,
+              isSubmitting: true,
+            ),
+          ),
+        ),
+      );
+
+      // Verifica que las estrellas ya no se muestran
+      expect(find.byType(IconButton), findsNothing);
+      
+      // Verifica que aparece el indicador de carga y el texto de envío accesible
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('Enviando calificación...'), findsOneWidget);
     });
   });
 }
