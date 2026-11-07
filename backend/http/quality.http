@@ -1,0 +1,11 @@
+@qualityBaseUrl = http://localhost:3004
+
+### Salud (200 con quality_db disponible; 503 si la conexión cae después del arranque)
+GET {{qualityBaseUrl}}/health
+
+### Contrato OpenAPI
+GET {{qualityBaseUrl}}/api/docs-json
+
+# Swagger UI: http://localhost:3004/api/docs
+# La inicialización NO incluye endpoints de escritura de Review/Rating/Report/Favorite.
+# La persistencia de estas entidades se comprueba con test:integration.

@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/quality-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Clasifica la evidencia, NO el estado público de Material.
+enum ReviewPurpose {
+  MODERATION
+  VERIFICATION
+}
+
+// Decisión emitida por un revisor. No implica PUBLISHED, REJECTED o verified en Material.
+enum ReviewDecision {
+  ACCEPT
+  REJECT
+  REQUEST_CHANGES
+}
+
+// Estado interno del tratamiento de un reporte, NO del material reportado.
+enum ReportStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+model Review {
+  id                String         @id @default(uuid()) @db.Uuid
+  materialId        String         @map("material_id") @db.Uuid
+  // Versión revisada, cuando se conozca. Referencia lógica, sin relación Prisma.
+  materialVersionId String?        @map("material_version_id") @db.Uuid
+  // Usuario que emitió la revisión; identificador lógico de Auth.
+  userId            String         @map("user_id") @db.Uuid
+  purpose           ReviewPurpose  @default(MODERATION)
+  decision          ReviewDecision
+  comment           String?
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  // Se admite historial de revisiones; no hay unique por material/usuario.
+  @@index([materialId, createdAt])
+  @@index([userId])
+  @@map("reviews")
+}
+
+model Rating {
+  id         String   @id @default(uuid()) @db.Uuid
+  materialId String   @map("material_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  // CHECK 1..5 definido en migration.sql; Prisma no declara CHECK en este esquema.
+  score      Int      @db.SmallInt
+  comment    String?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([materialId, userId])
+  @@index([userId])
+  @@map("ratings")
+}
+
+model Report {
+  id         String       @id @default(uuid()) @db.Uuid
+  materialId String       @map("material_id") @db.Uuid
+  // Usuario que presenta el reporte.
+  userId     String       @map("user_id") @db.Uuid
+  reason     String
+  details    String?
+  status     ReportStatus @default(OPEN)
+  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([materialId, status])
+  @@index([userId])
+  @@index([status, createdAt])
+  @@map("reports")
+}
+
+model Favorite {
+  id         String   @id @default(uuid()) @db.Uuid
+  materialId String   @map("material_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([materialId, userId])
+  @@index([userId, createdAt])
+  @@map("favorites")
+}
