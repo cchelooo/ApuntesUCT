@@ -1,0 +1,516 @@
+{
+  "startedAt": "2026-11-05T19:33:53.085Z",
+  "commit": "afe5156f2edf097816d9efd929934a5aadde70ae",
+  "platform": "linux 7.0.0-38-generic",
+  "node": "v22.22.3",
+  "health": {
+    "auth": 200,
+    "catalog": 200,
+    "material": 200,
+    "search": 200,
+    "gateway": 200
+  },
+  "flows": [
+    {
+      "name": "catalogo",
+      "status": "PASS",
+      "http": 200
+    },
+    {
+      "name": "login",
+      "status": "PASS",
+      "http": 200,
+      "mock": true,
+      "sessionPersisted": false
+    },
+    {
+      "name": "subida",
+      "status": "PASS",
+      "http": 201,
+      "materialId": "4eac0918-b2c6-448e-b015-df02bf8c707a",
+      "initialStatus": "PENDING_REVIEW",
+      "version": 1,
+      "objectExists": true
+    },
+    {
+      "name": "listado",
+      "status": "PASS",
+      "http": 200,
+      "materialId": "4eac0918-b2c6-448e-b015-df02bf8c707a"
+    },
+    {
+      "name": "detalle",
+      "status": "PASS",
+      "http": 200,
+      "materialId": "4eac0918-b2c6-448e-b015-df02bf8c707a"
+    },
+    {
+      "name": "descarga",
+      "status": "PASS",
+      "http": 200,
+      "filename": "regresion268.pdf",
+      "contentDisposition": "attachment; filename=\"regresion268.pdf\"; filename*=UTF-8''regresion268.pdf",
+      "bytes": 414,
+      "sha256": "a2b4945b6565b105cbf8ab4dc1d86bfc925d1e3eaa91cfb6ea770d292c333d28"
+    },
+    {
+      "name": "busqueda",
+      "status": "PASS",
+      "http": 200,
+      "materialId": "4eac0918-b2c6-448e-b015-df02bf8c707a"
+    },
+    {
+      "name": "busqueda-detalle-descarga",
+      "status": "PASS",
+      "http": 200,
+      "materialId": "4eac0918-b2c6-448e-b015-df02bf8c707a",
+      "bytes": 414
+    },
+    {
+      "name": "descarga-404",
+      "status": "PASS",
+      "http": 404,
+      "materialId": "4eac0918-b2c6-448e-b015-df02bf8c707a",
+      "cause": "Objeto del fixture eliminado de MinIO"
+    },
+    {
+      "name": "descarga-reintento",
+      "status": "PASS",
+      "http": 200,
+      "materialId": "4eac0918-b2c6-448e-b015-df02bf8c707a",
+      "bytes": 414
+    },
+    {
+      "name": "detalle-404",
+      "status": "PASS",
+      "http": 404,
+      "missingId": "35328720-9e4e-4f60-a53e-2b3bba16b533",
+      "returnToCatalog": true
+    }
+  ],
+  "network": [
+    {
+      "flow": "catalogo",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/filter",
+      "status": 200
+    },
+    {
+      "flow": "login",
+      "method": "POST",
+      "url": "http://127.0.0.1:46241/api/v1/auth/login",
+      "status": 200
+    },
+    {
+      "flow": "subida",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/universities",
+      "status": 200
+    },
+    {
+      "flow": "subida",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/careers?universityId=147d9a78-5292-45f7-a369-c1fb43f03162",
+      "status": 200
+    },
+    {
+      "flow": "subida",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/subjects?careerId=e62fc1f4-7c10-44b5-9ee7-bc9992d2da77",
+      "status": 200
+    },
+    {
+      "flow": "subida",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/professors?subjectId=ce288593-8bed-4c18-a15c-68790e15da31",
+      "status": 200
+    },
+    {
+      "flow": "subida",
+      "method": "POST",
+      "url": "http://127.0.0.1:46241/api/v1/materials",
+      "status": 201
+    },
+    {
+      "flow": "listado",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/professors",
+      "status": 200
+    },
+    {
+      "flow": "listado",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/subjects",
+      "status": 200
+    },
+    {
+      "flow": "listado",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/materials?page=1&pageSize=20",
+      "status": 200
+    },
+    {
+      "flow": "detalle",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/materials/4eac0918-b2c6-448e-b015-df02bf8c707a",
+      "status": 200
+    },
+    {
+      "flow": "descarga",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/materials/4eac0918-b2c6-448e-b015-df02bf8c707a/download?versionId=2f8e8ba1-2087-4a82-8b57-e6bd7fc76479",
+      "status": 200
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/universities",
+      "status": 200
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/universities",
+      "status": 200
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/subjects",
+      "status": 200
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/professors",
+      "status": 200
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/search?q=qa268-ca558e4f&sortBy=createdAt&order=desc&page=1&pageSize=20",
+      "status": 200
+    },
+    {
+      "flow": "busqueda-detalle-descarga",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/materials/4eac0918-b2c6-448e-b015-df02bf8c707a",
+      "status": 200
+    },
+    {
+      "flow": "busqueda-detalle-descarga",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/materials/4eac0918-b2c6-448e-b015-df02bf8c707a/download?versionId=2f8e8ba1-2087-4a82-8b57-e6bd7fc76479",
+      "status": 200
+    },
+    {
+      "flow": "descarga-404",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/materials/4eac0918-b2c6-448e-b015-df02bf8c707a/download?versionId=2f8e8ba1-2087-4a82-8b57-e6bd7fc76479",
+      "status": 404
+    },
+    {
+      "flow": "descarga-reintento",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/materials/4eac0918-b2c6-448e-b015-df02bf8c707a/download?versionId=2f8e8ba1-2087-4a82-8b57-e6bd7fc76479",
+      "status": 200
+    },
+    {
+      "flow": "detalle-404",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/subjects",
+      "status": 200
+    },
+    {
+      "flow": "detalle-404",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/materials/35328720-9e4e-4f60-a53e-2b3bba16b533",
+      "status": 404
+    },
+    {
+      "flow": "detalle-404",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/professors",
+      "status": 200
+    },
+    {
+      "flow": "detalle-404",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/filter",
+      "status": 200
+    }
+  ],
+  "requests": [
+    {
+      "flow": "catalogo",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/filter"
+    },
+    {
+      "flow": "login",
+      "method": "POST",
+      "url": "http://127.0.0.1:46241/api/v1/auth/login"
+    },
+    {
+      "flow": "subida",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/universities"
+    },
+    {
+      "flow": "subida",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/careers?universityId=147d9a78-5292-45f7-a369-c1fb43f03162"
+    },
+    {
+      "flow": "subida",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/subjects?careerId=e62fc1f4-7c10-44b5-9ee7-bc9992d2da77"
+    },
+    {
+      "flow": "subida",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/professors?subjectId=ce288593-8bed-4c18-a15c-68790e15da31"
+    },
+    {
+      "flow": "subida",
+      "method": "POST",
+      "url": "http://127.0.0.1:46241/api/v1/materials"
+    },
+    {
+      "flow": "listado",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/materials?page=1&pageSize=20"
+    },
+    {
+      "flow": "listado",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/subjects"
+    },
+    {
+      "flow": "listado",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/professors"
+    },
+    {
+      "flow": "listado",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/materials?page=1&pageSize=20"
+    },
+    {
+      "flow": "listado",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/subjects"
+    },
+    {
+      "flow": "listado",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/professors"
+    },
+    {
+      "flow": "detalle",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/materials/4eac0918-b2c6-448e-b015-df02bf8c707a"
+    },
+    {
+      "flow": "detalle",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/materials/4eac0918-b2c6-448e-b015-df02bf8c707a"
+    },
+    {
+      "flow": "descarga",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/materials/4eac0918-b2c6-448e-b015-df02bf8c707a/download?versionId=2f8e8ba1-2087-4a82-8b57-e6bd7fc76479"
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/universities"
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/universities"
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/subjects"
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/professors"
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/search?q=qa268-ca558e4f&sortBy=createdAt&order=desc&page=1&pageSize=20"
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/subjects"
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/professors"
+    },
+    {
+      "flow": "busqueda",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/search?q=qa268-ca558e4f&sortBy=createdAt&order=desc&page=1&pageSize=20"
+    },
+    {
+      "flow": "busqueda-detalle-descarga",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/materials/4eac0918-b2c6-448e-b015-df02bf8c707a"
+    },
+    {
+      "flow": "busqueda-detalle-descarga",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/materials/4eac0918-b2c6-448e-b015-df02bf8c707a"
+    },
+    {
+      "flow": "busqueda-detalle-descarga",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/materials/4eac0918-b2c6-448e-b015-df02bf8c707a/download?versionId=2f8e8ba1-2087-4a82-8b57-e6bd7fc76479"
+    },
+    {
+      "flow": "descarga-404",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/materials/4eac0918-b2c6-448e-b015-df02bf8c707a/download?versionId=2f8e8ba1-2087-4a82-8b57-e6bd7fc76479"
+    },
+    {
+      "flow": "descarga-reintento",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/materials/4eac0918-b2c6-448e-b015-df02bf8c707a/download?versionId=2f8e8ba1-2087-4a82-8b57-e6bd7fc76479"
+    },
+    {
+      "flow": "detalle-404",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/materials/35328720-9e4e-4f60-a53e-2b3bba16b533"
+    },
+    {
+      "flow": "detalle-404",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/subjects"
+    },
+    {
+      "flow": "detalle-404",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/professors"
+    },
+    {
+      "flow": "detalle-404",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/materials/35328720-9e4e-4f60-a53e-2b3bba16b533"
+    },
+    {
+      "flow": "detalle-404",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/subjects"
+    },
+    {
+      "flow": "detalle-404",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/professors"
+    },
+    {
+      "flow": "detalle-404",
+      "method": "GET",
+      "url": "http://127.0.0.1:46241/api/v1/catalog/filter"
+    }
+  ],
+  "failedRequests": [
+    {
+      "url": "http://127.0.0.1:46241/api/v1/materials?page=1&pageSize=20",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:46241/api/v1/catalog/subjects",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:46241/api/v1/catalog/professors",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:46241/api/v1/materials/4eac0918-b2c6-448e-b015-df02bf8c707a",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:46241/api/v1/search?q=qa268-ca558e4f&sortBy=createdAt&order=desc&page=1&pageSize=20",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:46241/api/v1/catalog/subjects",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:46241/api/v1/catalog/professors",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:46241/api/v1/materials/4eac0918-b2c6-448e-b015-df02bf8c707a",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:46241/api/v1/materials/35328720-9e4e-4f60-a53e-2b3bba16b533",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:46241/api/v1/catalog/subjects",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "url": "http://127.0.0.1:46241/api/v1/catalog/professors",
+      "error": "net::ERR_ABORTED"
+    }
+  ],
+  "downloads": [
+    {
+      "flow": "descarga",
+      "filename": "regresion268.pdf"
+    },
+    {
+      "flow": "busqueda-detalle-descarga",
+      "filename": "regresion268.pdf"
+    },
+    {
+      "flow": "descarga-reintento",
+      "filename": "regresion268.pdf"
+    }
+  ],
+  "images": {
+    "qa268-ca558e4f-postgres": "sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73",
+    "qa268-ca558e4f-minio": "sha256:b67a0ceab0c7de04ca036c765990a092929aa0a24580e3e1f30e15126e125c1f"
+  },
+  "scriptSha256": "6ada609b594d718adb2ddd4f64c56de729144c2f7dd2e77f518cdb5f212221e4",
+  "pageErrors": [],
+  "cleanup": [
+    {
+      "container": "qa268-ca558e4f-postgres",
+      "removed": true
+    },
+    {
+      "container": "qa268-ca558e4f-minio",
+      "removed": true
+    }
+  ],
+  "urls": {
+    "web": "http://127.0.0.1:42295",
+    "gateway": "http://127.0.0.1:46241/api/v1"
+  },
+  "fixture": {
+    "universityId": "147d9a78-5292-45f7-a369-c1fb43f03162",
+    "careerId": "e62fc1f4-7c10-44b5-9ee7-bc9992d2da77",
+    "subjectId": "ce288593-8bed-4c18-a15c-68790e15da31",
+    "title": "Regresion268 qa268-ca558e4f",
+    "materialId": "4eac0918-b2c6-448e-b015-df02bf8c707a",
+    "publication": "Actualización directa solo en la base desechable; moderación fuera de alcance."
+  },
+  "browser": "153.0.8010.12",
+  "result": "PASS",
+  "finishedAt": "2026-11-05T19:34:04.997Z"
+}
