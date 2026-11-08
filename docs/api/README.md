@@ -1,100 +1,61 @@
-# Colección de API para Postman
+# API pública para INT2 e INT4
 
-Colección generada a partir del OpenAPI de los tres servicios del backend, para
-probar la API sin escribir código.
+La entrada HTTP de Web, Mobile y Postman es el **Gateway** (`http://localhost:3000`).
 
-| Archivo                               | Contenido                                                                                               |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `apuntesuct.postman_collection.json`  | Colección Postman v2.1 con 23 peticiones agrupadas en `API Gateway`, `Auth Service` y `Catalog Service` |
-| `apuntesuct.postman_environment.json` | Environment `ApuntesUCT local` con las URLs y variables                                                 |
+| Archivo | Uso |
+| --- | --- |
+| `apuntesuct.openapi.json` | OpenAPI consolidado, generado desde los controladores de los cinco servicios; rutas públicas con servidor Gateway |
+| `apuntesuct.postman_collection.json` | Peticiones de Auth, Catalog, Material y Search mediante Gateway |
+| `apuntesuct.postman_environment.json` | Variables para el entorno local |
+| [integracion-material-search.md](integracion-material-search.md) | Contratos, ejemplos, autenticación temporal, errores y arranque para INT2/INT4 |
 
-## Importar
+## Importar y ejecutar
 
-**Postman**: _Import_ → _Link, JSON or File_ → seleccionar ambos archivos.
-Activa el environment `ApuntesUCT local` en la esquina superior derecha.
+Importar colección y environment en Postman y activar **ApuntesUCT local**.
+En Insomnia, importar como Postman v2.1. Cambiar `gatewayUrl` por el host del Gateway,
+sin añadir `/api/v1`: las peticiones ya incluyen ese prefijo.
 
-**Insomnia**: _Preferences → Data → Import Data_ → **Postman v2.1** →
-seleccionar ambos archivos. Insomnia crea el environment y los request groups.
+1. Levantar los servicios según la guía enlazada.
+2. Obtener IDs reales mediante los selectores de Catalog. Reemplazar `universityId`,
+   `careerId`, `subjectId` y `professorId`; los UUID iniciales son ilustrativos.
+3. Ejecutar listado de Material: si hay resultados, su prueba guarda el primer
+   `materialId` en la colección. También puede establecerse manualmente con un ID publicado.
+4. Ejecutar detalle: guarda `versionId` de la versión actual, o lo vacía si no hay archivo.
+5. Para descargar una versión anterior, copiar su ID desde `versions` a `versionId`
+   y activar ese parámetro en la petición de descarga. Usar **Send and Download**.
+6. Para subir, seleccionar un archivo local en `Body → form-data → file` y completar
+   los metadatos. Postman establece el boundary: no añadir Content-Type manualmente.
+   Para `LINK`, desactivar `file`, elegir `type=LINK` y activar `externalLink`.
+7. Crear versión usa el mismo `materialId` y un nuevo archivo; requiere que el
+   contexto local de autor coincida con el autor del material.
 
-## Variables
+`accessToken`, `materialId` y `versionId` viven solo en la colección, evitando que
+un valor vacío del environment oculte los valores capturados. `resourceId` sirve
+para las rutas administrativas de Catalog que reciben `{id}`; rellenarlo manualmente.
+Los filtros opcionales empiezan desactivados. Activar los académicos en orden
+universidad → carrera → asignatura → profesor. Año y tipo son independientes.
 
-| Variable                                | Valor por defecto       | Uso                                                                                                                                                                                                                                                                   |
-| --------------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `gatewayUrl`                            | `http://localhost:3000` | API Gateway (proxy de `/api/v1/auth`, `/api/v1/catalog`, `/api/v1/materials` y `/api/v1/search`)                                                                                                                                                                     |
-| `authUrl`                               | `http://localhost:3001` | Auth Service directo                                                                                                                                                                                                                                                  |
-| `catalogUrl`                            | `http://localhost:3002` | Catalog Service directo                                                                                                                                                                                                                                               |
-| `mockEmail`                             | `estudiante@alu.uct.cl` | Login mock: acepta cualquier correo válido                                                                                                                                                                                                                            |
-| `mockPassword`                          | `demo`                  | Login mock: al menos un carácter no blanco                                                                                                                                                                                                                            |
-| `accessToken`                           | _(vacío)_               | **No está en el environment a propósito.** Lo rellena el test del login y vive solo en la colección: en Postman la variable de environment tiene prioridad sobre la de colección, así que si estuviera aquí (vacía) taparía el token y se enviaría `Bearer ` sin nada |
-| `universityId`, `careerId`, `subjectId` | UUID de ejemplo         | Sustituye por los ids reales de `GET /api/v1/catalog` o de los listados de selectores                                                                                                                                                                                 |
-| `professorId`                           | UUID de ejemplo         | **No** viene en `GET /api/v1/catalog`: obténlo de `GET /api/v1/catalog/professors?subjectId=…` o del array `professors` de cada asignatura en `GET /api/v1/catalog/filter` sin filtros                                                                                |
+El login mock guarda `accessToken`, pero **no autentica las subidas**. Estas requieren
+el contexto de autor local descrito en la guía. Las lecturas de Material/Search son públicas.
 
-## Requisitos para ejecutar las peticiones
+Las respuestas guardadas son ejemplos ilustrativos del contrato, no capturas de
+un entorno real. Las pruebas de descarga verifican respuesta binaria; las demás,
+estado esperado y JSON. Una colección con archivos sin seleccionar o IDs sin
+configurar no es una suite que pueda ejecutarse automáticamente de principio a fin.
 
-- API Gateway: `cd backend/api-gateway && npm run start:dev` (no necesita base de datos).
-- Auth Service y Catalog Service requieren su PostgreSQL (`db-auth`, `db-catalog`).
-  El catálogo además arranca en el puerto `3002`: `PORT=3002 npm run start:dev`.
-  Ver `backend/README.md`.
-- Cada petición incluye un test que valida el código de estado esperado y que la
-  respuesta es JSON.
+## Regenerar
 
-## Particularidades de la API que la colección refleja
-
-- **Login mock (#92)**: no verifica credenciales y devuelve un JWT sin firma
-  (`alg: none`). No sirve para autorizar peticiones. Los dos peticiones de login
-  (directo y vía gateway) usan `mockEmail`/`mockPassword` y su test guarda el
-  `accessToken` de la respuesta en la variable `accessToken` de la colección.
-- **Bearer**: las peticiones de catálogo (directas y vía gateway) llevan
-  `Authorization: Bearer {{accessToken}}`. Hoy ningún endpoint lo valida; queda
-  preparado para cuando exista autenticación real. Ejecuta primero una de las dos
-  peticiones de login para que el token quede disponible: la variable
-  `accessToken` se guarda **en la colección**, no en el environment, para que un
-  valor vacío del environment no la sobrescriba.
-- **Filtro del catálogo**: el orden jerárquico de 4 niveles es obligatorio
-  (`universityId` → `careerId` → `subjectId` → `professorId`); sin el orden
-  completo responde `400 Bad Request`.
-- **Listados de selectores académicos**: `GET /api/v1/catalog/universities`,
-  `/catalog/careers?universityId=`, `/catalog/subjects?careerId=` y
-  `/catalog/professors?subjectId=` devuelven entidades **activas** ordenadas por
-  nombre y son la fuente de ids para los selectores en cascada. El filtro
-  (`/catalog/filter`) los incluye como peticiones de la colección.
-- **`professorId`**: `GET /api/v1/catalog` devuelve el árbol
-  universidad → carrera → asignatura, **sin profesores**. Los UUID de profesor se
-obtienen de `GET /api/v1/catalog/professors?subjectId=` o de
-  `GET /api/v1/catalog/filter` sin filtros, que responde las asignaturas con su
-  array `professors`.
-- **Alcance del dominio**: Catalog solo modela la jerarquía hasta Profesor. Los
-  metadatos de materiales (`year`, `type`) pertenecen a Material Service y la
-  búsqueda por año/tipo corresponde a Search Service, así que no forman parte del
-  contrato de Catalog (los parámetros ajenos se ignoran vía `whitelist`).
-- **Rutas proxeadas**: el gateway enruta `/api/v1/auth`, `/api/v1/catalog`,
-  `/api/v1/materials` y `/api/v1/search` con middleware. La especificación servida
-  en `/api/docs/gateway` documenta explícitamente `/api/v1/search` con `q`, `page`,
-  `pageSize` y los errores `400`/`502`/`503` (#251). El generador de esta colección
-  añade a mano las rutas de Auth y Catalog, y todavía **no** incluye Material ni
-  Search, así que para probarlas hay que llamarlas por su cuenta contra el gateway.
-  Cualquiera de las rutas responde `502` si el servicio no responde. El gateway solo
-  reescribe el health de Auth (`/api/v1/auth/health` → `/api/v1/health` en Auth);
-  los healthchecks de Catalog, Material y Search están en sus puertos directos, sin
-  equivalente vía gateway. Con `search-service` arriba, `GET /api/v1/search`
-  responde `200` con `{ query, page, pageSize, total, results, context }`;
-  con `material-service` arriba, `GET /api/v1/materials` responde `200` con el
-  listado paginado (vacío si no hay datos). El `502` del gateway corresponde al
-  servicio caído; Search añade `503` si Catalog o Material no están disponibles y
-  `502` si una dependencia devuelve un payload inválido.
-- **Parámetros del filtro**: `FilterCatalogDto` documenta los cuatro niveles con
-  `@ApiProperty`, así que la colección los toma directamente del OpenAPI.
-
-## Regenerar la colección
-
-Desde `backend/`:
+Desde `backend/`, con las dependencias instaladas:
 
 ```bash
 npm run build
 npm run export:postman
+npm run test:api-docs
 ```
 
-`export:postman` ejecuta `scripts/export-postman-collection.cjs`, que arranca
-cada servicio con Prisma simulado (no necesita PostgreSQL), lee su documento
-OpenAPI y escribe los dos JSON en `docs/api/`. Ejecuta `npm run build` antes,
-porque el script usa el `dist` de cada servicio.
+El generador usa `dist`, simula Prisma y almacenamiento y no necesita PostgreSQL,
+MinIO ni servicios escuchando. Los tres JSON se versionan juntos. Cambiar los
+controladores/DTOs o el generador; no editar las peticiones generadas manualmente.
+El OpenAPI consolidado puede importarse en un visor o cliente compatible. Los
+Swagger de desarrollo siguen disponibles en `/api/docs` de cada servicio; el
+Gateway tiene su índice en `/api/docs` y su Swagger propio en `/api/docs/gateway`.

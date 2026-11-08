@@ -40,12 +40,12 @@ export class MaterialDataDto {
   })
   status!: MaterialStatus;
 
-  @ApiProperty({ example: 'SUBJ-102', description: 'Identificador único de la asignatura.' })
+  @ApiProperty({ example: '33333333-3333-4333-8333-333333333333', description: 'Identificador único de la asignatura.' })
   subjectId!: string;
 
   @ApiPropertyOptional({
     type: String,
-    example: 'CAREER-INF-01',
+    example: '22222222-2222-4222-8222-222222222222',
     nullable: true,
     description: 'Identificador de la carrera.',
   })
@@ -53,7 +53,7 @@ export class MaterialDataDto {
 
   @ApiPropertyOptional({
     type: String,
-    example: 'prof_88321',
+    example: '44444444-4444-4444-8444-444444444444',
     nullable: true,
     description: 'Identificador único del profesor (UUID/ID).',
   })
@@ -62,7 +62,7 @@ export class MaterialDataDto {
   @ApiPropertyOptional({
     type: String,
     nullable: true,
-    example: 'UNIV-UCT-01',
+    example: '11111111-1111-4111-8111-111111111111',
     description:
       'Identificador de la universidad, derivado automáticamente del contexto académico.',
   })

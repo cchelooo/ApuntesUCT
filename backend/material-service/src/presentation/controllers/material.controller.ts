@@ -79,16 +79,34 @@ export class MaterialController {
   })
   @ApiResponse({
     status: 400,
+    type: ErrorResponseDto,
     description:
       'Metadatos incorrectos, año inválido, archivo vacío, regla de tipo incumplida o referencia ' +
       'académica inválida. Los errores de referencias de Catalog incluyen field.',
   })
-  @ApiResponse({ status: 401, description: 'Contexto de autor ausente, inválido o no habilitado.' })
-  @ApiResponse({ status: 413, description: 'El archivo supera los 15.728.640 bytes permitidos.' })
-  @ApiResponse({ status: 415, description: 'Formato de archivo no soportado.' })
-  @ApiResponse({ status: 500, description: 'Error inesperado en el servidor.' })
+  @ApiResponse({
+    status: 401,
+    type: ErrorResponseDto,
+    description: 'Contexto de autor ausente, inválido o no habilitado.',
+  })
+  @ApiResponse({
+    status: 413,
+    type: ErrorResponseDto,
+    description: 'El archivo supera los 15.728.640 bytes permitidos.',
+  })
+  @ApiResponse({
+    status: 415,
+    type: ErrorResponseDto,
+    description: 'Formato de archivo no soportado.',
+  })
+  @ApiResponse({
+    status: 500,
+    type: ErrorResponseDto,
+    description: 'Error inesperado en el servidor.',
+  })
   @ApiResponse({
     status: 502,
+    type: ErrorResponseDto,
     description: 'Catalog no disponible para validar referencias o fallo al almacenar el archivo.',
   })
   async createMaterial(

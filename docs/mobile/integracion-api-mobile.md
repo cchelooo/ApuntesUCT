@@ -1,5 +1,7 @@
 # Soporte de integración con Taller 4 Mobile
 
+> **Sprint 2 (#262):** para implementar Material y Search usar la [guía actual de integración](../api/integracion-material-search.md) y [OpenAPI/Postman](../api/README.md). Incluyen detalle, subida, descarga, versiones, filtros y autenticación temporal. Las secciones históricas de Sprint 1 que siguen no sustituyen ese contrato.
+
 **INT2 → INT4 · Sprint 1** · Actualizado tras revisión de la entrega de INT4.
 
 > **Actualización de red de Sprint 2 (#272, 7 de octubre de 2026):** Catalog y
@@ -331,7 +333,7 @@ Todos responden `200` con un arreglo JSON y `400` si el UUID del filtro es invá
 | Paginación `page`/`limit` (`items`/`total`) | **Propuesta** | **No implementada** en los endpoints actuales de catálogo; si se requiere, debe proponerse y aprobarse el contrato |
 | `year`/`type` fuera de Catalog | **Resuelto (#221)** | No forman parte del contrato de Catalog: son de Material Service y la búsqueda por año/tipo de Search Service |
 | Proxy Gateway → `/catalog` | Usado por Mobile (#272) | `CatalogRepository` usa el cliente central del Gateway; no consulta `:3002` directamente (sección 1.2) |
-| Endpoints de Material | **Parcial** | `/api/v1/materials` está enrutada (#222); `material-service` (#311) expone el listado paginado (#318), la creación/subida real (#233) y la descarga `GET /api/v1/materials/:id/download` (#236, última versión o `?versionId=`); subida multipart y descarga binaria validadas a través del Gateway en el puerto 3000 (#237, `docs/reports/validacion-proxy-gateway-2026-10-12.md`); el detalle y el preview siguen pendientes |
+| Endpoints de Material | **Parcial** | `/api/v1/materials` está enrutada (#222); `material-service` (#311) expone el listado paginado (#318), la creación/subida real (#233) y la descarga `GET /api/v1/materials/:id/download` (#236, última versión o `?versionId=`); subida multipart y descarga binaria validadas a través del Gateway en el puerto 3000 (#237, `docs/reports/validacion-proxy-gateway-2026-10-12.md`); el detalle y el historial de versiones ya están implementados (#247); consultar la guía actual enlazada al inicio |
 | Búsqueda en `/api/v1/search` | **Disponible** | Search compone Material + Catalog (#250), está enrutada por el Gateway (#222/#251) y responde `200` con `{ query, page, pageSize, total, results, context }`; Web/Mobile no necesitan conocer el puerto 3005. La integración de la pantalla de búsqueda en Mobile sigue pendiente |
 | Proxy Gateway → `/quality` | **Pendiente** | El gateway no enruta `/api/v1/quality` y el servicio sigue siendo un placeholder |
 

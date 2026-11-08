@@ -1,0 +1,2752 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "ApuntesUCT — API pública",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Gateway local; reemplazar por el host desplegado"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "description": "Chequeo público de disponibilidad del Gateway. No consulta bases de datos ni otros microservicios.",
+        "operationId": "APIGateway_HealthController_check[0]",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIGateway_HealthResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Verifica que el API Gateway está operativo",
+        "tags": ["health"]
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "description": "Chequeo público de disponibilidad del Gateway. No consulta bases de datos ni otros microservicios.",
+        "operationId": "APIGateway_HealthController_check[1]",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIGateway_HealthResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Verifica que el API Gateway está operativo",
+        "tags": ["health"]
+      }
+    },
+    "/api/v1/auth/health": {
+      "get": {
+        "operationId": "AuthService_HealthController_check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthService_HealthResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthService_HealthResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Verifica el estado del servicio y su conexión a PostgreSQL",
+        "tags": ["health"]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "description": "Acepta cualquier credencial con formato válido. Devuelve un JWT falso sin firma, solo para integración del frontend; no autentica usuarios.",
+        "operationId": "AuthService_AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthService_LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sesión simulada. El token no sirve para autorizar peticiones.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["accessToken", "tokenType", "expiresIn", "user"],
+                  "properties": {
+                    "accessToken": {
+                      "type": "string",
+                      "description": "JWT sin firma (alg: none), con claim mock: true."
+                    },
+                    "tokenType": {
+                      "type": "string",
+                      "example": "Bearer"
+                    },
+                    "expiresIn": {
+                      "type": "integer",
+                      "example": 3600
+                    },
+                    "user": {
+                      "type": "object",
+                      "required": ["id", "name", "email", "role", "active"],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "example": "00000000-0000-4000-8000-000000000092"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "Estudiante de prueba"
+                        },
+                        "email": {
+                          "type": "string",
+                          "format": "email",
+                          "example": "estudiante@alu.uct.cl"
+                        },
+                        "role": {
+                          "type": "string",
+                          "example": "STUDENT"
+                        },
+                        "active": {
+                          "type": "boolean",
+                          "example": true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Correo inválido o contraseña ausente, vacía o formada solo por espacios en blanco."
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Login mock temporal (#92)",
+        "tags": ["Auth"]
+      }
+    },
+    "/api/v1/catalog": {
+      "get": {
+        "description": "Devuelve la jerarquía base completa del catálogo (Universidades -> Carreras -> Asignaturas) para ser consumida de forma inicial por el frontend.",
+        "operationId": "CatalogService_CatalogController_getCatalog",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Estructura en árbol del catálogo consultada exitosamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CatalogService_UniversityResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Obtener árbol básico del catálogo",
+        "tags": ["Catalog"]
+      }
+    },
+    "/api/v1/catalog/filter": {
+      "get": {
+        "description": "\n    Realiza una búsqueda jerárquica devolviendo las asignaturas coincidentes junto con sus relaciones principales.\n\n    ### Comportamiento del Endpoint:\n    - **Sin filtros:** Devuelve la lista completa de **Asignaturas**.\n    - **Filtros válidos aplicados:** Devuelve las asignaturas filtradas incluyendo sus relaciones directas (**Carrera**, **Universidad** y **Profesores**).\n    - **Combinación incompatible:** Devuelve un arreglo vacío (`[]`).\n\n    ### Secuencia Obligatoria de Niveles:\n    1. **Universidad** (`universityId`)\n    2. **Carrera** (`careerId`) [requiere `universityId`]\n    3. **Asignatura** (`subjectId`) [requiere `careerId`]\n    4. **Profesor** (`professorId`) [requiere `subjectId`]\n\n    ### Alcance del Dominio:\n    Catalog solo modela la jerarquía hasta **Profesor**. El filtrado por **Año**\n    (`year`) y **Tipo** (`type`) **no** forma parte de este contrato: los\n    metadatos de los materiales pertenecen a **Material Service** y la búsqueda\n    por año/tipo corresponde a **Search Service**. Cualquier parámetro ajeno a los\n    cuatro niveles anteriores se ignora.\n    ",
+        "operationId": "CatalogService_CatalogController_filterCatalog",
+        "parameters": [
+          {
+            "name": "universityId",
+            "required": false,
+            "in": "query",
+            "description": "Nivel 1. Universidad. Sin requisito previo.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "careerId",
+            "required": false,
+            "in": "query",
+            "description": "Nivel 2. Carrera. Requiere universityId.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "subjectId",
+            "required": false,
+            "in": "query",
+            "description": "Nivel 3. Asignatura. Requiere careerId.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "professorId",
+            "required": false,
+            "in": "query",
+            "description": "Nivel 4. Profesor. Requiere subjectId.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de asignaturas que cumplen con el filtro, incluyendo Carrera, Universidad y Profesores."
+          },
+          "400": {
+            "description": "Error si se rompe la secuencia obligatoria de filtrado (niveles 1 al 4)."
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Filtrar catálogo jerárquico de asignaturas",
+        "tags": ["Catalog"]
+      }
+    },
+    "/api/v1/catalog/universities": {
+      "get": {
+        "description": "Devuelve las universidades activas ordenadas por nombre. Alimenta el selector de universidades del frontend.",
+        "operationId": "CatalogService_CatalogController_listUniversities",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Listado de universidades activas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CatalogService_UniversityResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Listar universidades activas",
+        "tags": ["Catalog"]
+      },
+      "post": {
+        "operationId": "CatalogService_CatalogController_createUniversity",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogService_CreateUniversityDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Universidad creada exitosamente."
+          },
+          "400": {
+            "description": "Datos de entrada inválidos."
+          },
+          "409": {
+            "description": "Conflicto: Ya existe una universidad con el mismo código."
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Crear nueva universidad",
+        "tags": ["Catalog"]
+      }
+    },
+    "/api/v1/catalog/careers": {
+      "get": {
+        "description": "Devuelve las carreras activas ordenadas por nombre. Permite acotar el resultado a una universidad con `universityId`.",
+        "operationId": "CatalogService_CatalogController_listCareers",
+        "parameters": [
+          {
+            "name": "universityId",
+            "required": false,
+            "in": "query",
+            "description": "Filtra las carreras de una universidad concreta.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listado de carreras activas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CatalogService_CareerResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`universityId` no es un UUID válido."
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Listar carreras activas",
+        "tags": ["Catalog"]
+      },
+      "post": {
+        "operationId": "CatalogService_CatalogController_createCareer",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogService_CreateCareerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Carrera creada exitosamente."
+          },
+          "400": {
+            "description": "Datos de entrada inválidos."
+          },
+          "404": {
+            "description": "La universidad especificada no existe."
+          },
+          "409": {
+            "description": "Conflicto: Ya existe una carrera con el mismo código en esa universidad."
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Crear nueva carrera",
+        "tags": ["Catalog"]
+      }
+    },
+    "/api/v1/catalog/subjects": {
+      "get": {
+        "description": "Devuelve las asignaturas activas ordenadas por nombre. Permite acotar el resultado a una carrera con `careerId`.",
+        "operationId": "CatalogService_CatalogController_listSubjects",
+        "parameters": [
+          {
+            "name": "careerId",
+            "required": false,
+            "in": "query",
+            "description": "Filtra las asignaturas de una carrera concreta.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listado de asignaturas activas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CatalogService_SubjectResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`careerId` no es un UUID válido."
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Listar asignaturas activas",
+        "tags": ["Catalog"]
+      },
+      "post": {
+        "operationId": "CatalogService_CatalogController_createSubject",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogService_CreateSubjectDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Asignatura creada exitosamente."
+          },
+          "400": {
+            "description": "Datos de entrada inválidos."
+          },
+          "404": {
+            "description": "La carrera especificada no existe."
+          },
+          "409": {
+            "description": "Conflicto: Ya existe una asignatura con el mismo código en esta carrera."
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Crear nueva asignatura",
+        "tags": ["Catalog"]
+      }
+    },
+    "/api/v1/catalog/professors": {
+      "get": {
+        "description": "Devuelve los profesores activos ordenados por nombre. Permite acotar el resultado a quienes dictan una asignatura con `subjectId`.",
+        "operationId": "CatalogService_CatalogController_listProfessors",
+        "parameters": [
+          {
+            "name": "subjectId",
+            "required": false,
+            "in": "query",
+            "description": "Filtra los profesores que dictan una asignatura concreta.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listado de profesores activos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CatalogService_ProfessorResponseDto"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`subjectId` no es un UUID válido."
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Listar profesores activos",
+        "tags": ["Catalog"]
+      },
+      "post": {
+        "description": "Opcionalmente vincula el profesor a una o más asignaturas mediante `subjectIds`.",
+        "operationId": "CatalogService_CatalogController_createProfessor",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogService_CreateProfessorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Profesor creado exitosamente."
+          },
+          "400": {
+            "description": "Datos de entrada inválidos."
+          },
+          "404": {
+            "description": "Alguna de las asignaturas indicadas no existe."
+          },
+          "409": {
+            "description": "Conflicto: Ya existe un profesor con el mismo correo."
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Crear nuevo profesor",
+        "tags": ["Catalog"]
+      }
+    },
+    "/api/v1/catalog/universities/{id}": {
+      "delete": {
+        "description": "Elimina en cascada sus carreras, asignaturas y recursos asociados.",
+        "operationId": "CatalogService_CatalogController_deleteUniversity",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Universidad eliminada exitosamente."
+          },
+          "404": {
+            "description": "La universidad especificada no existe."
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Eliminar una universidad por ID",
+        "tags": ["Catalog"]
+      }
+    },
+    "/api/v1/catalog/careers/{id}": {
+      "delete": {
+        "description": "Elimina en cascada sus asignaturas y recursos asociados.",
+        "operationId": "CatalogService_CatalogController_deleteCareer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Carrera eliminada exitosamente."
+          },
+          "404": {
+            "description": "La carrera especificada no existe."
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Eliminar una carrera por ID",
+        "tags": ["Catalog"]
+      }
+    },
+    "/api/v1/catalog/professors/{id}": {
+      "delete": {
+        "description": "Desvincula al profesor de sus asignaturas y deja sus recursos sin profesor asociado.",
+        "operationId": "CatalogService_CatalogController_deleteProfessor",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profesor eliminado exitosamente."
+          },
+          "404": {
+            "description": "El profesor especificado no existe."
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Eliminar un profesor por ID",
+        "tags": ["Catalog"]
+      }
+    },
+    "/api/v1/catalog/subjects/{id}": {
+      "delete": {
+        "operationId": "CatalogService_CatalogController_deleteSubject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Asignatura eliminada exitosamente."
+          },
+          "404": {
+            "description": "La asignatura especificada no existe."
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Eliminar una asignatura por ID",
+        "tags": ["Catalog"]
+      }
+    },
+    "/api/v1/materials": {
+      "get": {
+        "description": "Orden: createdAt DESC, id DESC. Solo acepta page y pageSize; no realiza búsqueda textual. El desplazamiento máximo es 2147483647.",
+        "operationId": "MaterialService_MaterialsController_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 2147483647,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_MaterialPageDto"
+                },
+                "example": {
+                  "items": [],
+                  "page": 1,
+                  "pageSize": 20,
+                  "total": 0
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Paginación inválida o parámetros desconocidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_ErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "error": "Bad Request",
+                  "message": "El desplazamiento de página excede el máximo permitido.",
+                  "timestamp": "2026-11-08T12:00:00.000Z",
+                  "path": "/api/v1/materials"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Listar materiales publicados con paginación",
+        "tags": ["materials"]
+      },
+      "post": {
+        "description": "\n**REGLAS DE SEGURIDAD Y VALIDACIÓN EN SERVIDOR:**\n- **Contexto de autor:** Requiere un contexto válido resuelto por MaterialAuthorProvider (retorna `401` si no está disponible o habilitado). El contexto local temporal está limitado a development según la configuración del servicio.\n- **Tamaño máximo:** 15 MB del contrato equivalen a 15.728.640 bytes (15 MiB). Retorna `413` si se excede.\n- **Tipos MIME permitidos:** application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation (retorna `415` si no es compatible).\n- **Archivo vacío:** Se rechaza si el archivo pesa 0 bytes (retorna `400`).\n- **Metadatos obligatorios:** `title`, `year` (YYYY), `type` y `subjectId` (retorna `400` si fallan).\n- **Referencias de Catalog:** `subjectId` debe ser un UUID de una asignatura activa con carrera y universidad activas. Si se envían `careerId` o `professorId`, deben existir, estar activos y ser compatibles con la asignatura. La universidad del contexto de autor también debe ser compatible cuando esté configurada. Referencias inválidas retornan `400` con `field`; Catalog no disponible retorna `502`.\n- **Ejemplos académicos:** Los UUID del formulario son ilustrativos; reemplazarlos por referencias existentes en Catalog.\n- **Reglas por tipo:** `LINK` exige `externalLink` válido y prohíbe archivo. `DOCUMENT`, `PRESENTATION`, `EXAM` y `SUMMARY` exigen archivo local.\n- **Relación del tipo:** Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.\n- **Endpoint relacionado:** GET /materials lista materiales publicados con materialTypeId.\n- **Almacenamiento:** Las validaciones previas, incluidas las referencias de Catalog, se ejecutan antes de almacenar el archivo y persistir el material.\n    ",
+        "operationId": "MaterialService_MaterialController_createMaterial",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "description": "Metadatos y archivo mediante multipart/form-data. Las referencias académicas deben ser UUID existentes y compatibles en Catalog. careerId y professorId son opcionales: omitirlos si no se utilizan. Los UUID de ejemplo son ilustrativos y deben reemplazarse por referencias reales.",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialService_CreateMaterialDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Material persistido en estado PENDING_REVIEW.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_CreateMaterialResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Metadatos incorrectos, año inválido, archivo vacío, regla de tipo incumplida o referencia académica inválida. Los errores de referencias de Catalog incluyen field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_ErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "error": "Bad Request",
+                  "message": ["title should not be empty"],
+                  "timestamp": "2026-11-08T12:00:00.000Z",
+                  "path": "/api/v1/materials"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Contexto de autor ausente, inválido o no habilitado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_ErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "error": "Unauthorized",
+                  "message": "Se requiere un contexto de autor válido.",
+                  "timestamp": "2026-11-08T12:00:00.000Z",
+                  "path": "/api/v1/materials"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "El archivo supera los 15.728.640 bytes permitidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_ErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 413,
+                  "error": "Payload Too Large",
+                  "message": "El archivo excede el tamaño máximo permitido de 15 MB (15728640 bytes).",
+                  "timestamp": "2026-11-08T12:00:00.000Z",
+                  "path": "/api/v1/materials"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Formato de archivo no soportado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_ErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 415,
+                  "error": "Unsupported Media Type",
+                  "message": "Tipo de archivo no admitido. Formatos válidos: PDF, Word (.doc, .docx) y PowerPoint (.ppt, .pptx).",
+                  "timestamp": "2026-11-08T12:00:00.000Z",
+                  "path": "/api/v1/materials"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error inesperado en el servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_ErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 500,
+                  "error": "Internal Server Error",
+                  "message": "Internal server error",
+                  "timestamp": "2026-11-08T12:00:00.000Z",
+                  "path": "/api/v1/materials"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Catalog no disponible para validar referencias o fallo al almacenar el archivo. Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/MaterialService_ErrorResponseDto"
+                    },
+                    {
+                      "type": "object",
+                      "required": ["statusCode", "message"],
+                      "properties": {
+                        "statusCode": {
+                          "type": "integer",
+                          "enum": [502]
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Subir y registrar un nuevo material o enlace académico con validaciones de seguridad",
+        "tags": ["Materials"]
+      }
+    },
+    "/api/v1/materials/{id}/download": {
+      "get": {
+        "description": "Resuelve internamente la versión (la de mayor versionNumber, o la indicada en versionId) y streama el archivo desde MinIO. La clave de almacenamiento nunca se expone.",
+        "operationId": "MaterialService_MaterialsController_download",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "versionId",
+            "required": false,
+            "in": "query",
+            "description": "Versión específica a descargar; por defecto se resuelve la última del material.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            },
+            "description": "Stream del archivo con Content-Type, Content-Length y Content-Disposition: attachment; filename=\"<ASCII>\"; filename*=UTF-8''<nombre original>."
+          },
+          "400": {
+            "description": "UUID inválido o parámetro desconocido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_ErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "error": "Bad Request",
+                  "message": "Validation failed (uuid is expected)",
+                  "timestamp": "2026-11-08T12:00:00.000Z",
+                  "path": "/api/v1/materials/00000000-0000-4000-8000-000000000001/download"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Material, versión o archivo inexistente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_ErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "error": "Not Found",
+                  "message": "Material no encontrado.",
+                  "timestamp": "2026-11-08T12:00:00.000Z",
+                  "path": "/api/v1/materials/00000000-0000-4000-8000-000000000001/download"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Almacenamiento no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_ErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 503,
+                  "error": "Service Unavailable",
+                  "message": "Almacenamiento de archivos no disponible.",
+                  "timestamp": "2026-11-08T12:00:00.000Z",
+                  "path": "/api/v1/materials/00000000-0000-4000-8000-000000000001/download"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Descargar la versión actual o una versión específica de un material",
+        "tags": ["materials"]
+      }
+    },
+    "/api/v1/materials/{id}": {
+      "get": {
+        "description": "Solo materiales PUBLISHED. versions contiene el historial completo por versionNumber descendente. currentVersion corresponde a su primer elemento; para enlaces sin archivo devuelve null y versions vacío. fileSize es una cadena decimal de bytes. No expone claves ni rutas de almacenamiento.",
+        "operationId": "MaterialService_MaterialsController_detail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_MaterialDetailDto"
+                },
+                "example": {
+                  "id": "00000000-0000-4000-8000-000000000001",
+                  "title": "Guía de álgebra",
+                  "description": null,
+                  "uploaderId": "00000000-0000-4000-8000-000000000092",
+                  "academicOfferingId": null,
+                  "universityId": null,
+                  "careerId": null,
+                  "subjectId": "33333333-3333-4333-8333-333333333333",
+                  "professorId": null,
+                  "materialTypeId": "00000000-0000-4000-8000-000000000003",
+                  "materialType": "DOCUMENT",
+                  "academicYear": 2026,
+                  "status": "PUBLISHED",
+                  "verified": false,
+                  "externalLink": null,
+                  "createdAt": "2026-11-08T12:00:00.000Z",
+                  "updatedAt": "2026-11-08T12:00:00.000Z",
+                  "currentVersion": {
+                    "id": "00000000-0000-4000-8000-000000000002",
+                    "versionNumber": 2,
+                    "originalFilename": "guia-v2.pdf",
+                    "mimeType": "application/pdf",
+                    "fileSize": "2048",
+                    "createdAt": "2026-11-08T12:00:00.000Z"
+                  },
+                  "versions": [
+                    {
+                      "id": "00000000-0000-4000-8000-000000000002",
+                      "versionNumber": 2,
+                      "originalFilename": "guia-v2.pdf",
+                      "mimeType": "application/pdf",
+                      "fileSize": "2048",
+                      "createdAt": "2026-11-08T12:00:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "El identificador no es un UUID válido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_ErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "error": "Bad Request",
+                  "message": "Validation failed (uuid is expected)",
+                  "timestamp": "2026-11-08T12:00:00.000Z",
+                  "path": "/api/v1/materials/00000000-0000-4000-8000-000000000001"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Material inexistente/no publicado o documento sin versión disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_ErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "error": "Not Found",
+                  "message": "Material no encontrado.",
+                  "timestamp": "2026-11-08T12:00:00.000Z",
+                  "path": "/api/v1/materials/00000000-0000-4000-8000-000000000001"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Obtener detalle de un material publicado y su historial de versiones",
+        "tags": ["materials"]
+      }
+    },
+    "/api/v1/materials/{id}/versions": {
+      "post": {
+        "description": "Requiere contexto local de autor habilitado en development; el JWT mock no autentica. Solo el autor puede agregar versiones. No cambia el estado del material. Archivo obligatorio, máximo 15 MiB; mismos MIME admitidos que POST /materials.",
+        "operationId": "MaterialService_MaterialVersionController_createVersion",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Nueva versión registrada con numeración incremental.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_MaterialVersionResponseDto"
+                },
+                "example": {
+                  "id": "00000000-0000-4000-8000-000000000002",
+                  "versionNumber": 2,
+                  "originalFilename": "guia-v2.pdf",
+                  "mimeType": "application/pdf",
+                  "fileSize": "2048",
+                  "createdAt": "2026-11-08T12:00:00.000Z",
+                  "materialId": "00000000-0000-4000-8000-000000000001",
+                  "createdBy": "00000000-0000-4000-8000-000000000092"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "UUID inválido, archivo ausente o vacío, o material LINK.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_ErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "error": "Bad Request",
+                  "message": "Validation failed (uuid is expected)",
+                  "timestamp": "2026-11-08T12:00:00.000Z",
+                  "path": "/api/v1/materials/00000000-0000-4000-8000-000000000001/versions"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Contexto de autor no disponible.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_ErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 401,
+                  "error": "Unauthorized",
+                  "message": "Se requiere un contexto de autor válido.",
+                  "timestamp": "2026-11-08T12:00:00.000Z",
+                  "path": "/api/v1/materials/00000000-0000-4000-8000-000000000001/versions"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "El usuario no es el autor del material.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_ErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "error": "Forbidden",
+                  "message": "Solo el autor puede crear una nueva versión del material.",
+                  "timestamp": "2026-11-08T12:00:00.000Z",
+                  "path": "/api/v1/materials/00000000-0000-4000-8000-000000000001/versions"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Material no encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_ErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "error": "Not Found",
+                  "message": "Material no encontrado.",
+                  "timestamp": "2026-11-08T12:00:00.000Z",
+                  "path": "/api/v1/materials/00000000-0000-4000-8000-000000000001/versions"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Archivo mayor que 15 MiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_ErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 413,
+                  "error": "Payload Too Large",
+                  "message": "El archivo excede el tamaño máximo permitido de 15 MB (15728640 bytes).",
+                  "timestamp": "2026-11-08T12:00:00.000Z",
+                  "path": "/api/v1/materials/00000000-0000-4000-8000-000000000001/versions"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Formato no soportado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_ErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 415,
+                  "error": "Unsupported Media Type",
+                  "message": "Tipo de archivo no admitido. Formatos válidos: PDF, Word (.doc, .docx) y PowerPoint (.ppt, .pptx).",
+                  "timestamp": "2026-11-08T12:00:00.000Z",
+                  "path": "/api/v1/materials/00000000-0000-4000-8000-000000000001/versions"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "No se pudo almacenar el archivo. Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/MaterialService_ErrorResponseDto"
+                    },
+                    {
+                      "type": "object",
+                      "required": ["statusCode", "message"],
+                      "properties": {
+                        "statusCode": {
+                          "type": "integer",
+                          "enum": [502]
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear una nueva versión de archivo conservando las anteriores",
+        "tags": ["Materials"]
+      }
+    },
+    "/api/v1/search": {
+      "get": {
+        "description": "Endpoint público. Busca coincidencias parciales en título o descripción sin distinguir mayúsculas ni tildes. Todos los filtros se combinan con AND. q vacío o compuesto solo por espacios equivale a omitir el texto. Search consulta los contratos REST de Catalog y Material, sin acceder a bases ajenas. \n\nJerarquía académica: careerId requiere universityId; subjectId requiere careerId y universityId; professorId requiere los tres niveles anteriores. Una secuencia incompleta devuelve 400. Catalog determina el contexto activo y sus relaciones. El profesor también debe ser el asociado al material. Materiales sin contexto verificable o con carrera/universidad contradictorias no coinciden con filtros académicos. Una combinación completa incompatible o sin coincidencias devuelve 200 con total 0, results [] y context []. year y type son independientes: no requieren profesor ni niveles académicos anteriores. \n\nOrden predeterminado: createdAt DESC, id DESC. Se permiten createdAt, title y year, con asc o desc. Nulos al final; desempate siempre por id DESC. Se filtra y ordena antes de calcular el total y paginar. context incluye solo las asignaturas de la página devuelta. La valoración no está implementada. \n\nLímite: toda consulta con texto, filtros o un orden distinto de createdAt DESC recorre hasta 10.000 materiales publicados (100 páginas de 100). Si Material informa más de 10.000, devuelve 503, aunque las coincidencias pudieran ser pocas. No se entregan resultados parciales. El listado sin texto ni filtros con orden predeterminado conserva la paginación de Material y no aplica este límite. Las páginas REST no comparten una instantánea: algunos cambios concurrentes detectables producen 502 y requieren reintentar.",
+        "operationId": "SearchService_SearchController_search",
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Coincidencia parcial en título o descripción, sin distinguir mayúsculas ni tildes. Se eliminan espacios exteriores. Vacío o solo espacios equivale a omitir q; los demás filtros siguen aplicándose.",
+            "schema": {
+              "maxLength": 200,
+              "example": "Estructuras de Datos",
+              "type": "string"
+            }
+          },
+          {
+            "name": "universityId",
+            "required": false,
+            "in": "query",
+            "description": "Universidad del contexto académico activo de Catalog. Primer nivel, sin requisito previo.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "careerId",
+            "required": false,
+            "in": "query",
+            "description": "Carrera del contexto académico activo. Requiere universityId.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "subjectId",
+            "required": false,
+            "in": "query",
+            "description": "Asignatura activa. Requiere careerId y universityId.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "professorId",
+            "required": false,
+            "in": "query",
+            "description": "Profesor asociado al material y vinculado a la asignatura en Catalog. Requiere subjectId, careerId y universityId.",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "year",
+            "required": false,
+            "in": "query",
+            "description": "Año académico exacto (1900–2099). Independiente de los filtros académicos y de type.",
+            "schema": {
+              "minimum": 1900,
+              "maximum": 2099,
+              "example": 2026,
+              "type": "number"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "description": "Nombre exacto de materialType publicado por Material (distingue mayúsculas). Se eliminan espacios exteriores. No se limita al enum del POST. Independiente de year y del contexto académico; un nombre sin coincidencias produce total 0.",
+            "schema": {
+              "maxLength": 100,
+              "example": "DOCUMENT",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortBy",
+            "required": false,
+            "in": "query",
+            "description": "Campo de ordenamiento. title compara texto normalizado sin mayúsculas ni tildes por orden lexicográfico Unicode. No se admite valoración. Nulos al final; empates por id DESC.",
+            "schema": {
+              "default": "createdAt",
+              "type": "string",
+              "enum": ["createdAt", "title", "year"]
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "description": "Dirección del campo seleccionado. El desempate por id siempre es DESC.",
+            "schema": {
+              "default": "desc",
+              "type": "string",
+              "enum": ["asc", "desc"]
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Página final de coincidencias, comenzando en 1.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 2147483647,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "description": "Cantidad de resultados por página.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Coincidencias paginadas y su contexto académico.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchService_SearchResponseDto"
+                },
+                "example": {
+                  "query": "Estructuras de Datos",
+                  "page": 1,
+                  "pageSize": 20,
+                  "total": 0,
+                  "results": [],
+                  "context": []
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Parámetros inválidos o secuencia académica incompleta."
+          },
+          "502": {
+            "description": "Respuesta inválida de una dependencia o inconsistencia detectada al recorrer las páginas. Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependencia no disponible o consulta que requiere recorrer más de 10.000 publicados. Mensaje del límite: \"La búsqueda supera el límite de materiales que puede procesarse.\" No se entregan resultados parciales."
+          }
+        },
+        "summary": "Buscar materiales con filtros y ordenamiento",
+        "tags": ["Search"]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "APIGateway_HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok",
+            "enum": ["ok"]
+          },
+          "service": {
+            "type": "string",
+            "example": "API Gateway"
+          },
+          "timestamp": {
+            "type": "string",
+            "example": "2026-09-13T12:00:00.000Z",
+            "format": "date-time"
+          }
+        },
+        "required": ["status", "service", "timestamp"]
+      },
+      "AuthService_HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["ok", "unavailable"],
+            "example": "ok"
+          },
+          "service": {
+            "type": "string",
+            "example": "auth-service"
+          },
+          "database": {
+            "type": "string",
+            "enum": ["connected", "disconnected"],
+            "example": "connected"
+          },
+          "timestamp": {
+            "type": "string",
+            "example": "2026-09-07T12:00:00.000Z"
+          }
+        },
+        "required": ["status", "service", "database", "timestamp"]
+      },
+      "AuthService_LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "estudiante@alu.uct.cl"
+          },
+          "password": {
+            "type": "string",
+            "example": "demo",
+            "description": "Debe contener al menos un carácter que no sea espacio en blanco. El mock no verifica credenciales."
+          }
+        },
+        "required": ["email", "password"]
+      },
+      "CatalogService_HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "service": {
+            "type": "string",
+            "example": "catalog-service"
+          },
+          "timestamp": {
+            "type": "string",
+            "example": "2026-09-07T12:00:00.000Z"
+          }
+        },
+        "required": ["status", "service", "timestamp"]
+      },
+      "CatalogService_ProfessorResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "name", "email", "active"]
+      },
+      "CatalogService_SubjectResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "semester": {
+            "type": "number",
+            "description": "Semestre académico correspondiente a la asignatura dentro del plan de estudios",
+            "example": 3,
+            "minimum": 1,
+            "maximum": 12
+          },
+          "description": {
+            "type": "object",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "careerId": {
+            "type": "string",
+            "description": "Carrera a la que pertenece la asignatura.",
+            "format": "uuid"
+          },
+          "professors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogService_ProfessorResponseDto"
+            }
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "code",
+          "semester",
+          "active",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CatalogService_CareerResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "universityId": {
+            "type": "string",
+            "description": "Universidad a la que pertenece la carrera.",
+            "format": "uuid"
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogService_SubjectResponseDto"
+            }
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": ["id", "name", "code", "active", "createdAt", "updatedAt"]
+      },
+      "CatalogService_UniversityResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "careers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogService_CareerResponseDto"
+            }
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": ["id", "name", "code", "active", "createdAt", "updatedAt"]
+      },
+      "CatalogService_CreateUniversityDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CatalogService_CreateCareerDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CatalogService_CreateProfessorDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CatalogService_CreateSubjectDto": {
+        "type": "object",
+        "properties": {
+          "careerId": {
+            "type": "string",
+            "description": "ID de la carrera a la que pertenece la asignatura",
+            "example": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
+          },
+          "code": {
+            "type": "string",
+            "description": "Código único de la asignatura dentro de la carrera",
+            "example": "INF-101"
+          },
+          "name": {
+            "type": "string",
+            "description": "Nombre de la asignatura",
+            "example": "Estructuras de Datos"
+          },
+          "semester": {
+            "type": "number",
+            "description": "Semestre académico correspondiente a la asignatura",
+            "example": 3,
+            "minimum": 1
+          },
+          "description": {
+            "type": "string",
+            "description": "Descripción opcional de la asignatura",
+            "example": "Curso sobre estructuras de datos lineales y no lineales."
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Estado de activación de la asignatura",
+            "default": true,
+            "example": true
+          }
+        },
+        "required": ["careerId", "code", "name", "semester"]
+      },
+      "MaterialService_HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "service": {
+            "type": "string",
+            "example": "material-service"
+          },
+          "timestamp": {
+            "type": "string",
+            "example": "2026-09-07T12:00:00.000Z"
+          }
+        },
+        "required": ["status", "service", "timestamp"]
+      },
+      "MaterialService_MaterialSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "uploaderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "academicOfferingId": {
+            "type": "string",
+            "nullable": true
+          },
+          "universityId": {
+            "type": "string",
+            "nullable": true
+          },
+          "careerId": {
+            "type": "string",
+            "nullable": true
+          },
+          "subjectId": {
+            "type": "string"
+          },
+          "professorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "materialTypeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "materialType": {
+            "type": "string",
+            "description": "Nombre del tipo de material."
+          },
+          "academicYear": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PUBLISHED"]
+          },
+          "verified": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "uploaderId",
+          "academicOfferingId",
+          "universityId",
+          "careerId",
+          "subjectId",
+          "professorId",
+          "materialTypeId",
+          "materialType",
+          "academicYear",
+          "status",
+          "verified",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "MaterialService_MaterialPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MaterialService_MaterialSummaryDto"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Total de materiales publicados."
+          }
+        },
+        "required": ["items", "page", "pageSize", "total"]
+      },
+      "MaterialService_ErrorResponseDto": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "example": 400,
+            "description": "Código de estado HTTP"
+          },
+          "error": {
+            "type": "string",
+            "example": "Bad Request",
+            "description": "Nombre corto del error HTTP"
+          },
+          "message": {
+            "oneOf": [
+              {
+                "type": "string",
+                "example": "El archivo supera el límite de 15 MB (15728640 bytes)."
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "example": ["year must match /^(19|20)\\d{2}$/"]
+              }
+            ],
+            "description": "Mensaje descriptivo del error o lista de fallos de validación"
+          },
+          "timestamp": {
+            "type": "string",
+            "example": "2026-10-05T14:00:00.000Z",
+            "description": "Marca de tiempo ISO del error"
+          },
+          "path": {
+            "type": "string",
+            "example": "/api/v1/materials",
+            "description": "Ruta donde ocurrió el error"
+          },
+          "field": {
+            "type": "string",
+            "description": "Campo académico inválido (subjectId, careerId o professorId).",
+            "example": "subjectId"
+          }
+        },
+        "required": ["statusCode", "error", "message", "timestamp", "path"]
+      },
+      "MaterialService_MaterialCurrentVersionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "versionNumber": {
+            "type": "number",
+            "minimum": 1
+          },
+          "originalFilename": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "fileSize": {
+            "type": "string",
+            "example": "15728640",
+            "description": "Tamaño en bytes como cadena decimal para preservar la precisión de BigInt."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "versionNumber",
+          "originalFilename",
+          "mimeType",
+          "fileSize",
+          "createdAt"
+        ]
+      },
+      "MaterialService_MaterialDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "uploaderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "academicOfferingId": {
+            "type": "string",
+            "nullable": true
+          },
+          "universityId": {
+            "type": "string",
+            "nullable": true
+          },
+          "careerId": {
+            "type": "string",
+            "nullable": true
+          },
+          "subjectId": {
+            "type": "string"
+          },
+          "professorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "materialTypeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "materialType": {
+            "type": "string",
+            "description": "Nombre del tipo local del material."
+          },
+          "academicYear": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PUBLISHED"]
+          },
+          "verified": {
+            "type": "boolean"
+          },
+          "externalLink": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "currentVersion": {
+            "nullable": true,
+            "description": "Versión con mayor versionNumber. Un material LINK sin archivo devuelve null.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MaterialService_MaterialCurrentVersionDto"
+              }
+            ]
+          },
+          "versions": {
+            "description": "Historial completo ordenado por versionNumber descendente. Incluye la versión actual; vacío para enlaces sin archivo.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MaterialService_MaterialCurrentVersionDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "uploaderId",
+          "academicOfferingId",
+          "universityId",
+          "careerId",
+          "subjectId",
+          "professorId",
+          "materialTypeId",
+          "materialType",
+          "academicYear",
+          "status",
+          "verified",
+          "externalLink",
+          "createdAt",
+          "updatedAt",
+          "currentVersion",
+          "versions"
+        ]
+      },
+      "MaterialService_MaterialDataDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "25f7b25a-76b9-4d0c-a389-679e562870d1",
+            "description": "Identificador único generado para el material."
+          },
+          "title": {
+            "type": "string",
+            "example": "Guía Práctica de Álgebra Lineal",
+            "description": "Título del material."
+          },
+          "description": {
+            "type": "string",
+            "example": "Ejercicios resueltos sobre valores y vectores propios.",
+            "nullable": true,
+            "description": "Descripción opcional."
+          },
+          "year": {
+            "type": "string",
+            "example": "2026",
+            "description": "Año académico de 4 dígitos."
+          },
+          "type": {
+            "type": "string",
+            "enum": ["DOCUMENT", "PRESENTATION", "LINK", "EXAM", "SUMMARY"],
+            "example": "DOCUMENT",
+            "description": "Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["PENDING_REVIEW"],
+            "example": "PENDING_REVIEW",
+            "description": "Estado inicial del material tras la subida."
+          },
+          "subjectId": {
+            "type": "string",
+            "example": "33333333-3333-4333-8333-333333333333",
+            "description": "Identificador único de la asignatura."
+          },
+          "careerId": {
+            "type": "string",
+            "example": "22222222-2222-4222-8222-222222222222",
+            "nullable": true,
+            "description": "Identificador de la carrera."
+          },
+          "professorId": {
+            "type": "string",
+            "example": "44444444-4444-4444-8444-444444444444",
+            "nullable": true,
+            "description": "Identificador único del profesor (UUID/ID)."
+          },
+          "universityId": {
+            "type": "string",
+            "nullable": true,
+            "example": "11111111-1111-4111-8111-111111111111",
+            "description": "Identificador de la universidad, derivado automáticamente del contexto académico."
+          },
+          "fileUrl": {
+            "type": "string",
+            "example": null,
+            "nullable": true,
+            "description": "Siempre null: la descarga usa GET /materials/:id/download sin exponer una URL de MinIO."
+          },
+          "fileSize": {
+            "type": "number",
+            "example": 2048500,
+            "nullable": true,
+            "description": "Tamaño del archivo en bytes."
+          },
+          "mimeType": {
+            "type": "string",
+            "example": "application/pdf",
+            "nullable": true,
+            "description": "MIME type del archivo."
+          },
+          "externalLink": {
+            "type": "string",
+            "example": null,
+            "nullable": true,
+            "description": "URL de enlace externo si aplica."
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-10-05T14:00:00.000Z",
+            "description": "Marca de tiempo de creación en formato ISO."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "year",
+          "type",
+          "status",
+          "subjectId",
+          "createdAt"
+        ]
+      },
+      "MaterialService_CreateMaterialResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "success"
+          },
+          "isSimulatedResponse": {
+            "type": "boolean",
+            "example": false,
+            "description": "false: material persistido en PostgreSQL y archivo almacenado cuando corresponde."
+          },
+          "message": {
+            "type": "string",
+            "example": "Material registrado exitosamente en estado PENDING_REVIEW."
+          },
+          "data": {
+            "$ref": "#/components/schemas/MaterialService_MaterialDataDto"
+          }
+        },
+        "required": ["status", "isSimulatedResponse", "message", "data"]
+      },
+      "MaterialService_CreateMaterialDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "OBLIGATORIO. Título descriptivo del recurso.",
+            "example": "Guía Práctica de Álgebra Lineal"
+          },
+          "description": {
+            "type": "string",
+            "description": "OPCIONAL. Descripción o detalles adicionales.",
+            "example": "Ejercicios resueltos sobre valores y vectores propios."
+          },
+          "year": {
+            "type": "string",
+            "description": "OBLIGATORIO. Año académico de publicación (Formato YYYY).",
+            "example": "2026"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["DOCUMENT", "PRESENTATION", "LINK", "EXAM", "SUMMARY"],
+            "description": "Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.",
+            "example": "DOCUMENT"
+          },
+          "subjectId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "OBLIGATORIO. UUID de una asignatura activa existente en Catalog, con carrera y universidad activas. Debe ser compatible con la universidad del contexto de autor cuando se configure. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+            "example": "33333333-3333-4333-8333-333333333333"
+          },
+          "careerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "OPCIONAL. UUID de una carrera activa existente en Catalog a la que pertenece la asignatura. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+            "example": "22222222-2222-4222-8222-222222222222"
+          },
+          "professorId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "OPCIONAL. UUID de un profesor activo existente en Catalog y vinculado a la asignatura. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+            "example": "44444444-4444-4444-8444-444444444444"
+          },
+          "externalLink": {
+            "type": "string",
+            "description": "CONDICIONAL. Enlace web externo válido (URL). Obligatorio si type es LINK. Opcional como respaldo si se envía archivo.",
+            "example": "https://drive.google.com/file/d/xyz/view"
+          },
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "description": "Archivo binario local (máximo 15 MB). Obligatorio para DOCUMENT, PRESENTATION, EXAM y SUMMARY; no admitido para LINK. MIME permitidos: application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation."
+          }
+        },
+        "required": ["title", "year", "type", "subjectId"]
+      },
+      "MaterialService_MaterialVersionResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "versionNumber": {
+            "type": "number",
+            "minimum": 1
+          },
+          "originalFilename": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "fileSize": {
+            "type": "string",
+            "example": "15728640",
+            "description": "Tamaño en bytes como cadena decimal para preservar la precisión de BigInt."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "materialId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdBy": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id",
+          "versionNumber",
+          "originalFilename",
+          "mimeType",
+          "fileSize",
+          "createdAt",
+          "materialId",
+          "createdBy"
+        ]
+      },
+      "SearchService_SearchResultDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "materialType": {
+            "type": "string",
+            "nullable": true
+          },
+          "academicYear": {
+            "type": "number",
+            "nullable": true
+          },
+          "verified": {
+            "type": "boolean"
+          },
+          "subjectId": {
+            "type": "string",
+            "nullable": true
+          },
+          "careerId": {
+            "type": "string",
+            "nullable": true
+          },
+          "universityId": {
+            "type": "string",
+            "nullable": true
+          },
+          "professorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "subjectName": {
+            "type": "string",
+            "nullable": true
+          },
+          "careerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "universityName": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "materialType",
+          "academicYear",
+          "verified",
+          "subjectId",
+          "careerId",
+          "universityId",
+          "professorId",
+          "subjectName",
+          "careerName",
+          "universityName",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "SearchService_SearchProfessorDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "name"]
+      },
+      "SearchService_SearchSubjectContextDto": {
+        "type": "object",
+        "properties": {
+          "subjectId": {
+            "type": "string"
+          },
+          "subjectName": {
+            "type": "string"
+          },
+          "subjectCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "semester": {
+            "type": "number",
+            "nullable": true
+          },
+          "careerId": {
+            "type": "string",
+            "nullable": true
+          },
+          "careerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "universityId": {
+            "type": "string",
+            "nullable": true
+          },
+          "universityName": {
+            "type": "string",
+            "nullable": true
+          },
+          "professors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchService_SearchProfessorDto"
+            }
+          }
+        },
+        "required": [
+          "subjectId",
+          "subjectName",
+          "subjectCode",
+          "semester",
+          "careerId",
+          "careerName",
+          "universityId",
+          "universityName",
+          "professors"
+        ]
+      },
+      "SearchService_SearchResponseDto": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "nullable": true
+          },
+          "page": {
+            "type": "number"
+          },
+          "pageSize": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchService_SearchResultDto"
+            }
+          },
+          "context": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SearchService_SearchSubjectContextDto"
+            }
+          }
+        },
+        "required": ["query", "page", "pageSize", "total", "results", "context"]
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
