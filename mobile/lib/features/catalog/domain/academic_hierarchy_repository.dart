@@ -37,10 +37,9 @@ class MockAcademicHierarchyRepository implements IAcademicHierarchyRepository {
   @override
   Future<List<CareerModel>> fetchCareersByUniversity(
     String universityId,
-  ) async =>
-      CareerModel.mockList()
-          .where((c) => c.universityId == universityId)
-          .toList();
+  ) async => CareerModel.mockList()
+      .where((c) => c.universityId == universityId)
+      .toList();
 
   @override
   Future<List<SubjectModel>> fetchSubjectsByCareer(String careerId) async =>
@@ -49,6 +48,5 @@ class MockAcademicHierarchyRepository implements IAcademicHierarchyRepository {
   @override
   Future<List<ProfessorModel>> fetchProfessorsBySubject(
     String subjectId,
-  ) async =>
-      ProfessorModel.mockList();
+  ) async => ProfessorModel.mockList();
 }

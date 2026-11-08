@@ -17,32 +17,26 @@ final uploadUniversitiesProvider =
       return ref.watch(catalogSelectorRepositoryProvider).listUniversities();
     });
 
-final uploadCareersProvider =
-    FutureProvider.autoDispose.family<List<CareerModel>, String?>(
-      (ref, universityId) {
-        if (universityId == null) return [];
-        return ref
-            .watch(catalogSelectorRepositoryProvider)
-            .listCareers(universityId: universityId);
-      },
-    );
+final uploadCareersProvider = FutureProvider.autoDispose
+    .family<List<CareerModel>, String?>((ref, universityId) {
+      if (universityId == null) return [];
+      return ref
+          .watch(catalogSelectorRepositoryProvider)
+          .listCareers(universityId: universityId);
+    });
 
-final uploadSubjectsProvider =
-    FutureProvider.autoDispose.family<List<SubjectModel>, String?>(
-      (ref, careerId) {
-        if (careerId == null) return [];
-        return ref
-            .watch(catalogSelectorRepositoryProvider)
-            .listSubjects(careerId: careerId);
-      },
-    );
+final uploadSubjectsProvider = FutureProvider.autoDispose
+    .family<List<SubjectModel>, String?>((ref, careerId) {
+      if (careerId == null) return [];
+      return ref
+          .watch(catalogSelectorRepositoryProvider)
+          .listSubjects(careerId: careerId);
+    });
 
-final uploadProfessorsProvider =
-    FutureProvider.autoDispose.family<List<ProfessorModel>, String?>(
-      (ref, subjectId) {
-        if (subjectId == null) return [];
-        return ref
-            .watch(catalogSelectorRepositoryProvider)
-            .listProfessors(subjectId: subjectId);
-      },
-    );
+final uploadProfessorsProvider = FutureProvider.autoDispose
+    .family<List<ProfessorModel>, String?>((ref, subjectId) {
+      if (subjectId == null) return [];
+      return ref
+          .watch(catalogSelectorRepositoryProvider)
+          .listProfessors(subjectId: subjectId);
+    });

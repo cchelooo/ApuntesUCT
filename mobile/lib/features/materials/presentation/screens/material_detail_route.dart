@@ -1,4 +1,5 @@
 import 'package:apuntesuct_mobile/core/widgets/empty_state.dart';
+import 'package:apuntesuct_mobile/core/errors/api_exception.dart';
 import 'package:apuntesuct_mobile/core/widgets/error_state.dart';
 import 'package:apuntesuct_mobile/core/widgets/loading_state.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/repositories/materials_repository.dart';
@@ -31,7 +32,7 @@ class MaterialDetailRoute extends ConsumerWidget {
       return Scaffold(
         appBar: AppBar(title: const Text('Detalle del Material')),
         body: Center(
-          child: ErrorState(
+          child: ErrorState.fromMessage(
             message: 'Identificador de material inválido.',
             onRetry: () => context.go('/materials'),
           ),
@@ -71,8 +72,12 @@ class MaterialDetailRoute extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  ErrorState(
-                    message: 'No fue posible cargar el material solicitado.',
+                  ErrorState.fromMessage(
+                    error: error,
+                    message: apiErrorMessage(
+                      error,
+                      fallback: 'No fue posible cargar el material solicitado.',
+                    ),
                     onRetry: () =>
                         ref.invalidate(materialDetailByIdProvider(materialId)),
                   ),

@@ -2,6 +2,9 @@ export type MaterialViewStatus =
   'ready' | 'loading' | 'unavailable' | 'not-found';
 
 export interface MaterialVersion {
+  id?: string;
+  originalFilename?: string;
+  downloadUrl?: string;
   number: number;
   uploadedAt: string | null;
   uploadedBy: string | null;
@@ -17,6 +20,7 @@ export interface MaterialDetail {
   year: number | null;
   subjectName: string | null;
   professorName: string | null;
+  versions?: MaterialVersion[];
   version: MaterialVersion | null;
   downloadUrl: string | null;
 }

@@ -248,6 +248,7 @@ describe('Materials API (E2E)', () => {
       const { body } = await upload(exactPdf, 'exact-15mb.pdf', 'application/pdf').expect(201);
       expectVersion(exactPdf, 'exact-15mb.pdf', 'application/pdf');
       expect(body.data.fileSize).toBe(MAX_FILE_SIZE_BYTES);
+      expect(body.data.status).toBe('PENDING_REVIEW');
       expect(body.data.mimeType).toBe('application/pdf');
       expect(body.data.fileUrl).toBeNull();
       expect(body.data.storageKey).toBeUndefined();

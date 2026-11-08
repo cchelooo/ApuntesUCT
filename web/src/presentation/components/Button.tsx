@@ -25,9 +25,10 @@ export const Button: React.FC<ButtonProps> = ({
   const variants: Record<ButtonVariant, string> = {
     primary: 'bg-uct-blue text-white hover:bg-uct-blueDark focus:ring-uct-sky',
     secondary:
-      'bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500',
+      'bg-catalog-paperMuted text-catalog-ink hover:bg-uct-border focus:ring-uct-sky',
     danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-    ghost: 'bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-500',
+    ghost:
+      'bg-transparent text-catalog-primary hover:bg-catalog-paperMuted focus:ring-uct-sky',
   };
 
   const sizes: Record<ButtonSize, string> = {

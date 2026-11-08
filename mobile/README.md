@@ -83,36 +83,40 @@ Las operaciones concretas admiten cancelación y las transferencias, progreso.
 Todo pasa por el cliente central y Gateway, sin recurrir a puertos de servicios.
 Las pruebas de contrato no necesitan Docker ni crean datos reales.
 
-La pantalla de descubrimiento continúa usando `MockMaterialsRepository`.
-Estos adaptadores no demuestran que ese listado esté integrado con Search.
+La pantalla `/materials` usa `DioMaterialsDiscoveryRepository`: sin filtros
+consulta Material y con texto o filtros consulta Search mediante Gateway. Las
+tarjetas abren `/materials/:id` y obtienen el detalle HTTP. Los mocks requieren
+un override explícito de pruebas; un fallo HTTP se muestra como error.
 La subida permanece pendiente de revisión: no es descargable mediante el
 endpoint público hasta que el material esté publicado.
 
-### Search: preparación Mobile (#275)
+### Contrato de Search
 
 `searchRepositoryProvider` comparte `apiclientProvider` con Catalog y Material.
-`DioSearchRepository` solo consume `GET /search` con `q` si hay texto activo,
-recortando espacios exteriores. No usa el puerto de Search ni consulta Material
-como sustituto.
+`DioSearchRepository` consume `GET /search` con `q` si hay texto activo,
+recortando espacios exteriores. Acepta los filtros `universityId`, `careerId`,
+`subjectId`, `professorId`, `year` y `type`, además de `sortBy` y `order`.
+No usa el puerto de Search ni consulta Material como sustituto.
 
-El contrato actual de INT2 es un **stub** (`query`, `results: []`, `total: 0`,
-`message`). El adaptador lo reconoce mediante `SearchContractPendingException`;
-no devuelve una página vacía que sugiera una búsqueda real. Una respuesta no
-acordada produce un error visible. Los errores HTTP conservan código y mensaje.
-Las consultas con filtros activos o paginación no predeterminada se rechazan
-antes del HTTP, evitando ignorar silenciosamente parte de la solicitud.
+El contrato público devuelve `query`, `page`, `pageSize`, `total`, `results` y
+`context`. Los parámetros y DTO están definidos en
+`backend/search-service/src/application/dtos/search-query.dto.ts` y
+`search-response.dto.ts`. Carrera requiere Universidad, Asignatura requiere
+ambos padres y Profesor requiere la jerarquía completa. Año (1900–2099) y Tipo
+(`DOCUMENT`, `PRESENTATION`, `EXAM`, `SUMMARY`, `LINK`) son independientes.
+Los valores de orden son `createdAt`, `title` o `year`, con `asc` o `desc`.
+
+Mobile envía `page` y `pageSize` explícitos y comprueba que la respuesta
+corresponda a esa página. Una respuesta válida con cero resultados es una
+búsqueda vacía. Un DTO inválido produce un error y los fallos HTTP conservan
+código, cuerpo y mensaje. El reconocimiento de `SearchContractPendingException`
+solo protege frente al stub histórico, no describe el servicio actual.
 
 `materialSearchControllerProvider` ofrece carga, datos/error y control de
 respuestas obsoletas. Una consulta nueva limpia resultados y paginación;
 las respuestas antiguas no alteran el estado actual. El controlador está
-preparado para páginas del dominio interno, verificadas con un repositorio
-controlado, **sin atribuir ese formato al JSON de INT2**.
-
-Pendiente cuando INT2 publique #248–#251: mapear los DTOs de resultados, definir
-filtros, orden, página/límite/total y fin de resultados según OpenAPI, y completar
-sus pruebas de contrato. No hay nombres de parámetros supuestos en Mobile.
-Este avance no conecta la pantalla de descubrimiento ni permite cerrar #275
-como integración completa de Search.
+preparado para descartar respuestas atrasadas y conservar la página anterior
+cuando falla la carga de la siguiente.
 
 Las URLs base se resuelven mediante la clase `ApiConfig` (`lib/core/config/api_config.dart`) y pueden ser parametrizadas en tiempo de compilación con `--dart-define`.
 
@@ -150,13 +154,141 @@ flutter run -d <device-id> \
   --dart-define=API_GATEWAY_URL=http://192.168.1.50:3000/api/v1
 ```
 
-#### 4. Modo demostración offline (sin Backend)
+#### 4. Autenticación de demostración
 
-Si el backend o PostgreSQL no están disponibles, puedes ejecutar la app con autenticación simulada:
+Para simular únicamente la autenticación de Mobile:
 
 ```bash
 flutter run --dart-define=AUTH_DEMO_MODE=true
 ```
+
+Este flag no simula Catalog, Material ni Search: esas pantallas siguen
+necesitando Gateway. Con el flag desactivado, el login usa HTTP, pero el
+endpoint de Auth del Sprint 2 también devuelve una autenticación simulada.
+
+## Validación integrada en Android e iOS
+
+La ejecución y las capturas verificadas están en el
+[informe de Mobile del 04-11-2026](../docs/reports/validacion-mobile-2026-11-04.md).
+Las comprobaciones siguientes usan servicios locales reales, PostgreSQL y MinIO;
+no dependen del despliegue Kubero. Los ejemplos de terminal son para macOS/Linux.
+
+### Preparar un entorno desechable
+
+Con Docker activo, desde la raíz del repositorio:
+
+```bash
+cd backend
+npm ci
+npm run build
+cd ..
+
+# Solo si esta imagen todavía no existe localmente:
+docker build -f deploy/kubero/minio.Dockerfile -t apuntesuct/kubero-minio:local .
+
+QA_OUTPUT_DIR=/tmp/apuntesuct-mobile-stack node mobile/tool/start_gateway_smoke.cjs
+```
+
+El script inicia Gateway, Auth, Catalog, Material y Search con puertos libres,
+y crea dos contenedores propios `qa278-*`: PostgreSQL y MinIO. No usa los
+contenedores ni `.env` de desarrollo. Mantener esta terminal abierta hasta
+terminar; **Ctrl+C** detiene los procesos y elimina solo esos contenedores y
+sus volúmenes. Los logs, `fixture.json` y `report.json` quedan en la carpeta
+indicada. `QA_MINIO_IMAGE` permite seleccionar otra imagen MinIO compatible.
+
+Crea referencias académicas sintéticas, sube un PDF mediante Gateway (`201`,
+`PENDING_REVIEW`), comprueba sus bytes y lo publica directamente en esa base
+**desechable**. Esta preparación no valida moderación. Las credenciales fijas
+`qa-*` del script son exclusivas de estos recursos temporales.
+
+La salida incluye `gateway`, `androidGateway`, `materialId`, `title` y
+`subjectName`. Los healthchecks deben responder `200`; el script falla antes
+de imprimir el fixture si no puede preparar el entorno. El puerto del Gateway
+se asigna dinámicamente: usar la URL impresa, no asumir `3000` en esta variante.
+Para usar el entorno habitual en `3000`, seguir los README de
+[Backend](../backend/README.md) y [Material](../backend/material-service/README.md),
+con los datos publicados descritos en la [guía del stack real](../docs/testing/regresion-stack-real.md).
+
+### Comprobar y generar los builds
+
+En una segunda terminal, desde `mobile/`:
+
+```bash
+flutter pub get
+dart format --output=none --set-exit-if-changed lib test integration_test test_driver
+flutter analyze
+flutter test
+flutter build apk --debug
+flutter build ios --simulator --debug
+```
+
+El APK queda en `build/app/outputs/flutter-apk/app-debug.apk`; la aplicación iOS,
+en `build/ios/iphonesimulator/Runner.app`. El build de simulador requiere macOS,
+Xcode y un runtime instalado; no requiere firma de distribución. No equivale a
+una compilación de App Store ni a una prueba en iPhone físico.
+
+### Ejecutar y capturar el recorrido real
+
+Iniciar los dispositivos y consultar sus identificadores:
+
+```bash
+flutter emulators --launch Medium_Phone
+open -a Simulator  # macOS; elegir un simulador con runtime instalado
+flutter devices
+```
+
+Desde `mobile/`, leer los datos creados por el script:
+
+```bash
+export STACK_FIXTURE=/tmp/apuntesuct-mobile-stack/fixture.json
+MATERIAL_ID=$(node -p 'require(process.env.STACK_FIXTURE).fixture.materialId')
+MATERIAL_TITLE=$(node -p 'require(process.env.STACK_FIXTURE).fixture.title')
+SUBJECT_NAME=$(node -p 'require(process.env.STACK_FIXTURE).fixture.subjectName')
+GATEWAY_URL=$(node -p 'require(process.env.STACK_FIXTURE).urls.androidGateway')
+
+MOBILE_EVIDENCE_DIR=build/evidence-android flutter drive \
+  --driver=test_driver/gateway_smoke.dart \
+  --target=integration_test/gateway_native_smoke_test.dart \
+  -d emulator-5554 \
+  --dart-define=RUN_NATIVE_GATEWAY_SMOKE=true \
+  --dart-define=API_GATEWAY_URL="$GATEWAY_URL" \
+  --dart-define=EXPECTED_MATERIAL_ID="$MATERIAL_ID" \
+  --dart-define=EXPECTED_MATERIAL_TITLE="$MATERIAL_TITLE" \
+  --dart-define=EXPECTED_SUBJECT_NAME="$SUBJECT_NAME"
+```
+
+Para iOS Simulator, repetir el mismo `flutter drive` cambiando `-d` por su UUID,
+`MOBILE_EVIDENCE_DIR=build/evidence-ios` y la URL obtenida con:
+
+```bash
+GATEWAY_URL=$(node -p 'require(process.env.STACK_FIXTURE).urls.gateway')
+```
+
+La prueba arranca la aplicación, envía el login HTTP, abre el catálogo, entra
+al listado desde Inicio, busca por título, pulsa la tarjeta y descarga el PDF.
+Comprueba los códigos `200`, el ID del material y los bytes guardados por el
+plugin nativo. Produce seis PNG y `report.json` sin tokens ni contraseñas.
+No crea publicaciones ni sustituye repositorios, transporte HTTP o plugins.
+El flag `RUN_NATIVE_GATEWAY_SMOKE` evita contactar servidores por accidente;
+las pruebas normales `flutter test` no ejecutan esta suite nativa.
+
+Para ejecutar la aplicación normalmente contra el mismo entorno:
+
+```bash
+flutter run -d <device-id> --dart-define=API_GATEWAY_URL="$GATEWAY_URL"
+```
+
+Usar `androidGateway` en Android Emulator y `gateway` en iOS Simulator. En un
+dispositivo físico se necesita la IP LAN del host o una URL HTTPS accesible;
+`localhost` apunta al propio teléfono. No se verificó un dispositivo físico en
+esta corrida.
+
+Las rutas `/search` y `/library` siguen siendo pantallas pendientes; la búsqueda
+integrada está en `/materials`. Inicio y Perfil conservan datos de ejemplo.
+Registro/logout mantienen operaciones simuladas mientras falten sus endpoints.
+El smoke prueba descarga y guardado, sin abrir un visor externo; la comprobación
+separada `material_download_native_test.dart` usa transporte controlado y valida
+los plugins de guardado/apertura, no un backend real.
 
 ## Comandos básicos de desarrollo
 
@@ -166,10 +298,10 @@ Antes de enviar cambios o abrir un Pull Request, comprueba el formato y el linte
 
 ```bash
 # Aplicar formato automático a código y pruebas
-dart format lib test
+dart format lib test integration_test test_driver
 
 # Validar formato sin modificar archivos (falla si hay desalineación)
-dart format --output=none --set-exit-if-changed lib test
+dart format --output=none --set-exit-if-changed lib test integration_test test_driver
 
 # Ejecutar el analizador estático oficial
 flutter analyze
@@ -191,9 +323,10 @@ tamaño móvil reproducible de 390 × 844:
 - `pumpWidgetUnderTest` para un widget dentro de Material y Riverpod.
 - `pumpRouterUnderTest` para rutas aisladas con `GoRouter`.
 
-Los providers que normalmente consultan servicios externos deben reemplazarse
-mediante `ProviderScope.overrides`. Así, las pruebas no dependen del Backend ni
-de Internet y siguen verificando la interfaz y la navegación reales.
+Las pruebas de interfaz pueden reemplazar repositorios o providers mediante
+`ProviderScope.overrides`. Las pruebas de integración HTTP conservan los
+repositorios y providers reales y sustituyen únicamente el transporte del
+`ApiClient` central. Ambos tipos se ejecutan sin Backend ni Internet.
 
 Desde `mobile/` se puede ejecutar toda la batería o archivos específicos:
 
@@ -209,6 +342,68 @@ flutter test test/features/auth/presentation/login_dio_test.dart
 # Generar reporte de cobertura
 flutter test --coverage
 ```
+
+### Pruebas del contrato público de Search
+
+Desde `mobile/`:
+
+```bash
+flutter test \
+  test/features/materials/data/search_request_contract_test.dart \
+  test/features/materials/data/search_response_contract_test.dart
+```
+
+La primera suite comprueba método, URI completa, parámetros exactos, texto
+Unicode, jerarquías válidas, enums, orden, paginación y cancelación previa.
+La segunda verifica el mapeo de resultados, campos anulables, cero resultados,
+errores visibles en el provider y recuperación tras un `502`. También altera
+campos del DTO para detectar cambios incompatibles sin convertirlos en listas
+vacías.
+
+El fixture `test/fixtures/materials/gateway_search_page.json` es una muestra
+independiente de los DTO públicos de Search, no una salida generada por el
+parser de Mobile. Se sustituye únicamente el transporte HTTP y se conservan
+Dio, los interceptores y los providers reales. Estas pruebas no requieren red
+ni demuestran una ejecución contra un backend desplegado o un dispositivo.
+
+### Integración HTTP de repositorios, providers e interfaz
+
+Desde `mobile/`:
+
+```bash
+flutter test \
+  test/integration/gateway_read_providers_test.dart \
+  test/integration/gateway_search_providers_test.dart \
+  test/integration/gateway_material_operations_test.dart \
+  test/integration/gateway_discovery_ui_test.dart
+```
+
+Las suites usan Dio, sus interceptores y los repositorios/providers de producción:
+
+| Suite | Recorrido |
+| --- | --- |
+| `gateway_read_providers_test.dart` | Selectores reales de Catalog, listado paginado, vacíos, detalle, estados de Riverpod y reintentos |
+| `gateway_search_providers_test.dart` | Texto, filtros individuales y jerárquicos combinados, orden, paginación, DTO inválidos, errores y respuestas atrasadas |
+| `gateway_material_operations_test.dart` | Multipart y bytes enviados, errores de subida, creación de versión, actualización del historial y descarga histórica |
+| `gateway_discovery_ui_test.dart` | Discovery → tarjeta → ruta de detalle, mensajes de error, reintento y distinción entre 404, 502, timeout y cero resultados |
+
+Se verifican las URI completas del Gateway y los errores `401`, `404`, `413`,
+`415`, `500`, `502` y timeout. Los fallos del Gateway se propagan sin consultar
+materiales de ejemplo. En pruebas de interfaz que sí necesitan fixtures, el
+repositorio mock debe seleccionarse explícitamente mediante un override.
+
+Search envía `page` y `pageSize` explícitos: Discovery solicita 5 resultados;
+el repositorio usa 10 si no recibe ese argumento y el servidor, 20 por defecto.
+Su respuesta debe incluir `query`, `page`, `pageSize`, `total`,
+`results` y `context`, respetar sus tipos y corresponder a la página solicitada.
+Los filtros y el orden se ejercitan a través de `MaterialSearchController`.
+
+`test/helpers/gateway_test_transport.dart` entrega JSON controlado compatible con
+los DTO públicos y registra solicitudes y cuerpos multipart. No se reemplazan
+los repositorios por modelos ya construidos ni se contacta Kubero. Solo la
+frontera de guardado/apertura de archivos se sustituye por memoria para evitar
+plugins en la suite HTTP. Estas pruebas no validan un servidor desplegado ni
+la ejecución nativa en Android/iOS.
 
 ### Descarga y apertura de materiales
 

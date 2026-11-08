@@ -1,17 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:apuntesuct_mobile/core/network/api_client.dart';
+import 'package:apuntesuct_mobile/features/catalog/data/gateway_academic_hierarchy_repository.dart';
 import 'package:apuntesuct_mobile/features/catalog/domain/academic_hierarchy_repository.dart';
 import 'package:apuntesuct_mobile/models/career_model.dart';
 import 'package:apuntesuct_mobile/models/professor_model.dart';
 import 'package:apuntesuct_mobile/models/subject_model.dart';
 import 'package:apuntesuct_mobile/models/university_model.dart';
 
-/// Provider de repositorio que puede ser sobreescrito en tests
-/// mediante [ProviderContainer.overrides].
+/// Provider de repositorio de jerarquía académica.
+/// Por defecto consulta los selectores académicos de Catalog Service vía Gateway (#288).
+/// Puede ser sobreescrito en tests mediante [ProviderContainer.overrides]
+/// (por ejemplo, con [MockAcademicHierarchyRepository]).
 final academicHierarchyRepositoryProvider =
-    Provider<IAcademicHierarchyRepository>(
-      (_) => MockAcademicHierarchyRepository(),
-    );
+    Provider<IAcademicHierarchyRepository>((ref) {
+      final apiClient = ref.watch(apiclientProvider);
+      return GatewayAcademicHierarchyRepository(apiClient);
+    });
 
 // ---------------------------------------------------------------------------
 // AcademicHierarchySelection — 6 niveles (Issue #281, #282 y #289)
@@ -158,15 +163,14 @@ class AcademicHierarchySelection {
 /// activas para los 6 niveles (Issues #281, #282 y #289).
 class AcademicHierarchyState {
   static const List<int> defaultYears = [2026, 2025, 2024, 2023, 2022, 2021];
+
+  /// Tipos contractuales de material publicados en Swagger / Material Service (Issue #295).
   static const List<String> defaultTypes = [
-    'apunte',
-    'certamen',
-    'guia',
-    'prueba',
-    'examen',
-    'control',
-    'resumen',
-    'formulario',
+    'DOCUMENT',
+    'PRESENTATION',
+    'EXAM',
+    'SUMMARY',
+    'LINK',
   ];
 
   final AcademicHierarchySelection selection;
@@ -469,10 +473,7 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
     if (uniId == null) return;
 
     final myGen = ++_careersGen;
-    state = state.copyWith(
-      isLoadingCareers: true,
-      clearErrorCareers: true,
-    );
+    state = state.copyWith(isLoadingCareers: true, clearErrorCareers: true);
     try {
       final careers = await _repo.fetchCareersByUniversity(uniId);
       if (_careersGen != myGen) return;
@@ -539,10 +540,7 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
     if (careerId == null) return;
 
     final myGen = ++_subjectsGen;
-    state = state.copyWith(
-      isLoadingSubjects: true,
-      clearErrorSubjects: true,
-    );
+    state = state.copyWith(isLoadingSubjects: true, clearErrorSubjects: true);
     try {
       final subjects = await _repo.fetchSubjectsByCareer(careerId);
       if (_subjectsGen != myGen) return;
@@ -587,7 +585,10 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
       final professors = await _repo.fetchProfessorsBySubject(validId);
       // Descarta la respuesta si el usuario ya seleccionó otra asignatura.
       if (_professorsGen != myGen) return;
-      state = state.copyWith(professors: professors, isLoadingProfessors: false);
+      state = state.copyWith(
+        professors: professors,
+        isLoadingProfessors: false,
+      );
     } catch (e) {
       if (_professorsGen != myGen) return;
       state = state.copyWith(
@@ -611,7 +612,10 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
     try {
       final professors = await _repo.fetchProfessorsBySubject(subjId);
       if (_professorsGen != myGen) return;
-      state = state.copyWith(professors: professors, isLoadingProfessors: false);
+      state = state.copyWith(
+        professors: professors,
+        isLoadingProfessors: false,
+      );
     } catch (e) {
       if (_professorsGen != myGen) return;
       state = state.copyWith(
@@ -667,6 +671,9 @@ class AcademicHierarchyNotifier extends Notifier<AcademicHierarchyState> {
   // -------------------------------------------------------------------------
   // Resets
   // -------------------------------------------------------------------------
+
+  /// Alias de [resetSelection] para restablecer la selección académica completa (Issue #295).
+  void clearFilters() => resetSelection();
 
   /// Reinicia la selección activa manteniendo universidades cargadas.
   /// También limpia todos los loadings y errores de niveles hijos.

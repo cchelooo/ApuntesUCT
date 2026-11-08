@@ -1,5 +1,6 @@
 import {
   DEFAULT_SEARCH_SORT,
+  normalizeSearchFilters,
   type SearchParams,
   type SearchSort,
   type SearchResultPage,
@@ -7,6 +8,7 @@ import {
 import { MaterialRequestError } from '../material/materialApi';
 import { mapRawSearchPage } from './mapSearch';
 import type { RawSearchPage } from './rawSearch';
+import { getApiBaseUrl } from '../apiBaseUrl';
 
 export const DEFAULT_SEARCH_PAGE_SIZE = 20;
 
@@ -20,35 +22,47 @@ const SEARCH_API_SORT: Record<
 };
 
 function getSearchUrl(): string {
-  const envUrl = import.meta.env.VITE_API_URL;
-  if (envUrl === '') {
-    throw new Error('VITE_API_URL is not configured');
-  }
-  const baseUrl = envUrl ?? 'http://localhost:3000/api/v1';
-  return `${baseUrl.replace(/\/+$/, '')}/search`;
+  return `${getApiBaseUrl()}/search`;
+}
+
+export function buildSearchQuery({
+  q,
+  sort = DEFAULT_SEARCH_SORT,
+  page = 1,
+  pageSize = DEFAULT_SEARCH_PAGE_SIZE,
+  filters,
+}: SearchParams): URLSearchParams {
+  const params = new URLSearchParams();
+  if (q.trim()) params.set('q', q.trim());
+
+  const normalized = normalizeSearchFilters(filters ?? {});
+  if (normalized.universityId)
+    params.set('universityId', normalized.universityId);
+  if (normalized.careerId) params.set('careerId', normalized.careerId);
+  if (normalized.subjectId) params.set('subjectId', normalized.subjectId);
+  if (normalized.professorId) params.set('professorId', normalized.professorId);
+  if (normalized.year !== undefined)
+    params.set('year', String(normalized.year));
+  if (normalized.type) params.set('type', normalized.type);
+
+  const { sortBy, order } = SEARCH_API_SORT[sort];
+  params.set('sortBy', sortBy);
+  params.set('order', order);
+  params.set('page', String(page));
+  params.set('pageSize', String(pageSize));
+  return params;
 }
 
 export async function fetchSearch(
-  {
-    q,
-    sort = DEFAULT_SEARCH_SORT,
-    page = 1,
-    pageSize = DEFAULT_SEARCH_PAGE_SIZE,
-  }: SearchParams,
+  searchParams: SearchParams,
   signal?: AbortSignal
 ): Promise<SearchResultPage> {
-  const params = new URLSearchParams({
-    q,
-    ...SEARCH_API_SORT[sort],
-    page: String(page),
-    pageSize: String(pageSize),
-  });
+  const params = buildSearchQuery(searchParams);
 
+  const url = `${getSearchUrl()}?${params.toString()}`;
   let response: Response;
   try {
-    response = await fetch(`${getSearchUrl()}?${params.toString()}`, {
-      signal,
-    });
+    response = await fetch(url, { signal });
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw error;
@@ -73,5 +87,8 @@ export async function fetchSearch(
     );
   }
 
-  return mapRawSearchPage(body as RawSearchPage, { page, pageSize });
+  return mapRawSearchPage(body as RawSearchPage, {
+    page: searchParams.page ?? 1,
+    pageSize: searchParams.pageSize ?? DEFAULT_SEARCH_PAGE_SIZE,
+  });
 }

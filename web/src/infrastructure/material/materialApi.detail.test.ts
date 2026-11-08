@@ -6,6 +6,8 @@ import {
   MaterialRequestError,
 } from './materialApi';
 
+const GATEWAY = 'https://gateway.test/api/v1';
+
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
@@ -13,9 +15,9 @@ afterEach(() => {
 
 describe('materialApi: detalle y URL de descarga', () => {
   it('construye la URL de descarga con VITE_API_URL y sin barra duplicada', () => {
-    vi.stubEnv('VITE_API_URL', 'https://gw.test/api/v1/');
+    vi.stubEnv('VITE_API_URL', `${GATEWAY}/`);
     expect(buildMaterialDownloadUrl('a/b')).toBe(
-      'https://gw.test/api/v1/materials/a%2Fb/download'
+      `${GATEWAY}/materials/a%2Fb/download`
     );
   });
 
@@ -30,7 +32,7 @@ describe('materialApi: detalle y URL de descarga', () => {
   });
 
   it('un 404 produce un error con status y se reconoce como "no encontrado"', async () => {
-    vi.stubEnv('VITE_API_URL', 'https://gw.test/api/v1');
+    vi.stubEnv('VITE_API_URL', GATEWAY);
     vi.stubGlobal(
       'fetch',
       vi

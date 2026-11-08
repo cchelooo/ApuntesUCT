@@ -23,11 +23,9 @@ abstract final class MaterialUploadValidation {
   static const Map<String, String> mimeByExtension = {
     'pdf': 'application/pdf',
     'doc': 'application/msword',
-    'docx':
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'ppt': 'application/vnd.ms-powerpoint',
-    'pptx':
-        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   };
 
   /// Códigos de tipo del backend con etiqueta visible en español.
@@ -50,8 +48,7 @@ abstract final class MaterialUploadValidation {
   }
 
   static String mimeForExtension(String extension) =>
-      mimeByExtension[extension.toLowerCase()] ??
-      'application/octet-stream';
+      mimeByExtension[extension.toLowerCase()] ?? 'application/octet-stream';
 
   static String formatBytes(int bytes) {
     if (bytes <= 0) return '0 B';

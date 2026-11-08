@@ -203,12 +203,18 @@ class MaterialSummaryCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         // Mostrar asignatura y carrera solo si están disponibles y no son genéricas vacías
-                        if ((material.subjectName.isNotEmpty && material.subjectName != 'General') || 
-                            (material.careerName.isNotEmpty && material.careerName != 'UCT')) ...[
+                        if ((material.subjectName.isNotEmpty &&
+                                material.subjectName != 'General') ||
+                            (material.careerName.isNotEmpty &&
+                                material.careerName != 'UCT')) ...[
                           Text(
                             [
-                              if (material.subjectName.isNotEmpty && material.subjectName != 'General') material.subjectName,
-                              if (material.careerName.isNotEmpty && material.careerName != 'UCT') material.careerName,
+                              if (material.subjectName.isNotEmpty &&
+                                  material.subjectName != 'General')
+                                material.subjectName,
+                              if (material.careerName.isNotEmpty &&
+                                  material.careerName != 'UCT')
+                                material.careerName,
                             ].join(' • '),
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: colorScheme.outline,

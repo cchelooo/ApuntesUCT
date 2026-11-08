@@ -1,0 +1,181 @@
+{
+  "startedAt": "2026-11-03T00:21:21.956Z",
+  "base": "http://localhost:3000",
+  "materialId": "1b28b5dd-9095-421a-a887-66a77c27521d",
+  "scenario": "Public operations on a pre-existing PUBLISHED fixture; Quality approval not tested",
+  "expectedSha256": "c5d85f8fb269a46e5de1040af44c1f4bd084e4b9f38d260f46ced5caa0fab48c",
+  "steps": [
+    {
+      "name": "detail and versions",
+      "url": "http://localhost:3000/api/v1/materials/1b28b5dd-9095-421a-a887-66a77c27521d",
+      "status": 200,
+      "body": {
+        "id": "1b28b5dd-9095-421a-a887-66a77c27521d",
+        "title": "Estructuras de Datos — Guía de pilas y colas (prueba temporal)",
+        "description": "Material temporal de demostración para evidencias de prueba funcional. Eliminar después de la captura.",
+        "uploaderId": "98ed782e-743d-45e3-93df-dba06c32b0b7",
+        "academicOfferingId": null,
+        "universityId": "3011ac30-9027-49bf-bdaf-78c06ef869b4",
+        "careerId": "423bbb11-59d3-48c6-9ecf-d32770fd8f27",
+        "subjectId": "0752a0b9-19e4-41d2-8bd9-88f76161c65a",
+        "professorId": null,
+        "materialTypeId": "7bd66871-c311-4692-a4f4-ba6844d111aa",
+        "materialType": "DOCUMENT",
+        "academicYear": 2026,
+        "status": "PUBLISHED",
+        "verified": false,
+        "externalLink": null,
+        "createdAt": "2026-11-02T22:16:28.435Z",
+        "updatedAt": "2026-11-02T22:16:36.247Z",
+        "currentVersion": {
+          "id": "e8050a46-df13-4840-8597-23b25931c426",
+          "versionNumber": 1,
+          "originalFilename": "apuntesuct-prueba-temporal.pdf",
+          "mimeType": "application/pdf",
+          "fileSize": "870",
+          "createdAt": "2026-11-02T22:16:28.435Z"
+        },
+        "versions": [
+          {
+            "id": "e8050a46-df13-4840-8597-23b25931c426",
+            "versionNumber": 1,
+            "originalFilename": "apuntesuct-prueba-temporal.pdf",
+            "mimeType": "application/pdf",
+            "fileSize": "870",
+            "createdAt": "2026-11-02T22:16:28.435Z"
+          }
+        ]
+      },
+      "contentType": "application/json; charset=utf-8",
+      "contentDisposition": null
+    },
+    {
+      "name": "list page 1",
+      "url": "http://localhost:3000/api/v1/materials?page=1&pageSize=100",
+      "status": 200,
+      "body": {
+        "total": 1,
+        "page": 1,
+        "containsFixture": true
+      },
+      "contentType": "application/json; charset=utf-8",
+      "contentDisposition": null
+    },
+    {
+      "name": "academic context",
+      "url": "http://localhost:3000/api/v1/catalog/filter?universityId=3011ac30-9027-49bf-bdaf-78c06ef869b4&careerId=423bbb11-59d3-48c6-9ecf-d32770fd8f27&subjectId=0752a0b9-19e4-41d2-8bd9-88f76161c65a",
+      "status": 200,
+      "body": [
+        {
+          "id": "0752a0b9-19e4-41d2-8bd9-88f76161c65a",
+          "careerId": "423bbb11-59d3-48c6-9ecf-d32770fd8f27",
+          "code": "ICI-314",
+          "semester": 3,
+          "name": "Estructuras de Datos",
+          "description": null,
+          "active": true,
+          "createdAt": "2026-09-21T23:54:37.632Z",
+          "updatedAt": "2026-09-21T23:54:37.632Z",
+          "career": {
+            "id": "423bbb11-59d3-48c6-9ecf-d32770fd8f27",
+            "universityId": "3011ac30-9027-49bf-bdaf-78c06ef869b4",
+            "name": "Ingeniería Civil en Informática",
+            "code": "ICI",
+            "active": true,
+            "createdAt": "2026-09-21T23:54:37.629Z",
+            "updatedAt": "2026-09-21T23:54:37.629Z",
+            "university": {
+              "id": "3011ac30-9027-49bf-bdaf-78c06ef869b4",
+              "name": "Universidad Católica de Temuco",
+              "code": "UCT",
+              "active": true,
+              "createdAt": "2026-09-21T23:54:37.627Z",
+              "updatedAt": "2026-09-21T23:54:37.627Z"
+            }
+          },
+          "professors": [
+            {
+              "id": "a85691d7-27d9-49ce-a2bb-848df6923639",
+              "name": "Carlos Ramírez",
+              "email": "cramirez@uct.cl",
+              "active": true,
+              "createdAt": "2026-09-21T23:54:37.631Z",
+              "updatedAt": "2026-09-21T23:54:37.631Z"
+            }
+          ]
+        }
+      ],
+      "contentType": "application/json; charset=utf-8",
+      "contentDisposition": null
+    },
+    {
+      "name": "search",
+      "url": "http://localhost:3000/api/v1/search?q=Estructuras%20de%20Datos%20%E2%80%94%20Gu%C3%ADa%20de%20pilas%20y%20colas%20(prueba%20temporal)",
+      "status": 200,
+      "body": {
+        "query": "Estructuras de Datos — Guía de pilas y colas (prueba temporal)",
+        "page": 1,
+        "pageSize": 20,
+        "total": 1,
+        "results": [
+          {
+            "id": "1b28b5dd-9095-421a-a887-66a77c27521d",
+            "title": "Estructuras de Datos — Guía de pilas y colas (prueba temporal)",
+            "description": "Material temporal de demostración para evidencias de prueba funcional. Eliminar después de la captura.",
+            "materialType": "DOCUMENT",
+            "academicYear": 2026,
+            "verified": false,
+            "subjectId": "0752a0b9-19e4-41d2-8bd9-88f76161c65a",
+            "careerId": "423bbb11-59d3-48c6-9ecf-d32770fd8f27",
+            "universityId": "3011ac30-9027-49bf-bdaf-78c06ef869b4",
+            "professorId": null,
+            "subjectName": "Estructuras de Datos",
+            "careerName": "Ingeniería Civil en Informática",
+            "universityName": "Universidad Católica de Temuco",
+            "createdAt": "2026-11-02T22:16:28.435Z",
+            "updatedAt": "2026-11-02T22:16:36.247Z"
+          }
+        ],
+        "context": [
+          {
+            "subjectId": "0752a0b9-19e4-41d2-8bd9-88f76161c65a",
+            "subjectName": "Estructuras de Datos",
+            "subjectCode": "ICI-314",
+            "semester": 3,
+            "careerId": "423bbb11-59d3-48c6-9ecf-d32770fd8f27",
+            "careerName": "Ingeniería Civil en Informática",
+            "universityId": "3011ac30-9027-49bf-bdaf-78c06ef869b4",
+            "universityName": "Universidad Católica de Temuco",
+            "professors": [
+              {
+                "id": "a85691d7-27d9-49ce-a2bb-848df6923639",
+                "name": "Carlos Ramírez"
+              }
+            ]
+          }
+        ]
+      },
+      "contentType": "application/json; charset=utf-8",
+      "contentDisposition": null
+    },
+    {
+      "name": "download current",
+      "url": "http://localhost:3000/api/v1/materials/1b28b5dd-9095-421a-a887-66a77c27521d/download",
+      "status": 200,
+      "body": null,
+      "contentType": "application/pdf",
+      "contentDisposition": "attachment; filename=\"apuntesuct-prueba-temporal.pdf\"; filename*=UTF-8''apuntesuct-prueba-temporal.pdf",
+      "sha256": "c5d85f8fb269a46e5de1040af44c1f4bd084e4b9f38d260f46ced5caa0fab48c"
+    },
+    {
+      "name": "download explicit version",
+      "url": "http://localhost:3000/api/v1/materials/1b28b5dd-9095-421a-a887-66a77c27521d/download?versionId=e8050a46-df13-4840-8597-23b25931c426",
+      "status": 200,
+      "body": null,
+      "contentType": "application/pdf",
+      "contentDisposition": "attachment; filename=\"apuntesuct-prueba-temporal.pdf\"; filename*=UTF-8''apuntesuct-prueba-temporal.pdf",
+      "matchesCurrentDownload": true
+    }
+  ],
+  "passed": true
+}

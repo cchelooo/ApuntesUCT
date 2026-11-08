@@ -1,0 +1,44 @@
+{
+  "startedAt": "2026-11-04T20:11:53.848Z",
+  "commit": "98651746ac8f5128dacfba0179a3bd47bc6d9d3b",
+  "platform": "darwin 27.0.0",
+  "node": "v26.0.0",
+  "health": {
+    "auth": 200,
+    "catalog": 200,
+    "material": 200,
+    "search": 200,
+    "gateway": 200
+  },
+  "images": {
+    "qa278-dba862a5-postgres": "sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73",
+    "qa278-dba862a5-minio": "sha256:96e71369be025764deadf17eb81e0eee215eb48ec55d3c1c818997f5b8ea3ffb"
+  },
+  "scriptSha256": "1d1356e7b3da726661071dcf17089ffb2125bb59bc581ff5946214a374b9fd1f",
+  "cleanup": [
+    {
+      "name": "qa278-dba862a5-postgres",
+      "removed": true
+    },
+    {
+      "name": "qa278-dba862a5-minio",
+      "removed": true
+    }
+  ],
+  "urls": {
+    "gateway": "http://127.0.0.1:50461/api/v1",
+    "androidGateway": "http://10.0.2.2:50461/api/v1"
+  },
+  "fixture": {
+    "universityId": "a458233d-808d-4167-8b6a-df59562e3933",
+    "careerId": "0d704e01-5b00-4d63-a1a9-4486f96c76c0",
+    "subjectId": "1cd7e17b-022e-4b7e-bc6b-6d7e9d3c1e85",
+    "materialId": "a7f01fd8-c769-4b86-a89b-c258ebd27d79",
+    "title": "Integracion278",
+    "subjectName": "Asignatura QA278",
+    "publication": "Actualizacion directa solo en base desechable; no valida moderacion",
+    "downloadSha256": "a2b4945b6565b105cbf8ab4dc1d86bfc925d1e3eaa91cfb6ea770d292c333d28"
+  },
+  "result": "READY",
+  "finishedAt": "2026-11-04T20:15:52.813Z"
+}

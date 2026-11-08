@@ -26,9 +26,9 @@ class FakeAcademicHierarchyRepository implements IAcademicHierarchyRepository {
     String universityId,
   ) async {
     if (onFetchCareers != null) return onFetchCareers!(universityId);
-    final all = CareerModel.mockList();
-    final matching = all.where((c) => c.universityId == universityId).toList();
-    return matching.isNotEmpty ? matching : all;
+    return CareerModel.mockList()
+        .where((c) => c.universityId == universityId)
+        .toList();
   }
 
   @override
@@ -67,14 +67,16 @@ void main() {
     );
 
     if (container != null) {
-      return UncontrolledProviderScope(
-        container: container,
-        child: app,
-      );
+      return UncontrolledProviderScope(container: container, child: app);
     }
 
     return ProviderScope(
-      overrides: overrides.cast(),
+      overrides: [
+        academicHierarchyRepositoryProvider.overrideWithValue(
+          MockAcademicHierarchyRepository(),
+        ),
+        ...overrides.cast(),
+      ],
       child: app,
     );
   }
@@ -116,7 +118,13 @@ void main() {
     testWidgets(
       'Mantiene deshabilitados los niveles hijos si no hay padre seleccionado',
       (tester) async {
-        final container = ProviderContainer();
+        final container = ProviderContainer(
+          overrides: [
+            academicHierarchyRepositoryProvider.overrideWithValue(
+              MockAcademicHierarchyRepository(),
+            ),
+          ],
+        );
         container.read(academicHierarchyProvider.notifier).resetAll();
 
         await tester.pumpWidget(buildTestWidget(container: container));
@@ -133,7 +141,13 @@ void main() {
     testWidgets(
       'Al seleccionar universidad carga carreras sin bloquear la cascada',
       (tester) async {
-        final container = ProviderContainer();
+        final container = ProviderContainer(
+          overrides: [
+            academicHierarchyRepositoryProvider.overrideWithValue(
+              MockAcademicHierarchyRepository(),
+            ),
+          ],
+        );
 
         await tester.pumpWidget(buildTestWidget(container: container));
 
@@ -168,7 +182,13 @@ void main() {
       'Botón Limpiar restablece la selección y botón Aplicar dispara callback',
       (tester) async {
         bool applyTriggered = false;
-        final container = ProviderContainer();
+        final container = ProviderContainer(
+          overrides: [
+            academicHierarchyRepositoryProvider.overrideWithValue(
+              MockAcademicHierarchyRepository(),
+            ),
+          ],
+        );
         final notifier = container.read(academicHierarchyProvider.notifier);
         notifier.loadMockHierarchy();
         await notifier.selectUniversity('uct-main-uuid');
@@ -195,7 +215,9 @@ void main() {
         );
 
         // Tocar Aplicar
-        await tester.ensureVisible(find.byKey(const Key('filter_apply_button')));
+        await tester.ensureVisible(
+          find.byKey(const Key('filter_apply_button')),
+        );
         await tester.tap(find.byKey(const Key('filter_apply_button')));
         await tester.pumpAndSettle();
 
@@ -280,6 +302,12 @@ void main() {
 
         // El dropdown de carrera debe indicar que no hay carreras disponibles
         expect(find.text('No hay carreras disponibles'), findsOneWidget);
+
+        // Y debe estar deshabilitado y sin acción disponible
+        final dropdownWidget = tester.widget<DropdownButtonFormField<String>>(
+          find.byKey(const Key('filter_career_dropdown')),
+        );
+        expect(dropdownWidget.onChanged, isNull);
       },
     );
 
@@ -336,21 +364,28 @@ void main() {
         await tester.pumpAndSettle();
 
         // 1. Configurar campos no relacionados: Año y Tipo
-        await tester.ensureVisible(find.byKey(const Key('filter_year_dropdown')));
+        await tester.ensureVisible(
+          find.byKey(const Key('filter_year_dropdown')),
+        );
         await tester.tap(find.byKey(const Key('filter_year_dropdown')));
         await tester.pumpAndSettle();
         await tester.tap(find.text('2026').last);
         await tester.pumpAndSettle();
 
-        await tester.ensureVisible(find.byKey(const Key('filter_type_dropdown')));
+        await tester.ensureVisible(
+          find.byKey(const Key('filter_type_dropdown')),
+        );
         await tester.tap(find.byKey(const Key('filter_type_dropdown')));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('APUNTE').last);
+        await tester.tap(find.text('DOCUMENT').last);
         await tester.pumpAndSettle();
 
         // Verificar que los campos no relacionados quedaron seleccionados
         expect(container.read(academicHierarchyProvider).selectedYear, 2026);
-        expect(container.read(academicHierarchyProvider).selectedType, 'apunte');
+        expect(
+          container.read(academicHierarchyProvider).selectedType,
+          'DOCUMENT',
+        );
 
         // 2. Seleccionar universidad (provoca fallo de red en carreras)
         await tester.ensureVisible(
@@ -377,18 +412,51 @@ void main() {
           find.textContaining('No se pudieron cargar las carreras'),
           findsNothing,
         );
-        expect(
-          container.read(academicHierarchyProvider).careers,
-          isNotEmpty,
-        );
+        expect(container.read(academicHierarchyProvider).careers, isNotEmpty);
 
         // Y lo más importante: los campos no relacionados Año y Tipo se mantuvieron intactos
         expect(container.read(academicHierarchyProvider).selectedYear, 2026);
-        expect(container.read(academicHierarchyProvider).selectedType, 'apunte');
+        expect(
+          container.read(academicHierarchyProvider).selectedType,
+          'DOCUMENT',
+        );
         expect(
           container.read(academicHierarchyProvider).selectedUniversityId,
           'uct-main-uuid',
         );
+      },
+    );
+
+    testWidgets(
+      'Al seleccionar UFRO solo se muestran carreras de UFRO, no las de UCT',
+      (tester) async {
+        final container = ProviderContainer(
+          overrides: [
+            academicHierarchyRepositoryProvider.overrideWithValue(fakeRepo),
+          ],
+        );
+
+        await tester.pumpWidget(buildTestWidget(container: container));
+        await tester.tap(find.text('Abrir filtros'));
+        await tester.pumpAndSettle();
+
+        // Seleccionar UFRO en el dropdown de universidades
+        await tester.tap(find.byKey(const Key('filter_university_dropdown')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Universidad de La Frontera').last);
+        await tester.pumpAndSettle();
+
+        // Abrir dropdown de Carrera
+        await tester.tap(find.byKey(const Key('filter_career_dropdown')));
+        await tester.pumpAndSettle();
+
+        // Deben mostrarse carreras de UFRO
+        expect(
+          find.text('Ingeniería Civil en Computación e Informática').last,
+          findsOneWidget,
+        );
+        // NO deben mostrarse carreras de UCT
+        expect(find.text('Ingeniería Civil en Informática'), findsNothing);
       },
     );
   });

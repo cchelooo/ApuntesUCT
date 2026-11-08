@@ -1,6 +1,13 @@
 # Soporte de integración con Taller 4 Mobile
 
 > **Sprint 2 (#262):** para implementar Material y Search usar la [guía actual de integración](../api/integracion-material-search.md) y [OpenAPI/Postman](../api/README.md). Incluyen detalle, subida, descarga, versiones, filtros y autenticación temporal. Las secciones históricas de Sprint 1 que siguen no sustituyen ese contrato.
+> Este documento conserva comprobaciones históricas de Sprint 1 y etapas de
+> Sprint 2. Para el consumo vigente de Mobile, los builds y la ejecución con
+> Gateway, Catalog, Material y Search, consultar el
+> [README de Mobile](../../mobile/README.md#validación-integrada-en-android-e-ios)
+> y la [validación nativa del 04-11-2026](../reports/validacion-mobile-2026-11-04.md).
+> Las menciones antiguas a bypass de Catalog y mocks predeterminados no describen
+> la configuración actual.
 
 **INT2 → INT4 · Sprint 1** · Actualizado tras revisión de la entrega de INT4.
 

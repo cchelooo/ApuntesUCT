@@ -1,4 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -197,4 +203,207 @@ describe('MaterialDetailRoute', () => {
     ).toBeInTheDocument();
     expect(callsTo(/\/materials\/[^/]+$/)).toHaveLength(2);
   }, 10000);
+});
+
+describe('versionado de materiales', () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubEnv('VITE_API_URL', GATEWAY);
+    vi.stubEnv('DEV', true);
+    vi.stubEnv('VITE_MATERIAL_VERSION_UPLOAD_ENABLED', 'true');
+    URL.createObjectURL = vi.fn(() => 'blob:mock');
+    URL.revokeObjectURL = vi.fn();
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(
+      () => undefined
+    );
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    URL.createObjectURL = originalCreateObjectURL;
+    URL.revokeObjectURL = originalRevokeObjectURL;
+  });
+  const v1 = contract().currentVersion;
+  const v2 = {
+    ...v1,
+    id: 'new-version',
+    versionNumber: 2,
+    originalFilename: 'nuevo.pdf',
+  };
+
+  async function openForm() {
+    renderRoute(`/material/${MATERIAL_ID}`);
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Subir nueva versión' })
+    );
+    return screen.getByLabelText('Archivo de la nueva versión');
+  }
+
+  it('ordena el historial, identifica la actual y descarga una versión anterior', async () => {
+    mockApi(() => json(contract({ versions: [v1, v2], currentVersion: v2 })));
+    renderRoute(`/material/${MATERIAL_ID}`);
+    await screen.findByText('Historial de versiones');
+    expect(
+      screen
+        .getAllByTestId('material-version-number')
+        .map((el) => el.textContent)
+    ).toEqual(['v2', 'v1']);
+    const cards = screen.getAllByRole('complementary');
+    expect(within(cards[0]).getByText('Versión actual')).toBeInTheDocument();
+    expect(within(cards[0]).getByText('nuevo.pdf')).toBeInTheDocument();
+    await userEvent.click(within(cards[1]).getByRole('button'));
+    expect(callsTo(/download$/)).toEqual([
+      `${GATEWAY}/materials/${MATERIAL_ID}/download?versionId=${v1.id}`,
+    ]);
+  });
+
+  it('sube solo file, evita duplicados y vuelve a consultar el historial', async () => {
+    let uploaded = false;
+    let finish!: (response: Response) => void;
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const path = new URL(String(input)).pathname;
+      if (path.endsWith('/versions'))
+        return new Promise<Response>((resolve) => {
+          finish = resolve;
+        });
+      if (path.endsWith(MATERIAL_ID))
+        return Promise.resolve(
+          json(
+            contract({
+              versions: uploaded ? [v2, v1] : [v1],
+              currentVersion: uploaded ? v2 : v1,
+            })
+          )
+        );
+      return Promise.resolve(json([]));
+    });
+    const input = await openForm();
+    await userEvent.upload(
+      input,
+      new File(['%PDF-data'], 'nuevo.pdf', { type: 'application/pdf' })
+    );
+    const confirm = screen.getByRole('button', { name: 'Confirmar subida' });
+    await userEvent.dblClick(confirm);
+    expect(callsTo(/versions$/)).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Subiendo…' })).toBeDisabled();
+    expect(
+      screen.queryByText('Nueva versión subida correctamente.')
+    ).not.toBeInTheDocument();
+    const options = fetchMock.mock.calls.find((call) =>
+      String(call[0]).endsWith('/versions')
+    )![1];
+    expect(options.method).toBe('POST');
+    expect(Array.from(options.body.keys())).toEqual(['file']);
+    expect(options.headers).toBeUndefined();
+    uploaded = true;
+    finish(json(v2, 201));
+    expect(
+      await screen.findByText('Nueva versión subida correctamente.')
+    ).toBeInTheDocument();
+    expect(await screen.findByText('v2')).toBeInTheDocument();
+    expect(callsTo(new RegExp(`${MATERIAL_ID}$`))).toHaveLength(2);
+  });
+
+  it.each([
+    [new File([], 'vacio.pdf'), 'El archivo está vacío.'],
+    [
+      new File(['x'], 'imagen.png', { type: 'image/png' }),
+      'Formato no permitido.',
+    ],
+    [
+      new File([new Uint8Array(15 * 1024 * 1024 + 1)], 'grande.pdf'),
+      'El archivo supera el límite de 15 MiB.',
+    ],
+  ])('rechaza el archivo inválido %s', async (file, message) => {
+    mockApi(() => json(contract()));
+    const input = await openForm();
+    fireEvent.change(input, { target: { files: [file] } });
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Confirmar subida' })
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent(message);
+    expect(callsTo(/versions$/)).toHaveLength(0);
+  });
+
+  it.each(['pdf', 'doc', 'docx', 'ppt', 'pptx'])(
+    'permite %s y el límite exacto de 15 MiB',
+    async (extension) => {
+      fetchMock.mockImplementation((input: RequestInfo | URL) => {
+        const path = new URL(String(input)).pathname;
+        return Promise.resolve(
+          path.endsWith('/versions')
+            ? json(v2, 201)
+            : path.endsWith(MATERIAL_ID)
+              ? json(contract())
+              : json([])
+        );
+      });
+      const input = await openForm();
+      const file = new File(['contenido'], `apunte.${extension}`);
+      Object.defineProperty(file, 'size', { value: 15 * 1024 * 1024 });
+      fireEvent.change(input, { target: { files: [file] } });
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Confirmar subida' })
+      );
+      expect(
+        await screen.findByText('Nueva versión subida correctamente.')
+      ).toBeInTheDocument();
+      expect(callsTo(/versions$/)).toHaveLength(1);
+    }
+  );
+
+  it.each([400, 401, 403, 404, 413, 415, 502])(
+    'presenta error HTTP %s sin confirmar éxito',
+    async (status) => {
+      fetchMock.mockImplementation((input: RequestInfo | URL) => {
+        const path = new URL(String(input)).pathname;
+        return Promise.resolve(
+          path.endsWith('/versions')
+            ? json({}, status)
+            : path.endsWith(MATERIAL_ID)
+              ? json(contract())
+              : json([])
+        );
+      });
+      const input = await openForm();
+      await userEvent.upload(input, new File(['pdf'], 'apunte.pdf'));
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Confirmar subida' })
+      );
+      expect(await screen.findByRole('alert')).not.toHaveTextContent(
+        'error inesperado'
+      );
+      expect(
+        screen.queryByText('Nueva versión subida correctamente.')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Confirmar subida' })
+      ).toBeEnabled();
+    }
+  );
+
+  it.each(['LINK', 'production', 'disabled'])(
+    'oculta la subida para %s',
+    async (mode) => {
+      if (mode === 'production') vi.stubEnv('DEV', false);
+      if (mode === 'disabled')
+        vi.stubEnv('VITE_MATERIAL_VERSION_UPLOAD_ENABLED', 'false');
+      mockApi(() =>
+        json(
+          contract(
+            mode === 'LINK'
+              ? { materialType: 'LINK', currentVersion: null, versions: [] }
+              : {}
+          )
+        )
+      );
+      renderRoute(`/material/${MATERIAL_ID}`);
+      await screen.findByText('Certamen 1');
+      expect(
+        screen.queryByRole('button', { name: 'Subir nueva versión' })
+      ).not.toBeInTheDocument();
+    }
+  );
 });

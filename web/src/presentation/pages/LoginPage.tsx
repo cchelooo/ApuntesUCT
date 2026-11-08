@@ -4,6 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Alert } from '../components/Alert';
+import { getApiBaseUrl } from '../../infrastructure/apiBaseUrl';
 
 type LoginAlert = {
   variant: 'error' | 'success';
@@ -17,19 +18,17 @@ export function LoginPage() {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: Record<string, string>) => {
+      const loginUrl = `${getApiBaseUrl()}/auth/login`;
       let response: Response;
 
       try {
-        response = await fetch(
-          `${import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1'}/auth/login`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(credentials),
-          }
-        );
+        response = await fetch(loginUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(credentials),
+        });
       } catch {
         throw new Error(
           'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo nuevamente.'

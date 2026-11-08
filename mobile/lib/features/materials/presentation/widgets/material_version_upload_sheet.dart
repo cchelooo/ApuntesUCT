@@ -326,9 +326,25 @@ class _MaterialVersionUploadSheetState
               ],
               if (_fileError != null) ...[
                 const SizedBox(height: 8),
-                Text(
-                  _fileError!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                // Icono + texto: el error no depende solo del color (#299).
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _fileError!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
               const SizedBox(height: 16),

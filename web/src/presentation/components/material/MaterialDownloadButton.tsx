@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Button } from '../Button';
 import { Alert } from '../Alert';
 import { mapMaterialError } from '../../../infrastructure/material/materialErrorHandler';
@@ -23,6 +23,7 @@ function DownloadIcon() {
 }
 
 export function MaterialDownloadButton({ url }: MaterialDownloadButtonProps) {
+  const hintId = useId();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -46,7 +47,7 @@ export function MaterialDownloadButton({ url }: MaterialDownloadButtonProps) {
       }
 
       if (!response.ok) {
-        setError(mapMaterialError({ status: response.status }));
+        setError(mapMaterialError({ status: response.status }, 'download'));
         return;
       }
 
@@ -72,7 +73,7 @@ export function MaterialDownloadButton({ url }: MaterialDownloadButtonProps) {
       link.remove();
       window.URL.revokeObjectURL(downloadUrl);
     } catch (err) {
-      setError(mapMaterialError(err));
+      setError(mapMaterialError(err, 'download'));
     } finally {
       setIsLoading(false);
     }
@@ -104,13 +105,13 @@ export function MaterialDownloadButton({ url }: MaterialDownloadButtonProps) {
       <Button
         type="button"
         disabled
-        aria-describedby="material-download-hint"
+        aria-describedby={hintId}
         className="w-full"
       >
         <DownloadIcon />
         Descargar material
       </Button>
-      <p id="material-download-hint" className="text-xs text-catalog-ink/50">
+      <p id={hintId} className="text-xs text-catalog-ink/50">
         La descarga estará disponible cuando el material esté conectado.
       </p>
     </div>

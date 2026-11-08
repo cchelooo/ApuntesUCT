@@ -50,6 +50,8 @@ export function SearchResults({
     );
   }
 
+  const forQuery = query ? ` para “${query}”` : '';
+
   return (
     <div aria-busy={isFetching}>
       {isError && (
@@ -61,13 +63,13 @@ export function SearchResults({
       )}
       {data && !isLoading && (
         <p className="mb-3 text-xs text-catalog-ink/50" aria-live="polite">
-          {data.total} resultados para “{query}”
+          {`${data.total} resultados${forQuery}`}
         </p>
       )}
       <MaterialList
         materials={materials}
         isLoading={isLoading}
-        emptyTitle={`Sin resultados para “${query}”`}
+        emptyTitle={query ? `Sin resultados para “${query}”` : 'Sin resultados'}
         emptyDescription="Prueba con otras palabras o revisa la ortografía."
       />
       {data && (

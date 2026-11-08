@@ -7,6 +7,7 @@ import { MaterialListSection } from './MaterialListSection';
 
 const SUBJECT_ID = '11111111-1111-4111-8111-111111111111';
 const PROFESSOR_ID = '22222222-2222-4222-8222-222222222222';
+const GATEWAY = 'https://gateway.test/api/v1';
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -32,9 +33,9 @@ function page(items: unknown[], extra: Record<string, unknown> = {}) {
 }
 
 interface Handlers {
-  materials: (url: URL) => Response;
-  subjects?: () => Response;
-  professors?: () => Response;
+  materials: (url: URL) => Response | Promise<Response>;
+  subjects?: () => Response | Promise<Response>;
+  professors?: () => Response | Promise<Response>;
 }
 
 const fetchMock = vi.fn();
@@ -81,9 +82,34 @@ function renderSection() {
 describe('MaterialListSection', () => {
   beforeEach(() => {
     fetchMock.mockReset();
+    vi.stubEnv('VITE_API_URL', GATEWAY);
     vi.stubGlobal('fetch', fetchMock);
   });
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it('muestra el estado de carga (loading) con esqueletos mientras espera respuesta del servidor', async () => {
+    let resolveMaterials: (val: Response) => void;
+    mockApi({
+      materials: () =>
+        new Promise<Response>((resolve) => {
+          resolveMaterials = resolve;
+        }),
+    });
+    renderSection();
+
+    expect(screen.getByRole('status')).toHaveTextContent('Cargando materiales');
+    expect(screen.getAllByTestId('material-card-skeleton')).toHaveLength(4);
+    expect(screen.queryByText('Aún no hay materiales')).not.toBeInTheDocument();
+
+    resolveMaterials!(json(page([material()])));
+    expect(
+      await screen.findByText('Certamen 1 - Algoritmos')
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
 
   it('muestra carga y luego año, tipo, asignatura y profesor del contrato real', async () => {
     mockApi({ materials: () => json(page([material()])) });
@@ -108,7 +134,10 @@ describe('MaterialListSection', () => {
       'href',
       '/material/real-uuid-1'
     );
-    expect(materialCalls()[0]).toContain('/materials?page=1&pageSize=2');
+    expect(materialCalls()[0]).toBe(`${GATEWAY}/materials?page=1&pageSize=2`);
+    expect(
+      fetchMock.mock.calls.every(([url]) => String(url).startsWith(GATEWAY))
+    ).toBe(true);
   });
 
   it('mantiene el texto alternativo cuando el material no tiene profesor', async () => {

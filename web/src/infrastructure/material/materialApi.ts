@@ -2,6 +2,7 @@ import type {
   CreateMaterialRequest,
   CreateMaterialResponse,
   MaterialDetailResponse,
+  MaterialCurrentVersion,
   ListMaterialsParams,
 } from '../../domain/material/materialApi';
 
@@ -9,6 +10,7 @@ import type { MaterialApiError } from './materialErrorHandler';
 import { mapRawMaterialPage } from './mapMaterial';
 import type { RawMaterialPage } from './rawMaterial';
 import type { MaterialPage } from '../../domain/material/materialPage';
+import { getApiBaseUrl } from '../apiBaseUrl';
 
 export interface MaterialRequestOptions {
   accessToken?: string;
@@ -16,13 +18,7 @@ export interface MaterialRequestOptions {
 }
 
 function getMaterialsUrl(path = ''): string {
-  const envUrl = import.meta.env.VITE_API_URL;
-  if (envUrl === '') {
-    throw new Error('VITE_API_URL is not configured');
-  }
-  const baseUrl = envUrl ?? 'http://localhost:3000/api/v1';
-
-  return `${baseUrl.replace(/\/+$/, '')}/materials${path}`;
+  return `${getApiBaseUrl()}/materials${path}`;
 }
 
 export const DEFAULT_MATERIALS_PAGE_SIZE = 20;
@@ -169,9 +165,10 @@ export async function uploadMaterial(
     if (input.file) body.append('file', input.file);
   }
 
+  const url = getMaterialsUrl();
   let response: Response;
   try {
-    response = await fetch(getMaterialsUrl(), {
+    response = await fetch(url, {
       method: 'POST',
       body,
       signal: options.signal,
@@ -205,8 +202,14 @@ export async function uploadMaterial(
   return (await response.json()) as CreateMaterialResponse;
 }
 
-export function buildMaterialDownloadUrl(materialId: string): string {
-  return getMaterialsUrl(`/${encodeURIComponent(materialId)}/download`);
+export function buildMaterialDownloadUrl(
+  materialId: string,
+  versionId?: string
+): string {
+  return (
+    getMaterialsUrl(`/${encodeURIComponent(materialId)}/download`) +
+    (versionId ? `?${new URLSearchParams({ versionId })}` : '')
+  );
 }
 
 export async function fetchMaterial(
@@ -262,4 +265,28 @@ export async function downloadMaterial(materialId: string): Promise<Response> {
   }
 
   return response;
+}
+
+export async function createMaterialVersion(
+  materialId: string,
+  file: File
+): Promise<MaterialCurrentVersion> {
+  const body = new FormData();
+  body.append('file', file);
+  let response: Response;
+  try {
+    response = await fetch(
+      getMaterialsUrl(`/${encodeURIComponent(materialId)}/versions`),
+      {
+        method: 'POST',
+        body,
+      }
+    );
+  } catch {
+    throw new MaterialRequestError('Fallo de red al subir la versión', {
+      isNetworkError: true,
+    });
+  }
+  if (!response.ok) await throwApiError(response);
+  return (await response.json()) as MaterialCurrentVersion;
 }
