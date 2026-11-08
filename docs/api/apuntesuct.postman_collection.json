@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "ApuntesUCT API",
-    "description": "Colección generada desde el OpenAPI de api-gateway, auth-service y catalog-service (ver backend/scripts/export-postman-collection.cjs). Requiere los servicios levantados; auth y catalog necesitan su PostgreSQL. Importa también el environment apuntesuct.postman_environment.json.",
+    "description": "API pública mediante Gateway. Generada desde los cinco servicios. Ver docs/api/README.md y docs/api/integracion-material-search.md para requisitos, autenticación temporal y ejemplos. Los ejemplos son ilustrativos, no capturas de producción.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -15,13 +15,36 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/health",
+              "raw": "{{gatewayUrl}}/health",
               "host": ["{{gatewayUrl}}"],
-              "path": ["api", "v1", "health"]
+              "path": ["health"]
             },
             "description": "Chequeo público de disponibilidad del Gateway. No consulta bases de datos ni otros microservicios."
           },
-          "response": [],
+          "response": [
+            {
+              "name": "200 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{gatewayUrl}}/health",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["health"]
+                },
+                "description": "Chequeo público de disponibilidad del Gateway. No consulta bases de datos ni otros microservicios."
+              },
+              "status": "",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": \"ok\",\n  \"service\": \"API Gateway\",\n  \"timestamp\": \"2026-09-13T12:00:00.000Z\"\n}"
+            }
+          ],
           "event": [
             {
               "listen": "test",
@@ -41,13 +64,36 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/api/v1/health",
+              "raw": "{{gatewayUrl}}/api/v1/health",
               "host": ["{{gatewayUrl}}"],
-              "path": ["api", "v1", "api", "v1", "health"]
+              "path": ["api", "v1", "health"]
             },
             "description": "Chequeo público de disponibilidad del Gateway. No consulta bases de datos ni otros microservicios."
           },
-          "response": [],
+          "response": [
+            {
+              "name": "200 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/health",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "health"]
+                },
+                "description": "Chequeo público de disponibilidad del Gateway. No consulta bases de datos ni otros microservicios."
+              },
+              "status": "",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": \"ok\",\n  \"service\": \"API Gateway\",\n  \"timestamp\": \"2026-09-13T12:00:00.000Z\"\n}"
+            }
+          ],
           "event": [
             {
               "listen": "test",
@@ -62,7 +108,7 @@
           ]
         },
         {
-          "name": "Health de Auth a través del gateway",
+          "name": "Health de Auth mediante Gateway",
           "request": {
             "method": "GET",
             "header": [],
@@ -71,7 +117,7 @@
               "host": ["{{gatewayUrl}}"],
               "path": ["api", "v1", "auth", "health"]
             },
-            "description": "Ruta proxeada hacia Auth (no aparece en el OpenAPI del gateway porque el proxy es middleware). El gateway reescribe la ruta a /api/v1/health en Auth. Responde 502 si Auth no acepta la conexión o tarda más de 5 segundos."
+            "description": "Gateway reescribe a /api/v1/health de Auth. Si Auth no responde devuelve 502."
           },
           "response": [],
           "event": [
@@ -86,9 +132,15 @@
               }
             }
           ]
-        },
+        }
+      ]
+    },
+    {
+      "name": "Auth Service",
+      "description": "Microservicio de identidad, autenticación, usuarios y roles.",
+      "item": [
         {
-          "name": "Login mock a través del gateway",
+          "name": "Login mock temporal (#92)",
           "request": {
             "method": "POST",
             "header": [
@@ -112,173 +164,84 @@
               "host": ["{{gatewayUrl}}"],
               "path": ["api", "v1", "auth", "login"]
             },
-            "description": "Ruta proxeada hacia Auth (ver #91). Devuelve el JWT sin firma del login mock (#92) y guarda el accessToken en la variable accessToken. Responde 502 si Auth no está disponible."
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });",
-                  "pm.test('Guarda el accessToken', function () {",
-                  "  const json = pm.response.json();",
-                  "  pm.expect(json.accessToken).to.be.a('string').and.not.empty;",
-                  "  pm.collectionVariables.set('accessToken', json.accessToken);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Árbol del catálogo a través del gateway",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}",
-                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
-              }
-            ],
-            "url": {
-              "raw": "{{gatewayUrl}}/api/v1/catalog",
-              "host": ["{{gatewayUrl}}"],
-              "path": ["api", "v1", "catalog"]
-            },
-            "description": "Ruta proxeada hacia Catalog (ProxyModule, #122). No hay health reescrito para Catalog: su healthcheck está en {{catalogUrl}}/api/v1/health. Responde 502 con \"Catalog Service no disponible\" si Catalog no responde."
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Filtro jerárquico a través del gateway",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}",
-                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
-              }
-            ],
-            "url": {
-              "raw": "{{gatewayUrl}}/api/v1/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}",
-              "host": ["{{gatewayUrl}}"],
-              "path": ["api", "v1", "catalog", "filter"],
-              "query": [
-                {
-                  "key": "universityId",
-                  "value": "{{universityId}}",
-                  "description": "Nivel 1. Sin requisito previo."
-                },
-                {
-                  "key": "careerId",
-                  "value": "{{careerId}}",
-                  "description": "Nivel 2. Requiere universityId."
-                },
-                {
-                  "key": "subjectId",
-                  "value": "{{subjectId}}",
-                  "description": "Nivel 3. Requiere careerId."
-                },
-                {
-                  "key": "professorId",
-                  "value": "{{professorId}}",
-                  "description": "Nivel 4. Requiere subjectId."
-                }
-              ]
-            },
-            "description": "Misma ruta proxeada hacia Catalog, con el prefijo jerárquico de 4 niveles (los tres primeros UUID de GET /api/v1/catalog o de los listados de selectores y el professorId de GET /api/v1/catalog/professors). year y type no forman parte del contrato de Catalog: pertenecen a Material/Search."
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
-                ]
-              }
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "Auth Service",
-      "description": "Microservicio de identidad, autenticación, usuarios y roles.",
-      "item": [
-        {
-          "name": "Verifica el estado del servicio y su conexión a PostgreSQL",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{authUrl}}/api/v1/health",
-              "host": ["{{authUrl}}"],
-              "path": ["api", "v1", "health"]
-            },
-            "description": "/api/v1/health (Auth Service)"
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "Login mock temporal (#92)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "description": ""
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{mockEmail}}\",\n  \"password\": \"{{mockPassword}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{authUrl}}/api/v1/auth/login",
-              "host": ["{{authUrl}}"],
-              "path": ["api", "v1", "auth", "login"]
-            },
             "description": "Acepta cualquier credencial con formato válido. Devuelve un JWT falso sin firma, solo para integración del frontend; no autentica usuarios."
           },
-          "response": [],
+          "response": [
+            {
+              "name": "200 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "description": ""
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{mockEmail}}\",\n  \"password\": \"{{mockPassword}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/auth/login",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "auth", "login"]
+                },
+                "description": "Acepta cualquier credencial con formato válido. Devuelve un JWT falso sin firma, solo para integración del frontend; no autentica usuarios."
+              },
+              "status": "Sesión simulada. El token no sirve para autorizar peticiones.",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"accessToken\": \"string\",\n  \"tokenType\": \"Bearer\",\n  \"expiresIn\": 3600,\n  \"user\": {\n    \"id\": \"00000000-0000-4000-8000-000000000092\",\n    \"name\": \"Estudiante de prueba\",\n    \"email\": \"estudiante@alu.uct.cl\",\n    \"role\": \"STUDENT\",\n    \"active\": true\n  }\n}"
+            },
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "description": ""
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{mockEmail}}\",\n  \"password\": \"{{mockPassword}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/auth/login",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "auth", "login"]
+                },
+                "description": "Acepta cualquier credencial con formato válido. Devuelve un JWT falso sin firma, solo para integración del frontend; no autentica usuarios."
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Auth Service no disponible\"\n}"
+            }
+          ],
           "event": [
             {
               "listen": "test",
@@ -304,32 +267,6 @@
       "description": "Microservicio de universidad, carrera, asignatura, profesor y sus relaciones.",
       "item": [
         {
-          "name": "Verifica el estado del servicio",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{catalogUrl}}/api/v1/health",
-              "host": ["{{catalogUrl}}"],
-              "path": ["api", "v1", "health"]
-            },
-            "description": "/api/v1/health (Catalog Service)"
-          },
-          "response": [],
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
-                ]
-              }
-            }
-          ]
-        },
-        {
           "name": "Obtener árbol básico del catálogo",
           "request": {
             "method": "GET",
@@ -337,17 +274,74 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
+                "description": "Token del login mock; Catalog actualmente no lo valida."
               }
             ],
             "url": {
-              "raw": "{{catalogUrl}}/api/v1/catalog",
-              "host": ["{{catalogUrl}}"],
+              "raw": "{{gatewayUrl}}/api/v1/catalog",
+              "host": ["{{gatewayUrl}}"],
               "path": ["api", "v1", "catalog"]
             },
             "description": "Devuelve la jerarquía base completa del catálogo (Universidades -> Carreras -> Asignaturas) para ser consumida de forma inicial por el frontend."
           },
-          "response": [],
+          "response": [
+            {
+              "name": "200 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                  }
+                ],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/catalog",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "catalog"]
+                },
+                "description": "Devuelve la jerarquía base completa del catálogo (Universidades -> Carreras -> Asignaturas) para ser consumida de forma inicial por el frontend."
+              },
+              "status": "Estructura en árbol del catálogo consultada exitosamente.",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "[]"
+            },
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                  }
+                ],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/catalog",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "catalog"]
+                },
+                "description": "Devuelve la jerarquía base completa del catálogo (Universidades -> Carreras -> Asignaturas) para ser consumida de forma inicial por el frontend."
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Catalog Service no disponible\"\n}"
+            }
+          ],
           "event": [
             {
               "listen": "test",
@@ -369,39 +363,98 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
+                "description": "Token del login mock; Catalog actualmente no lo valida."
               }
             ],
             "url": {
-              "raw": "{{catalogUrl}}/api/v1/catalog/filter?universityId={{universityId}}&careerId={{careerId}}&subjectId={{subjectId}}&professorId={{professorId}}",
-              "host": ["{{catalogUrl}}"],
+              "raw": "{{gatewayUrl}}/api/v1/catalog/filter",
+              "host": ["{{gatewayUrl}}"],
               "path": ["api", "v1", "catalog", "filter"],
               "query": [
                 {
                   "key": "universityId",
                   "value": "{{universityId}}",
-                  "description": "Nivel 1. Universidad. Sin requisito previo."
+                  "description": "Nivel 1. Universidad. Sin requisito previo.",
+                  "disabled": true
                 },
                 {
                   "key": "careerId",
                   "value": "{{careerId}}",
-                  "description": "Nivel 2. Carrera. Requiere universityId."
+                  "description": "Nivel 2. Carrera. Requiere universityId.",
+                  "disabled": true
                 },
                 {
                   "key": "subjectId",
                   "value": "{{subjectId}}",
-                  "description": "Nivel 3. Asignatura. Requiere careerId."
+                  "description": "Nivel 3. Asignatura. Requiere careerId.",
+                  "disabled": true
                 },
                 {
                   "key": "professorId",
                   "value": "{{professorId}}",
-                  "description": "Nivel 4. Profesor. Requiere subjectId."
+                  "description": "Nivel 4. Profesor. Requiere subjectId.",
+                  "disabled": true
                 }
               ]
             },
             "description": "Realiza una búsqueda jerárquica devolviendo las asignaturas coincidentes junto con sus relaciones principales.\n\n    ### Comportamiento del Endpoint:\n    - **Sin filtros:** Devuelve la lista completa de **Asignaturas**.\n    - **Filtros válidos aplicados:** Devuelve las asignaturas filtradas incluyendo sus relaciones directas (**Carrera**, **Universidad** y **Profesores**).\n    - **Combinación incompatible:** Devuelve un arreglo vacío (`[]`).\n\n    ### Secuencia Obligatoria de Niveles:\n    1. **Universidad** (`universityId`)\n    2. **Carrera** (`careerId`) [requiere `universityId`]\n    3. **Asignatura** (`subjectId`) [requiere `careerId`]\n    4. **Profesor** (`professorId`) [requiere `subjectId`]\n\n    ### Alcance del Dominio:\n    Catalog solo modela la jerarquía hasta **Profesor**. El filtrado por **Año**\n    (`year`) y **Tipo** (`type`) **no** forma parte de este contrato: los\n    metadatos de los materiales pertenecen a **Material Service** y la búsqueda\n    por año/tipo corresponde a **Search Service**. Cualquier parámetro ajeno a los\n    cuatro niveles anteriores se ignora.\n    \n\nOrden obligatorio (4 niveles): universityId → careerId → subjectId → professorId. Los tres primeros UUID salen de GET /api/v1/catalog o de los listados de selectores; el professorId no viene en ese árbol: se obtiene de GET /api/v1/catalog/professors o del arreglo professors de cada asignatura. year y type no forman parte del contrato de Catalog: pertenecen a Material/Search."
           },
-          "response": [],
+          "response": [
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                  }
+                ],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/catalog/filter",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "catalog", "filter"],
+                  "query": [
+                    {
+                      "key": "universityId",
+                      "value": "{{universityId}}",
+                      "description": "Nivel 1. Universidad. Sin requisito previo.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "careerId",
+                      "value": "{{careerId}}",
+                      "description": "Nivel 2. Carrera. Requiere universityId.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "subjectId",
+                      "value": "{{subjectId}}",
+                      "description": "Nivel 3. Asignatura. Requiere careerId.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "professorId",
+                      "value": "{{professorId}}",
+                      "description": "Nivel 4. Profesor. Requiere subjectId.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Realiza una búsqueda jerárquica devolviendo las asignaturas coincidentes junto con sus relaciones principales.\n\n    ### Comportamiento del Endpoint:\n    - **Sin filtros:** Devuelve la lista completa de **Asignaturas**.\n    - **Filtros válidos aplicados:** Devuelve las asignaturas filtradas incluyendo sus relaciones directas (**Carrera**, **Universidad** y **Profesores**).\n    - **Combinación incompatible:** Devuelve un arreglo vacío (`[]`).\n\n    ### Secuencia Obligatoria de Niveles:\n    1. **Universidad** (`universityId`)\n    2. **Carrera** (`careerId`) [requiere `universityId`]\n    3. **Asignatura** (`subjectId`) [requiere `careerId`]\n    4. **Profesor** (`professorId`) [requiere `subjectId`]\n\n    ### Alcance del Dominio:\n    Catalog solo modela la jerarquía hasta **Profesor**. El filtrado por **Año**\n    (`year`) y **Tipo** (`type`) **no** forma parte de este contrato: los\n    metadatos de los materiales pertenecen a **Material Service** y la búsqueda\n    por año/tipo corresponde a **Search Service**. Cualquier parámetro ajeno a los\n    cuatro niveles anteriores se ignora.\n    \n\nOrden obligatorio (4 niveles): universityId → careerId → subjectId → professorId. Los tres primeros UUID salen de GET /api/v1/catalog o de los listados de selectores; el professorId no viene en ese árbol: se obtiene de GET /api/v1/catalog/professors o del arreglo professors de cada asignatura. year y type no forman parte del contrato de Catalog: pertenecen a Material/Search."
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Catalog Service no disponible\"\n}"
+            }
+          ],
           "event": [
             {
               "listen": "test",
@@ -423,17 +476,74 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
+                "description": "Token del login mock; Catalog actualmente no lo valida."
               }
             ],
             "url": {
-              "raw": "{{catalogUrl}}/api/v1/catalog/universities",
-              "host": ["{{catalogUrl}}"],
+              "raw": "{{gatewayUrl}}/api/v1/catalog/universities",
+              "host": ["{{gatewayUrl}}"],
               "path": ["api", "v1", "catalog", "universities"]
             },
             "description": "Devuelve las universidades activas ordenadas por nombre. Alimenta el selector de universidades del frontend."
           },
-          "response": [],
+          "response": [
+            {
+              "name": "200 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                  }
+                ],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/catalog/universities",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "catalog", "universities"]
+                },
+                "description": "Devuelve las universidades activas ordenadas por nombre. Alimenta el selector de universidades del frontend."
+              },
+              "status": "Listado de universidades activas.",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "[]"
+            },
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                  }
+                ],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/catalog/universities",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "catalog", "universities"]
+                },
+                "description": "Devuelve las universidades activas ordenadas por nombre. Alimenta el selector de universidades del frontend."
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Catalog Service no disponible\"\n}"
+            }
+          ],
           "event": [
             {
               "listen": "test",
@@ -460,7 +570,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
+                "description": "Token del login mock; Catalog actualmente no lo valida."
               }
             ],
             "body": {
@@ -473,13 +583,56 @@
               }
             },
             "url": {
-              "raw": "{{catalogUrl}}/api/v1/catalog/universities",
-              "host": ["{{catalogUrl}}"],
+              "raw": "{{gatewayUrl}}/api/v1/catalog/universities",
+              "host": ["{{gatewayUrl}}"],
               "path": ["api", "v1", "catalog", "universities"]
             },
             "description": "/api/v1/catalog/universities (Catalog Service)"
           },
-          "response": [],
+          "response": [
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "description": ""
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/catalog/universities",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "catalog", "universities"]
+                },
+                "description": "/api/v1/catalog/universities (Catalog Service)"
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Catalog Service no disponible\"\n}"
+            }
+          ],
           "event": [
             {
               "listen": "test",
@@ -501,24 +654,98 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
+                "description": "Token del login mock; Catalog actualmente no lo valida."
               }
             ],
             "url": {
-              "raw": "{{catalogUrl}}/api/v1/catalog/careers?universityId={{universityId}}",
-              "host": ["{{catalogUrl}}"],
+              "raw": "{{gatewayUrl}}/api/v1/catalog/careers",
+              "host": ["{{gatewayUrl}}"],
               "path": ["api", "v1", "catalog", "careers"],
               "query": [
                 {
                   "key": "universityId",
                   "value": "{{universityId}}",
-                  "description": "Filtra las carreras de una universidad concreta."
+                  "description": "Filtra las carreras de una universidad concreta.",
+                  "disabled": true
                 }
               ]
             },
             "description": "Devuelve las carreras activas ordenadas por nombre. Permite acotar el resultado a una universidad con `universityId`."
           },
-          "response": [],
+          "response": [
+            {
+              "name": "200 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                  }
+                ],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/catalog/careers",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "catalog", "careers"],
+                  "query": [
+                    {
+                      "key": "universityId",
+                      "value": "{{universityId}}",
+                      "description": "Filtra las carreras de una universidad concreta.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Devuelve las carreras activas ordenadas por nombre. Permite acotar el resultado a una universidad con `universityId`."
+              },
+              "status": "Listado de carreras activas.",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "[]"
+            },
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                  }
+                ],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/catalog/careers",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "catalog", "careers"],
+                  "query": [
+                    {
+                      "key": "universityId",
+                      "value": "{{universityId}}",
+                      "description": "Filtra las carreras de una universidad concreta.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Devuelve las carreras activas ordenadas por nombre. Permite acotar el resultado a una universidad con `universityId`."
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Catalog Service no disponible\"\n}"
+            }
+          ],
           "event": [
             {
               "listen": "test",
@@ -545,7 +772,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
+                "description": "Token del login mock; Catalog actualmente no lo valida."
               }
             ],
             "body": {
@@ -558,13 +785,56 @@
               }
             },
             "url": {
-              "raw": "{{catalogUrl}}/api/v1/catalog/careers",
-              "host": ["{{catalogUrl}}"],
+              "raw": "{{gatewayUrl}}/api/v1/catalog/careers",
+              "host": ["{{gatewayUrl}}"],
               "path": ["api", "v1", "catalog", "careers"]
             },
             "description": "/api/v1/catalog/careers (Catalog Service)"
           },
-          "response": [],
+          "response": [
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "description": ""
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/catalog/careers",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "catalog", "careers"]
+                },
+                "description": "/api/v1/catalog/careers (Catalog Service)"
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Catalog Service no disponible\"\n}"
+            }
+          ],
           "event": [
             {
               "listen": "test",
@@ -586,24 +856,98 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
+                "description": "Token del login mock; Catalog actualmente no lo valida."
               }
             ],
             "url": {
-              "raw": "{{catalogUrl}}/api/v1/catalog/subjects?careerId={{careerId}}",
-              "host": ["{{catalogUrl}}"],
+              "raw": "{{gatewayUrl}}/api/v1/catalog/subjects",
+              "host": ["{{gatewayUrl}}"],
               "path": ["api", "v1", "catalog", "subjects"],
               "query": [
                 {
                   "key": "careerId",
                   "value": "{{careerId}}",
-                  "description": "Filtra las asignaturas de una carrera concreta."
+                  "description": "Filtra las asignaturas de una carrera concreta.",
+                  "disabled": true
                 }
               ]
             },
             "description": "Devuelve las asignaturas activas ordenadas por nombre. Permite acotar el resultado a una carrera con `careerId`."
           },
-          "response": [],
+          "response": [
+            {
+              "name": "200 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                  }
+                ],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/catalog/subjects",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "catalog", "subjects"],
+                  "query": [
+                    {
+                      "key": "careerId",
+                      "value": "{{careerId}}",
+                      "description": "Filtra las asignaturas de una carrera concreta.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Devuelve las asignaturas activas ordenadas por nombre. Permite acotar el resultado a una carrera con `careerId`."
+              },
+              "status": "Listado de asignaturas activas.",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "[]"
+            },
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                  }
+                ],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/catalog/subjects",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "catalog", "subjects"],
+                  "query": [
+                    {
+                      "key": "careerId",
+                      "value": "{{careerId}}",
+                      "description": "Filtra las asignaturas de una carrera concreta.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Devuelve las asignaturas activas ordenadas por nombre. Permite acotar el resultado a una carrera con `careerId`."
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Catalog Service no disponible\"\n}"
+            }
+          ],
           "event": [
             {
               "listen": "test",
@@ -630,7 +974,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
+                "description": "Token del login mock; Catalog actualmente no lo valida."
               }
             ],
             "body": {
@@ -643,13 +987,56 @@
               }
             },
             "url": {
-              "raw": "{{catalogUrl}}/api/v1/catalog/subjects",
-              "host": ["{{catalogUrl}}"],
+              "raw": "{{gatewayUrl}}/api/v1/catalog/subjects",
+              "host": ["{{gatewayUrl}}"],
               "path": ["api", "v1", "catalog", "subjects"]
             },
             "description": "/api/v1/catalog/subjects (Catalog Service)"
           },
-          "response": [],
+          "response": [
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "description": ""
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"careerId\": \"a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11\",\n  \"code\": \"INF-101\",\n  \"name\": \"Estructuras de Datos\",\n  \"semester\": 3,\n  \"description\": \"Curso sobre estructuras de datos lineales y no lineales.\",\n  \"active\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/catalog/subjects",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "catalog", "subjects"]
+                },
+                "description": "/api/v1/catalog/subjects (Catalog Service)"
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Catalog Service no disponible\"\n}"
+            }
+          ],
           "event": [
             {
               "listen": "test",
@@ -671,24 +1058,98 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
+                "description": "Token del login mock; Catalog actualmente no lo valida."
               }
             ],
             "url": {
-              "raw": "{{catalogUrl}}/api/v1/catalog/professors?subjectId={{subjectId}}",
-              "host": ["{{catalogUrl}}"],
+              "raw": "{{gatewayUrl}}/api/v1/catalog/professors",
+              "host": ["{{gatewayUrl}}"],
               "path": ["api", "v1", "catalog", "professors"],
               "query": [
                 {
                   "key": "subjectId",
                   "value": "{{subjectId}}",
-                  "description": "Filtra los profesores que dictan una asignatura concreta."
+                  "description": "Filtra los profesores que dictan una asignatura concreta.",
+                  "disabled": true
                 }
               ]
             },
             "description": "Devuelve los profesores activos ordenados por nombre. Permite acotar el resultado a quienes dictan una asignatura con `subjectId`."
           },
-          "response": [],
+          "response": [
+            {
+              "name": "200 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                  }
+                ],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/catalog/professors",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "catalog", "professors"],
+                  "query": [
+                    {
+                      "key": "subjectId",
+                      "value": "{{subjectId}}",
+                      "description": "Filtra los profesores que dictan una asignatura concreta.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Devuelve los profesores activos ordenados por nombre. Permite acotar el resultado a quienes dictan una asignatura con `subjectId`."
+              },
+              "status": "Listado de profesores activos.",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "[]"
+            },
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                  }
+                ],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/catalog/professors",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "catalog", "professors"],
+                  "query": [
+                    {
+                      "key": "subjectId",
+                      "value": "{{subjectId}}",
+                      "description": "Filtra los profesores que dictan una asignatura concreta.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Devuelve los profesores activos ordenados por nombre. Permite acotar el resultado a quienes dictan una asignatura con `subjectId`."
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Catalog Service no disponible\"\n}"
+            }
+          ],
           "event": [
             {
               "listen": "test",
@@ -715,7 +1176,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
+                "description": "Token del login mock; Catalog actualmente no lo valida."
               }
             ],
             "body": {
@@ -728,13 +1189,56 @@
               }
             },
             "url": {
-              "raw": "{{catalogUrl}}/api/v1/catalog/professors",
-              "host": ["{{catalogUrl}}"],
+              "raw": "{{gatewayUrl}}/api/v1/catalog/professors",
+              "host": ["{{gatewayUrl}}"],
               "path": ["api", "v1", "catalog", "professors"]
             },
             "description": "Opcionalmente vincula el profesor a una o más asignaturas mediante `subjectIds`."
           },
-          "response": [],
+          "response": [
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "description": ""
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/catalog/professors",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "catalog", "professors"]
+                },
+                "description": "Opcionalmente vincula el profesor a una o más asignaturas mediante `subjectIds`."
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Catalog Service no disponible\"\n}"
+            }
+          ],
           "event": [
             {
               "listen": "test",
@@ -756,17 +1260,52 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
+                "description": "Token del login mock; Catalog actualmente no lo valida."
               }
             ],
             "url": {
-              "raw": "{{catalogUrl}}/api/v1/catalog/universities/{id}",
-              "host": ["{{catalogUrl}}"],
-              "path": ["api", "v1", "catalog", "universities", "{id}"]
+              "raw": "{{gatewayUrl}}/api/v1/catalog/universities/{{resourceId}}",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "v1", "catalog", "universities", "{{resourceId}}"]
             },
             "description": "Elimina en cascada sus carreras, asignaturas y recursos asociados."
           },
-          "response": [],
+          "response": [
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                  }
+                ],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/catalog/universities/{{resourceId}}",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": [
+                    "api",
+                    "v1",
+                    "catalog",
+                    "universities",
+                    "{{resourceId}}"
+                  ]
+                },
+                "description": "Elimina en cascada sus carreras, asignaturas y recursos asociados."
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Catalog Service no disponible\"\n}"
+            }
+          ],
           "event": [
             {
               "listen": "test",
@@ -788,17 +1327,46 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
+                "description": "Token del login mock; Catalog actualmente no lo valida."
               }
             ],
             "url": {
-              "raw": "{{catalogUrl}}/api/v1/catalog/careers/{id}",
-              "host": ["{{catalogUrl}}"],
-              "path": ["api", "v1", "catalog", "careers", "{id}"]
+              "raw": "{{gatewayUrl}}/api/v1/catalog/careers/{{resourceId}}",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "v1", "catalog", "careers", "{{resourceId}}"]
             },
             "description": "Elimina en cascada sus asignaturas y recursos asociados."
           },
-          "response": [],
+          "response": [
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                  }
+                ],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/catalog/careers/{{resourceId}}",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "catalog", "careers", "{{resourceId}}"]
+                },
+                "description": "Elimina en cascada sus asignaturas y recursos asociados."
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Catalog Service no disponible\"\n}"
+            }
+          ],
           "event": [
             {
               "listen": "test",
@@ -820,17 +1388,52 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
+                "description": "Token del login mock; Catalog actualmente no lo valida."
               }
             ],
             "url": {
-              "raw": "{{catalogUrl}}/api/v1/catalog/professors/{id}",
-              "host": ["{{catalogUrl}}"],
-              "path": ["api", "v1", "catalog", "professors", "{id}"]
+              "raw": "{{gatewayUrl}}/api/v1/catalog/professors/{{resourceId}}",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "v1", "catalog", "professors", "{{resourceId}}"]
             },
             "description": "Desvincula al profesor de sus asignaturas y deja sus recursos sin profesor asociado."
           },
-          "response": [],
+          "response": [
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                  }
+                ],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/catalog/professors/{{resourceId}}",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": [
+                    "api",
+                    "v1",
+                    "catalog",
+                    "professors",
+                    "{{resourceId}}"
+                  ]
+                },
+                "description": "Desvincula al profesor de sus asignaturas y deja sus recursos sin profesor asociado."
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Catalog Service no disponible\"\n}"
+            }
+          ],
           "event": [
             {
               "listen": "test",
@@ -852,17 +1455,1990 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real."
+                "description": "Token del login mock; Catalog actualmente no lo valida."
               }
             ],
             "url": {
-              "raw": "{{catalogUrl}}/api/v1/catalog/subjects/{id}",
-              "host": ["{{catalogUrl}}"],
-              "path": ["api", "v1", "catalog", "subjects", "{id}"]
+              "raw": "{{gatewayUrl}}/api/v1/catalog/subjects/{{resourceId}}",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "v1", "catalog", "subjects", "{{resourceId}}"]
             },
             "description": "/api/v1/catalog/subjects/{id} (Catalog Service)"
           },
-          "response": [],
+          "response": [
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                  }
+                ],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/catalog/subjects/{{resourceId}}",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "catalog", "subjects", "{{resourceId}}"]
+                },
+                "description": "/api/v1/catalog/subjects/{id} (Catalog Service)"
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Catalog Service no disponible\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Material Service",
+      "item": [
+        {
+          "name": "Listar materiales publicados con paginación",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/v1/materials?page=1&pageSize=20",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "v1", "materials"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Orden: createdAt DESC, id DESC. Solo acepta page y pageSize; no realiza búsqueda textual. El desplazamiento máximo es 2147483647."
+          },
+          "response": [
+            {
+              "name": "200 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials?page=1&pageSize=20",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "materials"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "",
+                      "disabled": false
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "20",
+                      "description": "",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "description": "Orden: createdAt DESC, id DESC. Solo acepta page y pageSize; no realiza búsqueda textual. El desplazamiento máximo es 2147483647."
+              },
+              "status": "",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"items\": [],\n  \"page\": 1,\n  \"pageSize\": 20,\n  \"total\": 0\n}"
+            },
+            {
+              "name": "400 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials?page=1&pageSize=20",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "materials"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "",
+                      "disabled": false
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "20",
+                      "description": "",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "description": "Orden: createdAt DESC, id DESC. Solo acepta page y pageSize; no realiza búsqueda textual. El desplazamiento máximo es 2147483647."
+              },
+              "status": "Paginación inválida o parámetros desconocidos.",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"El desplazamiento de página excede el máximo permitido.\",\n  \"timestamp\": \"2026-11-08T12:00:00.000Z\",\n  \"path\": \"/api/v1/materials\"\n}"
+            },
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials?page=1&pageSize=20",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "materials"],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "",
+                      "disabled": false
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "20",
+                      "description": "",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "description": "Orden: createdAt DESC, id DESC. Solo acepta page y pageSize; no realiza búsqueda textual. El desplazamiento máximo es 2147483647."
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Material Service no disponible\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });",
+                  "if (pm.response.code === 200) { const first = pm.response.json().items[0]; if (first) pm.collectionVariables.set('materialId', first.id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Subir y registrar un nuevo material o enlace académico con validaciones de seguridad",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "type": "text",
+                  "value": "Guía Práctica de Álgebra Lineal",
+                  "description": "OBLIGATORIO. Título descriptivo del recurso.",
+                  "disabled": false
+                },
+                {
+                  "key": "description",
+                  "type": "text",
+                  "value": "Ejercicios resueltos sobre valores y vectores propios.",
+                  "description": "OPCIONAL. Descripción o detalles adicionales.",
+                  "disabled": true
+                },
+                {
+                  "key": "year",
+                  "type": "text",
+                  "value": "2026",
+                  "description": "OBLIGATORIO. Año académico de publicación (Formato YYYY).",
+                  "disabled": false
+                },
+                {
+                  "key": "type",
+                  "type": "text",
+                  "value": "DOCUMENT",
+                  "description": "Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.",
+                  "disabled": false
+                },
+                {
+                  "key": "subjectId",
+                  "type": "text",
+                  "value": "{{subjectId}}",
+                  "description": "OBLIGATORIO. UUID de una asignatura activa existente en Catalog, con carrera y universidad activas. Debe ser compatible con la universidad del contexto de autor cuando se configure. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                  "disabled": false
+                },
+                {
+                  "key": "careerId",
+                  "type": "text",
+                  "value": "{{careerId}}",
+                  "description": "OPCIONAL. UUID de una carrera activa existente en Catalog a la que pertenece la asignatura. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                  "disabled": true
+                },
+                {
+                  "key": "professorId",
+                  "type": "text",
+                  "value": "{{professorId}}",
+                  "description": "OPCIONAL. UUID de un profesor activo existente en Catalog y vinculado a la asignatura. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                  "disabled": true
+                },
+                {
+                  "key": "externalLink",
+                  "type": "text",
+                  "value": "https://drive.google.com/file/d/xyz/view",
+                  "description": "CONDICIONAL. Enlace web externo válido (URL). Obligatorio si type es LINK. Opcional como respaldo si se envía archivo.",
+                  "disabled": true
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Archivo binario local (máximo 15 MB). Obligatorio para DOCUMENT, PRESENTATION, EXAM y SUMMARY; no admitido para LINK. MIME permitidos: application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation.",
+                  "disabled": false
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/v1/materials",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "v1", "materials"]
+            },
+            "description": "\n**REGLAS DE SEGURIDAD Y VALIDACIÓN EN SERVIDOR:**\n- **Contexto de autor:** Requiere un contexto válido resuelto por MaterialAuthorProvider (retorna `401` si no está disponible o habilitado). El contexto local temporal está limitado a development según la configuración del servicio.\n- **Tamaño máximo:** 15 MB del contrato equivalen a 15.728.640 bytes (15 MiB). Retorna `413` si se excede.\n- **Tipos MIME permitidos:** application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation (retorna `415` si no es compatible).\n- **Archivo vacío:** Se rechaza si el archivo pesa 0 bytes (retorna `400`).\n- **Metadatos obligatorios:** `title`, `year` (YYYY), `type` y `subjectId` (retorna `400` si fallan).\n- **Referencias de Catalog:** `subjectId` debe ser un UUID de una asignatura activa con carrera y universidad activas. Si se envían `careerId` o `professorId`, deben existir, estar activos y ser compatibles con la asignatura. La universidad del contexto de autor también debe ser compatible cuando esté configurada. Referencias inválidas retornan `400` con `field`; Catalog no disponible retorna `502`.\n- **Ejemplos académicos:** Los UUID del formulario son ilustrativos; reemplazarlos por referencias existentes en Catalog.\n- **Reglas por tipo:** `LINK` exige `externalLink` válido y prohíbe archivo. `DOCUMENT`, `PRESENTATION`, `EXAM` y `SUMMARY` exigen archivo local.\n- **Relación del tipo:** Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.\n- **Endpoint relacionado:** GET /materials lista materiales publicados con materialTypeId.\n- **Almacenamiento:** Las validaciones previas, incluidas las referencias de Catalog, se ejecutan antes de almacenar el archivo y persistir el material.\n    "
+          },
+          "response": [
+            {
+              "name": "201 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "title",
+                      "type": "text",
+                      "value": "Guía Práctica de Álgebra Lineal",
+                      "description": "OBLIGATORIO. Título descriptivo del recurso.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "description",
+                      "type": "text",
+                      "value": "Ejercicios resueltos sobre valores y vectores propios.",
+                      "description": "OPCIONAL. Descripción o detalles adicionales.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "year",
+                      "type": "text",
+                      "value": "2026",
+                      "description": "OBLIGATORIO. Año académico de publicación (Formato YYYY).",
+                      "disabled": false
+                    },
+                    {
+                      "key": "type",
+                      "type": "text",
+                      "value": "DOCUMENT",
+                      "description": "Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "subjectId",
+                      "type": "text",
+                      "value": "{{subjectId}}",
+                      "description": "OBLIGATORIO. UUID de una asignatura activa existente en Catalog, con carrera y universidad activas. Debe ser compatible con la universidad del contexto de autor cuando se configure. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "careerId",
+                      "type": "text",
+                      "value": "{{careerId}}",
+                      "description": "OPCIONAL. UUID de una carrera activa existente en Catalog a la que pertenece la asignatura. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "professorId",
+                      "type": "text",
+                      "value": "{{professorId}}",
+                      "description": "OPCIONAL. UUID de un profesor activo existente en Catalog y vinculado a la asignatura. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "externalLink",
+                      "type": "text",
+                      "value": "https://drive.google.com/file/d/xyz/view",
+                      "description": "CONDICIONAL. Enlace web externo válido (URL). Obligatorio si type es LINK. Opcional como respaldo si se envía archivo.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "Archivo binario local (máximo 15 MB). Obligatorio para DOCUMENT, PRESENTATION, EXAM y SUMMARY; no admitido para LINK. MIME permitidos: application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation.",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "materials"]
+                },
+                "description": "\n**REGLAS DE SEGURIDAD Y VALIDACIÓN EN SERVIDOR:**\n- **Contexto de autor:** Requiere un contexto válido resuelto por MaterialAuthorProvider (retorna `401` si no está disponible o habilitado). El contexto local temporal está limitado a development según la configuración del servicio.\n- **Tamaño máximo:** 15 MB del contrato equivalen a 15.728.640 bytes (15 MiB). Retorna `413` si se excede.\n- **Tipos MIME permitidos:** application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation (retorna `415` si no es compatible).\n- **Archivo vacío:** Se rechaza si el archivo pesa 0 bytes (retorna `400`).\n- **Metadatos obligatorios:** `title`, `year` (YYYY), `type` y `subjectId` (retorna `400` si fallan).\n- **Referencias de Catalog:** `subjectId` debe ser un UUID de una asignatura activa con carrera y universidad activas. Si se envían `careerId` o `professorId`, deben existir, estar activos y ser compatibles con la asignatura. La universidad del contexto de autor también debe ser compatible cuando esté configurada. Referencias inválidas retornan `400` con `field`; Catalog no disponible retorna `502`.\n- **Ejemplos académicos:** Los UUID del formulario son ilustrativos; reemplazarlos por referencias existentes en Catalog.\n- **Reglas por tipo:** `LINK` exige `externalLink` válido y prohíbe archivo. `DOCUMENT`, `PRESENTATION`, `EXAM` y `SUMMARY` exigen archivo local.\n- **Relación del tipo:** Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.\n- **Endpoint relacionado:** GET /materials lista materiales publicados con materialTypeId.\n- **Almacenamiento:** Las validaciones previas, incluidas las referencias de Catalog, se ejecutan antes de almacenar el archivo y persistir el material.\n    "
+              },
+              "status": "Material persistido en estado PENDING_REVIEW.",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": \"success\",\n  \"isSimulatedResponse\": false,\n  \"message\": \"Material registrado exitosamente en estado PENDING_REVIEW.\",\n  \"data\": {\n    \"id\": \"25f7b25a-76b9-4d0c-a389-679e562870d1\",\n    \"title\": \"Guía Práctica de Álgebra Lineal\",\n    \"description\": \"Ejercicios resueltos sobre valores y vectores propios.\",\n    \"year\": \"2026\",\n    \"type\": \"DOCUMENT\",\n    \"status\": \"PENDING_REVIEW\",\n    \"subjectId\": \"33333333-3333-4333-8333-333333333333\",\n    \"careerId\": \"22222222-2222-4222-8222-222222222222\",\n    \"professorId\": \"44444444-4444-4444-8444-444444444444\",\n    \"universityId\": \"11111111-1111-4111-8111-111111111111\",\n    \"fileUrl\": null,\n    \"fileSize\": 2048500,\n    \"mimeType\": \"application/pdf\",\n    \"externalLink\": null,\n    \"createdAt\": \"2026-10-05T14:00:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "400 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "title",
+                      "type": "text",
+                      "value": "Guía Práctica de Álgebra Lineal",
+                      "description": "OBLIGATORIO. Título descriptivo del recurso.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "description",
+                      "type": "text",
+                      "value": "Ejercicios resueltos sobre valores y vectores propios.",
+                      "description": "OPCIONAL. Descripción o detalles adicionales.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "year",
+                      "type": "text",
+                      "value": "2026",
+                      "description": "OBLIGATORIO. Año académico de publicación (Formato YYYY).",
+                      "disabled": false
+                    },
+                    {
+                      "key": "type",
+                      "type": "text",
+                      "value": "DOCUMENT",
+                      "description": "Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "subjectId",
+                      "type": "text",
+                      "value": "{{subjectId}}",
+                      "description": "OBLIGATORIO. UUID de una asignatura activa existente en Catalog, con carrera y universidad activas. Debe ser compatible con la universidad del contexto de autor cuando se configure. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "careerId",
+                      "type": "text",
+                      "value": "{{careerId}}",
+                      "description": "OPCIONAL. UUID de una carrera activa existente en Catalog a la que pertenece la asignatura. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "professorId",
+                      "type": "text",
+                      "value": "{{professorId}}",
+                      "description": "OPCIONAL. UUID de un profesor activo existente en Catalog y vinculado a la asignatura. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "externalLink",
+                      "type": "text",
+                      "value": "https://drive.google.com/file/d/xyz/view",
+                      "description": "CONDICIONAL. Enlace web externo válido (URL). Obligatorio si type es LINK. Opcional como respaldo si se envía archivo.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "Archivo binario local (máximo 15 MB). Obligatorio para DOCUMENT, PRESENTATION, EXAM y SUMMARY; no admitido para LINK. MIME permitidos: application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation.",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "materials"]
+                },
+                "description": "\n**REGLAS DE SEGURIDAD Y VALIDACIÓN EN SERVIDOR:**\n- **Contexto de autor:** Requiere un contexto válido resuelto por MaterialAuthorProvider (retorna `401` si no está disponible o habilitado). El contexto local temporal está limitado a development según la configuración del servicio.\n- **Tamaño máximo:** 15 MB del contrato equivalen a 15.728.640 bytes (15 MiB). Retorna `413` si se excede.\n- **Tipos MIME permitidos:** application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation (retorna `415` si no es compatible).\n- **Archivo vacío:** Se rechaza si el archivo pesa 0 bytes (retorna `400`).\n- **Metadatos obligatorios:** `title`, `year` (YYYY), `type` y `subjectId` (retorna `400` si fallan).\n- **Referencias de Catalog:** `subjectId` debe ser un UUID de una asignatura activa con carrera y universidad activas. Si se envían `careerId` o `professorId`, deben existir, estar activos y ser compatibles con la asignatura. La universidad del contexto de autor también debe ser compatible cuando esté configurada. Referencias inválidas retornan `400` con `field`; Catalog no disponible retorna `502`.\n- **Ejemplos académicos:** Los UUID del formulario son ilustrativos; reemplazarlos por referencias existentes en Catalog.\n- **Reglas por tipo:** `LINK` exige `externalLink` válido y prohíbe archivo. `DOCUMENT`, `PRESENTATION`, `EXAM` y `SUMMARY` exigen archivo local.\n- **Relación del tipo:** Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.\n- **Endpoint relacionado:** GET /materials lista materiales publicados con materialTypeId.\n- **Almacenamiento:** Las validaciones previas, incluidas las referencias de Catalog, se ejecutan antes de almacenar el archivo y persistir el material.\n    "
+              },
+              "status": "Metadatos incorrectos, año inválido, archivo vacío, regla de tipo incumplida o referencia académica inválida. Los errores de referencias de Catalog incluyen field.",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": [\n    \"title should not be empty\"\n  ],\n  \"timestamp\": \"2026-11-08T12:00:00.000Z\",\n  \"path\": \"/api/v1/materials\"\n}"
+            },
+            {
+              "name": "401 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "title",
+                      "type": "text",
+                      "value": "Guía Práctica de Álgebra Lineal",
+                      "description": "OBLIGATORIO. Título descriptivo del recurso.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "description",
+                      "type": "text",
+                      "value": "Ejercicios resueltos sobre valores y vectores propios.",
+                      "description": "OPCIONAL. Descripción o detalles adicionales.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "year",
+                      "type": "text",
+                      "value": "2026",
+                      "description": "OBLIGATORIO. Año académico de publicación (Formato YYYY).",
+                      "disabled": false
+                    },
+                    {
+                      "key": "type",
+                      "type": "text",
+                      "value": "DOCUMENT",
+                      "description": "Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "subjectId",
+                      "type": "text",
+                      "value": "{{subjectId}}",
+                      "description": "OBLIGATORIO. UUID de una asignatura activa existente en Catalog, con carrera y universidad activas. Debe ser compatible con la universidad del contexto de autor cuando se configure. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "careerId",
+                      "type": "text",
+                      "value": "{{careerId}}",
+                      "description": "OPCIONAL. UUID de una carrera activa existente en Catalog a la que pertenece la asignatura. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "professorId",
+                      "type": "text",
+                      "value": "{{professorId}}",
+                      "description": "OPCIONAL. UUID de un profesor activo existente en Catalog y vinculado a la asignatura. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "externalLink",
+                      "type": "text",
+                      "value": "https://drive.google.com/file/d/xyz/view",
+                      "description": "CONDICIONAL. Enlace web externo válido (URL). Obligatorio si type es LINK. Opcional como respaldo si se envía archivo.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "Archivo binario local (máximo 15 MB). Obligatorio para DOCUMENT, PRESENTATION, EXAM y SUMMARY; no admitido para LINK. MIME permitidos: application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation.",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "materials"]
+                },
+                "description": "\n**REGLAS DE SEGURIDAD Y VALIDACIÓN EN SERVIDOR:**\n- **Contexto de autor:** Requiere un contexto válido resuelto por MaterialAuthorProvider (retorna `401` si no está disponible o habilitado). El contexto local temporal está limitado a development según la configuración del servicio.\n- **Tamaño máximo:** 15 MB del contrato equivalen a 15.728.640 bytes (15 MiB). Retorna `413` si se excede.\n- **Tipos MIME permitidos:** application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation (retorna `415` si no es compatible).\n- **Archivo vacío:** Se rechaza si el archivo pesa 0 bytes (retorna `400`).\n- **Metadatos obligatorios:** `title`, `year` (YYYY), `type` y `subjectId` (retorna `400` si fallan).\n- **Referencias de Catalog:** `subjectId` debe ser un UUID de una asignatura activa con carrera y universidad activas. Si se envían `careerId` o `professorId`, deben existir, estar activos y ser compatibles con la asignatura. La universidad del contexto de autor también debe ser compatible cuando esté configurada. Referencias inválidas retornan `400` con `field`; Catalog no disponible retorna `502`.\n- **Ejemplos académicos:** Los UUID del formulario son ilustrativos; reemplazarlos por referencias existentes en Catalog.\n- **Reglas por tipo:** `LINK` exige `externalLink` válido y prohíbe archivo. `DOCUMENT`, `PRESENTATION`, `EXAM` y `SUMMARY` exigen archivo local.\n- **Relación del tipo:** Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.\n- **Endpoint relacionado:** GET /materials lista materiales publicados con materialTypeId.\n- **Almacenamiento:** Las validaciones previas, incluidas las referencias de Catalog, se ejecutan antes de almacenar el archivo y persistir el material.\n    "
+              },
+              "status": "Contexto de autor ausente, inválido o no habilitado.",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 401,\n  \"error\": \"Unauthorized\",\n  \"message\": \"Se requiere un contexto de autor válido.\",\n  \"timestamp\": \"2026-11-08T12:00:00.000Z\",\n  \"path\": \"/api/v1/materials\"\n}"
+            },
+            {
+              "name": "413 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "title",
+                      "type": "text",
+                      "value": "Guía Práctica de Álgebra Lineal",
+                      "description": "OBLIGATORIO. Título descriptivo del recurso.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "description",
+                      "type": "text",
+                      "value": "Ejercicios resueltos sobre valores y vectores propios.",
+                      "description": "OPCIONAL. Descripción o detalles adicionales.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "year",
+                      "type": "text",
+                      "value": "2026",
+                      "description": "OBLIGATORIO. Año académico de publicación (Formato YYYY).",
+                      "disabled": false
+                    },
+                    {
+                      "key": "type",
+                      "type": "text",
+                      "value": "DOCUMENT",
+                      "description": "Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "subjectId",
+                      "type": "text",
+                      "value": "{{subjectId}}",
+                      "description": "OBLIGATORIO. UUID de una asignatura activa existente en Catalog, con carrera y universidad activas. Debe ser compatible con la universidad del contexto de autor cuando se configure. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "careerId",
+                      "type": "text",
+                      "value": "{{careerId}}",
+                      "description": "OPCIONAL. UUID de una carrera activa existente en Catalog a la que pertenece la asignatura. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "professorId",
+                      "type": "text",
+                      "value": "{{professorId}}",
+                      "description": "OPCIONAL. UUID de un profesor activo existente en Catalog y vinculado a la asignatura. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "externalLink",
+                      "type": "text",
+                      "value": "https://drive.google.com/file/d/xyz/view",
+                      "description": "CONDICIONAL. Enlace web externo válido (URL). Obligatorio si type es LINK. Opcional como respaldo si se envía archivo.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "Archivo binario local (máximo 15 MB). Obligatorio para DOCUMENT, PRESENTATION, EXAM y SUMMARY; no admitido para LINK. MIME permitidos: application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation.",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "materials"]
+                },
+                "description": "\n**REGLAS DE SEGURIDAD Y VALIDACIÓN EN SERVIDOR:**\n- **Contexto de autor:** Requiere un contexto válido resuelto por MaterialAuthorProvider (retorna `401` si no está disponible o habilitado). El contexto local temporal está limitado a development según la configuración del servicio.\n- **Tamaño máximo:** 15 MB del contrato equivalen a 15.728.640 bytes (15 MiB). Retorna `413` si se excede.\n- **Tipos MIME permitidos:** application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation (retorna `415` si no es compatible).\n- **Archivo vacío:** Se rechaza si el archivo pesa 0 bytes (retorna `400`).\n- **Metadatos obligatorios:** `title`, `year` (YYYY), `type` y `subjectId` (retorna `400` si fallan).\n- **Referencias de Catalog:** `subjectId` debe ser un UUID de una asignatura activa con carrera y universidad activas. Si se envían `careerId` o `professorId`, deben existir, estar activos y ser compatibles con la asignatura. La universidad del contexto de autor también debe ser compatible cuando esté configurada. Referencias inválidas retornan `400` con `field`; Catalog no disponible retorna `502`.\n- **Ejemplos académicos:** Los UUID del formulario son ilustrativos; reemplazarlos por referencias existentes en Catalog.\n- **Reglas por tipo:** `LINK` exige `externalLink` válido y prohíbe archivo. `DOCUMENT`, `PRESENTATION`, `EXAM` y `SUMMARY` exigen archivo local.\n- **Relación del tipo:** Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.\n- **Endpoint relacionado:** GET /materials lista materiales publicados con materialTypeId.\n- **Almacenamiento:** Las validaciones previas, incluidas las referencias de Catalog, se ejecutan antes de almacenar el archivo y persistir el material.\n    "
+              },
+              "status": "El archivo supera los 15.728.640 bytes permitidos.",
+              "code": 413,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 413,\n  \"error\": \"Payload Too Large\",\n  \"message\": \"El archivo excede el tamaño máximo permitido de 15 MB (15728640 bytes).\",\n  \"timestamp\": \"2026-11-08T12:00:00.000Z\",\n  \"path\": \"/api/v1/materials\"\n}"
+            },
+            {
+              "name": "415 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "title",
+                      "type": "text",
+                      "value": "Guía Práctica de Álgebra Lineal",
+                      "description": "OBLIGATORIO. Título descriptivo del recurso.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "description",
+                      "type": "text",
+                      "value": "Ejercicios resueltos sobre valores y vectores propios.",
+                      "description": "OPCIONAL. Descripción o detalles adicionales.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "year",
+                      "type": "text",
+                      "value": "2026",
+                      "description": "OBLIGATORIO. Año académico de publicación (Formato YYYY).",
+                      "disabled": false
+                    },
+                    {
+                      "key": "type",
+                      "type": "text",
+                      "value": "DOCUMENT",
+                      "description": "Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "subjectId",
+                      "type": "text",
+                      "value": "{{subjectId}}",
+                      "description": "OBLIGATORIO. UUID de una asignatura activa existente en Catalog, con carrera y universidad activas. Debe ser compatible con la universidad del contexto de autor cuando se configure. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "careerId",
+                      "type": "text",
+                      "value": "{{careerId}}",
+                      "description": "OPCIONAL. UUID de una carrera activa existente en Catalog a la que pertenece la asignatura. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "professorId",
+                      "type": "text",
+                      "value": "{{professorId}}",
+                      "description": "OPCIONAL. UUID de un profesor activo existente en Catalog y vinculado a la asignatura. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "externalLink",
+                      "type": "text",
+                      "value": "https://drive.google.com/file/d/xyz/view",
+                      "description": "CONDICIONAL. Enlace web externo válido (URL). Obligatorio si type es LINK. Opcional como respaldo si se envía archivo.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "Archivo binario local (máximo 15 MB). Obligatorio para DOCUMENT, PRESENTATION, EXAM y SUMMARY; no admitido para LINK. MIME permitidos: application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation.",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "materials"]
+                },
+                "description": "\n**REGLAS DE SEGURIDAD Y VALIDACIÓN EN SERVIDOR:**\n- **Contexto de autor:** Requiere un contexto válido resuelto por MaterialAuthorProvider (retorna `401` si no está disponible o habilitado). El contexto local temporal está limitado a development según la configuración del servicio.\n- **Tamaño máximo:** 15 MB del contrato equivalen a 15.728.640 bytes (15 MiB). Retorna `413` si se excede.\n- **Tipos MIME permitidos:** application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation (retorna `415` si no es compatible).\n- **Archivo vacío:** Se rechaza si el archivo pesa 0 bytes (retorna `400`).\n- **Metadatos obligatorios:** `title`, `year` (YYYY), `type` y `subjectId` (retorna `400` si fallan).\n- **Referencias de Catalog:** `subjectId` debe ser un UUID de una asignatura activa con carrera y universidad activas. Si se envían `careerId` o `professorId`, deben existir, estar activos y ser compatibles con la asignatura. La universidad del contexto de autor también debe ser compatible cuando esté configurada. Referencias inválidas retornan `400` con `field`; Catalog no disponible retorna `502`.\n- **Ejemplos académicos:** Los UUID del formulario son ilustrativos; reemplazarlos por referencias existentes en Catalog.\n- **Reglas por tipo:** `LINK` exige `externalLink` válido y prohíbe archivo. `DOCUMENT`, `PRESENTATION`, `EXAM` y `SUMMARY` exigen archivo local.\n- **Relación del tipo:** Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.\n- **Endpoint relacionado:** GET /materials lista materiales publicados con materialTypeId.\n- **Almacenamiento:** Las validaciones previas, incluidas las referencias de Catalog, se ejecutan antes de almacenar el archivo y persistir el material.\n    "
+              },
+              "status": "Formato de archivo no soportado.",
+              "code": 415,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 415,\n  \"error\": \"Unsupported Media Type\",\n  \"message\": \"Tipo de archivo no admitido. Formatos válidos: PDF, Word (.doc, .docx) y PowerPoint (.ppt, .pptx).\",\n  \"timestamp\": \"2026-11-08T12:00:00.000Z\",\n  \"path\": \"/api/v1/materials\"\n}"
+            },
+            {
+              "name": "500 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "title",
+                      "type": "text",
+                      "value": "Guía Práctica de Álgebra Lineal",
+                      "description": "OBLIGATORIO. Título descriptivo del recurso.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "description",
+                      "type": "text",
+                      "value": "Ejercicios resueltos sobre valores y vectores propios.",
+                      "description": "OPCIONAL. Descripción o detalles adicionales.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "year",
+                      "type": "text",
+                      "value": "2026",
+                      "description": "OBLIGATORIO. Año académico de publicación (Formato YYYY).",
+                      "disabled": false
+                    },
+                    {
+                      "key": "type",
+                      "type": "text",
+                      "value": "DOCUMENT",
+                      "description": "Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "subjectId",
+                      "type": "text",
+                      "value": "{{subjectId}}",
+                      "description": "OBLIGATORIO. UUID de una asignatura activa existente en Catalog, con carrera y universidad activas. Debe ser compatible con la universidad del contexto de autor cuando se configure. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "careerId",
+                      "type": "text",
+                      "value": "{{careerId}}",
+                      "description": "OPCIONAL. UUID de una carrera activa existente en Catalog a la que pertenece la asignatura. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "professorId",
+                      "type": "text",
+                      "value": "{{professorId}}",
+                      "description": "OPCIONAL. UUID de un profesor activo existente en Catalog y vinculado a la asignatura. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "externalLink",
+                      "type": "text",
+                      "value": "https://drive.google.com/file/d/xyz/view",
+                      "description": "CONDICIONAL. Enlace web externo válido (URL). Obligatorio si type es LINK. Opcional como respaldo si se envía archivo.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "Archivo binario local (máximo 15 MB). Obligatorio para DOCUMENT, PRESENTATION, EXAM y SUMMARY; no admitido para LINK. MIME permitidos: application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation.",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "materials"]
+                },
+                "description": "\n**REGLAS DE SEGURIDAD Y VALIDACIÓN EN SERVIDOR:**\n- **Contexto de autor:** Requiere un contexto válido resuelto por MaterialAuthorProvider (retorna `401` si no está disponible o habilitado). El contexto local temporal está limitado a development según la configuración del servicio.\n- **Tamaño máximo:** 15 MB del contrato equivalen a 15.728.640 bytes (15 MiB). Retorna `413` si se excede.\n- **Tipos MIME permitidos:** application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation (retorna `415` si no es compatible).\n- **Archivo vacío:** Se rechaza si el archivo pesa 0 bytes (retorna `400`).\n- **Metadatos obligatorios:** `title`, `year` (YYYY), `type` y `subjectId` (retorna `400` si fallan).\n- **Referencias de Catalog:** `subjectId` debe ser un UUID de una asignatura activa con carrera y universidad activas. Si se envían `careerId` o `professorId`, deben existir, estar activos y ser compatibles con la asignatura. La universidad del contexto de autor también debe ser compatible cuando esté configurada. Referencias inválidas retornan `400` con `field`; Catalog no disponible retorna `502`.\n- **Ejemplos académicos:** Los UUID del formulario son ilustrativos; reemplazarlos por referencias existentes en Catalog.\n- **Reglas por tipo:** `LINK` exige `externalLink` válido y prohíbe archivo. `DOCUMENT`, `PRESENTATION`, `EXAM` y `SUMMARY` exigen archivo local.\n- **Relación del tipo:** Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.\n- **Endpoint relacionado:** GET /materials lista materiales publicados con materialTypeId.\n- **Almacenamiento:** Las validaciones previas, incluidas las referencias de Catalog, se ejecutan antes de almacenar el archivo y persistir el material.\n    "
+              },
+              "status": "Error inesperado en el servidor.",
+              "code": 500,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 500,\n  \"error\": \"Internal Server Error\",\n  \"message\": \"Internal server error\",\n  \"timestamp\": \"2026-11-08T12:00:00.000Z\",\n  \"path\": \"/api/v1/materials\"\n}"
+            },
+            {
+              "name": "502 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "title",
+                      "type": "text",
+                      "value": "Guía Práctica de Álgebra Lineal",
+                      "description": "OBLIGATORIO. Título descriptivo del recurso.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "description",
+                      "type": "text",
+                      "value": "Ejercicios resueltos sobre valores y vectores propios.",
+                      "description": "OPCIONAL. Descripción o detalles adicionales.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "year",
+                      "type": "text",
+                      "value": "2026",
+                      "description": "OBLIGATORIO. Año académico de publicación (Formato YYYY).",
+                      "disabled": false
+                    },
+                    {
+                      "key": "type",
+                      "type": "text",
+                      "value": "DOCUMENT",
+                      "description": "Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "subjectId",
+                      "type": "text",
+                      "value": "{{subjectId}}",
+                      "description": "OBLIGATORIO. UUID de una asignatura activa existente en Catalog, con carrera y universidad activas. Debe ser compatible con la universidad del contexto de autor cuando se configure. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "careerId",
+                      "type": "text",
+                      "value": "{{careerId}}",
+                      "description": "OPCIONAL. UUID de una carrera activa existente en Catalog a la que pertenece la asignatura. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "professorId",
+                      "type": "text",
+                      "value": "{{professorId}}",
+                      "description": "OPCIONAL. UUID de un profesor activo existente en Catalog y vinculado a la asignatura. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "externalLink",
+                      "type": "text",
+                      "value": "https://drive.google.com/file/d/xyz/view",
+                      "description": "CONDICIONAL. Enlace web externo válido (URL). Obligatorio si type es LINK. Opcional como respaldo si se envía archivo.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "Archivo binario local (máximo 15 MB). Obligatorio para DOCUMENT, PRESENTATION, EXAM y SUMMARY; no admitido para LINK. MIME permitidos: application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation.",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "materials"]
+                },
+                "description": "\n**REGLAS DE SEGURIDAD Y VALIDACIÓN EN SERVIDOR:**\n- **Contexto de autor:** Requiere un contexto válido resuelto por MaterialAuthorProvider (retorna `401` si no está disponible o habilitado). El contexto local temporal está limitado a development según la configuración del servicio.\n- **Tamaño máximo:** 15 MB del contrato equivalen a 15.728.640 bytes (15 MiB). Retorna `413` si se excede.\n- **Tipos MIME permitidos:** application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation (retorna `415` si no es compatible).\n- **Archivo vacío:** Se rechaza si el archivo pesa 0 bytes (retorna `400`).\n- **Metadatos obligatorios:** `title`, `year` (YYYY), `type` y `subjectId` (retorna `400` si fallan).\n- **Referencias de Catalog:** `subjectId` debe ser un UUID de una asignatura activa con carrera y universidad activas. Si se envían `careerId` o `professorId`, deben existir, estar activos y ser compatibles con la asignatura. La universidad del contexto de autor también debe ser compatible cuando esté configurada. Referencias inválidas retornan `400` con `field`; Catalog no disponible retorna `502`.\n- **Ejemplos académicos:** Los UUID del formulario son ilustrativos; reemplazarlos por referencias existentes en Catalog.\n- **Reglas por tipo:** `LINK` exige `externalLink` válido y prohíbe archivo. `DOCUMENT`, `PRESENTATION`, `EXAM` y `SUMMARY` exigen archivo local.\n- **Relación del tipo:** Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.\n- **Endpoint relacionado:** GET /materials lista materiales publicados con materialTypeId.\n- **Almacenamiento:** Las validaciones previas, incluidas las referencias de Catalog, se ejecutan antes de almacenar el archivo y persistir el material.\n    "
+              },
+              "status": "Catalog no disponible para validar referencias o fallo al almacenar el archivo.",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"error\": \"Bad Gateway\",\n  \"message\": \"No se pudo almacenar el archivo. Intenta nuevamente.\",\n  \"timestamp\": \"2026-11-08T12:00:00.000Z\",\n  \"path\": \"/api/v1/materials\"\n}"
+            },
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "title",
+                      "type": "text",
+                      "value": "Guía Práctica de Álgebra Lineal",
+                      "description": "OBLIGATORIO. Título descriptivo del recurso.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "description",
+                      "type": "text",
+                      "value": "Ejercicios resueltos sobre valores y vectores propios.",
+                      "description": "OPCIONAL. Descripción o detalles adicionales.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "year",
+                      "type": "text",
+                      "value": "2026",
+                      "description": "OBLIGATORIO. Año académico de publicación (Formato YYYY).",
+                      "disabled": false
+                    },
+                    {
+                      "key": "type",
+                      "type": "text",
+                      "value": "DOCUMENT",
+                      "description": "Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "subjectId",
+                      "type": "text",
+                      "value": "{{subjectId}}",
+                      "description": "OBLIGATORIO. UUID de una asignatura activa existente en Catalog, con carrera y universidad activas. Debe ser compatible con la universidad del contexto de autor cuando se configure. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "careerId",
+                      "type": "text",
+                      "value": "{{careerId}}",
+                      "description": "OPCIONAL. UUID de una carrera activa existente en Catalog a la que pertenece la asignatura. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "professorId",
+                      "type": "text",
+                      "value": "{{professorId}}",
+                      "description": "OPCIONAL. UUID de un profesor activo existente en Catalog y vinculado a la asignatura. El UUID de ejemplo es ilustrativo: reemplazarlo por uno obtenido de Catalog.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "externalLink",
+                      "type": "text",
+                      "value": "https://drive.google.com/file/d/xyz/view",
+                      "description": "CONDICIONAL. Enlace web externo válido (URL). Obligatorio si type es LINK. Opcional como respaldo si se envía archivo.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "Archivo binario local (máximo 15 MB). Obligatorio para DOCUMENT, PRESENTATION, EXAM y SUMMARY; no admitido para LINK. MIME permitidos: application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation.",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "materials"]
+                },
+                "description": "\n**REGLAS DE SEGURIDAD Y VALIDACIÓN EN SERVIDOR:**\n- **Contexto de autor:** Requiere un contexto válido resuelto por MaterialAuthorProvider (retorna `401` si no está disponible o habilitado). El contexto local temporal está limitado a development según la configuración del servicio.\n- **Tamaño máximo:** 15 MB del contrato equivalen a 15.728.640 bytes (15 MiB). Retorna `413` si se excede.\n- **Tipos MIME permitidos:** application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation (retorna `415` si no es compatible).\n- **Archivo vacío:** Se rechaza si el archivo pesa 0 bytes (retorna `400`).\n- **Metadatos obligatorios:** `title`, `year` (YYYY), `type` y `subjectId` (retorna `400` si fallan).\n- **Referencias de Catalog:** `subjectId` debe ser un UUID de una asignatura activa con carrera y universidad activas. Si se envían `careerId` o `professorId`, deben existir, estar activos y ser compatibles con la asignatura. La universidad del contexto de autor también debe ser compatible cuando esté configurada. Referencias inválidas retornan `400` con `field`; Catalog no disponible retorna `502`.\n- **Ejemplos académicos:** Los UUID del formulario son ilustrativos; reemplazarlos por referencias existentes en Catalog.\n- **Reglas por tipo:** `LINK` exige `externalLink` válido y prohíbe archivo. `DOCUMENT`, `PRESENTATION`, `EXAM` y `SUMMARY` exigen archivo local.\n- **Relación del tipo:** Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.\n- **Endpoint relacionado:** GET /materials lista materiales publicados con materialTypeId.\n- **Almacenamiento:** Las validaciones previas, incluidas las referencias de Catalog, se ejecutan antes de almacenar el archivo y persistir el material.\n    "
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Material Service no disponible\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Descargar la versión actual o una versión específica de un material",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}/download",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "v1", "materials", "{{materialId}}", "download"],
+              "query": [
+                {
+                  "key": "versionId",
+                  "value": "{{versionId}}",
+                  "description": "Versión específica a descargar; por defecto se resuelve la última del material.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Resuelve internamente la versión (la de mayor versionNumber, o la indicada en versionId) y streama el archivo desde MinIO. La clave de almacenamiento nunca se expone."
+          },
+          "response": [
+            {
+              "name": "400 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}/download",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": [
+                    "api",
+                    "v1",
+                    "materials",
+                    "{{materialId}}",
+                    "download"
+                  ],
+                  "query": [
+                    {
+                      "key": "versionId",
+                      "value": "{{versionId}}",
+                      "description": "Versión específica a descargar; por defecto se resuelve la última del material.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Resuelve internamente la versión (la de mayor versionNumber, o la indicada en versionId) y streama el archivo desde MinIO. La clave de almacenamiento nunca se expone."
+              },
+              "status": "UUID inválido o parámetro desconocido.",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"Validation failed (uuid is expected)\",\n  \"timestamp\": \"2026-11-08T12:00:00.000Z\",\n  \"path\": \"/api/v1/materials/00000000-0000-4000-8000-000000000001/download\"\n}"
+            },
+            {
+              "name": "404 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}/download",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": [
+                    "api",
+                    "v1",
+                    "materials",
+                    "{{materialId}}",
+                    "download"
+                  ],
+                  "query": [
+                    {
+                      "key": "versionId",
+                      "value": "{{versionId}}",
+                      "description": "Versión específica a descargar; por defecto se resuelve la última del material.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Resuelve internamente la versión (la de mayor versionNumber, o la indicada en versionId) y streama el archivo desde MinIO. La clave de almacenamiento nunca se expone."
+              },
+              "status": "Material, versión o archivo inexistente.",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 404,\n  \"error\": \"Not Found\",\n  \"message\": \"Material no encontrado.\",\n  \"timestamp\": \"2026-11-08T12:00:00.000Z\",\n  \"path\": \"/api/v1/materials/00000000-0000-4000-8000-000000000001/download\"\n}"
+            },
+            {
+              "name": "503 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}/download",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": [
+                    "api",
+                    "v1",
+                    "materials",
+                    "{{materialId}}",
+                    "download"
+                  ],
+                  "query": [
+                    {
+                      "key": "versionId",
+                      "value": "{{versionId}}",
+                      "description": "Versión específica a descargar; por defecto se resuelve la última del material.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Resuelve internamente la versión (la de mayor versionNumber, o la indicada en versionId) y streama el archivo desde MinIO. La clave de almacenamiento nunca se expone."
+              },
+              "status": "Almacenamiento no disponible.",
+              "code": 503,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 503,\n  \"error\": \"Service Unavailable\",\n  \"message\": \"Almacenamiento de archivos no disponible.\",\n  \"timestamp\": \"2026-11-08T12:00:00.000Z\",\n  \"path\": \"/api/v1/materials/00000000-0000-4000-8000-000000000001/download\"\n}"
+            },
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}/download",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": [
+                    "api",
+                    "v1",
+                    "materials",
+                    "{{materialId}}",
+                    "download"
+                  ],
+                  "query": [
+                    {
+                      "key": "versionId",
+                      "value": "{{versionId}}",
+                      "description": "Versión específica a descargar; por defecto se resuelve la última del material.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Resuelve internamente la versión (la de mayor versionNumber, o la indicada en versionId) y streama el archivo desde MinIO. La clave de almacenamiento nunca se expone."
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Material Service no disponible\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Descarga adjunta', function () { pm.expect(pm.response.headers.get('Content-Disposition')).to.include('attachment'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener detalle de un material publicado y su historial de versiones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "v1", "materials", "{{materialId}}"]
+            },
+            "description": "Solo materiales PUBLISHED. versions contiene el historial completo por versionNumber descendente. currentVersion corresponde a su primer elemento; para enlaces sin archivo devuelve null y versions vacío. fileSize es una cadena decimal de bytes. No expone claves ni rutas de almacenamiento."
+          },
+          "response": [
+            {
+              "name": "200 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "materials", "{{materialId}}"]
+                },
+                "description": "Solo materiales PUBLISHED. versions contiene el historial completo por versionNumber descendente. currentVersion corresponde a su primer elemento; para enlaces sin archivo devuelve null y versions vacío. fileSize es una cadena decimal de bytes. No expone claves ni rutas de almacenamiento."
+              },
+              "status": "",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"id\": \"00000000-0000-4000-8000-000000000001\",\n  \"title\": \"Guía de álgebra\",\n  \"description\": null,\n  \"uploaderId\": \"00000000-0000-4000-8000-000000000092\",\n  \"academicOfferingId\": null,\n  \"universityId\": null,\n  \"careerId\": null,\n  \"subjectId\": \"33333333-3333-4333-8333-333333333333\",\n  \"professorId\": null,\n  \"materialTypeId\": \"00000000-0000-4000-8000-000000000003\",\n  \"materialType\": \"DOCUMENT\",\n  \"academicYear\": 2026,\n  \"status\": \"PUBLISHED\",\n  \"verified\": false,\n  \"externalLink\": null,\n  \"createdAt\": \"2026-11-08T12:00:00.000Z\",\n  \"updatedAt\": \"2026-11-08T12:00:00.000Z\",\n  \"currentVersion\": {\n    \"id\": \"00000000-0000-4000-8000-000000000002\",\n    \"versionNumber\": 2,\n    \"originalFilename\": \"guia-v2.pdf\",\n    \"mimeType\": \"application/pdf\",\n    \"fileSize\": \"2048\",\n    \"createdAt\": \"2026-11-08T12:00:00.000Z\"\n  },\n  \"versions\": [\n    {\n      \"id\": \"00000000-0000-4000-8000-000000000002\",\n      \"versionNumber\": 2,\n      \"originalFilename\": \"guia-v2.pdf\",\n      \"mimeType\": \"application/pdf\",\n      \"fileSize\": \"2048\",\n      \"createdAt\": \"2026-11-08T12:00:00.000Z\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "400 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "materials", "{{materialId}}"]
+                },
+                "description": "Solo materiales PUBLISHED. versions contiene el historial completo por versionNumber descendente. currentVersion corresponde a su primer elemento; para enlaces sin archivo devuelve null y versions vacío. fileSize es una cadena decimal de bytes. No expone claves ni rutas de almacenamiento."
+              },
+              "status": "El identificador no es un UUID válido.",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"Validation failed (uuid is expected)\",\n  \"timestamp\": \"2026-11-08T12:00:00.000Z\",\n  \"path\": \"/api/v1/materials/00000000-0000-4000-8000-000000000001\"\n}"
+            },
+            {
+              "name": "404 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "materials", "{{materialId}}"]
+                },
+                "description": "Solo materiales PUBLISHED. versions contiene el historial completo por versionNumber descendente. currentVersion corresponde a su primer elemento; para enlaces sin archivo devuelve null y versions vacío. fileSize es una cadena decimal de bytes. No expone claves ni rutas de almacenamiento."
+              },
+              "status": "Material inexistente/no publicado o documento sin versión disponible.",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 404,\n  \"error\": \"Not Found\",\n  \"message\": \"Material no encontrado.\",\n  \"timestamp\": \"2026-11-08T12:00:00.000Z\",\n  \"path\": \"/api/v1/materials/00000000-0000-4000-8000-000000000001\"\n}"
+            },
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "materials", "{{materialId}}"]
+                },
+                "description": "Solo materiales PUBLISHED. versions contiene el historial completo por versionNumber descendente. currentVersion corresponde a su primer elemento; para enlaces sin archivo devuelve null y versions vacío. fileSize es una cadena decimal de bytes. No expone claves ni rutas de almacenamiento."
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Material Service no disponible\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });",
+                  "if (pm.response.code === 200) { const v = pm.response.json().currentVersion; pm.collectionVariables.set('versionId', v ? v.id : ''); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear una nueva versión de archivo conservando las anteriores",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}/versions",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "v1", "materials", "{{materialId}}", "versions"]
+            },
+            "description": "Requiere contexto local de autor habilitado en development; el JWT mock no autentica. Solo el autor puede agregar versiones. No cambia el estado del material. Archivo obligatorio, máximo 15 MiB; mismos MIME admitidos que POST /materials."
+          },
+          "response": [
+            {
+              "name": "201 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}/versions",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": [
+                    "api",
+                    "v1",
+                    "materials",
+                    "{{materialId}}",
+                    "versions"
+                  ]
+                },
+                "description": "Requiere contexto local de autor habilitado en development; el JWT mock no autentica. Solo el autor puede agregar versiones. No cambia el estado del material. Archivo obligatorio, máximo 15 MiB; mismos MIME admitidos que POST /materials."
+              },
+              "status": "Nueva versión registrada con numeración incremental.",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"id\": \"00000000-0000-4000-8000-000000000002\",\n  \"versionNumber\": 2,\n  \"originalFilename\": \"guia-v2.pdf\",\n  \"mimeType\": \"application/pdf\",\n  \"fileSize\": \"2048\",\n  \"createdAt\": \"2026-11-08T12:00:00.000Z\",\n  \"materialId\": \"00000000-0000-4000-8000-000000000001\",\n  \"createdBy\": \"00000000-0000-4000-8000-000000000092\"\n}"
+            },
+            {
+              "name": "400 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}/versions",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": [
+                    "api",
+                    "v1",
+                    "materials",
+                    "{{materialId}}",
+                    "versions"
+                  ]
+                },
+                "description": "Requiere contexto local de autor habilitado en development; el JWT mock no autentica. Solo el autor puede agregar versiones. No cambia el estado del material. Archivo obligatorio, máximo 15 MiB; mismos MIME admitidos que POST /materials."
+              },
+              "status": "UUID inválido, archivo ausente o vacío, o material LINK.",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 400,\n  \"error\": \"Bad Request\",\n  \"message\": \"Validation failed (uuid is expected)\",\n  \"timestamp\": \"2026-11-08T12:00:00.000Z\",\n  \"path\": \"/api/v1/materials/00000000-0000-4000-8000-000000000001/versions\"\n}"
+            },
+            {
+              "name": "401 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}/versions",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": [
+                    "api",
+                    "v1",
+                    "materials",
+                    "{{materialId}}",
+                    "versions"
+                  ]
+                },
+                "description": "Requiere contexto local de autor habilitado en development; el JWT mock no autentica. Solo el autor puede agregar versiones. No cambia el estado del material. Archivo obligatorio, máximo 15 MiB; mismos MIME admitidos que POST /materials."
+              },
+              "status": "Contexto de autor no disponible.",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 401,\n  \"error\": \"Unauthorized\",\n  \"message\": \"Se requiere un contexto de autor válido.\",\n  \"timestamp\": \"2026-11-08T12:00:00.000Z\",\n  \"path\": \"/api/v1/materials/00000000-0000-4000-8000-000000000001/versions\"\n}"
+            },
+            {
+              "name": "403 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}/versions",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": [
+                    "api",
+                    "v1",
+                    "materials",
+                    "{{materialId}}",
+                    "versions"
+                  ]
+                },
+                "description": "Requiere contexto local de autor habilitado en development; el JWT mock no autentica. Solo el autor puede agregar versiones. No cambia el estado del material. Archivo obligatorio, máximo 15 MiB; mismos MIME admitidos que POST /materials."
+              },
+              "status": "El usuario no es el autor del material.",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 403,\n  \"error\": \"Forbidden\",\n  \"message\": \"Solo el autor puede crear una nueva versión del material.\",\n  \"timestamp\": \"2026-11-08T12:00:00.000Z\",\n  \"path\": \"/api/v1/materials/00000000-0000-4000-8000-000000000001/versions\"\n}"
+            },
+            {
+              "name": "404 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}/versions",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": [
+                    "api",
+                    "v1",
+                    "materials",
+                    "{{materialId}}",
+                    "versions"
+                  ]
+                },
+                "description": "Requiere contexto local de autor habilitado en development; el JWT mock no autentica. Solo el autor puede agregar versiones. No cambia el estado del material. Archivo obligatorio, máximo 15 MiB; mismos MIME admitidos que POST /materials."
+              },
+              "status": "Material no encontrado.",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 404,\n  \"error\": \"Not Found\",\n  \"message\": \"Material no encontrado.\",\n  \"timestamp\": \"2026-11-08T12:00:00.000Z\",\n  \"path\": \"/api/v1/materials/00000000-0000-4000-8000-000000000001/versions\"\n}"
+            },
+            {
+              "name": "413 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}/versions",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": [
+                    "api",
+                    "v1",
+                    "materials",
+                    "{{materialId}}",
+                    "versions"
+                  ]
+                },
+                "description": "Requiere contexto local de autor habilitado en development; el JWT mock no autentica. Solo el autor puede agregar versiones. No cambia el estado del material. Archivo obligatorio, máximo 15 MiB; mismos MIME admitidos que POST /materials."
+              },
+              "status": "Archivo mayor que 15 MiB.",
+              "code": 413,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 413,\n  \"error\": \"Payload Too Large\",\n  \"message\": \"El archivo excede el tamaño máximo permitido de 15 MB (15728640 bytes).\",\n  \"timestamp\": \"2026-11-08T12:00:00.000Z\",\n  \"path\": \"/api/v1/materials/00000000-0000-4000-8000-000000000001/versions\"\n}"
+            },
+            {
+              "name": "415 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}/versions",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": [
+                    "api",
+                    "v1",
+                    "materials",
+                    "{{materialId}}",
+                    "versions"
+                  ]
+                },
+                "description": "Requiere contexto local de autor habilitado en development; el JWT mock no autentica. Solo el autor puede agregar versiones. No cambia el estado del material. Archivo obligatorio, máximo 15 MiB; mismos MIME admitidos que POST /materials."
+              },
+              "status": "Formato no soportado.",
+              "code": 415,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 415,\n  \"error\": \"Unsupported Media Type\",\n  \"message\": \"Tipo de archivo no admitido. Formatos válidos: PDF, Word (.doc, .docx) y PowerPoint (.ppt, .pptx).\",\n  \"timestamp\": \"2026-11-08T12:00:00.000Z\",\n  \"path\": \"/api/v1/materials/00000000-0000-4000-8000-000000000001/versions\"\n}"
+            },
+            {
+              "name": "502 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}/versions",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": [
+                    "api",
+                    "v1",
+                    "materials",
+                    "{{materialId}}",
+                    "versions"
+                  ]
+                },
+                "description": "Requiere contexto local de autor habilitado en development; el JWT mock no autentica. Solo el autor puede agregar versiones. No cambia el estado del material. Archivo obligatorio, máximo 15 MiB; mismos MIME admitidos que POST /materials."
+              },
+              "status": "No se pudo almacenar el archivo.",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"error\": \"Bad Gateway\",\n  \"message\": \"No se pudo almacenar el archivo. Intenta nuevamente.\",\n  \"timestamp\": \"2026-11-08T12:00:00.000Z\",\n  \"path\": \"/api/v1/materials/00000000-0000-4000-8000-000000000001/versions\"\n}"
+            },
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/materials/{{materialId}}/versions",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": [
+                    "api",
+                    "v1",
+                    "materials",
+                    "{{materialId}}",
+                    "versions"
+                  ]
+                },
+                "description": "Requiere contexto local de autor habilitado en development; el JWT mock no autentica. Solo el autor puede agregar versiones. No cambia el estado del material. Archivo obligatorio, máximo 15 MiB; mismos MIME admitidos que POST /materials."
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Material Service no disponible\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Search Service",
+      "item": [
+        {
+          "name": "Buscar materiales con filtros y ordenamiento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{gatewayUrl}}/api/v1/search?q=Estructuras de Datos&sortBy=createdAt&order=desc&page=1&pageSize=20",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "v1", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Estructuras de Datos",
+                  "description": "Coincidencia parcial en título o descripción, sin distinguir mayúsculas ni tildes. Se eliminan espacios exteriores. Vacío o solo espacios equivale a omitir q; los demás filtros siguen aplicándose.",
+                  "disabled": false
+                },
+                {
+                  "key": "universityId",
+                  "value": "{{universityId}}",
+                  "description": "Universidad del contexto académico activo de Catalog. Primer nivel, sin requisito previo.",
+                  "disabled": true
+                },
+                {
+                  "key": "careerId",
+                  "value": "{{careerId}}",
+                  "description": "Carrera del contexto académico activo. Requiere universityId.",
+                  "disabled": true
+                },
+                {
+                  "key": "subjectId",
+                  "value": "{{subjectId}}",
+                  "description": "Asignatura activa. Requiere careerId y universityId.",
+                  "disabled": true
+                },
+                {
+                  "key": "professorId",
+                  "value": "{{professorId}}",
+                  "description": "Profesor asociado al material y vinculado a la asignatura en Catalog. Requiere subjectId, careerId y universityId.",
+                  "disabled": true
+                },
+                {
+                  "key": "year",
+                  "value": "2026",
+                  "description": "Año académico exacto (1900–2099). Independiente de los filtros académicos y de type.",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "DOCUMENT",
+                  "description": "Nombre exacto de materialType publicado por Material (distingue mayúsculas). Se eliminan espacios exteriores. No se limita al enum del POST. Independiente de year y del contexto académico; un nombre sin coincidencias produce total 0.",
+                  "disabled": true
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt",
+                  "description": "Campo de ordenamiento. title compara texto normalizado sin mayúsculas ni tildes por orden lexicográfico Unicode. No se admite valoración. Nulos al final; empates por id DESC. Valores: createdAt, title, year",
+                  "disabled": false
+                },
+                {
+                  "key": "order",
+                  "value": "desc",
+                  "description": "Dirección del campo seleccionado. El desempate por id siempre es DESC. Valores: asc, desc",
+                  "disabled": false
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Página final de coincidencias, comenzando en 1.",
+                  "disabled": false
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20",
+                  "description": "Cantidad de resultados por página.",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Endpoint público. Busca coincidencias parciales en título o descripción sin distinguir mayúsculas ni tildes. Todos los filtros se combinan con AND. q vacío o compuesto solo por espacios equivale a omitir el texto. Search consulta los contratos REST de Catalog y Material, sin acceder a bases ajenas. \n\nJerarquía académica: careerId requiere universityId; subjectId requiere careerId y universityId; professorId requiere los tres niveles anteriores. Una secuencia incompleta devuelve 400. Catalog determina el contexto activo y sus relaciones. El profesor también debe ser el asociado al material. Materiales sin contexto verificable o con carrera/universidad contradictorias no coinciden con filtros académicos. Una combinación completa incompatible o sin coincidencias devuelve 200 con total 0, results [] y context []. year y type son independientes: no requieren profesor ni niveles académicos anteriores. \n\nOrden predeterminado: createdAt DESC, id DESC. Se permiten createdAt, title y year, con asc o desc. Nulos al final; desempate siempre por id DESC. Se filtra y ordena antes de calcular el total y paginar. context incluye solo las asignaturas de la página devuelta. La valoración no está implementada. \n\nLímite: toda consulta con texto, filtros o un orden distinto de createdAt DESC recorre hasta 10.000 materiales publicados (100 páginas de 100). Si Material informa más de 10.000, devuelve 503, aunque las coincidencias pudieran ser pocas. No se entregan resultados parciales. El listado sin texto ni filtros con orden predeterminado conserva la paginación de Material y no aplica este límite. Las páginas REST no comparten una instantánea: algunos cambios concurrentes detectables producen 502 y requieren reintentar."
+          },
+          "response": [
+            {
+              "name": "200 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/search?q=Estructuras de Datos&sortBy=createdAt&order=desc&page=1&pageSize=20",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "search"],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "Estructuras de Datos",
+                      "description": "Coincidencia parcial en título o descripción, sin distinguir mayúsculas ni tildes. Se eliminan espacios exteriores. Vacío o solo espacios equivale a omitir q; los demás filtros siguen aplicándose.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "universityId",
+                      "value": "{{universityId}}",
+                      "description": "Universidad del contexto académico activo de Catalog. Primer nivel, sin requisito previo.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "careerId",
+                      "value": "{{careerId}}",
+                      "description": "Carrera del contexto académico activo. Requiere universityId.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "subjectId",
+                      "value": "{{subjectId}}",
+                      "description": "Asignatura activa. Requiere careerId y universityId.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "professorId",
+                      "value": "{{professorId}}",
+                      "description": "Profesor asociado al material y vinculado a la asignatura en Catalog. Requiere subjectId, careerId y universityId.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "year",
+                      "value": "2026",
+                      "description": "Año académico exacto (1900–2099). Independiente de los filtros académicos y de type.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "type",
+                      "value": "DOCUMENT",
+                      "description": "Nombre exacto de materialType publicado por Material (distingue mayúsculas). Se eliminan espacios exteriores. No se limita al enum del POST. Independiente de year y del contexto académico; un nombre sin coincidencias produce total 0.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "sortBy",
+                      "value": "createdAt",
+                      "description": "Campo de ordenamiento. title compara texto normalizado sin mayúsculas ni tildes por orden lexicográfico Unicode. No se admite valoración. Nulos al final; empates por id DESC. Valores: createdAt, title, year",
+                      "disabled": false
+                    },
+                    {
+                      "key": "order",
+                      "value": "desc",
+                      "description": "Dirección del campo seleccionado. El desempate por id siempre es DESC. Valores: asc, desc",
+                      "disabled": false
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Página final de coincidencias, comenzando en 1.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "20",
+                      "description": "Cantidad de resultados por página.",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "description": "Endpoint público. Busca coincidencias parciales en título o descripción sin distinguir mayúsculas ni tildes. Todos los filtros se combinan con AND. q vacío o compuesto solo por espacios equivale a omitir el texto. Search consulta los contratos REST de Catalog y Material, sin acceder a bases ajenas. \n\nJerarquía académica: careerId requiere universityId; subjectId requiere careerId y universityId; professorId requiere los tres niveles anteriores. Una secuencia incompleta devuelve 400. Catalog determina el contexto activo y sus relaciones. El profesor también debe ser el asociado al material. Materiales sin contexto verificable o con carrera/universidad contradictorias no coinciden con filtros académicos. Una combinación completa incompatible o sin coincidencias devuelve 200 con total 0, results [] y context []. year y type son independientes: no requieren profesor ni niveles académicos anteriores. \n\nOrden predeterminado: createdAt DESC, id DESC. Se permiten createdAt, title y year, con asc o desc. Nulos al final; desempate siempre por id DESC. Se filtra y ordena antes de calcular el total y paginar. context incluye solo las asignaturas de la página devuelta. La valoración no está implementada. \n\nLímite: toda consulta con texto, filtros o un orden distinto de createdAt DESC recorre hasta 10.000 materiales publicados (100 páginas de 100). Si Material informa más de 10.000, devuelve 503, aunque las coincidencias pudieran ser pocas. No se entregan resultados parciales. El listado sin texto ni filtros con orden predeterminado conserva la paginación de Material y no aplica este límite. Las páginas REST no comparten una instantánea: algunos cambios concurrentes detectables producen 502 y requieren reintentar."
+              },
+              "status": "Coincidencias paginadas y su contexto académico.",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"query\": \"Estructuras de Datos\",\n  \"page\": 1,\n  \"pageSize\": 20,\n  \"total\": 0,\n  \"results\": [],\n  \"context\": []\n}"
+            },
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/search?q=Estructuras de Datos&sortBy=createdAt&order=desc&page=1&pageSize=20",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "search"],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "Estructuras de Datos",
+                      "description": "Coincidencia parcial en título o descripción, sin distinguir mayúsculas ni tildes. Se eliminan espacios exteriores. Vacío o solo espacios equivale a omitir q; los demás filtros siguen aplicándose.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "universityId",
+                      "value": "{{universityId}}",
+                      "description": "Universidad del contexto académico activo de Catalog. Primer nivel, sin requisito previo.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "careerId",
+                      "value": "{{careerId}}",
+                      "description": "Carrera del contexto académico activo. Requiere universityId.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "subjectId",
+                      "value": "{{subjectId}}",
+                      "description": "Asignatura activa. Requiere careerId y universityId.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "professorId",
+                      "value": "{{professorId}}",
+                      "description": "Profesor asociado al material y vinculado a la asignatura en Catalog. Requiere subjectId, careerId y universityId.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "year",
+                      "value": "2026",
+                      "description": "Año académico exacto (1900–2099). Independiente de los filtros académicos y de type.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "type",
+                      "value": "DOCUMENT",
+                      "description": "Nombre exacto de materialType publicado por Material (distingue mayúsculas). Se eliminan espacios exteriores. No se limita al enum del POST. Independiente de year y del contexto académico; un nombre sin coincidencias produce total 0.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "sortBy",
+                      "value": "createdAt",
+                      "description": "Campo de ordenamiento. title compara texto normalizado sin mayúsculas ni tildes por orden lexicográfico Unicode. No se admite valoración. Nulos al final; empates por id DESC. Valores: createdAt, title, year",
+                      "disabled": false
+                    },
+                    {
+                      "key": "order",
+                      "value": "desc",
+                      "description": "Dirección del campo seleccionado. El desempate por id siempre es DESC. Valores: asc, desc",
+                      "disabled": false
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Página final de coincidencias, comenzando en 1.",
+                      "disabled": false
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": "20",
+                      "description": "Cantidad de resultados por página.",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "description": "Endpoint público. Busca coincidencias parciales en título o descripción sin distinguir mayúsculas ni tildes. Todos los filtros se combinan con AND. q vacío o compuesto solo por espacios equivale a omitir el texto. Search consulta los contratos REST de Catalog y Material, sin acceder a bases ajenas. \n\nJerarquía académica: careerId requiere universityId; subjectId requiere careerId y universityId; professorId requiere los tres niveles anteriores. Una secuencia incompleta devuelve 400. Catalog determina el contexto activo y sus relaciones. El profesor también debe ser el asociado al material. Materiales sin contexto verificable o con carrera/universidad contradictorias no coinciden con filtros académicos. Una combinación completa incompatible o sin coincidencias devuelve 200 con total 0, results [] y context []. year y type son independientes: no requieren profesor ni niveles académicos anteriores. \n\nOrden predeterminado: createdAt DESC, id DESC. Se permiten createdAt, title y year, con asc o desc. Nulos al final; desempate siempre por id DESC. Se filtra y ordena antes de calcular el total y paginar. context incluye solo las asignaturas de la página devuelta. La valoración no está implementada. \n\nLímite: toda consulta con texto, filtros o un orden distinto de createdAt DESC recorre hasta 10.000 materiales publicados (100 páginas de 100). Si Material informa más de 10.000, devuelve 503, aunque las coincidencias pudieran ser pocas. No se entregan resultados parciales. El listado sin texto ni filtros con orden predeterminado conserva la paginación de Material y no aplica este límite. Las páginas REST no comparten una instantánea: algunos cambios concurrentes detectables producen 502 y requieren reintentar."
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Search Service no disponible\"\n}"
+            }
+          ],
           "event": [
             {
               "listen": "test",
@@ -886,13 +3462,18 @@
       "type": "string"
     },
     {
-      "key": "authUrl",
-      "value": "http://localhost:3001",
+      "key": "resourceId",
+      "value": "",
       "type": "string"
     },
     {
-      "key": "catalogUrl",
-      "value": "http://localhost:3002",
+      "key": "materialId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "versionId",
+      "value": "",
       "type": "string"
     },
     {

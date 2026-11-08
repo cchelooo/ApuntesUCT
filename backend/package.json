@@ -22,7 +22,8 @@
     "export:postman": "node scripts/export-postman-collection.cjs && prettier --write \"../docs/api/*.json\"",
     "format": "prettier --write \"./**/*.ts\"",
     "test:cov": "npm run prisma:generate && npm run test:cov --workspaces --",
-    "test:ci": "npm run prisma:generate && npm run test:ci --workspaces --"
+    "test:ci": "npm run prisma:generate && npm run test:ci --workspaces --",
+    "test:api-docs": "node --test scripts/api-docs.test.cjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

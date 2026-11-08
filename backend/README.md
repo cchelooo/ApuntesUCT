@@ -1,5 +1,7 @@
 # Backend — ApuntesUCT
 
+La guía actual de Material/Search para INT2 e INT4 está en [Integración de API](../docs/api/integracion-material-search.md). Incluye puertos, comandos, multipart, versiones, errores y OpenAPI/Postman mediante Gateway.
+
 Servicios backend del equipo INT2. Arquitectura de microservicios con API Gateway.
 
 Tecnologías: Node.js, TypeScript, NestJS, Prisma, PostgreSQL, MinIO.

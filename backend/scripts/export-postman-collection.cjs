@@ -1,6 +1,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { Test } = require('@nestjs/testing');
+const { createRequire } = require('node:module');
+const { Test } = createRequire(path.resolve(__dirname, '../api-gateway/package.json'))(
+  '@nestjs/testing',
+);
+const { addExamples } = require('./api-examples.cjs');
 const { DocumentBuilder, SwaggerModule } = require('@nestjs/swagger');
 
 const BACKEND_ROOT = path.resolve(__dirname, '..');
@@ -27,7 +31,7 @@ const SERVICES = [
     folder: 'Auth Service',
     appModule: 'auth-service/dist/src/app.module.js',
     prismaModule: 'auth-service/dist/src/infrastructure/prisma/prisma.service.js',
-    baseUrlVariable: 'authUrl',
+    baseUrlVariable: 'gatewayUrl',
     title: 'Auth Service',
     description: 'Microservicio de identidad, autenticación, usuarios y roles.',
   },
@@ -35,16 +39,32 @@ const SERVICES = [
     folder: 'Catalog Service',
     appModule: 'catalog-service/dist/src/app.module.js',
     prismaModule: 'catalog-service/dist/src/infrastructure/prisma/prisma.service.js',
-    baseUrlVariable: 'catalogUrl',
+    baseUrlVariable: 'gatewayUrl',
     title: 'Catalog Service',
     description: 'Microservicio de universidad, carrera, asignatura, profesor y sus relaciones.',
     bearer: true,
   },
 ];
+SERVICES.push(
+  {
+    folder: 'Material Service',
+    appModule: 'material-service/dist/app.module.js',
+    prismaModule: 'material-service/dist/infrastructure/prisma/prisma.service.js',
+    baseUrlVariable: 'gatewayUrl',
+    title: 'Material Service',
+  },
+  {
+    folder: 'Search Service',
+    appModule: 'search-service/dist/app.module.js',
+    baseUrlVariable: 'gatewayUrl',
+    title: 'Search Service',
+  },
+);
 const VARIABLES = [
   { key: 'gatewayUrl', value: 'http://localhost:3000' },
-  { key: 'authUrl', value: 'http://localhost:3001' },
-  { key: 'catalogUrl', value: 'http://localhost:3002' },
+  { key: 'resourceId', value: '' },
+  { key: 'materialId', value: '', runtimeOnly: true },
+  { key: 'versionId', value: '', runtimeOnly: true },
   { key: 'mockEmail', value: 'estudiante@alu.uct.cl' },
   { key: 'mockPassword', value: 'demo' },
   { key: 'accessToken', value: '', runtimeOnly: true },
@@ -101,9 +121,22 @@ async function loadDocument(service) {
     testingModule = testingModule.overrideProvider(PrismaService).useValue(PRISMA_STUB);
   }
 
+  if (service.folder === 'Material Service') {
+    const { ObjectStorage } = require(
+      path.join(BACKEND_ROOT, 'material-service/dist/application/ports/object-storage.port.js'),
+    );
+    testingModule = testingModule.overrideProvider(ObjectStorage).useValue({});
+  }
   const compiled = await testingModule.compile();
   const app = compiled.createNestApplication();
-  app.setGlobalPrefix('api/v1');
+  if (service.folder === 'API Gateway') {
+    require(path.join(BACKEND_ROOT, 'api-gateway/dist/configure-routes.js')).configureRoutes(app);
+  } else if (service.folder !== 'Search Service') {
+    app.setGlobalPrefix(
+      'api/v1',
+      service.folder === 'Catalog Service' ? { exclude: ['health'] } : {},
+    );
+  }
   await app.init();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   await app.close();
@@ -125,6 +158,11 @@ function sampleFromSchema(schema, components, seen = new Set()) {
     next.add(name);
     return sampleFromSchema(resolveRef(schema, components), components, next);
   }
+  if (schema.allOf)
+    return Object.assign(
+      {},
+      ...schema.allOf.map((part) => sampleFromSchema(part, components, seen)),
+    );
   if (schema.example !== undefined) return schema.example;
   if (schema.default !== undefined) return schema.default;
   if (Array.isArray(schema.enum) && schema.enum.length) return schema.enum[0];
@@ -135,8 +173,10 @@ function sampleFromSchema(schema, components, seen = new Set()) {
     }
     return sample;
   }
-  if (schema.items) return [sampleFromSchema(schema.items, components, seen)];
-  if (schema.type === 'integer' || schema.type === 'number') return 0;
+  if (schema.nullable) return null;
+  if (schema.items) return [];
+  if (schema.format === 'uuid') return '00000000-0000-4000-8000-000000000001';
+  if (schema.type === 'integer' || schema.type === 'number') return schema.minimum ?? 0;
   if (schema.type === 'boolean') return true;
   if (schema.format === 'date-time') return new Date(0).toISOString();
   if (schema.type === 'string' || !schema.type) return 'string';
@@ -166,7 +206,14 @@ function buildQuery(parameters, apiPath) {
       return {
         key: name,
         value: String(value),
-        description: parameter.description ?? '',
+        description: [
+          parameter.description,
+          parameter.schema?.enum ? `Valores: ${parameter.schema.enum.join(', ')}` : '',
+        ]
+          .filter(Boolean)
+          .join(' '),
+        disabled:
+          !parameter.required && !['q', 'page', 'pageSize', 'sortBy', 'order'].includes(name),
       };
     });
 }
@@ -181,7 +228,7 @@ function buildHeaders(operation, components) {
           description: parameter.description ?? '',
         }))
     : [];
-  if (operation.requestBody) {
+  if (operation.requestBody?.content?.['application/json']) {
     headers.push({
       key: 'Content-Type',
       value: 'application/json',
@@ -193,6 +240,26 @@ function buildHeaders(operation, components) {
 
 function buildBody(operation, components) {
   if (!operation.requestBody) return undefined;
+  const multipart = operation.requestBody.content?.['multipart/form-data'];
+  if (multipart) {
+    const schema = resolveRef(multipart.schema, components);
+    return {
+      mode: 'formdata',
+      formdata: Object.entries(schema.properties ?? {}).map(([key, property]) => ({
+        key,
+        type: property.format === 'binary' ? 'file' : 'text',
+        ...(property.format === 'binary'
+          ? { src: [] }
+          : {
+              value: ['subjectId', 'careerId', 'professorId'].includes(key)
+                ? `{{${key}}}`
+                : String(sampleFromSchema(property, components)),
+            }),
+        description: property.description ?? '',
+        disabled: key !== 'file' && !(schema.required ?? []).includes(key),
+      })),
+    };
+  }
   const json = operation.requestBody.content?.['application/json'];
   if (!json) return undefined;
   const sample = sampleFromSchema(json.schema, components);
@@ -208,7 +275,10 @@ function buildBody(operation, components) {
 }
 
 function buildUrl(baseUrlVariable, apiPath, query) {
-  const pathSegments = apiPath.split('/').filter(Boolean);
+  const pathSegments = apiPath
+    .replace(/\{id\}/g, apiPath.includes('/materials') ? '{{materialId}}' : '{{resourceId}}')
+    .split('/')
+    .filter(Boolean);
   const rawQuery = query
     .filter((parameter) => !parameter.disabled)
     .map((parameter) => `${parameter.key}=${parameter.value}`)
@@ -221,10 +291,14 @@ function buildUrl(baseUrlVariable, apiPath, query) {
   };
 }
 
-function buildTestEvent(status, { captureToken } = {}) {
+function buildTestEvent(status, { captureToken, binary } = {}) {
   const exec = [
     `pm.test('Responde ${status}', function () { pm.response.to.have.status(${status}); });`,
-    `pm.test('Devuelve JSON', function () { pm.response.to.be.json; });`,
+    ...(binary
+      ? [
+          `pm.test('Descarga adjunta', function () { pm.expect(pm.response.headers.get('Content-Disposition')).to.include('attachment'); });`,
+        ]
+      : [`pm.test('Devuelve JSON', function () { pm.response.to.be.json; });`]),
   ];
   if (captureToken) {
     exec.push(
@@ -261,8 +335,7 @@ function buildItem({
     headers.push({
       key: 'Authorization',
       value: 'Bearer {{accessToken}}',
-      description:
-        'Token del login. Ningún endpoint lo exige todavía; queda para cuando exista auth real.',
+      description: 'Token del login mock; Catalog actualmente no lo valida.',
     });
   }
   return {
@@ -275,7 +348,7 @@ function buildItem({
       description: description ?? operation?.description ?? `${apiPath} (${service.title})`,
     },
     response: [],
-    event: buildTestEvent(status, { captureToken }),
+    event: buildTestEvent(status, { captureToken, binary: apiPath.endsWith('/download') }),
   };
 }
 
@@ -286,8 +359,19 @@ function collectItems(service, document) {
     for (const method of ['get', 'post', 'put', 'patch', 'delete']) {
       const operation = pathItem[method];
       if (!operation) continue;
+      if (
+        service.folder !== 'API Gateway' &&
+        !apiPath.startsWith('/api/v1/auth') &&
+        !apiPath.startsWith('/api/v1/catalog') &&
+        !apiPath.startsWith('/api/v1/materials') &&
+        !apiPath.startsWith('/api/v1/search')
+      )
+        continue;
       const parameters = operation.parameters ?? [];
       const query = buildQuery(parameters, apiPath);
+      for (const parameter of query) {
+        if (parameter.key === 'versionId') parameter.value = '{{versionId}}';
+      }
       const status = expectedStatus(operation);
       const name = operation.summary ?? `${method.toUpperCase()} ${apiPath}`;
       const captureToken = apiPath === '/api/v1/auth/login';
@@ -326,6 +410,49 @@ function collectItems(service, document) {
       );
     }
   }
+  for (const item of items) {
+    const route = item.request.url.path
+      .join('/')
+      .replace('{{materialId}}', '{id}')
+      .replace('{{resourceId}}', '{id}');
+    const operation = document.paths['/' + route]?.[item.request.method.toLowerCase()];
+    for (const [code, response] of Object.entries(operation?.responses ?? {})) {
+      const json = response.content?.['application/json'];
+      if (!json?.schema) continue;
+      item.response.push({
+        name: `${code} — ejemplo ilustrativo`,
+        originalRequest: item.request,
+        status: response.description,
+        code: Number(code),
+        header: [{ key: 'Content-Type', value: 'application/json' }],
+        body: JSON.stringify(json.example ?? sampleFromSchema(json.schema, components), null, 2),
+      });
+    }
+    if (service.folder !== 'API Gateway') {
+      item.response.push({
+        name: '502 — destino Gateway no disponible',
+        originalRequest: item.request,
+        status: 'Bad Gateway',
+        code: 502,
+        header: [{ key: 'Content-Type', value: 'application/json' }],
+        body: JSON.stringify(
+          { statusCode: 502, message: `${service.title} no disponible` },
+          null,
+          2,
+        ),
+      });
+    }
+    if (route === 'api/v1/materials' && item.request.method === 'GET') {
+      item.event[0].script.exec.push(
+        "if (pm.response.code === 200) { const first = pm.response.json().items[0]; if (first) pm.collectionVariables.set('materialId', first.id); }",
+      );
+    }
+    if (route === 'api/v1/materials/{id}' && item.request.method === 'GET') {
+      item.event[0].script.exec.push(
+        "if (pm.response.code === 200) { const v = pm.response.json().currentVersion; pm.collectionVariables.set('versionId', v ? v.id : ''); }",
+      );
+    }
+  }
   return items;
 }
 
@@ -333,50 +460,10 @@ const GATEWAY_PROXIED = [
   {
     method: 'get',
     apiPath: '/api/v1/auth/health',
-    name: 'Health de Auth a través del gateway',
-    description:
-      'Ruta proxeada hacia Auth (no aparece en el OpenAPI del gateway porque el proxy es middleware). El gateway reescribe la ruta a /api/v1/health en Auth. Responde 502 si Auth no acepta la conexión o tarda más de 5 segundos.',
+    name: 'Health de Auth mediante Gateway',
+    description: 'Gateway reescribe a /api/v1/health de Auth. Si Auth no responde devuelve 502.',
     query: [],
     status: '200',
-  },
-  {
-    method: 'post',
-    apiPath: '/api/v1/auth/login',
-    name: 'Login mock a través del gateway',
-    description:
-      'Ruta proxeada hacia Auth (ver #91). Devuelve el JWT sin firma del login mock (#92) y guarda el accessToken en la variable accessToken. Responde 502 si Auth no está disponible.',
-    query: [],
-    status: '200',
-    captureToken: true,
-    extraBody: {
-      mode: 'raw',
-      raw: JSON.stringify({ email: '{{mockEmail}}', password: '{{mockPassword}}' }, null, 2),
-      options: { raw: { language: 'json' } },
-    },
-  },
-  {
-    method: 'get',
-    apiPath: '/api/v1/catalog',
-    name: 'Árbol del catálogo a través del gateway',
-    description:
-      'Ruta proxeada hacia Catalog (ProxyModule, #122). No hay health reescrito para Catalog: su healthcheck está en {{catalogUrl}}/api/v1/health. Responde 502 con "Catalog Service no disponible" si Catalog no responde.',
-    query: [],
-    status: '200',
-    bearer: true,
-  },
-  {
-    method: 'get',
-    apiPath: '/api/v1/catalog/filter',
-    name: 'Filtro jerárquico a través del gateway',
-    description:
-      'Misma ruta proxeada hacia Catalog, con el prefijo jerárquico de 4 niveles (los tres primeros UUID de GET /api/v1/catalog o de los listados de selectores y el professorId de GET /api/v1/catalog/professors). year y type no forman parte del contrato de Catalog: pertenecen a Material/Search.',
-    query: CATALOG_FILTER_PARAMETERS.map((parameter) => ({
-      key: parameter.name,
-      value: `{{${parameter.variable}}}`,
-      description: parameter.description,
-    })),
-    status: '200',
-    bearer: true,
   },
 ];
 
@@ -400,8 +487,45 @@ async function main() {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
   const items = [];
+  const publicSpec = {
+    openapi: '3.0.0',
+    info: { title: 'ApuntesUCT — API pública', version: '1.0.0' },
+    servers: [
+      {
+        url: 'http://localhost:3000',
+        description: 'Gateway local; reemplazar por el host desplegado',
+      },
+    ],
+    paths: {},
+    components: { schemas: {}, securitySchemes: { bearer: { type: 'http', scheme: 'bearer' } } },
+  };
   for (const service of SERVICES) {
     const document = await loadDocument(service);
+    addExamples(service.folder, document);
+    // Prefix schemas to avoid collisions between independently generated service documents.
+    const prefix = service.folder.replaceAll(' ', '');
+    const renamed = JSON.parse(
+      JSON.stringify(document).replaceAll(
+        '#/components/schemas/',
+        `#/components/schemas/${prefix}_`,
+      ),
+    );
+    for (const [name, schema] of Object.entries(renamed.components?.schemas ?? {}))
+      publicSpec.components.schemas[`${prefix}_${name}`] = schema;
+    for (const [route, pathItem] of Object.entries(renamed.paths)) {
+      const publicRoute =
+        service.folder === 'Auth Service' && route === '/api/v1/health'
+          ? '/api/v1/auth/health'
+          : route;
+      if (
+        service.folder === 'API Gateway' ||
+        /^\/api\/v1\/(auth|catalog|materials|search)(\/|$)/.test(publicRoute)
+      ) {
+        for (const operation of Object.values(pathItem))
+          if (operation.operationId) operation.operationId = `${prefix}_${operation.operationId}`;
+        publicSpec.paths[publicRoute] = pathItem;
+      }
+    }
     items.push({
       name: service.folder,
       description: service.description,
@@ -420,7 +544,7 @@ async function main() {
     info: {
       name: 'ApuntesUCT API',
       description:
-        'Colección generada desde el OpenAPI de api-gateway, auth-service y catalog-service (ver backend/scripts/export-postman-collection.cjs). Requiere los servicios levantados; auth y catalog necesitan su PostgreSQL. Importa también el environment apuntesuct.postman_environment.json.',
+        'API pública mediante Gateway. Generada desde los cinco servicios. Ver docs/api/README.md y docs/api/integracion-material-search.md para requisitos, autenticación temporal y ejemplos. Los ejemplos son ilustrativos, no capturas de producción.',
       schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
     },
     item: items,
@@ -453,6 +577,27 @@ async function main() {
     console.log(`Escrito ${path.relative(REPO_ROOT, target)}`);
   };
 
+  for (const [route, pathItem] of Object.entries(publicSpec.paths)) {
+    for (const operation of Object.values(pathItem)) {
+      if (!operation.responses) continue;
+      if (route === '/health' || route === '/api/v1/health') continue;
+      const previous = operation.responses['502'];
+      const schema = previous?.content?.['application/json']?.schema;
+      const proxySchema = {
+        type: 'object',
+        required: ['statusCode', 'message'],
+        properties: { statusCode: { type: 'integer', enum: [502] }, message: { type: 'string' } },
+      };
+      operation.responses['502'] = {
+        description:
+          `${previous?.description ?? ''} Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.`.trim(),
+        content: {
+          'application/json': { schema: schema ? { anyOf: [schema, proxySchema] } : proxySchema },
+        },
+      };
+    }
+  }
+  write('apuntesuct.openapi.json', publicSpec);
   write('apuntesuct.postman_collection.json', collection);
   write('apuntesuct.postman_environment.json', environment);
 
