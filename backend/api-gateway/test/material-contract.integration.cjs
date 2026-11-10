@@ -20,6 +20,9 @@ const {
   CreateMaterial,
 } = require('../../material-service/dist/application/use-cases/create-material');
 const {
+  CatalogPort,
+} = require('../../material-service/dist/application/ports/catalog.port');
+const {
   MaterialAuthorProvider,
 } = require('../../material-service/dist/infrastructure/auth/material-author.provider');
 const {
@@ -57,6 +60,7 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
       controllers: [MaterialController, MaterialsController],
       providers: [
         CreateMaterial,
+        { provide: CatalogPort, useValue: { validateReferences: async () => {} } },
         MaterialsService,
         {
           provide: MaterialAuthorProvider,
@@ -127,7 +131,7 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
         title: 'Álgebra & cálculo',
         year: '2026',
         type: 'DOCUMENT',
-        subjectId: 'subject-test',
+        subjectId: '11111111-1111-4111-8111-111111111111',
         ...fields,
       })) {
         body.set(key, value);
