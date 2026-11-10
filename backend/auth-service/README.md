@@ -79,7 +79,7 @@ de texto. El esquema de la tarea #51 define `users.id` y
 | `name` | `String` | Nombre obligatorio. |
 | `email` | `String` | Correo obligatorio y único. |
 | `passwordHash` | `String` | Hash obligatorio de la contraseña; columna `password_hash`. |
-| `role` | `Role` | `STUDENT`, `PROFESSOR` o `ADMIN`; por defecto `STUDENT`. |
+| `role` | `Role` | `STUDENT`, `MODERATOR` o `ADMIN`; por defecto `STUDENT`. |
 | `active` | `Boolean` | Estado de la cuenta; por defecto `true`. |
 | `createdAt` | `DateTime` | Fecha de creación; por defecto la fecha actual; columna `created_at`. |
 | `updatedAt` | `DateTime` | Prisma actualiza la fecha al modificar el registro; columna `updated_at`. |
@@ -97,18 +97,47 @@ las bases de datos de esos microservicios.
 La entidad de dominio `src/domain/auth/user.entity.ts` representa los mismos
 campos escalares y utiliza los roles de `src/domain/auth/role.enum.ts`.
 
-### Reglas para implementar el registro
+## Registro institucional (#440)
 
-El esquema define la persistencia. El caso de uso de registro debe normalizar el
-correo (quitar espacios exteriores y convertir a minúsculas) antes de guardarlo
-o buscarlo, validar los dominios institucionales `@uct.cl` y `@alu.uct.cl`
-según RF-01, y generar el hash de la contraseña antes de persistirla. El índice
-único de `email` no normaliza mayúsculas por sí mismo. El registro público debe
-asignar `STUDENT`; los roles privilegiados requieren un flujo autorizado.
-Las respuestas de la API deben omitir `passwordHash`.
+`POST /api/v1/auth/register` (Auth o Gateway) recibe `name`, `email` y
+`password`. Responde `201` con `{ "user": { "id", "name", "email", "role",
+"active" } }`, sin sesión ni tokens. El UUID identifica al usuario entre servicios.
+El nombre se recorta y admite 3–100 caracteres; el correo se recorta, se convierte
+a minúsculas y admite exclusivamente los dominios exactos `uct.cl` y `alu.uct.cl`
+(máximo 254 caracteres). La contraseña admite 8–128 caracteres, no puede ser solo
+espacios y nunca se recorta ni normaliza. Los datos inválidos devuelven `400`;
+un correo duplicado devuelve `409`, incluso ante solicitudes concurrentes.
 
-Estas validaciones y la autenticación real todavía no están implementadas;
-no las realiza el modelo de Prisma. El login temporal se describe a continuación.
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Camila Soto","email":"camila@alu.uct.cl","password":"una clave de ejemplo"}'
+```
+
+El registro público asigna siempre `STUDENT`. Campos adicionales como `role`,
+`active` o `passwordHash` se descartan. `MODERATOR` y `ADMIN` quedan disponibles
+para flujos autorizados posteriores. Prisma selecciona exclusivamente los cinco
+campos públicos de la respuesta; nunca retorna la contraseña ni su hash.
+
+Las contraseñas usan scrypt asíncrono (`N=131072`, `r=8`, `p=1`), sal aleatoria
+de 16 bytes y clave derivada de 64 bytes. El formato persistido es
+`scrypt$N$r$p$saltHex$hashHex`; permite verificar posteriormente sin almacenar
+la contraseña. La verificación de credenciales y la emisión JWT corresponden a #441.
+
+La migración `20261109000000_institutional_registration` conserva los UUID y
+cuentas, sustituye el rol antiguo `PROFESSOR` por `STUDENT` (sin conceder permisos
+de moderación automáticamente), conserva `ADMIN` y añade `MODERATOR`. Normaliza
+los correos existentes e impone que se guarden normalizados. Si existen cuentas
+que colisionan al normalizar, la transacción completa falla: se deben resolver
+esas cuentas explícitamente antes de reintentar, sin eliminar datos automáticamente.
+No se reescriben las migraciones históricas. No aplicar sobre producción sin
+revisar primero las cuentas con el rol antiguo y posibles colisiones de correo.
+
+**Dependencia pendiente:** [S3-05 / #445](https://github.com/cchelooo/ApuntesUCT/issues/445)
+sigue abierta sin contrato acordado publicado. Este DTO reutiliza la identidad
+actual de login y es compatible con `RegisterResponseModel` de Mobile, pero debe
+validarse con los responsables de los servicios antes de cerrar #440. Esta tarea
+no acredita consenso ni implementa JWT o autorización entre servicios.
 
 ## Login mock (#92)
 
@@ -155,6 +184,7 @@ Documentación OpenAPI/Swagger en `http://localhost:3001/api/docs`.
 ```bash
 npm run test      # unitarios
 npm run test:e2e  # e2e
+npm run build    # necesario antes de las pruebas de integración del registro
 npm run test:integration # persistencia real; requiere PostgreSQL migrado y .env
 npm run lint
 ```
@@ -195,4 +225,7 @@ versionadas sin generar otras; también sirve para preparar una base local vací
 Las pruebas de integración comprueban creación, consulta y actualización de
 usuarios, UUID nativo, valores por defecto, correo único, rechazo de tokens
 huérfanos y eliminación en cascada. Cada prueba revierte su transacción para
-no dejar datos de prueba. No implementan ni verifican los endpoints de registro.
+no dejar datos de prueba. La suite `register.e2e-spec.ts` valida el contrato HTTP con Prisma sustituido;
+`registration.integration.cjs` ejecuta el registro real contra PostgreSQL, prueba
+la colisión concurrente, el hash persistido, los roles y la exclusión de secretos.
+Esta última elimina únicamente su usuario de prueba al terminar.

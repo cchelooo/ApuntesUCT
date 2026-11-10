@@ -200,6 +200,62 @@
         "tags": ["Auth"]
       }
     },
+    "/api/v1/auth/register": {
+      "post": {
+        "operationId": "AuthService_RegistrationController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthService_RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthService_RegisterResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos inválidos o dominio no institucional."
+          },
+          "409": {
+            "description": "El correo ya está registrado."
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Registrar usuario institucional sin iniciar sesión",
+        "tags": ["Auth"]
+      }
+    },
     "/api/v1/catalog": {
       "get": {
         "description": "Devuelve la jerarquía base completa del catálogo (Universidades -> Carreras -> Asignaturas) para ser consumida de forma inicial por el frontend.",
@@ -1816,6 +1872,62 @@
           }
         },
         "required": ["email", "password"]
+      },
+      "AuthService_RegisterDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Camila Soto",
+            "minLength": 3,
+            "maxLength": 100
+          },
+          "email": {
+            "type": "string",
+            "example": "camila@alu.uct.cl",
+            "maxLength": 254
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 128,
+            "writeOnly": true
+          }
+        },
+        "required": ["name", "email", "password"]
+      },
+      "AuthService_PublicUserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["STUDENT", "MODERATOR", "ADMIN"]
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "name", "email", "role", "active"]
+      },
+      "AuthService_RegisterResponseDto": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/AuthService_PublicUserDto"
+          }
+        },
+        "required": ["user"]
       },
       "CatalogService_HealthResponse": {
         "type": "object",

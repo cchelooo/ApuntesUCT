@@ -1,7 +1,7 @@
 const { randomUUID } = require('node:crypto');
 const assert = require('node:assert/strict');
 const { test, after } = require('node:test');
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require('.prisma/auth-client');
 
 const prisma = new PrismaClient();
 const rollback = new Error('Rollback intentional de los datos de prueba');
