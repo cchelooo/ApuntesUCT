@@ -29,6 +29,8 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
+      - name: Validate OpenAPI and Postman contracts
+        run: npm run test:api-docs
       # El script raíz genera los tres clientes Prisma antes de ejecutar Jest.
       - run: npm run test:ci -- --coverage
       - name: Upload backend coverage
@@ -39,6 +41,27 @@ jobs:
           path: backend/*/coverage/
           if-no-files-found: warn
           retention-days: 14
+
+  frontend-quality:
+    name: Frontend lint and format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: Lint web
+        run: npm run lint
+      - name: Check web formatting
+        if: ${{ !cancelled() }}
+        run: npm run format:check
 
   frontend:
     name: Frontend tests
@@ -136,6 +159,10 @@ jobs:
         run: npm run prisma:deploy --workspace="$CI_SERVICE"
       - name: Run existing E2E suite
         run: npm run test:e2e --workspace="$CI_SERVICE" -- --ci --runInBand --json --outputFile="$RUNNER_TEMP/e2e-results.json"
+      # DATABASE_URL ya apunta al PostgreSQL desechable; no cargar un .env local.
+      - name: Test Auth persistence
+        if: matrix.service == 'auth-service'
+        run: node --test auth-service/test/*.integration.cjs
       - name: Upload E2E results
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
@@ -160,7 +187,8 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
-      - run: npm run test:run -- src/presentation/pages/CatalogPage.integration.test.tsx --coverage
+      # Complementa el exclude del job frontend e incluye nuevas suites automáticamente.
+      - run: npm run test:run -- .integration.test.tsx --coverage
       - name: Upload integration coverage
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
@@ -185,6 +213,9 @@ jobs:
         working-directory: backend
       - run: npm run build
         working-directory: backend
+      - name: Run Gateway integration contracts
+        run: npm run test:integration --workspace=api-gateway
+        working-directory: backend
       - name: Build isolated MinIO image from existing source definition
         run: docker build -f deploy/kubero/minio.Dockerfile -t apuntesuct/pr-test-minio:local .
       - name: Run existing Material integration suites with disposable services
@@ -195,5 +226,45 @@ jobs:
         with:
           name: material-integration-logs
           path: ${{ runner.temp }}/apuntes-material-integration.*/*.log
+          if-no-files-found: warn
+          retention-days: 14
+
+  web-gateway-regression:
+    name: Web Gateway browser regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      QA_OUTPUT_DIR: ${{ runner.temp }}/web-gateway-regression
+      QA_MATERIAL_NAVIGATION: '1'
+      QA_PLAYWRIGHT_MODULE: ${{ runner.temp }}/ci-playwright/node_modules/playwright
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            web/package-lock.json
+      - run: npm ci
+        working-directory: backend
+      - run: npm run build
+        working-directory: backend
+      - run: npm ci
+        working-directory: web
+      - name: Install pinned browser runner
+        run: |
+          npm install --prefix "$RUNNER_TEMP/ci-playwright" --no-audit --no-fund playwright@1.56.1
+          node "$QA_PLAYWRIGHT_MODULE/cli.js" install --with-deps chromium
+      - name: Build isolated MinIO image
+        run: docker build -f deploy/kubero/minio.Dockerfile -t apuntesuct/pr-test-minio:local .
+      - name: Run browser regression against disposable services
+        run: node .github/scripts/web-gateway-regression.cjs
+      - name: Upload browser evidence and service logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-gateway-regression
+          path: ${{ runner.temp }}/web-gateway-regression/
           if-no-files-found: warn
           retention-days: 14
