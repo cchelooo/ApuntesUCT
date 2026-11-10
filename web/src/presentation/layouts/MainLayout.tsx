@@ -6,7 +6,7 @@ export function MainLayout() {
       <header className="flex flex-wrap items-center justify-between border-b-4 border-uct-yellow bg-catalog-paper px-4 py-3 sm:px-6">
         <Link
           to="/"
-          className="font-display text-xl font-bold text-catalog-ink"
+          className="font-display text-xl font-bold text-catalog-ink shrink-0"
         >
           ApuntesUCT
         </Link>
@@ -19,25 +19,25 @@ export function MainLayout() {
           </Link>
           <Link
             to="/catalog"
-            className="p-2 text-sm font-medium text-catalog-ink/80 hover:text-catalog-ink focus:outline-hidden focus:ring-2 focus:ring-catalog-primary rounded-xs"
+            className="p-1.5 sm:p-2 text-xs sm:text-sm font-medium text-catalog-ink/80 hover:text-catalog-ink focus:outline-hidden focus:ring-2 focus:ring-catalog-primary rounded-xs truncate"
           >
             Catálogo
           </Link>
           <Link
             to="/search"
-            className="p-2 text-sm font-medium text-catalog-ink/80 hover:text-catalog-ink focus:outline-hidden focus:ring-2 focus:ring-catalog-primary rounded-xs"
+            className="p-1.5 sm:p-2 text-xs sm:text-sm font-medium text-catalog-ink/80 hover:text-catalog-ink focus:outline-hidden focus:ring-2 focus:ring-catalog-primary rounded-xs truncate"
           >
             Búsqueda
           </Link>
           <Link
             to="/library"
-            className="p-2 text-sm font-medium text-catalog-ink/80 hover:text-catalog-ink focus:outline-hidden focus:ring-2 focus:ring-catalog-primary rounded-xs"
+            className="p-1.5 sm:p-2 text-xs sm:text-sm font-medium text-catalog-ink/80 hover:text-catalog-ink focus:outline-hidden focus:ring-2 focus:ring-catalog-primary rounded-xs truncate"
           >
             Biblioteca
           </Link>
           <Link
             to="/profile"
-            className="p-2 text-sm font-medium text-catalog-ink/80 hover:text-catalog-ink focus:outline-hidden focus:ring-2 focus:ring-catalog-primary rounded-xs"
+            className="p-1.5 sm:p-2 text-xs sm:text-sm font-medium text-catalog-ink/80 hover:text-catalog-ink focus:outline-hidden focus:ring-2 focus:ring-catalog-primary rounded-xs truncate"
           >
             Perfil
           </Link>

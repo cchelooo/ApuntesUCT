@@ -48,7 +48,7 @@ export function MaterialDetailPage({
         ) : (
           <>
             <header className="mt-4">
-              <h1 className="font-display text-3xl text-catalog-ink sm:text-4xl">
+              <h1 className="font-display text-3xl text-catalog-ink sm:text-4xl break-words [overflow-wrap:anywhere]">
                 {effectiveStatus === 'loading'
                   ? 'Cargando material…'
                   : (material?.title ?? 'Detalle del material')}

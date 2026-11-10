@@ -139,7 +139,7 @@ export function LoginPage() {
 
         {/* Footer del panel izquierdo */}
         <div className="relative z-10 text-xs text-slate-400 flex gap-4 mt-8">
-          <span>© 2025 ApuntesUCT</span>
+          <span>© 2026 ApuntesUCT</span>
           <a href="#" className="hover:text-white transition-colors">
             Privacidad
           </a>

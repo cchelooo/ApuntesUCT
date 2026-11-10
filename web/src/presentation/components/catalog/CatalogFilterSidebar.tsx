@@ -69,12 +69,12 @@ export function CatalogFilterSidebar() {
           )}
           <button
             type="button"
-            className="lg:hidden text-xs font-medium text-catalog-ink/60 hover:text-catalog-ink"
+            className="lg:hidden text-xs font-medium text-catalog-ink/70 hover:text-catalog-ink px-2 py-1 rounded-xs border border-catalog-line bg-catalog-paperMuted min-h-8"
             onClick={() => setIsMobileOpen(!isMobileOpen)}
             aria-expanded={isMobileOpen}
             aria-controls="mobile-filters-panel"
           >
-            {isMobileOpen ? 'Ocultar' : 'Mostrar'}
+            {isMobileOpen ? 'Ocultar filtros' : 'Mostrar filtros'}
           </button>
         </div>
       </div>

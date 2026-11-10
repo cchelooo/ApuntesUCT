@@ -77,7 +77,7 @@ export function SearchPage() {
             value={sort}
             onChange={(next) => update({ sort: next, page: 1 })}
           />
-          <Button type="submit" className="min-h-10">
+          <Button type="submit" className="min-h-10 w-full sm:w-auto">
             Buscar
           </Button>
         </form>

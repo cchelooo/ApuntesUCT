@@ -7,6 +7,8 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   helperText?: ReactNode;
   fullWidth?: boolean;
   containerClassName?: string;
+  hideLabel?: boolean;
+  labelClassName?: string;
 }
 
 export const Input = ({
@@ -16,6 +18,8 @@ export const Input = ({
   fullWidth = true,
   className = '',
   containerClassName = '',
+  hideLabel = false,
+  labelClassName = '',
   disabled = false,
   id,
   'aria-describedby': ariaDescribedBy,
@@ -46,7 +50,10 @@ export const Input = ({
     <div
       className={`flex flex-col gap-1.5 ${containerWidthClass} ${containerClassName}`.trim()}
     >
-      <label htmlFor={inputId} className="text-sm font-medium text-gray-700">
+      <label
+        htmlFor={inputId}
+        className={`text-sm font-medium text-gray-700 ${hideLabel ? 'sr-only' : ''} ${labelClassName}`.trim()}
+      >
         {label}
       </label>
       <input

@@ -108,7 +108,13 @@ export function MaterialUploadForm({
             ? 'Resumen'
             : type === 'DOCUMENT'
               ? 'Documento / guía'
-              : type
+              : type === 'PRESENTATION'
+                ? 'Presentación'
+                : type === 'EXAM'
+                  ? 'Evaluación'
+                  : type === 'LINK'
+                    ? 'Enlace'
+                    : type
         ),
       ],
       [
@@ -281,7 +287,7 @@ export function MaterialUploadForm({
               disabled={isUploading}
               data-testid="upload-description-input"
               placeholder="Cuenta qué incluye el material y cómo puede ayudar a estudiar."
-              className="block w-full rounded-md border border-gray-300 p-2 text-sm text-gray-900 transition-colors focus:border-uct-sky focus:outline-hidden focus:ring-2 focus:ring-uct-sky disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="block w-full rounded-xl border border-uct-border bg-uct-mist p-3 text-base text-uct-navy transition-colors placeholder:text-uct-muted focus:border-uct-sky focus:outline-hidden focus:ring-2 focus:ring-uct-sky disabled:bg-gray-100 disabled:cursor-not-allowed sm:text-sm"
             />
           </div>
           <div className="grid min-w-0 gap-5 sm:grid-cols-2">
@@ -439,6 +445,7 @@ export function MaterialUploadForm({
           <Button
             type="submit"
             onClick={handleReview}
+            variant="secondary"
             disabled={!hasAcademicSelection}
             aria-describedby={`${id}-review-help`}
             className="min-h-12 w-full shrink-0 rounded-xl sm:w-auto"

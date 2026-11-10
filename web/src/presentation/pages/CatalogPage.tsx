@@ -35,6 +35,7 @@ export function CatalogPage() {
           <Input
             label="Buscar asignaturas por nombre o código"
             type="text"
+            hideLabel
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Buscar por nombre o código"
