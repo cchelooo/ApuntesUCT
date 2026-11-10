@@ -259,6 +259,122 @@
               }
             }
           ]
+        },
+        {
+          "name": "Registrar usuario institucional sin iniciar sesión",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Camila Soto\",\n  \"email\": \"{{mockEmail}}\",\n  \"password\": \"{{mockPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/v1/auth/register",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "v1", "auth", "register"]
+            },
+            "description": "/api/v1/auth/register (Auth Service)"
+          },
+          "response": [
+            {
+              "name": "201 — ejemplo ilustrativo",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "description": ""
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Camila Soto\",\n  \"email\": \"{{mockEmail}}\",\n  \"password\": \"{{mockPassword}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/auth/register",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "auth", "register"]
+                },
+                "description": "/api/v1/auth/register (Auth Service)"
+              },
+              "status": "",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"user\": {\n    \"id\": \"00000000-0000-4000-8000-000000000001\",\n    \"name\": \"string\",\n    \"email\": \"string\",\n    \"role\": \"STUDENT\",\n    \"active\": true\n  }\n}"
+            },
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "description": ""
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Camila Soto\",\n  \"email\": \"{{mockEmail}}\",\n  \"password\": \"{{mockPassword}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/auth/register",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "auth", "register"]
+                },
+                "description": "/api/v1/auth/register (Auth Service)"
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Auth Service no disponible\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
