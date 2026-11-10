@@ -231,7 +231,8 @@ jobs:
 
   web-gateway-regression:
     name: Web Gateway browser regression
-    runs-on: ubuntu-latest
+    # Playwright 1.56.1 soporta Ubuntu 24.04; no seguir cambios de ubuntu-latest.
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     env:
       QA_MATERIAL_NAVIGATION: '1'
