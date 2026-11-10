@@ -234,11 +234,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
-      QA_OUTPUT_DIR: ${{ runner.temp }}/web-gateway-regression
       QA_MATERIAL_NAVIGATION: '1'
-      QA_PLAYWRIGHT_MODULE: ${{ runner.temp }}/ci-playwright/node_modules/playwright
     steps:
       - uses: actions/checkout@v4
+      - name: Configure temporary browser paths
+        run: |
+          echo "QA_OUTPUT_DIR=$RUNNER_TEMP/web-gateway-regression" >> "$GITHUB_ENV"
+          echo "QA_PLAYWRIGHT_MODULE=$RUNNER_TEMP/ci-playwright/node_modules/playwright" >> "$GITHUB_ENV"
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
