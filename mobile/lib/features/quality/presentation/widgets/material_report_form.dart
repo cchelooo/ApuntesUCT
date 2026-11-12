@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../domain/models/report_motive.dart';
 
+/// Formulario local para el reporte de materiales.
+///
+/// Valida datos localmente y retiene la entrada ante errores.
+/// Los códigos de motivos y esquemas son provisionales (pendiente #444).
+/// No incluye llamadas de red directas a Quality service en esta etapa.
 class MaterialReportForm extends StatefulWidget {
   final String materialId;
   final String materialTitle;
@@ -83,15 +88,14 @@ class _MaterialReportFormState extends State<MaterialReportForm> {
               border: OutlineInputBorder(),
             ),
             items: ReportMotive.values.map((motive) {
-              return DropdownMenuItem(
-                value: motive,
-                child: Text(motive.label),
-              );
+              return DropdownMenuItem(value: motive, child: Text(motive.label));
             }).toList(),
             onChanged: widget.isSubmitting
                 ? null
                 : (value) => setState(() => _selectedMotive = value),
-            validator: (value) => value == null ? 'Por favor, seleccione un motivo obligatorio.' : null,
+            validator: (value) => value == null
+                ? 'Por favor, seleccione un motivo obligatorio.'
+                : null,
           ),
           const SizedBox(height: 16),
 
