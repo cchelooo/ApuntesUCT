@@ -159,6 +159,10 @@ jobs:
         run: npm run prisma:deploy --workspace="$CI_SERVICE"
       - name: Run existing E2E suite
         run: npm run test:e2e --workspace="$CI_SERVICE" -- --ci --runInBand --json --outputFile="$RUNNER_TEMP/e2e-results.json"
+      # Las suites de integración de Auth pueden importar módulos compilados de dist.
+      - name: Build Auth for integration tests
+        if: matrix.service == 'auth-service'
+        run: npm run build --workspace=auth-service
       # DATABASE_URL ya apunta al PostgreSQL desechable; no cargar un .env local.
       - name: Test Auth persistence
         if: matrix.service == 'auth-service'
