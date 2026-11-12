@@ -1,3 +1,4 @@
+import { configureTestJwt } from './jwt-fixture';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Prisma } from '.prisma/auth-client';
@@ -24,7 +25,9 @@ describe('Registro institucional (HTTP)', () => {
     active: true,
   };
 
+  let jwt: ReturnType<typeof configureTestJwt>;
   beforeAll(async () => {
+    jwt = configureTestJwt();
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(PrismaService)
       .useValue({ user: { create } })
@@ -44,6 +47,7 @@ describe('Registro institucional (HTTP)', () => {
   });
   afterAll(async () => {
     await app.close();
+    jwt.cleanup();
   });
 
   it.each(['alu.uct.cl', 'uct.cl'])(

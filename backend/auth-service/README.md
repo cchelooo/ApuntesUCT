@@ -139,34 +139,53 @@ actual de login y es compatible con `RegisterResponseModel` de Mobile, pero debe
 validarse con los responsables de los servicios antes de cerrar #440. Esta tarea
 no acredita consenso ni implementa JWT o autorización entre servicios.
 
-## Login mock (#92)
+## Inicio de sesión real (#441)
 
-`POST /api/v1/auth/login` devuelve `200 OK` con una sesión simulada para integrar
-el frontend. Está disponible directamente en Auth (puerto 3001) y mediante el
-gateway (puerto 3000). El contrato también está documentado en Swagger.
+`POST /api/v1/auth/login` verifica el correo normalizado y la contraseña exacta
+contra los usuarios registrados por S3-01. Comprueba el hash scrypt y `active`.
+Devuelve `401` con el mismo mensaje para cuenta desconocida, contraseña incorrecta
+o usuario inactivo. Los cuerpos inválidos conservan `400`.
+
+Se conserva la ruta pública por Gateway y la respuesta `accessToken`,
+`tokenType: "Bearer"`, `expiresIn: 3600`, `user: { id, name, email, role, active }`.
+El rol se obtiene de la base de datos. No se devuelven hashes ni refresh tokens.
+
+### Configuración de firma
+
+Configurar en el entorno de Auth (o su `.env` ignorado por Git):
+
+- `JWT_PRIVATE_KEY_PATH`: ruta absoluta a un PEM RSA de al menos 2048 bits,
+  montado desde el gestor de secretos fuera del repositorio.
+- `JWT_ISSUER`: emisor esperado, por ejemplo `apuntesuct-auth`.
+- `JWT_AUDIENCE`: audiencia esperada, por ejemplo `apuntesuct-api`.
+
+El servicio falla al iniciar si falta la configuración o la clave no es válida.
+No hay secreto predeterminado ni modo mock. Para desarrollo, generar una clave
+fuera del checkout y dar acceso de lectura únicamente al proceso de Auth:
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"estudiante@alu.uct.cl","password":"demo"}'
+umask 077
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/apuntesuct-auth-private.pem
+openssl pkey -in /tmp/apuntesuct-auth-private.pem -pubout -out /tmp/apuntesuct-auth-public.pem
 ```
 
-La respuesta contiene `accessToken`, `tokenType: "Bearer"`, `expiresIn: 3600` y
-`user` con `id`, `name`, `email`, `role: "STUDENT"` y `active: true`, compatible
-con `LoginResponseModel` de mobile. El usuario es ficticio, con UUID fijo y el
-correo enviado convertido a minúsculas. No se devuelve refresh token.
+El JWT usa RS256 y claims `sub` (UUID persistido), `email`, `role`, `iat`, `exp`,
+`iss` y `aud`. `AccessTokenService.verify` restringe el algoritmo a RS256 y
+rechaza firmas incorrectas, `alg=none`, expiración, emisor/audiencia incorrectos
+y claims de identidad inválidos. Los verificadores de otros servicios deben
+recibir solo la clave pública y los mismos valores de emisor/audiencia.
 
-El token tiene cabecera y payload codificados en base64url, con `sub`, `email`,
-`role`, `iat`, `exp` y `mock: true`. Usa `alg: none` y firma vacía: **es un JWT
-falso y no debe aceptarse para autorizar peticiones**. Se debe reemplazar este
-controlador antes de habilitar autenticación real en producción.
+**Dependencia pendiente:** S3-05 (#445, [PR #499](https://github.com/cchelooo/ApuntesUCT/pull/499))
+sigue propuesto. Esta implementación usa su propuesta de claims y algoritmo
+asimétrico; debe contrastarse con la versión aprobada antes de cerrar #441.
+El Gateway conserva la propagación de `Authorization`. La adopción de validación
+en rutas protegidas de Material/Catalog/Search corresponde a sus tareas; este
+cambio no sustituye el contexto local de autor de Material. La desactivación
+impide nuevos logins, pero no revoca tokens ya emitidos antes de su expiración.
 
-Acepta cualquier correo con formato válido y contraseña de texto con al menos
-un carácter que no sea espacio en blanco (sin recortar ni modificar la contraseña),
-sin verificar credenciales ni exigir dominio institucional. Un cuerpo inválido
-devuelve `400 Bad Request`. Los campos adicionales se descartan y la contraseña
-no se incluye en la respuesta ni en el token. No crea ni consulta usuarios;
-el arranque general de Auth sigue requiriendo PostgreSQL por `PrismaModule`.
+Para probar, registrar una cuenta con `POST /api/v1/auth/register` y utilizar
+esas mismas credenciales en `/api/v1/auth/login`. Ya no se aceptan credenciales
+arbitrarias de los antiguos ejemplos mock.
 
 ## Ejecutar
 
