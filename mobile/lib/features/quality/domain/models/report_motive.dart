@@ -1,3 +1,8 @@
+/// Motivos de reporte provisionales sujetos al contrato pendiente de la issue #444.
+///
+/// Nota de integración: Este componente implementa exclusivamente la capa de
+/// presentación y validaciones locales. No se acredita integración en firme con
+/// el microservicio Quality en este PR.
 enum ReportMotive {
   outdated('OUTDATED', 'Desactualizado'),
   incorrect('INCORRECT', 'Incorrecto'),
