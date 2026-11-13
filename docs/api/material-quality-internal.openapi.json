@@ -1,0 +1,811 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Material Service — contrato interno para Quality (propuesto)",
+    "version": "0.1.0",
+    "description": "NO PÚBLICO. No exponer por las rutas wildcard del Gateway. Identidad de servicio y actor verificadas; roles y scopes según operación. Implementación pendiente. Sin acceso directo a bases ajenas. Ver quality-publication.md para firma de aserciones, outbox, recibos y revisión atómica."
+  },
+  "servers": [
+    {
+      "url": "https://material.internal.example.invalid",
+      "description": "Origen privado ilustrativo."
+    }
+  ],
+  "tags": [
+    {
+      "name": "Material interno"
+    }
+  ],
+  "paths": {
+    "/internal/v1/quality/materials": {
+      "get": {
+        "operationId": "internalListModerationMaterials",
+        "tags": [
+          "Material interno"
+        ],
+        "summary": "Listar snapshots privados",
+        "description": "Solo servicio Quality, actor MODERATOR/ADMIN, estado y paginación validados. Orden createdAt DESC,id DESC.",
+        "security": [
+          {
+            "qualityServiceAuth": []
+          }
+        ],
+        "x-allowed-roles": [
+          "MODERATOR",
+          "ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Consulta u operación completada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationMaterialPageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483647,
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING_REVIEW",
+                "PUBLISHED",
+                "REJECTED",
+                "RETIRED"
+              ],
+              "default": "PENDING_REVIEW"
+            }
+          }
+        ],
+        "x-required-scope": "material:review:read"
+      }
+    },
+    "/internal/v1/quality/materials/{materialId}": {
+      "get": {
+        "operationId": "internalGetModerationMaterial",
+        "tags": [
+          "Material interno"
+        ],
+        "summary": "Leer snapshot privado",
+        "description": "Solo Quality con actor MODERATOR/ADMIN; Cache-Control:no-store.",
+        "security": [
+          {
+            "qualityServiceAuth": []
+          }
+        ],
+        "x-allowed-roles": [
+          "MODERATOR",
+          "ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Consulta u operación completada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModerationMaterialDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "materialId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "x-required-scope": "material:review:read"
+      }
+    },
+    "/internal/v1/quality/materials/{materialId}/versions/{versionId}/download": {
+      "get": {
+        "operationId": "internalDownloadReviewVersion",
+        "tags": [
+          "Material interno"
+        ],
+        "summary": "Descargar versión privada",
+        "description": "Solo Quality con actor MODERATOR/ADMIN; comprueba pertenencia de versión; no expone storageKey; no-store.",
+        "security": [
+          {
+            "qualityServiceAuth": []
+          }
+        ],
+        "x-allowed-roles": [
+          "MODERATOR",
+          "ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Bytes del archivo; MIME real y disposición attachment.",
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "no-store"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "502": {
+            "$ref": "#/components/responses/Error502"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "materialId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "x-required-scope": "material:review:read"
+      }
+    },
+    "/internal/v1/quality/materials/{materialId}/decisions/{operationId}": {
+      "put": {
+        "operationId": "internalApplyModerationDecision",
+        "tags": [
+          "Material interno"
+        ],
+        "summary": "Aplicar decisión y guardar recibo atómicamente",
+        "description": "operationId de Quality es clave idempotente durable. Misma operación/actor/payload: mismo recibo antes de revisar expectedRevision. Payload distinto:409. Transición y revision se comprueban atómicamente con cambio y recibo en BD de Material. No acepta status/verified arbitrarios. Operación desconocida y revisión inválida:409. Al aplicar, incrementa revision.",
+        "security": [
+          {
+            "qualityServiceAuth": []
+          }
+        ],
+        "x-allowed-roles": [
+          "MODERATOR",
+          "ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Consulta u operación completada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialDecisionReceiptDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error409"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "materialId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "operationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModerationDecisionRequestDto"
+              }
+            }
+          }
+        },
+        "x-required-scope": "material:quality:apply"
+      }
+    },
+    "/internal/v1/quality/decisions/{operationId}": {
+      "get": {
+        "operationId": "internalGetDecisionReceipt",
+        "tags": [
+          "Material interno"
+        ],
+        "summary": "Consultar recibo de decisión",
+        "description": "Solo Quality con aserción vinculada a operationId. 404 significa que no se observa recibo; NO demuestra que una solicitud anterior no vaya a confirmar. Reintentar mismo PUT para converger.",
+        "security": [
+          {
+            "qualityServiceAuth": []
+          }
+        ],
+        "x-allowed-roles": [
+          "MODERATOR",
+          "ADMIN"
+        ],
+        "responses": {
+          "200": {
+            "description": "Consulta u operación completada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialDecisionReceiptDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error503"
+          }
+        },
+        "parameters": [
+          {
+            "name": "operationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "x-required-scope": "material:quality:apply"
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "qualityServiceAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Aserción firmada por Quality con clave asimétrica confiada por Material: iss=quality-service, sub=quality-service, aud=material-service, scope limitado, actor autenticado, exp<=60 s, jti. Nunca token de usuario ni headers sin firma. Para aplicar/reconciliar: operationId vinculante. Ver documento de arquitectura."
+      }
+    },
+    "schemas": {
+      "MaterialStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING_REVIEW",
+          "PUBLISHED",
+          "REJECTED",
+          "RETIRED"
+        ],
+        "description": "Nombre canónico de contrato. RETIRED requiere adaptación desde WITHDRAWN en Material."
+      },
+      "ModerationAction": {
+        "type": "string",
+        "enum": [
+          "APPROVE",
+          "REJECT",
+          "VERIFY",
+          "REVOKE_VERIFICATION",
+          "RETIRE",
+          "REOPEN"
+        ]
+      },
+      "ErrorDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "statusCode",
+          "code",
+          "message",
+          "requestId"
+        ],
+        "properties": {
+          "statusCode": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 599
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "field": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "example": {
+          "statusCode": 409,
+          "code": "STALE_REVISION",
+          "message": "El material cambió. Vuelve a consultar antes de decidir.",
+          "requestId": "11111111-1111-4111-8111-111111111111"
+        }
+      },
+      "ModerationDecisionRequestDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "expectedRevision"
+        ],
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/ModerationAction"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "pattern": "\\S"
+          }
+        },
+        "description": "reason obligatorio para REJECT, RETIRE, REOPEN y REVOKE_VERIFICATION. Se valida después de trim. expectedRevision cubre contenido, versiones, estado y verificación. No admite userId, role, status ni verified.",
+        "example": {
+          "action": "APPROVE",
+          "expectedRevision": 4
+        }
+      },
+      "MaterialVersionDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "versionNumber",
+          "originalFilename",
+          "mimeType",
+          "fileSize",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "versionNumber": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "originalFilename": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "fileSize": {
+            "type": "string",
+            "pattern": "^[0-9]+$",
+            "description": "Bytes como entero decimal en cadena; evita pérdida de precisión de BigInt."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ModerationMaterialDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "uploaderId",
+          "title",
+          "description",
+          "materialType",
+          "externalLink",
+          "status",
+          "verified",
+          "revision",
+          "currentVersionId",
+          "versions",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uploaderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "materialType": {
+            "type": "string"
+          },
+          "externalLink": {
+            "type": "string",
+            "format": "uri",
+            "nullable": true
+          },
+          "status": {
+            "$ref": "#/components/schemas/MaterialStatus"
+          },
+          "verified": {
+            "type": "boolean"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "currentVersionId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MaterialVersionDto"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "Snapshot privado del agregado. Para LINK sin archivo, currentVersionId=null y versions=[]. La revisión incluye todas las versiones públicamente descargables y el enlace."
+      },
+      "AppliedMaterialDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "materialId",
+          "status",
+          "verified",
+          "revision"
+        ],
+        "properties": {
+          "materialId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MaterialStatus"
+          },
+          "verified": {
+            "type": "boolean"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          }
+        },
+        "description": "Resultado histórico de esta operación, no lectura garantizada del estado actual."
+      },
+      "MaterialDecisionReceiptDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operationId",
+          "actorId",
+          "result",
+          "appliedAt"
+        ],
+        "properties": {
+          "operationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "actorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "result": {
+            "$ref": "#/components/schemas/AppliedMaterialDto"
+          },
+          "appliedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "Recibo durable del efecto atómico en Material. Un replay devuelve el mismo recibo histórico."
+      },
+      "ModerationMaterialPageDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "total"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModerationMaterialDto"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "responses": {
+      "Error400": {
+        "description": "Solicitud inválida.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorDto"
+            },
+            "example": {
+              "statusCode": 400,
+              "code": "VALIDATION_ERROR",
+              "message": "Solicitud inválida.",
+              "requestId": "11111111-1111-4111-8111-111111111111"
+            }
+          }
+        }
+      },
+      "Error401": {
+        "description": "Autenticación ausente, inválida o caducada.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorDto"
+            },
+            "example": {
+              "statusCode": 401,
+              "code": "UNAUTHENTICATED",
+              "message": "Autenticación ausente, inválida o caducada.",
+              "requestId": "11111111-1111-4111-8111-111111111111"
+            }
+          }
+        },
+        "headers": {
+          "WWW-Authenticate": {
+            "schema": {
+              "type": "string"
+            },
+            "example": "Bearer"
+          }
+        }
+      },
+      "Error403": {
+        "description": "Identidad válida sin permiso; incluye cuenta inactiva o autorrevisión prohibida.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorDto"
+            },
+            "example": {
+              "statusCode": 403,
+              "code": "FORBIDDEN",
+              "message": "Identidad válida sin permiso; incluye cuenta inactiva o autorrevisión prohibida.",
+              "requestId": "11111111-1111-4111-8111-111111111111"
+            }
+          }
+        }
+      },
+      "Error404": {
+        "description": "Recurso inexistente o no visible para este acceso.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorDto"
+            },
+            "example": {
+              "statusCode": 404,
+              "code": "NOT_FOUND",
+              "message": "Recurso inexistente o no visible para este acceso.",
+              "requestId": "11111111-1111-4111-8111-111111111111"
+            }
+          }
+        }
+      },
+      "Error409": {
+        "description": "Transición, revisión o clave de idempotencia incompatible.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorDto"
+            },
+            "example": {
+              "statusCode": 409,
+              "code": "STALE_REVISION",
+              "message": "Transición, revisión o clave de idempotencia incompatible.",
+              "requestId": "11111111-1111-4111-8111-111111111111"
+            }
+          }
+        }
+      },
+      "Error502": {
+        "description": "Respuesta inválida de un servicio dependiente.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorDto"
+            },
+            "example": {
+              "statusCode": 502,
+              "code": "DEPENDENCY_INVALID_RESPONSE",
+              "message": "Respuesta inválida de un servicio dependiente.",
+              "requestId": "11111111-1111-4111-8111-111111111111"
+            }
+          }
+        }
+      },
+      "Error503": {
+        "description": "Dependencia no disponible o persistencia no confirmada.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorDto"
+            },
+            "example": {
+              "statusCode": 503,
+              "code": "DEPENDENCY_UNAVAILABLE",
+              "message": "Dependencia no disponible o persistencia no confirmada.",
+              "requestId": "11111111-1111-4111-8111-111111111111"
+            }
+          }
+        }
+      }
+    }
+  }
+}
