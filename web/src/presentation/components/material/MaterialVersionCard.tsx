@@ -42,9 +42,9 @@ export function MaterialVersionCard({
       <dl className="flex flex-col gap-3">
         {rows.map(({ label, value }) => (
           <div key={label} className="flex justify-between gap-4 text-sm">
-            <dt className="text-catalog-ink/60">{label}</dt>
+            <dt className="text-catalog-ink/60 shrink-0">{label}</dt>
             <dd
-              className={`text-right ${
+              className={`text-right [overflow-wrap:anywhere] ${
                 value ? 'text-catalog-ink' : 'text-catalog-ink/40'
               }`}
             >

@@ -48,8 +48,31 @@ export function MainLayout() {
         <Outlet />
       </main>
 
-      <footer className="mt-auto border-t border-catalog-line bg-catalog-paper px-4 py-6 text-center">
-        <small className="text-sm text-catalog-ink/60">© 2026 ApuntesUCT</small>
+      <footer className="mt-auto border-t border-catalog-line bg-catalog-paper px-4 py-6">
+        <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
+          <div className="flex flex-col gap-1">
+            <span className="font-display text-base font-bold text-catalog-ink">
+              ApuntesUCT
+            </span>
+            <small className="text-xs text-catalog-ink/60">
+              © 2026 ApuntesUCT · Comunidad académica y repositorio colaborativo.
+            </small>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-medium text-catalog-ink/70">
+            <Link to="/catalog" className="hover:text-catalog-ink hover:underline">
+              Catálogo
+            </Link>
+            <Link to="/library" className="hover:text-catalog-ink hover:underline">
+              Biblioteca
+            </Link>
+            <Link to="/search" className="hover:text-catalog-ink hover:underline">
+              Búsqueda
+            </Link>
+            <Link to="/login" className="hover:text-catalog-ink hover:underline">
+              Ingresar
+            </Link>
+          </div>
+        </div>
       </footer>
     </div>
   );

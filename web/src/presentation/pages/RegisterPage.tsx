@@ -275,7 +275,7 @@ export function RegisterPage() {
               Al crear una cuenta aceptas nuestros{' '}
               <a
                 href="#"
-                className="text-black hover:text-gray-500 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-uct-sky focus-visible:ring-offset-2"
+                className="font-medium text-uct-blue hover:underline transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-uct-sky focus-visible:ring-offset-2"
               >
                 Términos de uso y Política de privacidad.
               </a>
