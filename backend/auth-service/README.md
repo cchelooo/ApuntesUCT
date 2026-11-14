@@ -229,3 +229,73 @@ no dejar datos de prueba. La suite `register.e2e-spec.ts` valida el contrato HTT
 `registration.integration.cjs` ejecuta el registro real contra PostgreSQL, prueba
 la colisión concurrente, el hash persistido, los roles y la exclusión de secretos.
 Esta última elimina únicamente su usuario de prueba al terminar.
+
+## Recuperación de contraseña (#442)
+
+- `POST /api/v1/auth/forgot-password`, cuerpo `{ "email": "camila@alu.uct.cl" }`.
+  Devuelve `200` con el mismo mensaje para cuentas existentes, desconocidas o
+  inactivas. No entrega tokens en la respuesta. Los correos se normalizan y un
+  formato inválido devuelve `400`.
+- `POST /api/v1/auth/reset-password`, cuerpo `{ "token": "<64 caracteres hex>",
+  "password": "nueva contraseña" }`. Devuelve `200` al cambiar la contraseña;
+  `400` para tokens inválidos, vencidos o utilizados y contraseñas inválidas.
+  Conserva la política del registro: entre 8 y 128 caracteres, no solo espacios.
+
+Los tokens contienen 32 bytes aleatorios, expiran a los **15 minutos** y solo
+se almacena su SHA-256. El cambio usa el mismo scrypt del registro. Una transacción
+serializa los cambios por usuario, verifica que el token aún sea válido y revoca
+los demás tokens de recuperación y refresh. Si dos solicitudes compiten, solo una
+puede confirmar; la otra revierte también su cambio de contraseña. El login sigue
+siendo el mock existente (#441 aborda la autenticación real).
+
+### Canal de entrega
+
+Configurar en el entorno de **auth-service**:
+
+```dotenv
+PASSWORD_RECOVERY_DELIVERY_URL=https://notificaciones.example.org/password-recovery
+PASSWORD_RECOVERY_DELIVERY_SECRET=<secreto del canal autorizado>
+```
+
+El adaptador envía `POST` HTTPS con `Authorization: Bearer <secreto>` y JSON:
+
+```json
+{
+  "type": "password-recovery",
+  "email": "camila@alu.uct.cl",
+  "token": "<token temporal>",
+  "expiresAt": "2026-11-14T15:15:00.000Z"
+}
+```
+
+El servicio de notificaciones debe autenticar al emisor y entregar el token
+únicamente al correo indicado, mediante un código o enlace de recuperación.
+Debe responder `2xx` cuando acepta la entrega. No se siguen redirecciones; hay un
+límite de 5 segundos. Configuración ausente o fallos de entrega eliminan el token
+creado y generan un mensaje operativo sin secretos. No hay un proveedor de correo
+incluido ni credenciales predeterminadas: este canal debe configurarse para que
+el usuario reciba el token. No registrar cuerpos de estos endpoints ni del canal.
+
+La solicitud responde antes de consultar la cuenta para no revelar su existencia
+por la latencia del proveedor. El trabajo se ejecuta en el proceso: un reinicio
+puede interrumpir la entrega y el usuario deberá solicitarla de nuevo. No hay cola
+durable ni reintentos automáticos. Aplicar límites de solicitudes en el ingreso
+antes de exponer el flujo públicamente.
+
+### Migración y verificación
+
+Desde `backend/`, con PostgreSQL configurado en `auth-service/.env`:
+
+```bash
+npm run prisma:generate --workspace=auth-service
+npm run prisma:deploy --workspace=auth-service
+npm run build --workspace=auth-service
+npm run test:ci --workspace=auth-service
+npm run test:e2e --workspace=auth-service -- --runInBand
+npm run test:integration --workspace=auth-service
+```
+
+Las pruebas unitarias cubren expiración, tokens inválidos y utilizados, consumo
+concurrente detectado, cuentas inactivas, hash persistido y fallos del canal. Las
+pruebas HTTP validan los DTO y el contrato público; las de integración comprueban
+el rollback y la exclusión concurrente contra PostgreSQL real.
