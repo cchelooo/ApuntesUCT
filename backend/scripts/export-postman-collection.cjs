@@ -66,7 +66,7 @@ const VARIABLES = [
   { key: 'materialId', value: '', runtimeOnly: true },
   { key: 'versionId', value: '', runtimeOnly: true },
   { key: 'mockEmail', value: 'estudiante@alu.uct.cl' },
-  { key: 'mockPassword', value: 'demo' },
+  { key: 'mockPassword', value: '' },
   { key: 'accessToken', value: '', runtimeOnly: true },
   { key: 'universityId', value: '00000000-0000-4000-8000-000000000001' },
   { key: 'careerId', value: '00000000-0000-4000-8000-000000000002' },
@@ -121,6 +121,10 @@ async function loadDocument(service) {
     testingModule = testingModule.overrideProvider(PrismaService).useValue(PRISMA_STUB);
   }
 
+  if (service.folder === 'Auth Service') {
+    const { AccessTokenService } = require(path.join(BACKEND_ROOT, 'auth-service/dist/src/infrastructure/security/access-token.service.js'));
+    testingModule = testingModule.overrideProvider(AccessTokenService).useValue({});
+  }
   if (service.folder === 'Material Service') {
     const { ObjectStorage } = require(
       path.join(BACKEND_ROOT, 'material-service/dist/application/ports/object-storage.port.js'),
@@ -335,7 +339,7 @@ function buildItem({
     headers.push({
       key: 'Authorization',
       value: 'Bearer {{accessToken}}',
-      description: 'Token del login mock; Catalog actualmente no lo valida.',
+      description: 'Token del login; Catalog actualmente no lo valida.',
     });
   }
   return {

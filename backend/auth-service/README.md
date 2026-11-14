@@ -133,40 +133,64 @@ esas cuentas explícitamente antes de reintentar, sin eliminar datos automática
 No se reescriben las migraciones históricas. No aplicar sobre producción sin
 revisar primero las cuentas con el rol antiguo y posibles colisiones de correo.
 
-**Dependencia pendiente:** [S3-05 / #445](https://github.com/cchelooo/ApuntesUCT/issues/445)
-sigue abierta sin contrato acordado publicado. Este DTO reutiliza la identidad
-actual de login y es compatible con `RegisterResponseModel` de Mobile, pero debe
-validarse con los responsables de los servicios antes de cerrar #440. Esta tarea
-no acredita consenso ni implementa JWT o autorización entre servicios.
+**Contrato acordado:** S3-05 / #445 está consensuado en
+[el contrato de autorización](https://github.com/cchelooo/ApuntesUCT/blob/main/docs/api/contrato-autorizacion-entre-servicios.md).
+El registro público conserva el UUID que usa el claim `sub` del login, no emite
+tokens y crea únicamente cuentas `STUDENT` activas.
 
-## Login mock (#92)
+## Inicio de sesión real (#441)
 
-`POST /api/v1/auth/login` devuelve `200 OK` con una sesión simulada para integrar
-el frontend. Está disponible directamente en Auth (puerto 3001) y mediante el
-gateway (puerto 3000). El contrato también está documentado en Swagger.
+`POST /api/v1/auth/login` verifica el correo normalizado y la contraseña exacta
+contra los usuarios registrados por S3-01. Comprueba el hash scrypt y `active`.
+Devuelve `401` con el mismo mensaje para cuenta desconocida, contraseña incorrecta
+o usuario inactivo. Los cuerpos inválidos conservan `400`.
+
+Se conserva la ruta pública por Gateway y la respuesta `accessToken`,
+`tokenType: "Bearer"`, `expiresIn: 3600`, `user: { id, name, email, role, active }`.
+El rol se obtiene de la base de datos. No se devuelven hashes ni refresh tokens.
+
+### Configuración de firma
+
+Configurar en el entorno de Auth (o su `.env` ignorado por Git):
+
+- `JWT_PRIVATE_KEY_PATH`: ruta absoluta a un PEM RSA de al menos 2048 bits,
+  montado desde el gestor de secretos fuera del repositorio.
+- `JWT_ISSUER`: emisor esperado, por ejemplo `apuntesuct-auth`.
+- `JWT_AUDIENCE`: audiencia esperada, por ejemplo `apuntesuct-api`.
+
+El servicio falla al iniciar si falta la configuración o la clave no es válida.
+No hay secreto predeterminado ni modo mock. Para desarrollo, generar una clave
+fuera del checkout y dar acceso de lectura únicamente al proceso de Auth:
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"estudiante@alu.uct.cl","password":"demo"}'
+umask 077
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out /tmp/apuntesuct-auth-private.pem
+openssl pkey -in /tmp/apuntesuct-auth-private.pem -pubout -out /tmp/apuntesuct-auth-public.pem
 ```
 
-La respuesta contiene `accessToken`, `tokenType: "Bearer"`, `expiresIn: 3600` y
-`user` con `id`, `name`, `email`, `role: "STUDENT"` y `active: true`, compatible
-con `LoginResponseModel` de mobile. El usuario es ficticio, con UUID fijo y el
-correo enviado convertido a minúsculas. No se devuelve refresh token.
+El JWT usa RS256 y claims `sub` (UUID persistido), `email`, `role`, `iat`, `exp`,
+`iss` y `aud`. `AccessTokenService.verify` restringe el algoritmo a RS256 y
+rechaza firmas incorrectas, `alg=none`, expiración, emisor/audiencia incorrectos
+y claims de identidad inválidos. Los verificadores de otros servicios deben
+recibir solo la clave pública y los mismos valores de emisor/audiencia.
 
-El token tiene cabecera y payload codificados en base64url, con `sub`, `email`,
-`role`, `iat`, `exp` y `mock: true`. Usa `alg: none` y firma vacía: **es un JWT
-falso y no debe aceptarse para autorizar peticiones**. Se debe reemplazar este
-controlador antes de habilitar autenticación real en producción.
+**Alineación con S3-05:** el contrato consensuado de #445 recomienda firma
+asimétrica y define `sub = user.id`, `email`, `role`, `exp`, así como verificación
+de `iss` y `aud`. Esta implementación usa RS256 y conserva esos campos.
+Los permisos de `STUDENT`, `MODERATOR` y `ADMIN` (incluida la herencia de permisos
+de moderación en `ADMIN`) se implementan en la tarea de autorización.
 
-Acepta cualquier correo con formato válido y contraseña de texto con al menos
-un carácter que no sea espacio en blanco (sin recortar ni modificar la contraseña),
-sin verificar credenciales ni exigir dominio institucional. Un cuerpo inválido
-devuelve `400 Bad Request`. Los campos adicionales se descartan y la contraseña
-no se incluye en la respuesta ni en el token. No crea ni consulta usuarios;
-el arranque general de Auth sigue requiriendo PostgreSQL por `PrismaModule`.
+El verificador JWT está probado como componente; todavía no está conectado a
+rutas protegidas. Por tanto, estas pruebas no acreditan rechazo HTTP de tokens
+inválidos en los servicios de dominio.
+El Gateway conserva la propagación de `Authorization`. La adopción de validación
+en rutas protegidas de Material/Catalog/Search corresponde a sus tareas; este
+cambio no sustituye el contexto local de autor de Material. La desactivación
+impide nuevos logins, pero no revoca tokens ya emitidos antes de su expiración.
+
+Para probar, registrar una cuenta con `POST /api/v1/auth/register` y utilizar
+esas mismas credenciales en `/api/v1/auth/login`. Ya no se aceptan credenciales
+arbitrarias de los antiguos ejemplos mock.
 
 ## Ejecutar
 

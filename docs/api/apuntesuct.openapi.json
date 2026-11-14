@@ -105,7 +105,7 @@
     },
     "/api/v1/auth/login": {
       "post": {
-        "description": "Acepta cualquier credencial con formato válido. Devuelve un JWT falso sin firma, solo para integración del frontend; no autentica usuarios.",
+        "description": "Verifica las credenciales de un usuario activo y devuelve un JWT firmado RS256.",
         "operationId": "AuthService_AuthController_login",
         "parameters": [],
         "requestBody": {
@@ -120,7 +120,7 @@
         },
         "responses": {
           "200": {
-            "description": "Sesión simulada. El token no sirve para autorizar peticiones.",
+            "description": "Sesión autenticada.",
             "content": {
               "application/json": {
                 "schema": {
@@ -129,7 +129,7 @@
                   "properties": {
                     "accessToken": {
                       "type": "string",
-                      "description": "JWT sin firma (alg: none), con claim mock: true."
+                      "description": "JWT firmado RS256 con identidad, rol, emisor, audiencia y expiración."
                     },
                     "tokenType": {
                       "type": "string",
@@ -175,6 +175,9 @@
           "400": {
             "description": "Correo inválido o contraseña ausente, vacía o formada solo por espacios en blanco."
           },
+          "401": {
+            "description": "Credenciales inválidas o usuario inactivo."
+          },
           "502": {
             "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
             "content": {
@@ -196,7 +199,7 @@
             }
           }
         },
-        "summary": "Login mock temporal (#92)",
+        "summary": "Inicio de sesión",
         "tags": ["Auth"]
       }
     },
@@ -1868,7 +1871,7 @@
           "password": {
             "type": "string",
             "example": "demo",
-            "description": "Debe contener al menos un carácter que no sea espacio en blanco. El mock no verifica credenciales."
+            "description": "Debe contener al menos un carácter que no sea espacio en blanco. Se verifica sin recortar espacios."
           }
         },
         "required": ["email", "password"]

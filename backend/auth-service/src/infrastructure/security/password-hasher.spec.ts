@@ -7,6 +7,11 @@ describe('PasswordHasher', () => {
     const password = ' contraseña con espacios ';
     const first = await hasher.hash(password);
     const second = await hasher.hash(password);
+    expect(await hasher.verify(password, first)).toBe(true);
+    expect(await hasher.verify(password.trim(), first)).toBe(false);
+    expect(await hasher.verify(password, 'scrypt$999999999$8$1$bad$bad')).toBe(
+      false,
+    );
     expect(first).not.toBe(second);
     expect(first).not.toContain(password);
     const [algorithm, n, r, p, salt, digest] = first.split('$');

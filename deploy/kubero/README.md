@@ -22,7 +22,8 @@ Auth, Catalog y Material tienen bases independientes. MinIO almacena archivos pr
 
 La infraestructura no completa las funciones pendientes de la aplicación:
 
-- Auth conserva el login mock y su JWT sin firma. No valida credenciales reales.
+- Auth registra usuarios institucionales y valida credenciales reales. Emite JWT
+  RS256; requiere una clave privada externa, emisor y audiencia configurados.
 - Material solo admite el autor temporal con `NODE_ENV=development`. Las imágenes
   usan `NODE_ENV=production`: crear material/nuevas versiones sigue devolviendo
   `401` hasta integrar Auth. No habilitar el autor local en el hosting.
@@ -37,6 +38,12 @@ Requisitos: Docker con Compose v2 y Node.js 22. Desde la raíz del repositorio:
 
 ```bash
 cp deploy/kubero/.env.example deploy/kubero/.env
+# Clave local fuera del checkout. El directorio temporal se crea con modo 0700.
+key_dir=$(mktemp -d "$HOME/apuntes-kubero-jwt.XXXXXX")
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "$key_dir/private.pem"
+# Compose conserva permisos del archivo; Auth corre como UID 1000.
+chmod 0444 "$key_dir/private.pem"
+export JWT_PRIVATE_KEY_FILE="$key_dir/private.pem"
 docker compose --env-file deploy/kubero/.env -f deploy/kubero/compose.yaml up --build --wait --wait-timeout 180
 node deploy/kubero/smoke.mjs
 ```
@@ -46,6 +53,8 @@ Web: `http://localhost:18080`. Gateway para Mobile local:
 Los puertos son distintos a los del entorno de desarrollo habitual. Si se cambian
 en `.env`, exportar también `WEB_PORT` y `GATEWAY_PORT` al ejecutar `smoke.mjs`.
 `KUBERO_ENV_FILE` permite seleccionar otro archivo de variables para la prueba.
+Con Docker instalado mediante Snap, usar una ruta bajo el home: su daemon puede
+ver un `/tmp` diferente y rechazar el montaje aunque el archivo exista.
 Usar una contraseña PostgreSQL alfanumérica en Compose; en una URI las contraseñas
 con caracteres reservados deben codificarse como URL.
 
@@ -54,17 +63,25 @@ servicios Nest y Web. Solo publica los puertos de Web/Gateway en loopback.
 Sus volúmenes pertenecen al proyecto aislado `apuntesuct-kubero`.
 
 La prueba comprueba rutas React, recursos estáticos, errores API sin fallback HTML,
-login actual, Catalog, listado persistido, búsqueda textual, detalle, descarga de
-bytes reales de MinIO y el rechazo de creación sin autor de producción. Recrea
+registro público, login real, firma RS256, identidad `sub = user.id`, rechazo de
+contraseña incorrecta, Catalog, listado persistido, búsqueda textual, detalle,
+descarga de bytes reales de MinIO y el rechazo de creación sin autor de producción. Recrea
 PostgreSQL de Material y MinIO conservando los volúmenes y verifica que los datos
-persisten. El fixture se elimina al terminar y no utiliza los volúmenes del
-`docker-compose.yml` original. Ejecutar esta prueba solo en el Compose aislado.
+persisten. Cada cuenta de Auth y el fixture de Material se eliminan al terminar.
+La prueba no utiliza los volúmenes del `docker-compose.yml` original. Ejecutarla
+solo en el Compose aislado.
 
 Detener conservando datos:
 
 ```bash
 docker compose --env-file deploy/kubero/.env -f deploy/kubero/compose.yaml down
 ```
+
+Después de detener el stack, eliminar la clave temporal con `rm -rf -- "$key_dir"`.
+Para conservar un entorno local entre sesiones, guardar su clave en un directorio
+privado persistente fuera del checkout y configurar `JWT_PRIVATE_KEY_FILE` en el
+`.env` local. No regenerarla en cada arranque: invalidaría los tokens anteriores.
+`JWT_ISSUER` y `JWT_AUDIENCE` deben coincidir con los valores de los verificadores.
 
 Agregar `--volumes` elimina las bases y archivos de este entorno aislado.
 
@@ -75,6 +92,28 @@ y ejecuta la misma prueba. En el PR y en la rama inicial `chore/kubero-deploymen
 solo valida. Después del merge a `main`, publica las siete imágenes probadas en
 GHCR con etiquetas `latest` y `sha-<SHA completo>`. También puede ejecutarse
 manualmente; solo publica si se ejecuta sobre `main`.
+
+### Firma JWT y corrección del fallo del PR #506
+
+El job fallaba al levantar el stack: Auth terminaba con
+`JWT_PRIVATE_KEY_PATH, JWT_ISSUER y JWT_AUDIENCE son obligatorios`, porque el
+Compose todavía no suministraba la configuración introducida por #441. Además,
+el smoke anterior intentaba entrar con una cuenta no registrada.
+
+El workflow ahora genera un PEM RSA de 2048 bits en `$RUNNER_TEMP`, fuera del
+contexto Docker, y lo monta como secret de solo lectura exclusivamente en Auth
+(`/run/secrets/auth_jwt_private_key`). Configura emisor y audiencia de CI y elimina
+la clave tras retirar el stack, incluso si falla la prueba. No se imprime el PEM,
+no se incorpora a las imágenes y no se publica como artefacto. En Compose local,
+los secrets de archivo conservan los permisos del host: el PEM permite lectura al
+UID 1000 del contenedor, mientras su directorio en el host permanece privado (0700).
+
+El smoke registra cuentas temporales por Gateway y por el proxy de Web, verifica
+la firma usando la clave pública derivada, comprueba identidad, rol y expiración,
+y exige `401` con contraseña incorrecta. Envía el token al verificador por stdin,
+sin incluirlo en argumentos ni logs. Elimina únicamente las cuentas que creó.
+La validación HTTP de JWT en rutas protegidas de dominio sigue pendiente de su
+tarea de autorización; este smoke no la simula.
 
 Usa `GITHUB_TOKEN` con permiso `packages: write`; no necesita un PAT ni una clave
 de Kubero para construir/publicar. Si el propietario del repositorio cambia, el
@@ -163,7 +202,18 @@ se cargan en Kubero.
 
 ```dotenv
 DATABASE_URL=postgresql://USUARIO:CLAVE_CODIFICADA@auth-postgres:5432/auth_db?schema=public
+JWT_PRIVATE_KEY_PATH=/run/secrets/auth-jwt/private.pem
+JWT_ISSUER=apuntesuct-auth
+JWT_AUDIENCE=apuntesuct-api
 ```
+
+Provisionar una clave RSA de al menos 2048 bits mediante un Secret/volumen de la
+plataforma, montado de solo lectura en esa ruta y legible por UID/GID 1000. La
+ruta por sí sola no crea el archivo. La clave debe persistir entre redespliegues;
+no reutilizar la clave desechable de CI ni agregar el PEM al repositorio, imagen
+o variables de build. Compartir únicamente la clave pública con los servicios
+verificadores. `JWT_PRIVATE_KEY_FILE` es la ruta del host para Compose local;
+`JWT_PRIVATE_KEY_PATH` es la ruta dentro del contenedor Auth.
 
 **Catalog**:
 

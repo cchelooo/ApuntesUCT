@@ -35,8 +35,12 @@ para las rutas administrativas de Catalog que reciben `{id}`; rellenarlo manualm
 Los filtros opcionales empiezan desactivados. Activar los académicos en orden
 universidad → carrera → asignatura → profesor. Año y tipo son independientes.
 
-El login mock guarda `accessToken`, pero **no autentica las subidas**. Estas requieren
-el contexto de autor local descrito en la guía. Las lecturas de Material/Search son públicas.
+El login verifica credenciales registradas y guarda un `accessToken` firmado RS256.
+Configurar las claves de Auth según su [README](../../backend/auth-service/README.md).
+Las variables `mockEmail` y `mockPassword` conservan sus nombres por compatibilidad:
+rellenarlas con una cuenta registrada y su contraseña (el valor inicial está vacío).
+La adopción de JWT en Material está pendiente; las subidas aún requieren el contexto
+de autor local descrito en la guía. Las lecturas de Material/Search son públicas.
 
 Las respuestas guardadas son ejemplos ilustrativos del contrato, no capturas de
 un entorno real. Las pruebas de descarga verifican respuesta binaria; las demás,

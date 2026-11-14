@@ -1,3 +1,6 @@
+import { configureTestJwt } from '../../auth-service/test/jwt-fixture';
+import { PasswordHasher } from '../../auth-service/src/infrastructure/security/password-hasher';
+import { AccessTokenService } from '../../auth-service/src/infrastructure/security/access-token.service';
 import { configureRoutes } from '../src/configure-routes';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -161,13 +164,25 @@ describe('Gateway → Auth (HTTP)', () => {
       .expect({ statusCode: 502, message: 'Auth Service no disponible' });
   });
 
-  it('alcanza los controladores de health y login mock de Auth por HTTP', async () => {
+  it('alcanza los controladores de health y login real de Auth por HTTP', async () => {
     await new Promise<void>((resolve) => upstream.close(() => resolve()));
+    const jwt = configureTestJwt();
+    const account = {
+      id: '00000000-0000-4000-8000-000000000441',
+      name: 'Estudiante',
+      email: 'estudiante@alu.uct.cl',
+      role: 'STUDENT',
+      active: true,
+      passwordHash: await new PasswordHasher().hash('demo'),
+    };
     const authModule = await Test.createTestingModule({
       imports: [PrismaModule, HealthModule, AuthModule],
     })
       .overrideProvider(PrismaService)
-      .useValue({ $queryRaw: jest.fn().mockResolvedValue([{ '?column?': 1 }]) })
+      .useValue({
+        $queryRaw: jest.fn().mockResolvedValue([{ '?column?': 1 }]),
+        user: { findUnique: jest.fn().mockResolvedValue(account) },
+      })
       .compile();
     const auth = authModule.createNestApplication();
     auth.setGlobalPrefix('api/v1');
@@ -189,12 +204,25 @@ describe('Gateway → Auth (HTTP)', () => {
       expect(login.body.accessToken).toEqual(expect.any(String));
       expect(login.body.user.email).toBe('estudiante@alu.uct.cl');
       expect(login.body.tokenType).toBe('Bearer');
+      expect(
+        auth.get(AccessTokenService).verify(login.body.accessToken).sub,
+      ).toBe(account.id);
+      await request(gateway.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({ email: account.email, password: 'incorrecta' })
+        .expect(401);
+      account.active = false;
+      await request(gateway.getHttpServer())
+        .post('/api/v1/auth/login')
+        .send({ email: account.email, password: 'demo' })
+        .expect(401);
       await request(gateway.getHttpServer())
         .post('/api/v1/auth/login')
         .send({ email: 'invalido', password: 'demo' })
         .expect(400);
     } finally {
       await auth.close();
+      jwt.cleanup();
     }
   });
 });
