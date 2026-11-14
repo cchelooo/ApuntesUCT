@@ -133,11 +133,10 @@ esas cuentas explícitamente antes de reintentar, sin eliminar datos automática
 No se reescriben las migraciones históricas. No aplicar sobre producción sin
 revisar primero las cuentas con el rol antiguo y posibles colisiones de correo.
 
-**Dependencia pendiente:** [S3-05 / #445](https://github.com/cchelooo/ApuntesUCT/issues/445)
-sigue abierta sin contrato acordado publicado. Este DTO reutiliza la identidad
-actual de login y es compatible con `RegisterResponseModel` de Mobile, pero debe
-validarse con los responsables de los servicios antes de cerrar #440. Esta tarea
-no acredita consenso ni implementa JWT o autorización entre servicios.
+**Contrato acordado:** S3-05 / #445 está consensuado en
+[el contrato de autorización](https://github.com/cchelooo/ApuntesUCT/blob/main/docs/api/contrato-autorizacion-entre-servicios.md).
+El registro público conserva el UUID que usa el claim `sub` del login, no emite
+tokens y crea únicamente cuentas `STUDENT` activas.
 
 ## Inicio de sesión real (#441)
 
@@ -175,9 +174,15 @@ rechaza firmas incorrectas, `alg=none`, expiración, emisor/audiencia incorrecto
 y claims de identidad inválidos. Los verificadores de otros servicios deben
 recibir solo la clave pública y los mismos valores de emisor/audiencia.
 
-**Dependencia pendiente:** S3-05 (#445, [PR #499](https://github.com/cchelooo/ApuntesUCT/pull/499))
-sigue propuesto. Esta implementación usa su propuesta de claims y algoritmo
-asimétrico; debe contrastarse con la versión aprobada antes de cerrar #441.
+**Alineación con S3-05:** el contrato consensuado de #445 recomienda firma
+asimétrica y define `sub = user.id`, `email`, `role`, `exp`, así como verificación
+de `iss` y `aud`. Esta implementación usa RS256 y conserva esos campos.
+Los permisos de `STUDENT`, `MODERATOR` y `ADMIN` (incluida la herencia de permisos
+de moderación en `ADMIN`) se implementan en la tarea de autorización.
+
+El verificador JWT está probado como componente; todavía no está conectado a
+rutas protegidas. Por tanto, estas pruebas no acreditan rechazo HTTP de tokens
+inválidos en los servicios de dominio.
 El Gateway conserva la propagación de `Authorization`. La adopción de validación
 en rutas protegidas de Material/Catalog/Search corresponde a sus tareas; este
 cambio no sustituye el contexto local de autor de Material. La desactivación

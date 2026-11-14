@@ -1,3 +1,4 @@
+import { AccessTokenService } from '../src/infrastructure/security/access-token.service';
 import { configureTestJwt } from './jwt-fixture';
 import { PrismaService } from '../src/infrastructure/prisma/prisma.service';
 import { randomUUID } from 'node:crypto';
@@ -23,6 +24,7 @@ describe('Auth Service - Endpoints HTTP (E2E)', () => {
     password: 'Password123!',
   };
 
+  let registeredUser: { id: string; email: string; role: string };
   let jwt: ReturnType<typeof configureTestJwt>;
   const userId = randomUUID();
   beforeAll(async () => {
@@ -44,13 +46,20 @@ describe('Auth Service - Endpoints HTTP (E2E)', () => {
 
     await app.init();
     mockUser.email = `auth-${userId}@uct.cl`;
-    await request(app.getHttpServer())
+    const registration = await request(app.getHttpServer())
       .post('/api/v1/auth/register')
       .send({
         name: 'Prueba login',
         ...mockUser,
       })
       .expect(201);
+    expect(Object.keys(registration.body)).toEqual(['user']);
+    registeredUser = registration.body.user;
+    expect(registeredUser).toMatchObject({
+      email: mockUser.email,
+      role: 'STUDENT',
+      active: true,
+    });
   });
 
   afterAll(async () => {
@@ -71,6 +80,14 @@ describe('Auth Service - Endpoints HTTP (E2E)', () => {
         .send(mockUser)
         .expect(HttpStatus.OK);
 
+      const claims = app
+        .get(AccessTokenService)
+        .verify(response.body.accessToken);
+      expect(claims.sub).toBe(registeredUser.id);
+      expect(claims.email).toBe(registeredUser.email);
+      expect(claims.role).toBe(registeredUser.role);
+      expect(response.body.user).toEqual(registeredUser);
+      expect(claims).not.toHaveProperty('mock');
       // Verificación acorde al DTO/Swagger actual (accessToken)
       expect(response.body).toHaveProperty('accessToken');
       expect(typeof response.body.accessToken).toBe('string');
@@ -86,12 +103,10 @@ describe('Auth Service - Endpoints HTTP (E2E)', () => {
         .post('/api/v1/auth/login')
         .send({ ...mockUser, password: 'incorrecta' })
         .expect(401);
-      await app
-        .get(PrismaService)
-        .user.update({
-          where: { email: mockUser.email },
-          data: { active: false },
-        });
+      await app.get(PrismaService).user.update({
+        where: { email: mockUser.email },
+        data: { active: false },
+      });
       await request(app.getHttpServer())
         .post('/api/v1/auth/login')
         .send(mockUser)
