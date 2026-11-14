@@ -256,6 +256,98 @@
         "tags": ["Auth"]
       }
     },
+    "/api/v1/auth/forgot-password": {
+      "post": {
+        "operationId": "AuthService_PasswordRecoveryController_request",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthService_ForgotPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Respuesta genérica independiente de la existencia de la cuenta; no incluye token."
+          },
+          "400": {
+            "description": "Correo con formato inválido."
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Solicitar recuperación de contraseña",
+        "tags": ["Auth"]
+      }
+    },
+    "/api/v1/auth/reset-password": {
+      "post": {
+        "operationId": "AuthService_PasswordRecoveryController_reset",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthService_ResetPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contraseña actualizada; tokens de recuperación y refresh revocados."
+          },
+          "400": {
+            "description": "Datos inválidos o token inválido, vencido o utilizado."
+          },
+          "502": {
+            "description": "Gateway devuelve { statusCode: 502, message: '<servicio> Service no disponible' } si el destino no responde.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["statusCode", "message"],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "enum": [502]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Restablecer contraseña con token temporal de un solo uso",
+        "tags": ["Auth"]
+      }
+    },
     "/api/v1/catalog": {
       "get": {
         "description": "Devuelve la jerarquía base completa del catálogo (Universidades -> Carreras -> Asignaturas) para ser consumida de forma inicial por el frontend.",
@@ -1928,6 +2020,35 @@
           }
         },
         "required": ["user"]
+      },
+      "AuthService_ForgotPasswordDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "camila@alu.uct.cl",
+            "maxLength": 254
+          }
+        },
+        "required": ["email"]
+      },
+      "AuthService_ResetPasswordDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "writeOnly": true,
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "password": {
+            "type": "string",
+            "writeOnly": true,
+            "minLength": 8,
+            "maxLength": 128
+          }
+        },
+        "required": ["token", "password"]
       },
       "CatalogService_HealthResponse": {
         "type": "object",
