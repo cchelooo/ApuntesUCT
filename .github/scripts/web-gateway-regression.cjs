@@ -8,7 +8,7 @@ const os = require("node:os");
 const net = require("node:net");
 const assert = require("node:assert/strict");
 const { spawn, execFileSync } = require("node:child_process");
-const { randomUUID, createHash } = require("node:crypto");
+const { randomUUID, createHash, generateKeyPairSync } = require("node:crypto");
 const root = path.resolve(__dirname, "../..");
 const backend = path.join(root, "backend");
 const { chromium } = require(process.env.QA_PLAYWRIGHT_MODULE || "playwright");
@@ -48,7 +48,8 @@ const report = {
   pageErrors: [],
   cleanup: [],
 };
-let browser, page, currentFlow;
+const { verify } = require(path.join(backend, "node_modules/jsonwebtoken"));
+let browser, page, currentFlow, keyDirectory;
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 function docker(...args) {
   return execFileSync("docker", args, {
@@ -109,6 +110,20 @@ async function flow(name, fn) {
 }
 async function main() {
   console.log(`Evidencia: ${out}`);
+  // Keep private keys outside both the checkout and uploaded evidence.
+  keyDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "qa-auth-key-"));
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+  });
+  const keyPath = path.join(keyDirectory, "private.pem");
+  fs.writeFileSync(
+    keyPath,
+    privateKey.export({ type: "pkcs8", format: "pem" }),
+    { mode: 0o600 },
+  );
+  const issuer = "qa-auth",
+    audience = "qa-api";
+  const credentials = { email: `${runId}@alu.uct.cl`, password: randomUUID() };
   const pgName = `${runId}-postgres`,
     minioName = `${runId}-minio`;
   for (const [name, image, args] of [
@@ -246,6 +261,12 @@ async function main() {
       PORT: String(ports[service]),
       DATABASE_URL: db(service),
     };
+    if (service === "auth")
+      Object.assign(env, {
+        JWT_PRIVATE_KEY_PATH: keyPath,
+        JWT_ISSUER: issuer,
+        JWT_AUDIENCE: audience,
+      });
     if (service === "material")
       Object.assign(env, {
         CATALOG_SERVICE_URL: `${origin("catalog")}/api/v1`,
@@ -271,6 +292,24 @@ async function main() {
       `${origin(service)}${service === "catalog" ? "/health" : "/api/v1/health"}`,
     );
   }
+  const registration = await fetch(`${gateway}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "Estudiante QA", ...credentials }),
+  });
+  assert.equal(registration.status, 201);
+  const registered = await registration.json();
+  assert.deepEqual(Object.keys(registered), ["user"]);
+  assert.deepEqual(Object.keys(registered.user).sort(), [
+    "active",
+    "email",
+    "id",
+    "name",
+    "role",
+  ]);
+  assert.equal(registered.user.role, "STUDENT");
+  assert.equal(registered.user.active, true);
+  report.fixture.auth = { userId: registered.user.id, registrationStatus: 201 };
   start(
     "web",
     process.execPath,
@@ -339,17 +378,28 @@ async function main() {
   });
   await flow("login", async () => {
     await page.goto(`${web}/login`);
-    await page.getByLabel("Correo electrónico").fill("qa268@example.test");
-    await page.getByLabel("Contraseña", { exact: true }).fill("qa-disposable");
+    await page.getByLabel("Correo electrónico").fill(credentials.email);
+    await page
+      .getByLabel("Contraseña", { exact: true })
+      .fill(credentials.password);
     const res = apiResponse("/auth/login", "POST");
     await page.getByRole("button", { name: "Ingresar", exact: true }).click();
     const r = await res;
     assert.equal(r.status(), 200);
     const body = await r.json();
-    assert.equal(
-      JSON.parse(Buffer.from(body.accessToken.split(".")[1], "base64url")).mock,
-      true,
-    );
+    const claims = verify(body.accessToken, publicKey, {
+      algorithms: ["RS256"],
+      issuer,
+      audience,
+    });
+    assert.equal(claims.sub, registered.user.id);
+    assert.equal(claims.email, registered.user.email);
+    assert.equal(claims.role, registered.user.role);
+    assert.equal(claims.exp - claims.iat, body.expiresIn);
+    assert.equal(body.expiresIn, 3600);
+    assert.equal(body.tokenType, "Bearer");
+    assert.deepEqual(body.user, registered.user);
+    assert.equal(Object.hasOwn(claims, "mock"), false);
     await page
       .getByText("Inicio de sesión exitoso.", { exact: true })
       .waitFor();
@@ -357,7 +407,12 @@ async function main() {
       await page.evaluate(() => localStorage.length + sessionStorage.length),
       0,
     );
-    return { http: 200, mock: true, sessionPersisted: false };
+    return {
+      http: 200,
+      signatureVerified: true,
+      identityMatchesRegistration: true,
+      sessionPersisted: false,
+    };
   });
   const title = `Regresion268 ${runId}`;
   report.fixture.title = title;
@@ -642,6 +697,7 @@ main()
         process.exitCode = 1;
       }
     }
+    if (keyDirectory) fs.rmSync(keyDirectory, { recursive: true, force: true });
     report.finishedAt = new Date().toISOString();
     fs.writeFileSync(
       path.join(out, "report.json"),
