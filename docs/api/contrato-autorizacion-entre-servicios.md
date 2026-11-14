@@ -1,6 +1,6 @@
 # Contrato de autorización entre servicios — ApuntesUCT (#445)
 
-**Estado:** Pendiente de consenso. Las secciones marcadas como “propuestas” requieren acuerdo explícito entre los equipos; al cerrar el consenso se actualizará el estado a “Consensuado”.
+**Estado:** **Consensuado** entre los equipos de registro (#440) y contrato de autorización (#445). Los permisos por rol se implementarán en la tarea de autorización; este documento fija el acuerdo.
 
 **Base:** `origin/main` (`be5d9ff`)  
 **Alcance:** API Gateway, Auth Service, Catalog Service, Material Service, Search Service y futuros servicios internos.
@@ -55,7 +55,7 @@ Llamadas **servicio → servicio** internas (si se incorporan) deben usar el mis
 
 | Campo | Regla |
 | --- | --- |
-| `name` | 3–100 caracteres. |
+| `name` | Se recortan los espacios exteriores **antes** de validar; luego debe tener 3–100 caracteres. |
 | `email` | Hasta 254 caracteres; se normaliza a minúsculas y se recortan espacios exteriores. Debe pertenecer **exclusivamente** a `@uct.cl` o `@alu.uct.cl`. |
 | `password` | 8–128 caracteres; no puede estar formada solo por espacios; **no modificar** (sin `trim` ni transformaciones). |
 
@@ -86,20 +86,28 @@ No devuelve contraseña, hash ni tokens. El registro asigna **siempre** `role: S
 
 ### 4.5 Roles
 
-| Rol | Responsabilidades propuestas |
+Se mantiene la separación `STUDENT`, `MODERATOR` y `ADMIN`. **`ADMIN` incluye todos los permisos de `MODERATOR`**, además de sus propias responsabilidades. La jerarquía permite delegar la revisión de contenido sin dar acceso a administrar cuentas o catálogo.
+
+| Rol | Responsabilidades |
 | --- | --- |
 | `STUDENT` | Subir material, crear versiones propias, buscar/descargar, calificar y reportar según contrato. |
-| `MODERATOR` | Revisar/verificar/rechazar material, gestionar reportes y moderar contenido. |
-| `ADMIN` | Gestionar usuarios/roles y configuración del sistema; **a decidir** si incluye todos los permisos de moderación. |
+| `MODERATOR` | Revisar y resolver reportes; aprobar/rechazar contenido; marcarlo como verificado; usar herramientas de análisis de calidad. |
+| `ADMIN` | **Todo lo anterior (hereda `MODERATOR`)**, además de suspender cuentas, administrar catálogo y gestionar roles. |
 
-**Pendiente de consenso:** responsabilidades exactas de `STUDENT`, `MODERATOR` y `ADMIN`, y si `ADMIN` incluye todos los permisos de `MODERATOR`.
+**Casos de uso por rol:**
+
+- **STUDENT:** subir/versionar material propio, buscar y descargar, calificar y reportar.
+- **MODERATOR:** bandeja de reportes, aprobación/rechazo de material, verificación y análisis de calidad.
+- **ADMIN:** todos los casos de `MODERATOR` + suspensión de cuentas, administración de catálogo y gestión de roles.
+
+El registro público sigue creando **únicamente** usuarios `STUDENT`; la asignación de `MODERATOR`/`ADMIN` y la aplicación efectiva de permisos corresponden a la tarea de autorización.
 
 ### 4.6 Identidad y transición
 
 - El futuro claim `sub` del JWT debe usar **el mismo UUID** que `user.id`.
 - El login real y la emisión de JWT quedan fuera de #445, en **#441**.
 
-## 5. Contrato objetivo propuesto (pendiente de consenso)
+## 5. Contrato objetivo consensuado
 
 ### 5.1 Transporte de credenciales (cliente → Gateway → servicio)
 
@@ -156,23 +164,24 @@ Formato de error: mantener compatibilidad con Nest (`{ statusCode, message, erro
   - documentarse como parte formal del contrato.
 - Hasta que exista verificación centralizada, los servicios que requieren identidad fuerte deben declararlo y usar el mecanismo transitorio aprobado (hoy, contexto local de desarrollo en Material) sin exponer bypass en producción.
 
-## 6. Plan de adopción (para consenso/seguimiento)
+## 6. Plan de adopción (seguimiento)
 
-1. **Consensuar** este documento (alcance, claims, errores, roles, transición mock→JWT real).
+1. **Contrato consensuado** (alcance, claims, errores, roles, transición mock→JWT real).
 2. **Gateway:** confirmar/restringir propagación de `Authorization`; definir si valida JWT o delega validación a servicios.
 3. **Auth:** registrar según #440; evolucionar de mock a JWT firmado y claves/configuración (`iss`, `aud`, expiración, rotación si aplica) en #441.
 4. **Material (y otros servicios con autor):** reemplazar `MaterialAuthorProvider` local por resolución desde identidad verificada (`sub`) manteniendo compatibilidad controlada en desarrollo.
-5. **Pruebas/Docs:** actualizar OpenAPI, Postman e integración (Web/Mobile) con requisitos `401/403/409` y flujo de token real.
-6. **Service-to-service:** definir credenciales internas solo cuando exista un caso real.
+5. **Autorización por roles:** implementar los permisos acordados de `STUDENT`, `MODERATOR` y `ADMIN` (incluyendo la herencia de `MODERATOR` en `ADMIN`) en la tarea de autorización.
+6. **Pruebas/Docs:** actualizar OpenAPI, Postman e integración (Web/Mobile) con requisitos `401/403/409` y flujo de token real.
+7. **Service-to-service:** definir credenciales internas solo cuando exista un caso real.
 
-## 7. Criterios de aceptación sugeridos para #445
+## 7. Criterios de aceptación de #445
 
-- [ ] Contrato escrito, versionado en el repositorio y revisado por los equipos involucrados (INT2/INT4/servicios).
-- [ ] Registro público (`POST /api/v1/auth/register`) coordinado: validaciones, `201`, errores `400/409`, rol `STUDENT`, `active: true`, descarte de campos extra.
-- [ ] Responsabilidades de `STUDENT`, `MODERATOR` y `ADMIN` definidas; decisión explícita sobre si `ADMIN` incluye todos los permisos de moderación.
-- [ ] Define propagación de `Authorization` Gateway→servicios y claims mínimos (`sub` = `user.id`, `role`, `exp`; transición `mock`).
-- [ ] Define semántica `401` vs `403` (y `400/409/502/503` donde aplique) y tratamiento transitorio del login mock/contexto local de Material.
-- [ ] Identifica impactos y siguientes tareas de implementación (Gateway/Auth/Material/docs; login/JWT en #441).
+- [x] Contrato escrito, versionado en el repositorio y revisado por los equipos involucrados (INT2/INT4/servicios).
+- [x] Registro público (`POST /api/v1/auth/register`) coordinado: validaciones (incluido `name` recortado antes de 3–100), `201`, errores `400/409`, rol `STUDENT`, `active: true`, descarte de campos extra.
+- [x] Responsabilidades de `STUDENT`, `MODERATOR` y `ADMIN` definidas; **`ADMIN` incluye todos los permisos de `MODERATOR`**.
+- [x] Define propagación de `Authorization` Gateway→servicios y claims mínimos (`sub` = `user.id`, `role`, `exp`; transición `mock`).
+- [x] Define semántica `401` vs `403` (y `400/409/502/503` donde aplique) y tratamiento transitorio del login mock/contexto local de Material.
+- [x] Identifica impactos y siguientes tareas de implementación (Gateway/Auth/Material/autorización por roles/docs; login/JWT en #441).
 
 ## 8. Referencias
 
