@@ -23,6 +23,56 @@ async function request(base, path, status = 200, options) {
   return response;
 }
 
+// Tokens travel over stdin, never command arguments or logs.
+async function checkAuth(base) {
+  const credentials = { email: `smoke-${randomUUID()}@alu.uct.cl`, password: randomUUID() };
+  const registered = await (await request(base, '/api/v1/auth/register', 201, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'Kubero smoke', ...credentials }),
+  })).json();
+  try {
+    assert.deepEqual(Object.keys(registered), ['user']);
+    assert.deepEqual(Object.keys(registered.user).sort(), ['active', 'email', 'id', 'name', 'role']);
+    assert.equal(registered.user.role, 'STUDENT');
+    assert.equal(registered.user.active, true);
+    const login = await (await request(base, '/api/v1/auth/login', 200, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials),
+    })).json();
+    assert.deepEqual(login.user, registered.user);
+    assert.equal(login.tokenType, 'Bearer');
+    assert.equal(login.expiresIn, 3600);
+    execFileSync('docker', [...compose, 'exec', '-T', 'auth', 'node', '-e', `
+      const assert = require('node:assert/strict');
+      const { readFileSync } = require('node:fs');
+      const { createPublicKey } = require('node:crypto');
+      const { verify } = require('jsonwebtoken');
+      const input = JSON.parse(readFileSync(0, 'utf8'));
+      const key = createPublicKey(readFileSync(process.env.JWT_PRIVATE_KEY_PATH));
+      const claims = verify(input.token, key, {
+        algorithms: ['RS256'], issuer: process.env.JWT_ISSUER, audience: process.env.JWT_AUDIENCE,
+      });
+      assert.equal(claims.sub, input.user.id);
+      assert.equal(claims.email, input.user.email);
+      assert.equal(claims.role, input.user.role);
+      assert.equal(claims.exp - claims.iat, 3600);
+      assert.equal(Object.hasOwn(claims, 'mock'), false);
+    `], { input: JSON.stringify({ token: login.accessToken, user: registered.user }), stdio: ['pipe', 'pipe', 'pipe'], timeout: 30000 });
+    await request(base, '/api/v1/auth/login', 401, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...credentials, password: 'incorrecta' }),
+    });
+  } finally {
+    execFileSync('docker', [...compose, 'exec', '-T', 'auth', 'node', '-e', `
+      const { PrismaClient } = require('.prisma/auth-client');
+      const prisma = new PrismaClient();
+      const email = require('node:fs').readFileSync(0, 'utf8');
+      prisma.user.deleteMany({ where: { email } }).finally(() => prisma.$disconnect())
+        .catch(error => { console.error(error.message); process.exitCode = 1; });
+    `], { input: credentials.email, stdio: ['pipe', 'pipe', 'pipe'], timeout: 30000 });
+  }
+}
+
 // Fixtures are written only to this Compose project's Material database and bucket.
 // The public creation endpoint remains protected; this does not simulate Auth.
 const id = randomUUID();
@@ -86,11 +136,7 @@ for (const base of [gateway, web]) {
   await request(base, '/api/v1/auth/health');
   const catalog = await (await request(base, '/api/v1/catalog')).json();
   assert.ok(Array.isArray(catalog));
-  const login = await (await request(base, '/api/v1/auth/login', 200, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'smoke@alu.uct.cl', password: 'smoke' }),
-  })).json();
-  assert.equal(typeof login.accessToken, 'string');
+  await checkAuth(base);
   const form = new FormData();
   form.set('title', 'Unauthorized smoke');
   form.set('year', '2026');
@@ -124,7 +170,7 @@ try {
     assert.match(download.headers.get('content-disposition'), /kubero-smoke.pdf/);
     assert.equal(await download.text(), content, 'Download streams the actual MinIO object');
   }
-  console.log('PASS: Web routes/assets, Gateway, Auth, Catalog, list/search/detail/download after PostgreSQL and MinIO recreation, production creation guard.');
+  console.log('PASS: Web routes/assets, Gateway, real registration/login and RS256 verification, Catalog, list/search/detail/download after PostgreSQL and MinIO recreation, production creation guard.');
 } finally {
   materialFixture('cleanup');
 }
