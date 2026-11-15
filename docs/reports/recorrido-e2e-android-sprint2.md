@@ -1,235 +1,186 @@
 # Reporte de Recorrido End-to-End Manual en Android — Sprint 2
 
-- **Fecha de ejecución**: 2 de noviembre de 2026
+- **Fecha de actualización**: 15 de noviembre de 2026
 - **Responsable**: Nelson Quiñinao Isla (Equipo INT4 - Mobile)
 - **Tarea**: [#300 Ejecutar recorrido end-to-end manual en Android](https://github.com/cchelooo/ApuntesUCT/issues/300)
 - **Sprint**: Sprint 2 — Semana 4 (Cierre de Integración)
-- **Referencia Backend**: [Issue #263 - Recorrido Gateway → Material/Search/Catalog](https://github.com/cchelooo/ApuntesUCT/issues/263)
+- **Referencias**:
+  - [Issue #263 — Recorrido Gateway → Material/Search/Catalog](https://github.com/cchelooo/ApuntesUCT/issues/263)
+  - [Validación integrada Android/iOS (`validacion-mobile-2026-11-04.md`)](validacion-mobile-2026-11-04.md)
 
 ---
 
-## 1. Entorno de Ejecución y Versión de la Aplicación
+## 1. Entorno de Ejecución y Versión Real de la Aplicación
 
-| Parámetro | Valor Registrado |
+| Parámetro | Valor Real Registrado |
 |---|---|
-| **Aplicación** | ApuntesUCT Mobile (`apuntesuct_mobile`) |
-| **Versión / Build** | `0.2.0+2` (Sprint 2 Cierre) |
-| **Entorno de Prueba** | Emulador Android Oficial (Android Studio) |
-| **Dispositivo Simulado** | Google Pixel 7 |
-| **Sistema Operativo** | Android 14.0 (API Level 34, `UpsideDownCake`) |
-| **Arquitectura** | `x86_64` |
-| **Framework / SDK** | Flutter 3.24.x / Dart 3.5.x |
-| **Punto de Entrada HTTP** | `http://10.0.2.2:3000/api/v1` (Resuelto por `ApiConfig.gatewayBaseUrl`) |
-| **Regla de Aislamiento** | **Ninguna llamada se realizó a microservicios directos** (3001, 3002, 3003, 3005). Todo el tráfico fue enrutado exclusivamente por el API Gateway (puerto 3000). |
+| **Aplicación** | ApuntesUCT Mobile (`apuntesuct_mobile`, `mobile/pubspec.yaml`) |
+| **Versión en `pubspec.yaml`** | `1.0.0+1` |
+| **Framework / SDK** | Flutter `3.47.2` (channel stable) / Dart `3.13.2` (`sdk: ^3.13.2`) |
+| **DevTools** | `2.60.0` |
+| **Entorno Android** | Android Emulator (`Medium_Phone` / Pixel, host resuelto vía `10.0.2.2`) |
+| **Punto de Entrada HTTP** | `http://10.0.2.2:3000/api/v1` por defecto en `ApiConfig.gatewayBaseUrl` (o `http://10.0.2.2:<PORT>/api/v1` mediante `--dart-define=API_GATEWAY_URL=...`) |
+| **Regla de Aislamiento** | **Ninguna llamada de Mobile se realiza a puertos internos de microservicios** (`3001`, `3002`, `3003`, `3005`). Todo el tráfico pasa por el API Gateway. |
 
 ---
 
-## 2. Conjunto de Datos Controlados Utilizados
+## 2. Reproducibilidad y Evidencia Verificable
 
-Para garantizar la reproducibilidad completa del recorrido manual y contrastarlo con el E2E de Backend (#263), se utilizaron las siguientes identidades y fixtures controlados:
+El recorrido es reproducible mediante dos mecanismos complementarios presentes en el repositorio:
 
-- **Usuario de prueba (Estudiante)**:
-  - Correo institucional: `estudiante@alu.uct.cl`
-  - Contraseña de prueba: `PasswordSegura123!`
-  - Rol esperado: `STUDENT`
-- **Contexto académico controlado (Catalog)**:
-  - Universidad: *Universidad Católica de Temuco* (`d1a6a012-3d37-4099-9384-fd98732bb151`)
-  - Carrera: *Ingeniería Civil en Informática* (`2eb00594-e77f-492c-aae6-68179ec5a6c5`)
-  - Asignatura: *Cálculo I* (`332fa480-be97-4f23-8d85-ef4cac95c37e`)
-  - Docente: *Profesor de Prueba* (`64f40738-e1a1-420c-976b-bf0c55693628`)
-- **Archivos binarios de prueba**:
-  - `guia_calculo_e2e.pdf` (MIME: `application/pdf`, peso: 1.2 MB — archivo válido)
-  - `guia_calculo_v2.pdf` (MIME: `application/pdf`, peso: 1.5 MB — nueva versión válida)
-  - `archivo_excedido_16mb.pdf` (MIME: `application/pdf`, peso: 16.1 MB — caso borde de rechazo)
-  - `script_malicioso.exe` (MIME: `application/octet-stream` — caso formato inválido)
+### 2.1. Ejecución en Emulador Android contra Gateway y Servicios Reales
+1. Levantar la pila local (PostgreSQL, MinIO, Auth, Catalog, Material, Search y API Gateway) o ejecutar el arnés reproducible:
+   ```bash
+   cd mobile
+   flutter pub get
+   flutter analyze
+   ```
+2. Para ejecutar el recorrido instrumentado en Android Emulator con capturas y trazas HTTP reales (documentado en `docs/reports/validacion-mobile-2026-11-04.md`):
+   - Evidencia gráfica Android generada en el repositorio:
+     - Arranque APK debug: [`docs/reports/evidence/mobile-2026-11-04/arranque-android.png`](evidence/mobile-2026-11-04/arranque-android.png)
+     - Login: [`docs/reports/evidence/mobile-2026-11-04/android/login.png`](evidence/mobile-2026-11-04/android/login.png)
+     - Catálogo: [`docs/reports/evidence/mobile-2026-11-04/android/catalogo.png`](evidence/mobile-2026-11-04/android/catalogo.png)
+     - Listado de materiales: [`docs/reports/evidence/mobile-2026-11-04/android/listado.png`](evidence/mobile-2026-11-04/android/listado.png)
+     - Búsqueda: [`docs/reports/evidence/mobile-2026-11-04/android/busqueda.png`](evidence/mobile-2026-11-04/android/busqueda.png)
+     - Detalle de material: [`docs/reports/evidence/mobile-2026-11-04/android/detalle.png`](evidence/mobile-2026-11-04/android/detalle.png)
+     - Descarga guardada: [`docs/reports/evidence/mobile-2026-11-04/android/descarga.png`](evidence/mobile-2026-11-04/android/descarga.png)
+     - Registro estructurado de peticiones HTTP y hashes: [`docs/reports/evidence/mobile-2026-11-04/android/report.json`](evidence/mobile-2026-11-04/android/report.json)
+
+### 2.2. Verificación Reproducible de Flujos de Subida, Versionado, Filtros y Errores
+Los pasos de formulario de subida, creación de nueva versión, validación de archivos y manejo de errores HTTP se reproducen de forma determinista con:
+```bash
+cd mobile
+flutter test \
+  test/features/auth/presentation/login_dio_test.dart \
+  test/features/catalog/presentation/academic_filter_sheet_test.dart \
+  test/features/materials/presentation/material_upload_screen_test.dart \
+  test/features/materials/presentation/material_upload_visible_behavior_test.dart \
+  test/features/materials/presentation/material_detail_dio_test.dart \
+  test/features/materials/presentation/material_download_test.dart \
+  test/features/materials/presentation/material_version_upload_sheet_test.dart \
+  test/features/materials/presentation/material_version_visible_behavior_test.dart
+```
 
 ---
 
-## 3. Ejecución del Recorrido Principal (Flujo Mínimo Paso a Paso)
+## 3. Recorrido Paso a Paso y Comportamiento Real
 
 ### Paso 1: Iniciar sesión mediante Gateway
-- **Acción en UI**: Apertura de la app en la pantalla de bienvenida / login (`LoginScreen`). Se ingresa el correo `estudiante@alu.uct.cl` y la contraseña de prueba. Se presiona el botón *"Iniciar Sesión"*.
-- **Endpoint consumido**: `POST http://10.0.2.2:3000/api/v1/auth/login`
-- **Cabeceras enviadas**: `Content-Type: application/json`
-- **Cuerpo enviado**:
-  ```json
-  {
-    "email": "estudiante@alu.uct.cl",
-    "password": "PasswordSegura123!"
-  }
-  ```
-- **Respuesta del Gateway**: `200 OK` con payload JSON que incluye `accessToken` (token mock JWT con claim `mock: true`) y objeto `user`.
-- **Comportamiento en Mobile**: `DioAuthRepository` guarda las credenciales en el estado seguro de Riverpod y el enrutador `GoRouter` transiciona fluidamente hacia la ruta principal `/home` (`HomeScreen`).
-- **Resultado**: ✅ **Aprobado**.
+- **Acción en UI**: En `LoginScreen` (`/login`), se ingresa un correo institucional válido (`estudiante@uct.cl` / `estudiante@alu.uct.cl`) y contraseña no vacía, y se pulsa *"Iniciar Sesión"*.
+- **Solicitud HTTP**: `POST /api/v1/auth/login` con cuerpo `{"email": "...", "password": "..."}`.
+- **Respuesta del Gateway**: `200 OK` con `accessToken` (JWT mock con claim `mock: true` en el estado del cierre de Sprint 2) y objeto `user`.
+- **Comportamiento real en Mobile**:
+  - `DioAuthRepository` valida que la respuesta contenga `accessToken` no vacío y el mapa `user`.
+  - `AuthStateNotifier` almacena el `UserModel` en memoria dentro de Riverpod (actualmente no persiste el token en almacenamiento seguro del dispositivo).
+  - La aplicación navega a la ruta `/` (`HomeScreen`).
+- **Evidencia**: [`android/login.png`](evidence/mobile-2026-11-04/android/login.png), `mobile/test/features/auth/presentation/login_dio_test.dart`.
 
 ---
 
-### Paso 2: Cargar catálogo académico
-- **Acción en UI**: Desde la pantalla principal o el modal de filtros (`AcademicFilterSheet`), se despliegan los selectores de jerarquía académica.
-- **Endpoints consumidos**:
-  - `GET http://10.0.2.2:3000/api/v1/catalog/universities`
-  - `GET http://10.0.2.2:3000/api/v1/catalog/careers?universityId=d1a6a012-3d37-4099-9384-fd98732bb151`
-  - `GET http://10.0.2.2:3000/api/v1/catalog/subjects?careerId=2eb00594-e77f-492c-aae6-68179ec5a6c5`
-  - `GET http://10.0.2.2:3000/api/v1/catalog/professors?subjectId=332fa480-be97-4f23-8d85-ef4cac95c37e`
-- **Resultado en Mobile**:
-  - Las universidades se listan ordenadas alfabéticamente.
-  - Al seleccionar *Universidad Católica de Temuco*, se habilitan las carreras asociadas.
-  - Al seleccionar *Ingeniería Civil en Informática*, se habilitan las asignaturas hijas.
-  - Al seleccionar *Cálculo I*, se listan sus profesores.
-  - Si se cambia la universidad seleccionada a *UFRO*, las selecciones hijas se limpian y deshabilitan automáticamente, evitando inconsistencias.
-- **Resultado**: ✅ **Aprobado**.
+### Paso 2: Cargar catálogo y selectores académicos
+- **Acción en UI**:
+  - Navegación a `/catalog` (`CatalogScreen`) para consultar la jerarquía general (`GET /api/v1/catalog`).
+  - Apertura de selectores académicos en `MaterialUploadScreen` o `AcademicFilterSheet`.
+- **Solicitudes HTTP consumidas por `DioCatalogSelectorRepository` / `GatewayAcademicHierarchyRepository`**:
+  - `GET /api/v1/catalog/universities`
+  - `GET /api/v1/catalog/careers?universityId=<uuid>`
+  - `GET /api/v1/catalog/subjects?careerId=<uuid>`
+  - `GET /api/v1/catalog/professors?subjectId=<uuid>`
+- **Comportamiento real en Mobile**:
+  - Los niveles hijos permanecen deshabilitados hasta seleccionar el nivel padre.
+  - Al cambiar un nivel padre (universidad, carrera o asignatura), las selecciones dependientes inferiores se limpian automáticamente y las peticiones obsoletas en vuelo se descartan para evitar condiciones de carrera.
+- **Evidencia**: [`android/catalogo.png`](evidence/mobile-2026-11-04/android/catalogo.png), `mobile/test/features/catalog/presentation/academic_filter_sheet_test.dart`.
 
 ---
 
 ### Paso 3: Seleccionar archivo y completar clasificación
-- **Acción en UI**: Se navega a la pantalla de subida de material (`MaterialUploadScreen`, ruta `/materials/upload`).
-- **Campos completados**:
-  - Título: `"Guía Práctica Cálculo I - Límites y Derivadas"`
-  - Descripción: `"Ejercicios resueltos paso a paso para el certamen 1."`
-  - Selector de archivo: Se elige `guia_calculo_e2e.pdf` (1.2 MB).
-  - Año académico: `2026` (selector / campo numérico de 4 dígitos).
-  - Tipo de material: `DOCUMENT` (Documento).
-  - Jerarquía: UCT -> Informática -> Cálculo I -> Docente de prueba.
-- **Validaciones de cliente observadas**:
-  - Indicador visual del peso formateado: `"1.2 MB"`.
-  - Icono de previsualización correspondiente al formato PDF.
-  - Botón de envío habilitado al cumplir todas las reglas contractuales.
-- **Resultado**: ✅ **Aprobado**.
+- **Acción en UI**: En `MaterialUploadScreen` (`/materials/upload`), se completan:
+  - Título (`title`) y descripción opcional (`description`).
+  - Tipo de material (`type`: `DOCUMENT`, `PRESENTATION`, `EXAM`, `SUMMARY` o `LINK`).
+  - Año académico (`academicYear`, entero de 4 dígitos entre 1900 y 2100).
+  - Clasificación jerárquica: Universidad, Carrera, Asignatura y Profesor opcional.
+  - Archivo local mediante selector (`pickMaterialFile`) para tipos con archivo, o URL (`externalUrl`) cuando el tipo es `LINK`.
+- **Validaciones locales ejecutadas (`MaterialUploadValidation`)**:
+  - Verifica extensión permitida (`.pdf`, `.doc`, `.docx`, `.ppt`, `.pptx`) y tamaño máximo de **15 MB** (`15 * 1024 * 1024` bytes) antes de enviar.
+  - Muestra nombre de archivo y tamaño formateado (`MaterialUploadValidation.formatBytes`).
+- **Evidencia**: `mobile/test/features/materials/presentation/material_upload_classification_test.dart`, `mobile/test/features/materials/presentation/material_upload_screen_test.dart`.
 
 ---
 
 ### Paso 4: Subir material y confirmar `PENDING_REVIEW`
-- **Acción en UI**: Se presiona el botón *"Publicar Material"*.
-- **Endpoint consumido**: `POST http://10.0.2.2:3000/api/v1/materials`
-- **Cabeceras enviadas**: `Content-Type: multipart/form-data`, `Authorization: Bearer <accessToken>`
-- **Campos multipart**:
-  - `title`: `"Guía Práctica Cálculo I - Límites y Derivadas"`
-  - `description`: `"Ejercicios resueltos paso a paso para el certamen 1."`
-  - `year`: `"2026"`
-  - `type`: `"DOCUMENT"`
-  - `universityId`: `"d1a6a012-3d37-4099-9384-fd98732bb151"`
-  - `careerId`: `"2eb00594-e77f-492c-aae6-68179ec5a6c5"`
-  - `subjectId`: `"332fa480-be97-4f23-8d85-ef4cac95c37e"`
-  - `professorId`: `"64f40738-e1a1-420c-976b-bf0c55693628"`
-  - `file`: Binario adjunto `guia_calculo_e2e.pdf`
-- **Respuesta del Gateway**: `201 Created` con payload:
-  ```json
-  {
-    "status": "success",
-    "isSimulatedResponse": false,
-    "message": "Material registrado en revisión",
-    "data": {
-      "id": "c9b87b7f-7b56-4a7b-b260-6510a25513cb",
-      "title": "Guía Práctica Cálculo I - Límites y Derivadas",
-      "year": "2026",
-      "type": "DOCUMENT",
-      "status": "PENDING_REVIEW",
-      "fileSize": 1258291,
-      "mimeType": "application/pdf"
-    }
-  }
-  ```
-- **Comportamiento en Mobile**: Diálogo de confirmación con estado **`PENDING_REVIEW`** visible al usuario, formulario reseteado y opción para volver al inicio o ver el listado.
-- **Resultado**: ✅ **Aprobado**.
+- **Acción en UI**: Se pulsa el botón de envío en `MaterialUploadScreen`.
+- **Solicitud HTTP**: `POST /api/v1/materials` (`multipart/form-data` para archivo binario o JSON/form según `DioMaterialRepository.uploadMaterial`).
+- **Respuesta del Gateway**: `201 Created` devolviendo el material creado con `status: "PENDING_REVIEW"`.
+- **Comportamiento real en Mobile**:
+  - El botón de subida se deshabilita mientras `isUploading` es `true` e informa el progreso.
+  - Al recibir `201`, la pantalla muestra el estado del material recién creado incluyendo su insignia `Pendiente de revisión` (`PENDING_REVIEW`) sin asumir publicación inmediata.
+- **Evidencia**: `mobile/test/features/materials/presentation/material_upload_visible_behavior_test.dart`, `mobile/test/integration/material_upload_live_test.dart`.
 
 ---
 
 ### Paso 5: Buscar y filtrar un material publicado de prueba
-- **Acción en UI**: Se abre la pantalla de descubrimiento (`MaterialDiscoveryScreen`, ruta `/materials`).
-- **Pruebas de búsqueda y filtros realizadas**:
-  1. **Búsqueda por texto**: Se escribe `"Cálculo"` en la barra de búsqueda. Se activa el debounce de 300 ms y se consulta al Gateway.
-  2. **Filtro por Año y Tipo**: Se abre el modal `AcademicFilterSheet`, se selecciona Año `2026` y Tipo `DOCUMENT`. Se presiona *"Aplicar Filtros"*.
-- **Endpoint consumido**:
-  `GET http://10.0.2.2:3000/api/v1/search?q=C%C3%A1lculo&year=2026&type=DOCUMENT&page=1&pageSize=5`
-- **Respuesta del Gateway**: `200 OK` con lista de materiales coincidentes, reflejando el material publicado.
-- **Visualización en UI**:
-  - Chips interactivos visibles en la parte superior: `[ Año: 2026 ✕ ]` `[ Tipo: DOCUMENT ✕ ]` `[ Limpiar todo ]`.
-  - Tarjetas de resultados `MaterialSummaryCard` mostrando título, asignatura, año académico y autor.
-- **Resultado**: ✅ **Aprobado**.
+- **Acción en UI**: En `MaterialDiscoveryScreen` (`/materials`), se consulta el listado inicial (`GET /api/v1/materials?page=1&pageSize=5`) y se ejecuta una búsqueda con texto o filtros.
+- **Solicitud HTTP**:
+  - `GET /api/v1/search?q=<texto>&universityId=...&careerId=...&subjectId=...&professorId=...&year=...&type=...&page=1&pageSize=10`
+- **Comportamiento real en Mobile**:
+  - La barra de búsqueda aplica debounce de 300 ms antes de invocar a `DioSearchRepository`.
+  - Los filtros activos se muestran como `InputChip` individuales junto con la acción *"Limpiar filtros"*.
+  - Los resultados se renderizan en tarjetas `MaterialSummaryCard`.
+- **Evidencia**: [`android/listado.png`](evidence/mobile-2026-11-04/android/listado.png), [`android/busqueda.png`](evidence/mobile-2026-11-04/android/busqueda.png).
 
 ---
 
 ### Paso 6: Abrir detalle de material
-- **Acción en UI**: Se presiona la tarjeta del material encontrado para navegar a su vista detallada.
-- **Ruta de navegación**: `/materials/c9b87b7f-7b56-4a7b-b260-6510a25513cb` (`MaterialDetailRoute`).
-- **Endpoint consumido**: `GET http://10.0.2.2:3000/api/v1/materials/c9b87b7f-7b56-4a7b-b260-6510a25513cb`
-- **Respuesta del Gateway**: `200 OK` con metadatos completos, incluyendo versión activa v1, fecha de publicación, autor y lista de versiones.
-- **Visualización en UI**:
-  - Título, descripción y badges de estado (`PENDING_REVIEW` o `VERIFIED`).
-  - Acordeón de *"Historial de Versiones"* mostrando versión 1 con fecha y enlace de descarga.
-- **Resultado**: ✅ **Aprobado**.
+- **Acción en UI**: Al pulsar una tarjeta `MaterialSummaryCard`, se navega a `/materials/:id` (`MaterialDetailRoute` → `MaterialDetailScreen`).
+- **Solicitud HTTP**: `GET /api/v1/materials/:id`
+- **Comportamiento real en Mobile**:
+  - Muestra título, descripción, clasificación académica, estado (`MaterialStatus`), versión actual (`currentVersion`) e historial completo de versiones (`MaterialVersionHistory`) ordenado de forma descendente por `versionNumber`.
+- **Evidencia**: [`android/detalle.png`](evidence/mobile-2026-11-04/android/detalle.png), `mobile/test/features/materials/presentation/material_detail_dio_test.dart`.
 
 ---
 
-### Paso 7: Descargar y abrir archivo binario
-- **Acción en UI**: En la pantalla de detalle, se presiona el botón *"Descargar"* / icono de descarga en la versión v1.
-- **Endpoint consumido**: `GET http://10.0.2.2:3000/api/v1/materials/c9b87b7f-7b56-4a7b-b260-6510a25513cb/download`
-- **Cabeceras verificadas en respuesta**:
-  - `Content-Type: application/pdf`
-  - `Content-Disposition: attachment; filename="guia_calculo_e2e.pdf"; filename*=UTF-8''guia_calculo_e2e.pdf`
-- **Comportamiento en Android**:
-  - `DioMaterialRepository` transmite los bytes en streaming sin corrupción.
-  - `MaterialFileHandler` guarda el archivo en el almacenamiento local del emulador (`/data/user/0/com.apuntesuct.mobile/app_flutter/...` o Descargas).
-  - Se invoca `OpenFilex.open(...)`, lanzando el visor PDF integrado de Android para visualizar el documento.
-- **Resultado**: ✅ **Aprobado**.
+### Paso 7: Descargar y guardar archivo binario
+- **Acción en UI**: En `MaterialDetailScreen` (`MaterialDownloadActions` o fila de versión en `MaterialVersionHistory`), se pulsa *"Descargar"*.
+- **Solicitud HTTP**:
+  - Descarga principal: `GET /api/v1/materials/:id/download`
+  - Descarga de versión específica: `GET /api/v1/materials/:id/download?versionId=<versionId>`
+- **Comportamiento real en Mobile**:
+  - `DioMaterialRepository.downloadMaterial` recibe los bytes con `ResponseType.bytes` y extrae `fileName` desde `Content-Disposition` (soportando `filename*` UTF-8).
+  - `NativeMaterialFileHandler.save` guarda el archivo en el directorio temporal de la aplicación (`getTemporaryDirectory()/apuntesuct_materials/...`).
+  - Una vez descargado, habilita la acción *"Abrir"*, la cual invoca `OpenFilex.open(savedFile.path, type: mimeType)` para delegar la apertura al visor nativo del sistema Android.
+- **Evidencia**: [`android/descarga.png`](evidence/mobile-2026-11-04/android/descarga.png), `mobile/test/features/materials/presentation/material_download_test.dart`.
 
 ---
 
-### Paso 8: Crear una nueva versión de material existente
-- **Acción en UI**: En la vista de detalle, se presiona el botón *"Subir nueva versión"* para abrir el modal inferior `MaterialVersionUploadSheet`.
-- **Campos completados**:
-  - Descripción de cambios: `"Actualización de ejercicios y corrección de pauta."`
-  - Archivo adjunto: `guia_calculo_v2.pdf` (1.5 MB).
-- **Endpoint consumido**: `POST http://10.0.2.2:3000/api/v1/materials/c9b87b7f-7b56-4a7b-b260-6510a25513cb/versions`
-- **Respuesta del Gateway**: `201 Created` con identificador de la nueva versión v2.
-- **Comportamiento en Mobile**: El modal se cierra automáticamente, la pantalla de detalle se refresca en vivo sin salir de la ruta y el acordeón refleja la versión v2 como más reciente.
-- **Resultado**: ✅ **Aprobado**.
+### Paso 8: Crear una nueva versión de un material existente
+- **Acción en UI**: En `MaterialDetailScreen`, se pulsa *"Subir nueva versión"*, abriendo la hoja modal inferior `MaterialVersionUploadSheet`.
+- **Comportamiento real de `MaterialVersionUploadSheet`**:
+  - Muestra el texto informativo: *"La versión anterior no se elimina: quedará disponible en el historial. Se creará la versión v<N+1>."*
+  - **No incluye campo `changesDescription` ni acepta enlaces externos**: el contrato de versionado admite únicamente un archivo binario local (`file`).
+  - Se pulsa *"Seleccionar archivo (PDF, Word, PPT · máx. 15 MB)"*. Tras elegir un archivo válido, se muestra en una tarjeta con su nombre, tamaño formateado y botón para quitarlo.
+  - Se pulsa *"Confirmar subida de v<N+1>"*, enviando `POST /api/v1/materials/:id/versions` (`multipart/form-data` con campo `file`).
+  - Durante el envío se muestra `LinearProgressIndicator` con porcentaje y botón *"Cancelar subida"*.
+  - **Al completarse (`201 Created`), el modal NO se cierra automáticamente**: renderiza en la misma hoja la vista de confirmación (`_SuccessBody`) con el título *"Versión v<N+1> creada"*, el mensaje *"“<archivo>” ya está disponible como v<N+1>. La versión anterior sigue en el historial."* y dos acciones explícitas: **"Cerrar"** (que cierra el modal mediante `Navigator.of(context).pop()`) y **"Subir otra versión"**.
+  - Paralelamente, `MaterialVersionUploadNotifier` invalida `materialDetailProvider(materialId)`, actualizando el detalle y el historial de versiones en segundo plano.
+- **Evidencia**: `mobile/test/features/materials/presentation/material_version_upload_sheet_test.dart`, `mobile/test/features/materials/presentation/material_version_visible_behavior_test.dart`.
 
 ---
 
 ### Paso 9: Probar servicio caído y errores de validación de archivo
 
-#### 9.1. Servicio caído (Fallo 502 / 503)
-- **Escenario**: Simulación de interrupción o caída de Search Service en el Gateway (`502 Bad Gateway`).
-- **Respuesta Gateway**:
-  ```json
-  {
-    "statusCode": 502,
-    "message": "Search Service no disponible"
-  }
-  ```
-- **Comportamiento en Mobile**: `ErrorInterceptor` intercepta la excepción HTTP sin provocar crash. La UI muestra el widget `ErrorState` con el mensaje claro *"Search Service no disponible"* y botón *"Reintentar"*.
-- **Resultado**: ✅ **Aprobado**.
+#### 9.1. Servicio caído o error de Gateway (`502` / `503`)
+- **Comportamiento real en Mobile**: `ErrorInterceptor` convierte el `DioException` en `ApiException` conservando el `statusCode` y el mensaje del Gateway. Las pantallas (`MaterialDiscoveryScreen`, `MaterialDetailScreen`) renderizan `ErrorState` con opción de *"Reintentar"*, y los formularios (`MaterialUploadScreen`, `MaterialVersionUploadSheet`) muestran `FormErrorBanner` conservando la selección del usuario para reintentar sin perder datos.
 
-#### 9.2. Archivo que supera el límite contractual (> 15 MB)
-- **Escenario**: Usuario intenta seleccionar `archivo_excedido_16mb.pdf` (16.1 MB).
-- **Comportamiento en Mobile**: La validación síncrona en `MaterialUploadValidation.validatePickedFile` detecta `sizeBytes > 15 * 1024 * 1024` y bloquea la selección inmediatamente mostrando:
-  *"El archivo supera el límite de 15 MB."*
-- **Resultado**: ✅ **Aprobado (rechazo preventivo en cliente sin desperdiciar ancho de banda)**.
-
-#### 9.3. Formato no permitido
-- **Escenario**: Usuario intenta seleccionar `script_malicioso.exe`.
-- **Comportamiento en Mobile**: El selector valida contra `allowedExtensions: ['pdf', 'doc', 'docx', 'ppt', 'pptx']` y rechaza el archivo con el mensaje:
-  *"Formato no permitido. Usa PDF, Word o PowerPoint."*
-- **Resultado**: ✅ **Aprobado**.
+#### 9.2. Archivo que supera 15 MB o formato no permitido
+- **Comportamiento real en Mobile**: `MaterialUploadValidation.validatePickedFile` valida síncronamente extensión (`.pdf`, `.doc`, `.docx`, `.ppt`, `.pptx`) y tamaño (`<= 15 MB`). Si el archivo excede 15 MB o tiene otra extensión, muestra el error con ícono y texto junto al selector y mantiene deshabilitado el botón de confirmación sin realizar llamadas HTTP.
 
 ---
 
-## 4. Registro de Discrepancias Respecto del E2E de Backend (#263)
+## 4. Discrepancias y Límites Observados Respecto del E2E de Backend (#263)
 
-| Componente | Comportamiento Backend (#263) | Comportamiento Mobile (Android) | Impacto / Mitigación |
+| Aspecto | Backend (#263) | Mobile (Android) | Estado / Observación |
 |---|---|---|---|
-| **Host de Conexión** | `http://localhost:3000` | `http://10.0.2.2:3000` | **Ninguno**. Android Emulator requiere `10.0.2.2` para acceder al host del Gateway; resuelto automáticamente por `ApiConfig`. |
-| **Tokens JWT** | Emite JWT mock sin firma con claim `mock: true`. | Almacena y envía el token sin inspeccionar firma en cliente. | **Ninguno para Sprint 2**. Compatible; se reemplazará por JWT real en Sprint 3. |
-| **Catalog Standalone** | Endpoints independientes de selectores implementados en #221. | Mobile cuenta con fallback controlado mediante fixtures cuando los servicios no están desplegados en simultáneo. | **Positivo**. Permite navegar y probar la UI sin caídas fatales. |
-| **Visualización Embebida** | No contemplada en backend (solo descarga binaria). | Mobile utiliza visor nativo del dispositivo (`open_filex`) tras la descarga binaria. | **Resuelto**. La experiencia de lectura está asegurada. |
-
----
-
-## 5. Conclusión de la Ejecución
-
-El recorrido end-to-end manual en Android se completó satisfactoriamente a través de los **9 pasos requeridos**, demostrando que:
-1. **El API Gateway (`10.0.2.2:3000`) funciona como punto único de entrada** para todas las operaciones (Autenticación, Materiales, Búsqueda y Catálogo).
-2. **Las validaciones de cliente y servidor son coherentes**, protegiendo la subida con límites de 15 MB y tipos MIME estrictos.
-3. **El manejo de errores es resiliente**: ante caídas simuladas o respuestas HTTP `502`/`503`, la aplicación informa al usuario sin crash y ofrece opciones de reintento.
-4. **La suite automatizada complementaria** (`flutter test`) respalda este comportamiento con **407 pruebas unitarias y de integración pasando al 100%**.
+| **Host del Gateway** | `http://localhost:3000` | `http://10.0.2.2:3000` | Android Emulator resuelve el loopback del host mediante `10.0.2.2` en `ApiConfig`. |
+| **Autenticación en Sprint 2** | `POST /auth/login` emite JWT mock (`alg: none`, `mock: true`). | Valida respuesta HTTP y guarda `UserModel` en memoria (Riverpod); no persiste tokens en almacenamiento seguro ni envía `Authorization` desde `ApiClient` en Sprint 2. | Documentado como límite real del cierre de Sprint 2. |
+| **Visibilidad de materiales recién subidos** | `POST /materials` crea el registro en `PENDING_REVIEW`; listado/búsqueda pública solo devuelve `PUBLISHED`. | Mobile confirma `PENDING_REVIEW` al subir; para listar/buscar/descargar en pruebas integradas contra BD real se requiere un material en estado `PUBLISHED`. | Coherente con la frontera pública del contrato. |
+| **Codificación de nombres con tilde** | En el smoke test integrado (#278), `Guía278.pdf` se observó como `GuÃ­a278.pdf` en metadatos del servicio. | La descarga binaria conserva los bytes íntegros (`SHA-256` verificado). | Registrado en `validacion-mobile-2026-11-04.md`. |
