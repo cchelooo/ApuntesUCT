@@ -1,3 +1,4 @@
+export 'favorite_item.dart';
 export 'favorite_model.dart';
 export 'moderation_model.dart';
 export 'quality_error.dart';
