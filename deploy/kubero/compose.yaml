@@ -88,6 +88,10 @@ services:
       PORT: '3001'
       HEALTH_PATH: /api/v1/health
       DATABASE_URL: postgresql://apuntes:${POSTGRES_PASSWORD}@db-auth:5432/auth_db?schema=public
+      JWT_PRIVATE_KEY_PATH: /run/secrets/auth_jwt_private_key
+      JWT_ISSUER: ${JWT_ISSUER:?Configura JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:?Configura JWT_AUDIENCE}
+    secrets: [auth_jwt_private_key]
     depends_on:
       db-auth: {condition: service_healthy}
   catalog:
@@ -184,3 +188,7 @@ volumes:
   catalog-data:
   material-data:
   minio-data:
+
+secrets:
+  auth_jwt_private_key:
+    file: ${JWT_PRIVATE_KEY_FILE:?Configura JWT_PRIVATE_KEY_FILE fuera del repositorio}

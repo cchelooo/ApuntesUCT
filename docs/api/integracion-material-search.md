@@ -35,8 +35,10 @@ El Gateway usa las URLs internas sin prefijo. Mantener estas variables por proce
 
 ## Autenticación y visibilidad
 
-El login actual es mock: su JWT sin firma no autoriza operaciones. Las lecturas
-son públicas. Los POST de Material resuelven un contexto local de autor, que solo
+Auth verifica credenciales registradas y emite JWT RS256; configurar su clave,
+emisor y audiencia según el [README de Auth](../../backend/auth-service/README.md).
+La integración de esa identidad en Material está pendiente. Las lecturas son
+públicas. Los POST de Material resuelven un contexto local de autor, que solo
 funciona con estas variables en el proceso de Material:
 
 ```dotenv
