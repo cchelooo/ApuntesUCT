@@ -1,298 +1,179 @@
 # Línea base de integración y prerrequisitos de Kubero — Sprint 3
 
 **Issue:** [#451 — Establecer línea base de integración y prerrequisitos de Kubero](https://github.com/cchelooo/ApuntesUCT/issues/451)
-**Plan:** S3-11 · **Hito:** Infraestructura · **Corte de revisión:** 9 de noviembre de 2026
-**Fuente de configuración:** rama `main`, commit `317d3477259aa6fc059eeebb11093f951b5d3768`.
+**Plan:** S3-11 · **Hito:** Infraestructura
+**Fecha de revisión:** 15 de noviembre de 2026
+**Commit de `main` validado por CI y publicado en GHCR:** [`93a00181f7318cda4dee63581f44f482d0dfff08`](https://github.com/cchelooo/ApuntesUCT/commit/93a00181f7318cda4dee63581f44f482d0dfff08)
 
-## Resumen ejecutivo
+## Alcance y conclusión ejecutiva
 
-El repositorio ya contiene un despliegue reproducible para Kubero en
-[`deploy/kubero/compose.yaml`](../../deploy/kubero/compose.yaml), imágenes para
-Web, Gateway, Auth, Catalog, Material, Search y MinIO, healthchecks de contenedor,
-una prueba de humo y workflows de CI. Esta evidencia acredita que la pila puede
-construirse y probarse en CI; **no acredita por sí sola que las aplicaciones estén
-desplegadas ni saludables en el Kubero compartido**.
+Esta revisión inspecciona el repositorio y las ejecuciones de GitHub Actions. No se
+crearon recursos ni se realizaron cambios de arquitectura. No se proporcionó una
+URL ni acceso al panel del Kubero existente; por tanto, no es posible confirmar
+qué aplicaciones, réplicas o tags están corriendo allí ni ejecutar solicitudes
+HTTP contra ese entorno. **Una imagen publicada o un smoke test efímero de CI no
+equivale a un despliegue verificado en Kubero.**
 
-La principal brecha funcional es Auth: en el corte revisado mantiene el flujo
-mock y emite JWT sin firma; Material no permite crear contenido en producción
-hasta integrar autenticación real. Quality tiene código organizado por capas,
-pero no es un servicio ejecutable: no figura como workspace npm ni como servicio
-de Compose y no se construye una imagen. Web está incluida en la pila y es servida
-por Nginx, pero requiere validación contra el backend desplegado y configuración
-de dominio/TLS del entorno existente.
+El commit indicado construyó la pila Compose aislada, pasó el smoke test y publicó
+imágenes inmutables por SHA y `latest` en GHCR. Auth ya implementa registro/login
+con JWT firmado RS256; la comprobación de CI no demuestra todavía la autorización
+de esas solicitudes en todas las rutas de dominio. Quality ya tiene workspace,
+bootstrap y contrato de salud en el código, pero sigue fuera del Compose de
+Kubero y del conjunto de imágenes publicadas. Web se construye como SPA React/Vite
+servida por Nginx y reenvía `/api/` al Gateway; su dominio/TLS y comportamiento
+en el Kubero compartido no pudieron comprobarse.
 
-No se encontró una URL del entorno Kubero ni acceso a sus aplicaciones para
-realizar solicitudes en vivo. Por ello, las rutas de salud se verificaron contra
-la configuración/código y contra la ejecución efímera del workflow de imágenes;
-el estado de salud actual del despliegue Kubero queda **pendiente de comprobación
-operativa**.
+## 1. Aplicaciones, versiones, tags y dependencias
 
-## 1. Componentes, disponibilidad y dependencias
+La versión es la declarada en el `package.json`; no representa necesariamente una
+versión desplegada. El workflow de imágenes publica artefactos para el commit
+`93a0018` con el tag inmutable `sha-93a00181f7318cda4dee63581f44f482d0dfff08`
+y el tag mutable `latest`. El run de publicación concluyó correctamente. No hay
+evidencia de que Kubero esté configurado para consumir dichos tags.
 
-“Incluido en Compose” describe lo definido en el repositorio. El estado real en
-Kubero debe confirmarse en el panel o mediante las URLs del entorno.
+| App / rol operativo | Versión y tecnología declaradas | Imagen y tag publicados para el commit validado | Puerto y dependencias principales | Estado real en Kubero |
+| --- | --- | --- | --- | --- |
+| `client` (`web`) | `web@0.0.0`; SPA React `^19.2.8`, Vite `^8.2.2`; Nginx sirve los artefactos estáticos. | `ghcr.io/cchelooo/apuntesuct-kubero-web:sha-93a00181f7318cda4dee63581f44f482d0dfff08` y `:latest`. | Contenedor `8080`. `GATEWAY_UPSTREAM` dirige Nginx al Gateway por HTTP interno; las llamadas del cliente usan `/api/v1`. | No comprobado. |
+| `server` (`api-gateway`) | `api-gateway@0.0.1`; NestJS `11.2.7`, Node.js `22` en CI. | `ghcr.io/cchelooo/apuntesuct-kubero-api-gateway:sha-93a00181f7318cda4dee63581f44f482d0dfff08` y `:latest`. | Contenedor `3000`. Enruta solicitudes HTTP internas a Auth, Catalog, Material y Search; no declara una base propia en el Compose Kubero. | No comprobado. |
+| `auth-service` | `auth-service@0.0.1`; NestJS `11.2.7`, Prisma `6.12.0`. El flujo de registro/login emite JWT RS256. | `ghcr.io/cchelooo/apuntesuct-kubero-auth-service:sha-93a00181f7318cda4dee63581f44f482d0dfff08` y `:latest`. | Contenedor `3001`; PostgreSQL dedicado (`auth_db`). Gateway consume su API. La clave privada se monta como secret, no se incorpora a la imagen. | No comprobado. |
+| `catalog-service` | `catalog-service@0.0.1`; NestJS `11.2.7`, Prisma `6.12.0`. | `ghcr.io/cchelooo/apuntesuct-kubero-catalog-service:sha-93a00181f7318cda4dee63581f44f482d0dfff08` y `:latest`. | Contenedor `3002`; PostgreSQL dedicado (`catalog_db`). Es consultado por Gateway, Material y Search. | No comprobado. |
+| `material-service` | `material-service@0.0.1`; NestJS `11.2.7`, Prisma `6.12.0`. | `ghcr.io/cchelooo/apuntesuct-kubero-material-service:sha-93a00181f7318cda4dee63581f44f482d0dfff08` y `:latest`. | Contenedor `3003`; PostgreSQL dedicado (`material_db`), Catalog por HTTP y MinIO para objetos/binarios. | No comprobado. |
+| `search-service` | `search-service@0.0.1`; NestJS `11.2.7`. | `ghcr.io/cchelooo/apuntesuct-kubero-search-service:sha-93a00181f7318cda4dee63581f44f482d0dfff08` y `:latest`. | Contenedor `3005`; consulta Catalog y Material por HTTP. No usa una base propia en el Compose Kubero revisado. | No comprobado. |
+| `quality-service` | `quality-service@0.0.1`; workspace NestJS, Prisma y control de salud con persistencia. | **Sin imagen/tag Kubero publicado** por el workflow actual. | El código espera configuración y una base propia para Quality; contrato de salud `/health`. No está cableado al Gateway ni a Compose. | Pendiente de empaquetar e integrar. |
 
-| Componente | Línea base del repositorio | Puerto interno y salud configurada | Dependencias principales |
+El prefijo de imagen se adapta al propietario del repositorio en el workflow; los
+tags arriba reflejan el propietario observado en el run de referencia. Los
+servicios del Compose usan nombres DNS internos (`auth`, `catalog`, `material`,
+`search`, `gateway`, `minio`), no direcciones públicas. Si las apps se gestionan
+como unidades separadas en Kubero, se debe confirmar que su red y DNS interno
+resuelven los nombres equivalentes antes de promocionar el despliegue.
+
+El Compose de referencia declara tres PostgreSQL independientes (Auth, Catalog y
+Material) y MinIO con bucket privado `materials`. `minio-init` crea el bucket;
+Material usa Catalog y MinIO; Search obtiene datos desde Catalog y Material.
+Quality no tiene base ni aplicación declarada en ese Compose, aunque su código
+ya contempla persistencia. No asumir que una base Quality local implica que
+exista en Kubero.
+
+## 2. Salud y comprobación de endpoints
+
+**Fecha de evidencia automatizada:** 15 de noviembre de 2026, entre `17:15Z` y
+`17:20Z` (14:15–14:20 UTC−03). El job `images` del run
+[`43740083104`](https://github.com/cchelooo/ApuntesUCT/actions/runs/43740083104)
+construyó y levantó un Compose efímero, esperó sus healthchecks y completó
+[`deploy/kubero/smoke.mjs`](../../deploy/kubero/smoke.mjs). No es una medición
+del Kubero compartido. El smoke no conserva cuerpos HTTP como artefacto; los
+payloads descritos abajo son la estructura definida por los controladores, no
+una captura de una respuesta en vivo.
+
+| Aplicación | Endpoint y evidencia al 15-11-2026 | Código HTTP que permite afirmar la evidencia | Resultado / estructura del payload |
 | --- | --- | --- | --- |
-| Web | Imagen y contenedor incluidos; Nginx sirve la SPA y enruta `/api/` al Gateway. Presencia real en Kubero: no comprobada. | `8080`, `/health` | Gateway mediante `GATEWAY_UPSTREAM`. |
-| API Gateway | Servicio Nest incluido y expuesto localmente solo en loopback por Compose. Presencia real en Kubero: no comprobada. | `3000`, `/health` | Auth, Catalog, Material y Search por URLs internas. |
-| Auth | Servicio Nest, imagen y migraciones incluidos. Presencia real en Kubero: no comprobada. La autenticación funcional sigue siendo mock en el corte revisado. | `3001`, `/api/v1/health` | PostgreSQL `auth_db`. |
-| Catalog | Servicio Nest, imagen y migraciones incluidos. Presencia real en Kubero: no comprobada. | `3002`, `/health` | PostgreSQL `catalog_db`. |
-| Material | Servicio Nest, imagen y migraciones incluidos. Presencia real en Kubero: no comprobada. La escritura protegida aún depende de Auth real. | `3003`, `/api/v1/health` | PostgreSQL `material_db`, Catalog y MinIO/bucket `materials`. |
-| Search | Servicio Nest e imagen incluidos. Consulta Catalog y Material por HTTP; no necesita una base propia en el Compose de Kubero. Presencia real en Kubero: no comprobada. | `3005`, `/api/v1/health` | Catalog y Material. |
-| Quality | Hay estructura de código bajo `backend/quality-service/src`, pero no hay paquete npm, entrada ejecutable, workspace, imagen, app Compose ni endpoint de salud desplegable. **Pendiente como servicio.** | No definido | Debe concretar persistencia e integración antes de añadirlo al despliegue. |
+| Web (`client`) | `GET /health`; el smoke lo solicita con expectativa explícita `200`. | **200** en el Compose efímero. | Texto plano `ok` (Nginx). No valida API ni dependencias. |
+| Gateway (`server`) | `GET /health` y `GET /api/v1/health`; el smoke espera `200` en ambos. | **200** en el Compose efímero. | JSON `{ "status": "ok", "service": "API Gateway", "timestamp": "<ISO-8601>" }`. Es una comprobación de disponibilidad del proceso, no de sus upstreams. |
+| Auth | `GET /api/v1/health`; healthcheck de Compose exitoso. El smoke también obtuvo el status esperado `200` del proxy `/api/v1/auth/health`. | **2xx** para el endpoint directo según healthcheck (este no registra el status exacto); **200** para el endpoint probado por Gateway/Web. | `{ "status": "ok", "service": "auth-service", "database": "connected", "timestamp": "<ISO-8601>" }`; si PostgreSQL no está disponible, el servicio responde `503` con estado `unavailable`/`disconnected`. |
+| Catalog | `GET /health`; healthcheck de Compose exitoso. | **2xx**; el healthcheck solo comprueba `response.ok`, no conserva el status exacto. | `{ "status": "ok", "service": "catalog-service", "timestamp": "<ISO-8601>" }`. Es un chequeo del servicio, no de PostgreSQL. |
+| Material | `GET /api/v1/health`; healthcheck de Compose exitoso. | **2xx**; el healthcheck solo comprueba `response.ok`. | `{ "status": "ok", "service": "material-service", "timestamp": "<ISO-8601>" }`. No acredita por sí solo Catalog, MinIO ni autorización. |
+| Search | `GET /api/v1/health`; healthcheck de Compose exitoso. | **2xx**; el healthcheck solo comprueba `response.ok`. | Terminus: `{ "status": "ok", "info": {}, "error": {}, "details": {} }` cuando no registra checks fallidos. |
+| Quality | Hay controlador de salud `/health` en el código; no existe servicio Quality en el Compose de Kubero ni en el smoke de imágenes. | **Sin solicitud y sin código HTTP verificado.** | El código define `status`, `service` y `database`; no se debe registrar como endpoint disponible ni saludable hasta desplegarlo y probarlo. |
 
-### Persistencia y relaciones
+Los healthchecks backend de Compose prueban HTTP y éxito 2xx; no todos son
+chequeos profundos de dependencias. MinIO tiene una comprobación de vida
+`/minio/health/live` en el smoke, pero la respuesta no se registra como una
+medición del Kubero existente. Para cerrar la comprobación operativa se requiere
+la URL/base de cada app en el entorno actual, la fecha y hora UTC, el status y
+payload saneado observados directamente, además de correlacionar el tag real de
+cada app.
 
-| Recurso | Definido en `deploy/kubero/compose.yaml` | Uso y relación |
+## 3. Variables de entorno y comunicación entre servicios
+
+| Grupo / variables relevantes | Uso técnico | Requisito y manejo seguro |
 | --- | --- | --- |
-| PostgreSQL `db-auth` | Sí | Base exclusiva de Auth (`auth_db`). |
-| PostgreSQL `db-catalog` | Sí | Base exclusiva de Catalog (`catalog_db`). |
-| PostgreSQL `db-material` | Sí | Base exclusiva de Material (`material_db`). |
-| PostgreSQL para Search | No | Search obtiene datos desde Catalog y Material por HTTP. |
-| PostgreSQL para Quality | No | El Compose raíz `docker-compose.yml` sí declara una base Quality local, pero no hay servicio Quality asociado ni esa base aparece en el Compose Kubero. No asumir que está desplegada. |
-| MinIO | Sí | Almacenamiento de objetos privado; `minio-init` crea el bucket `materials` y Material consume MinIO. |
+| `PORT`, `HEALTH_PATH` | Puerto de escucha y ruta usada por healthcheck de los servicios del Compose. | Configurar el puerto interno de cada app en Kubero; no confundirlo con `WEB_PORT`/`GATEWAY_PORT`, que publican puertos locales del Compose. |
+| `GATEWAY_UPSTREAM` | Upstream de Nginx para `/api/`; en la red Compose apunta al Gateway. | En el entorno existente usar la dirección interna resoluble del Gateway y preservar los paths `/api/v1`. |
+| `AUTH_SERVICE_URL`, `CATALOG_SERVICE_URL`, `MATERIAL_SERVICE_URL`, `SEARCH_SERVICE_URL` | URLs HTTP del Gateway hacia sus servicios backend. | Mantener comunicación privada entre apps y validar DNS, puerto, timeouts y rutas. No publicar los servicios internos innecesariamente. |
+| `DATABASE_URL` | Conexiones Prisma de Auth, Catalog y Material; Quality también prevé conexión propia en su código. | Definir un valor distinto por servicio/base; almacenar como secreto de Kubero y evitar imprimirlo en logs. Codificar correctamente caracteres reservados en URI. |
+| `POSTGRES_PASSWORD` | Contraseña exigida por Compose para bases locales/efímeras. | En Kubero utilizar secreto aleatorio gestionado por el entorno; no reutilizar valores de muestra ni del Compose local. |
+| `JWT_PRIVATE_KEY_PATH`, `JWT_ISSUER`, `JWT_AUDIENCE` | Firma y validación de tokens Auth. El Compose monta la clave privada desde un archivo secret externo solo en Auth. | Guardar la clave privada como secret; definir issuer/audience compatibles con los validadores; acordar rotación y no copiar la clave a imágenes, logs o documentación. |
+| `MINIO_ENDPOINT`, `MINIO_PORT`, `MINIO_USE_SSL`, `MINIO_BUCKET`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` | Conexión Material → MinIO y bucket de archivos. | Confirmar nombre DNS interno, TLS, política de acceso mínimo y bucket privado. Evitar credenciales administrativas de MinIO en Material. |
+| `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | Bootstrap local/efímero de MinIO y creación inicial del bucket. | No exponerlas ni usarlas como credenciales rutinarias de producción. |
+| `MATERIAL_LOCAL_AUTHOR_ENABLED` | Controla el autor temporal local de Material. | Mantenerlo desactivado en producción; no usarlo como sustituto de identidad/autorización real. |
+| `VITE_API_URL` y variables `VITE_*` | Configuración incorporada al bundle en build de Vite. El smoke observa URL relativa `/api/v1`. | El bundle es público: nunca inyectar contraseñas, tokens, claves privadas u otros secretos en variables `VITE_*`. |
 
-El Compose de Kubero condiciona Auth, Catalog y Material a que sus bases estén
-saludables; Material espera además Catalog y la inicialización de MinIO. Search
-espera Catalog y Material. Gateway espera los cuatro servicios. Web espera Gateway.
-La salud HTTP de los servicios backend es comprobada por un healthcheck común;
-PostgreSQL usa `pg_isready`. MinIO no tiene un healthcheck Docker explícito en
-este Compose: la prueba de humo consulta su endpoint de vida y la inicialización
-del bucket aplica reintentos.
+En Compose, el tráfico Web → Gateway y Gateway → servicios circula por HTTP en
+la red interna. Material → Catalog y Search → Catalog/Material también son
+llamadas HTTP internas. Auth firma tokens; el Gateway y los servicios que
+protegen rutas deben validar firma y claims en el lado servidor. La Web no debe
+conectarse directamente a bases de datos, MinIO ni endpoints privados.
 
-El `docker-compose.yml` de la raíz es un entorno local separado: define además
-bases para Search y Quality y usa credenciales de base de datos literales en el
-archivo. No debe tratarse como inventario de recursos de Kubero. Sustituir esas
-credenciales por secretos y rotarlas si fueron reutilizadas fuera de un entorno
-local.
+El workflow de imágenes genera una clave RSA efímera para CI fuera del contexto
+Docker, la suministra a Auth como secret temporal y la elimina al finalizar. No
+se publica ni se incorpora a las imágenes. Los valores del archivo
+`deploy/kubero/.env.example` son solo plantilla local; no son credenciales
+productivas. Como incidencia, `docker-compose.yml` raíz contiene credenciales de
+base de datos escritas literalmente: no se reproducen aquí. Deben externalizarse
+en el cambio correspondiente y rotarse si se reutilizaron fuera de desarrollo.
 
-## 2. Salud, rutas y comunicación
+## 4. Pruebas automatizadas y workflows CI/CD
 
-### Rutas encontradas
+### Estado observado
 
-| Servicio | Ruta configurada | Qué acredita la evidencia |
+| Evidencia | Resultado | Alcance / limitación |
 | --- | --- | --- |
-| Web | `GET /health` | Nginx devuelve `200` con `ok`; existe healthcheck de contenedor. |
-| Gateway | `GET /health` | Ruta usada por el healthcheck y documentada para la app. No es `/api/v1/health` en esta configuración. |
-| Auth | `GET /api/v1/health` | Ruta indicada por Compose y healthcheck backend. |
-| Catalog | `GET /health` | Ruta indicada por Compose y healthcheck backend. |
-| Material | `GET /api/v1/health` | Ruta indicada por Compose y healthcheck backend. |
-| Search | `GET /api/v1/health` | Ruta indicada por Compose y healthcheck backend. |
-| MinIO | `GET /minio/health/live` | Ruta usada como comprobación del servicio en la documentación/pruebas. |
-| Quality | No disponible | No hay runtime ni ruta declarada. |
+| [PR tests del PR #506, run `43619110816`](https://github.com/cchelooo/ApuntesUCT/actions/runs/43619110816), 14-11-2026 | Todos los 12 checks listados concluyeron `success`: backend, E2E de Gateway/Auth/Catalog/Material, integración Material, regresión browser Web/Gateway, lint/formato Web, pruebas Web unitarias/integración y Mobile. | Corresponde a los checks previos al merge del cambio Auth que precede al SHA integrado; es evidencia de la revisión del código, no una prueba ejecutada por `PR tests` sobre el commit de merge. |
+| [Kubero images en `main`, run `43740083104`](https://github.com/cchelooo/ApuntesUCT/actions/runs/43740083104), commit `93a0018`, 15-11-2026 | `Build and start isolated stack`, `Check Web, Gateway and services` y `Publish tested images` concluyeron `success`. | Valida build, healthchecks y smoke en CI y publica tags GHCR. No despliega ni verifica apps del Kubero compartido. |
 
-Nginx escucha en el puerto de contenedor `8080`, atiende `/health` localmente y
-reenvía las peticiones `/api/` al upstream definido por `GATEWAY_UPSTREAM`,
-preservando el path. Compose asigna `http://gateway:3000` como upstream dentro
-de su red.
+El workflow `PR tests` (`.github/workflows/pr-tests.yml`) ejecuta Node.js 22,
+tests de todos los workspaces backend con cobertura, validación de contratos
+OpenAPI/Postman, pruebas Web con Vitest, lint/formato Web, pruebas Flutter y
+matriz E2E para Gateway, Auth, Catalog y Material con PostgreSQL efímero.
+Incluye integración Material y regresión browser Web/Gateway. Quality participa
+en los tests backend unitarios porque está declarado como workspace y define
+`test:ci`, pero no tiene job E2E/integración propio en la matriz. Search tampoco
+tiene job E2E dedicado en esa matriz.
 
-### Alcance de la comprobación
+El workflow `Kubero images` (`.github/workflows/kubero-images.yml`) construye y
+levanta el Compose aislado, espera healthchecks, ejecuta el smoke y, solo en push
+a `main`, etiqueta y publica siete imágenes en GHCR. La lista publicada incluye
+Web, Gateway, Auth, Catalog, Material, Search y MinIO; **no incluye Quality**.
+No hay en este workflow una operación de despliegue a Kubero ni una confirmación
+de actualización de sus apps.
 
-- **Configuración/código:** las rutas y los puertos anteriores aparecen en
-  `deploy/kubero/compose.yaml`, `deploy/kubero/README.md` y
-  `deploy/kubero/nginx.conf.template`.
-- **Integración efímera:** el workflow
-  [`Kubero images`](../../.github/workflows/kubero-images.yml) construye y
-  levanta la pila, y ejecuta `deploy/kubero/smoke.mjs`. La ejecución exitosa más
-  reciente consultada fue el run
-  [42739726165](https://github.com/cchelooo/ApuntesUCT/actions/runs/42739726165),
-  en el PR #501. Esto demuestra éxito de build y smoke test en ese run, no
-  disponibilidad continua ni estado del Kubero compartido.
-- **Entorno vivo:** no comprobado: la sesión no tenía URL pública/interna del
-  despliegue ni acceso al panel. Antes de declarar la línea base operativa,
-  registrar fecha, URL no secreta, respuesta HTTP de cada endpoint y revisión
-  de la app correspondiente en Kubero.
+El smoke prueba la ruta SPA y assets, salud de Web/Gateway, rutas API, registro y
+login real vía Gateway/proxy Web y firma/claims RS256. También valida consultas y
+descarga con fixtures temporales de Material. No sustituye una prueba de
+autorización HTTP en todas las rutas protegidas ni acredita la subida funcional
+por un usuario en el Kubero productivo. Las pruebas Flutter ejecutan
+`flutter test`; no son una prueba instrumentada en dispositivo real.
 
-`smoke.mjs` incluye verificaciones de Web/Gateway, rutas de lectura del API y
-descarga/consulta con datos fixture temporales. No demuestra el flujo de alta
-autenticada ni una carga real de material por un usuario.
+## 5. Problemas detectados y prerrequisitos para Sprint 3
 
-## 3. Variables y tratamiento de secretos
-
-| Variable / configuración | Uso | Requisito para Sprint 3 |
+| Prioridad | Estado / problema | Prerrequisito y evidencia de salida |
 | --- | --- | --- |
-| `WEB_PORT` | Puerto del host para Web; por defecto `18080`, enlazado a `127.0.0.1`. Solo corresponde al Compose local. | En Kubero configurar el puerto de contenedor de Web (`8080`) y el dominio/ruta en la app; no trasladar el puerto local como puerto interno. |
-| `GATEWAY_PORT` | Puerto del host para Gateway; por defecto `13000`, enlazado a `127.0.0.1`. Solo corresponde al Compose local y a pruebas locales. | Mantener Gateway como upstream interno en Kubero; publicar solo lo que requiera la arquitectura/ruta existente. |
-| `PORT` | Puerto interno de cada proceso Nest (`3000`, `3001`, `3002`, `3003`, `3005`). | Mantenerlo coherente con el puerto configurado en la app Kubero y su healthcheck. |
-| `HEALTH_PATH` | Ruta usada por el healthcheck común de Compose para backend. | Configurar la ruta específica de cada servicio; no asumir que todos usan el prefijo `/api/v1`. |
-| `AUTH_SERVICE_URL`, `CATALOG_SERVICE_URL`, `MATERIAL_SERVICE_URL`, `SEARCH_SERVICE_URL` | Direcciones de comunicación Gateway → microservicios. | Usar DNS/nombre de apps y puertos internos de la red Kubero existente, no `localhost` entre contenedores. |
-| `CATALOG_SERVICE_URL`, `MATERIAL_SERVICE_URL` | Direcciones de Search → Catalog/Material; Material también usa Catalog. | Probar resolución DNS y conectividad entre apps. |
-| `GATEWAY_UPSTREAM` | Upstream Nginx → Gateway; localmente apunta a `gateway:3000`. | Actualizarlo al nombre de servicio interno que corresponda en Kubero. |
-| `DATABASE_URL` | Conexión Prisma de Auth, Catalog y Material. | Definir cada URL en la app correspondiente, con host interno, DB correcta y contraseña codificada para URL si incluye caracteres reservados. Guardarla como secreto. |
-| `POSTGRES_PASSWORD` | Contraseña exigida por Compose para las bases del stack aislado. | Usar un secreto aleatorio gestionado por el entorno; no reutilizar el valor de ejemplo. |
-| `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | Credenciales administrativas del MinIO local. | No usar el usuario root de MinIO como credencial normal de Material en producción. Gestionar un usuario/política de mínimo privilegio y guardar sus claves como secretos. |
-| `MINIO_ENDPOINT`, `MINIO_PORT`, `MINIO_USE_SSL`, `MINIO_BUCKET`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` | Conexión Material → MinIO. | Confirmar endpoint interno, TLS, bucket y credenciales de servicio en Kubero. Mantener el bucket privado. |
-| `VITE_API_URL` | Base API de la Web en desarrollo/Vite. | Comprobar qué valor se incorpora en la compilación de producción y asegurar que la Web desplegada use la ruta pública correcta, preferiblemente a través del proxy `/api/`. No incluir secretos en variables `VITE_*`. |
+| Alta | No hay evidencia observable del inventario real de apps, imágenes, réplicas, variables, rutas, DNS, dominio/TLS ni salud HTTP en Kubero. El entorno no fue accesible desde esta revisión. | Obtener acceso/URLs del Kubero existente; registrar para cada app tag/digest activo, puerto, fecha UTC, status y payload saneado del endpoint. Confirmar dependencias en la red real antes de declarar integración. |
+| Alta | Auth ya emite JWT RS256 y el smoke valida firma, issuer/audience, identidad, rol y expiración. Sin embargo, la documentación de despliegue indica que la validación JWT de rutas protegidas de dominio sigue pendiente; salud/login exitosos no equivalen a autorización integrada. | Enlazar validadores en Gateway/servicios según el contrato vigente; comprobar token ausente, inválido, expirado y rol insuficiente con tests E2E; completar Web → Gateway → Auth → Material. Mantener claves fuera de repositorio, cliente y logs, y documentar rotación. |
+| Alta | Quality existe como workspace y tiene implementación/contrato de salud, pero no se empaqueta ni ejecuta en el despliegue Kubero: falta imagen, servicio Compose, variables operativas, healthcheck de contenedor y wiring/ruta Gateway. La base Quality no está declarada en el Compose Kubero. | Acordar contrato API, consumidores, autorización, necesidad/esquema de persistencia y ownership. Después añadir Quality al pipeline y al entorno existente con configuración, migraciones, healthcheck, smoke, pruebas E2E e instrucciones de rollback. No crear un entorno paralelo. |
+| Alta | Los tags publicados `sha-93a0018…` y `latest` acreditan publicación, no que Kubero los haya promovido. `latest` además es mutable. | Inspeccionar el tag/digest configurado en cada app y desplegar/promover explícitamente en Kubero con un tag inmutable, ventana de verificación y tag previo de rollback. |
+| Media | Web se construye y pasa la regresión automatizada, pero dominio/TLS, upstream y comportamiento autenticado en el Kubero existente no se comprobaron. | Confirmar dominio, TLS, rutas y `GATEWAY_UPSTREAM`; validar sesión, expiración, logout, respuestas `401` y errores reales contra el Gateway desplegado, sin datos/secretos en el bundle. |
+| Alta | El Compose raíz versiona credenciales de DB en texto plano y no debe confundirse con la topología Kubero. | Externalizar los valores y rotar los que hayan sido reutilizados, sin propagarlos a logs, imágenes, documentación ni variables del cliente. |
+| Media | No hay job E2E dedicado para Quality ni Search en la matriz PR; la cobertura de salud/funcionalidad de esos servicios depende del workspace y del smoke de pila, respectivamente. | Añadir suites orientadas a los contratos de Search y Quality antes de declarar integración Sprint 3 completa. |
 
-`deploy/kubero/.env.example` contiene valores de muestra explícitamente limitados
-a Compose local; son públicos y no son secretos. Las credenciales productivas
-deben configurarse como secretos de Kubero, nunca copiarse al documento, a la
-imagen o a logs. El Compose raíz contiene credenciales literales y debe
-considerarse una incidencia de higiene de secretos, incluso si actualmente se
-usa solo en desarrollo.
+**Puerta de salida común:** CI verde para el SHA promovido; imagen identificada
+por SHA/digest; secretos gestionados fuera del repositorio; comunicación interna
+verificada; health HTTP consultado en el Kubero existente con fecha/status; Auth
+probado con autorización real; Quality construido e integrado solo tras cerrar
+contrato/persistencia; Web comprobada contra el Gateway y dominio/TLS configurados.
 
-## 4. Pruebas automatizadas y CI/CD
-
-### Cobertura configurada
-
-El workflow [`PR tests`](../../.github/workflows/pr-tests.yml) se activa en PR
-hacia `main` (y manualmente) y define:
-
-- Backend: `npm ci` y `npm run test:ci -- --coverage`. La matriz E2E incluye
-  Gateway, Auth, Catalog y Material con PostgreSQL desechable; el workflow
-  ejecuta migraciones E2E para Auth y Catalog. Search no está en esa matriz.
-- Material tiene además un job de integración con servicios desechables y
-  MinIO. Quality no está cubierto por Jest/workspaces porque todavía no es un
-  paquete ejecutable.
-- Web: Vitest con cobertura; la suite unitaria excluye los archivos de
-  integración, que tienen un job frontend de integración separado.
-- Mobile: `flutter test --coverage`. El workflow no ejecuta `integration_test`
-  de Flutter como prueba de dispositivo end-to-end.
-- `PR tests` no define un job explícito de lint; el build de imágenes valida la
-  compilación de las imágenes, pero no sustituye un chequeo dedicado de lint.
-
-El workflow [`Kubero images`](../../.github/workflows/kubero-images.yml) compila
-la pila con Docker Compose, espera salud, ejecuta el smoke test y adjunta logs
-si falla. Solo publica imágenes en GHCR al hacer push a `main`; el PR no publica
-imágenes. Las ejecuciones observadas para el PR #501:
-
-| Workflow | Run | Resultado observado |
-| --- | --- | --- |
-| PR tests | [42739725966](https://github.com/cchelooo/ApuntesUCT/actions/runs/42739725966) | Éxito. |
-| Kubero images | [42739726165](https://github.com/cchelooo/ApuntesUCT/actions/runs/42739726165) | Éxito; build/arranque y smoke test completados. |
-
-En el historial inmediato también hubo ejecuciones fallidas anteriores en la
-rama del mismo PR, seguidas por runs exitosos. La referencia de estado de esta
-línea base es el run verde más reciente consultado, no una garantía de que otros
-commits o la rama `main` tengan idéntico resultado. El job de publicación se
-omite en PR.
-
-### Ejecución local recomendada
-
-Desde la raíz del repositorio, con Docker Compose v2 y Node.js 22, la guía del
-despliegue documenta:
-
-```bash
-docker compose --env-file deploy/kubero/.env \
-  -f deploy/kubero/compose.yaml up --build --wait --wait-timeout 180
-node deploy/kubero/smoke.mjs
-```
-
-Crear `deploy/kubero/.env` a partir del ejemplo y reemplazar los valores de
-muestra por valores locales propios antes del primer comando. No trasladar esos
-valores a Kubero ni al repositorio.
-
-## 5. Prerrequisitos de integración para Sprint 3
-
-### Auth
-
-1. Sustituir el login mock por validación real de identidad/credenciales y emitir
-   tokens firmados con clave gestionada como secreto; documentar expiración,
-   issuer/audience y rotación. No aceptar JWT sin firma.
-2. Confirmar que rutas, contrato de login/registro y claims coinciden entre Auth,
-   Gateway, Material y Web. Mantener la validación de autorización en el
-   servidor; una bandera de UI no debe conceder permisos.
-3. Configurar `DATABASE_URL` de Auth y migraciones en la app Kubero existente;
-   verificar el endpoint de salud, manejo seguro de errores y logs sin tokens ni
-   datos de credenciales.
-4. Añadir/actualizar pruebas unitarias, E2E e integración que cubran login
-   válido/inválido, autorización y el flujo Web → Gateway → Auth → Material.
-5. Mantener desactivado el autor temporal de Material en producción; el propio
-   despliegue ya lo define como desactivado.
-
-### Quality
-
-1. Completar `backend/quality-service` como servicio ejecutable: `package.json`,
-   scripts, configuración Nest/TypeScript, módulo bootstrap, controladores,
-   validación de configuración y pruebas.
-2. Decidir qué entidad persiste Quality y su esquema/propiedad de datos. El
-   Compose Kubero actual no declara base Quality; si hace falta persistencia,
-   planificarla como extensión del entorno existente, no como una infraestructura
-   paralela. Definir migraciones y restauración antes del despliegue.
-3. Acordar contrato API, dependencias entrantes/salientes, puerto y ruta de
-   salud; incorporar de forma explícita el nuevo workspace a scripts,
-   Dockerfile/build y estrategia de despliegue.
-4. Añadir pruebas unitarias, E2E con dependencias desechables, smoke test y
-   healthcheck. Añadir el servicio a Gateway únicamente cuando su contrato y
-   autorización estén definidos.
-5. Publicar y desplegar la imagen en la app del entorno Kubero existente una vez
-   aprobados build, pruebas y revisión de secretos.
-
-### Web
-
-1. Confirmar en la imagen de producción el origen/base API compilado por Vite y
-   su correspondencia con el proxy Nginx `/api/` → Gateway.
-2. Configurar en Kubero el dominio y TLS sobre la app Web existente; preservar
-   el upstream interno del Gateway y las cabeceras proxy necesarias.
-3. Integrar autenticación de forma segura: no almacenar ni exponer claves
-   privadas en el cliente, aplicar expiración/cierre de sesión y manejar `401`
-   y errores de API de forma consistente.
-4. Agregar una prueba browser/integración del flujo Web autenticado y las
-   capacidades de Quality; ejecutar también las pruebas móviles pertinentes si
-   la app Mobile consume los mismos cambios.
-5. Promover únicamente imágenes producidas por el workflow verde y redesplegar
-   explícitamente en Kubero. La publicación GHCR no actualiza automáticamente
-   las apps desplegadas.
-
-## 6. Problemas y acciones correctivas
-
-| Prioridad | Hallazgo | Acción recomendada / condición de salida |
-| --- | --- | --- |
-| Alta | No hay evidencia desde esta revisión del estado de las apps en Kubero ni respuesta en vivo de sus healthchecks. | Obtener del equipo de plataforma URLs/nombres de apps del entorno ya existente; consultar todas las rutas de salud, revisar configuración de puertos y DNS interno y registrar timestamp/resultado. No declarar “desplegado” solo por la presencia de Compose o por CI. |
-| Alta | Auth aún mock y JWT sin firma según la documentación del corte; Material productivo rechaza escrituras sin Auth real. | Completar auth segura, validar contrato extremo a extremo y conservar deshabilitado el bypass de desarrollo. Puerta de salida: pruebas positivas y negativas más smoke autenticado. |
-| Alta | Quality no se ejecuta ni puede integrarse en Kubero actualmente. | Implementar paquete/servicio y contrato, resolver persistencia, healthcheck, pruebas e imagen; reutilizar el entorno existente. |
-| Alta | `docker-compose.yml` raíz contiene credenciales de base de datos literales y difiere de la topología Kubero. | Eliminar credenciales del archivo mediante el cambio técnico correspondiente, usar secretos locales y rotar cualquier valor que haya sido reutilizado. No copiar los valores al reporte. |
-| Media | La topología Kubero no incluye DB de Search ni Quality, mientras el Compose raíz sí las declara. | Mantener Search sin DB propia si el diseño sigue siendo HTTP→Catalog/Material. Crear persistencia de Quality solo tras confirmar necesidad/esquema y planificar su adición al entorno existente. |
-| Media | No hay prueba en el workflow PR de integración de Flutter en dispositivo; el test configurado es `flutter test`. | Añadir job de integración Flutter cuando haya runner/emulador y casos que dependan de plataforma; registrar esa limitación para cambios transversales Web/Mobile. |
-| Media | El smoke de infraestructura valida lectura/descarga y datos temporales, no alta autenticada/subida funcional. | Agregar escenario end-to-end con identidad real y limpieza del fixture después de integrar Auth; no interpretar el smoke actual como aceptación funcional completa. |
-| Media | `WEB_PORT`/`GATEWAY_PORT` son puertos host del Compose local, no puertos de escucha del contenedor ni configuración de service discovery Kubero. | En Kubero usar los puertos internos declarados por cada aplicación y DNS interno; mantener el Gateway público solo si lo exige el consumidor Mobile. |
-
-## 7. Secuencia y puertas de salida sugeridas
-
-1. **Verificar entorno actual (antes de desplegar cambios):** inventariar apps,
-   imágenes/tag, dominio/TLS, variables secretas, volúmenes y rutas de red del
-   Kubero existente. Ejecutar healthchecks HTTP en vivo y capturar resultados
-   saneados.
-2. **Integrar Auth:** reemplazar mocks, conectar migraciones/secreto de firma,
-   enlazar Gateway/Material y Web, aprobar pruebas de autorización y flujo
-   autenticado.
-3. **Habilitar Quality:** cerrar diseño de API y persistencia, completar build,
-   pruebas, imagen y healthcheck. Añadir solo los recursos necesarios al entorno
-   actual con migración/rollback explícitos.
-4. **Integrar Web:** fijar origen API, dominio/TLS y comportamiento de sesión;
-   aprobar pruebas browser contra el Gateway y las funcionalidades del Sprint 3.
-5. **Promover a Kubero:** usar tag inmutable generado por CI, actualizar las
-   apps existentes de forma ordenada, verificar salud/rutas y conservar tag
-   anterior para rollback. No crear un segundo clúster/entorno.
-
-**Puerta común de aceptación:** workflow PR verde, build+smoke verde, salud
-confirmada en vivo por app, dependencias internas resueltas, secretos gestionados
-fuera del repositorio y evidencia funcional autenticada donde aplique.
-
-## 8. Matriz de criterios de aceptación de la Issue #451
-
-| Criterio | Resultado de esta línea base |
-| --- | --- |
-| Estado de servicios y componentes de Kubero documentado | Configuración y artefactos documentados; el estado real de despliegue queda pendiente de inspección en el entorno. |
-| Disponibles, pendientes y dependencias identificados | Sí: matriz de componentes y persistencia; “incluido en Compose” está separado de “activo en Kubero”. |
-| Endpoints de salud comprobados | Rutas verificadas en la configuración y smoke de CI. La comprobación HTTP en el Kubero compartido queda pendiente por falta de URL/acceso a la sesión. |
-| Variables revisadas sin revelar secretos | Sí; se documentan nombres, función y tratamiento, sin valores de credenciales. |
-| Pruebas y workflows revisados | Sí; se describen suites/workflows y los runs recientes consultados. |
-| Prerrequisitos para Auth, Quality y Web | Sí; definidos arriba con puertas de salida. |
-| Problemas y acciones correctivas registrados | Sí; matriz priorizada en la sección 6. |
-| Diagnóstico que permita continuar sobre la infraestructura existente | Sí; secuencia y criterios de promoción definidos sin proponer una infraestructura paralela. |
-
-## Referencias del repositorio
+### Referencias
 
 - [`deploy/kubero/compose.yaml`](../../deploy/kubero/compose.yaml)
 - [`deploy/kubero/README.md`](../../deploy/kubero/README.md)
-- [`deploy/kubero/nginx.conf.template`](../../deploy/kubero/nginx.conf.template) y [`deploy/kubero/nginx-main.conf`](../../deploy/kubero/nginx-main.conf)
 - [`deploy/kubero/smoke.mjs`](../../deploy/kubero/smoke.mjs)
-- [`deploy/kubero/.env.example`](../../deploy/kubero/.env.example) y [`.env.example`](../../.env.example)
-- [`docker-compose.yml`](../../docker-compose.yml)
+- [`deploy/kubero/.env.example`](../../deploy/kubero/.env.example)
+- [`deploy/kubero/nginx.conf.template`](../../deploy/kubero/nginx.conf.template)
 - [`backend/package.json`](../../backend/package.json)
-- [`web/package.json`](../../web/package.json) y [`web/.env.example`](../../web/.env.example)
-- [`mobile/pubspec.yaml`](../../mobile/pubspec.yaml)
-- [`.github/workflows/pr-tests.yml`](../../.github/workflows/pr-tests.yml)
-- [`.github/workflows/kubero-images.yml`](../../.github/workflows/kubero-images.yml)
+- [`web/package.json`](../../web/package.json)
+- [Workflow PR tests](../../.github/workflows/pr-tests.yml)
+- [Workflow Kubero images](../../.github/workflows/kubero-images.yml)
+- [Issue #451](https://github.com/cchelooo/ApuntesUCT/issues/451)
+- [Run `PR tests` #506](https://github.com/cchelooo/ApuntesUCT/actions/runs/43619110816)
+- [Run `Kubero images` para `93a0018`](https://github.com/cchelooo/ApuntesUCT/actions/runs/43740083104)
