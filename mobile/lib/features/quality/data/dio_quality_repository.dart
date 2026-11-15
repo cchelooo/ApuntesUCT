@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:dio/dio.dart';
 
 import '../../../core/errors/api_exception.dart';
@@ -10,13 +13,20 @@ import '../domain/repositories/quality_repository.dart';
 /// Cumple con los criterios de aceptación:
 /// - Rutas unificadas a través del Gateway (`/quality/...`).
 /// - Sesión compartida administrada por `ApiClient`.
+/// - Incluye claves de idempotencia obligatorias (`Idempotency-Key`) en creación y
+///   actualización de reportes y decisiones de moderación, conservándolas durante reintentos.
 /// - Preserva errores de autenticación (401), autorización (403), validación (400),
 ///   conflictos (409) y microservicios no disponibles (502/503).
 /// - No sustituye errores por simulaciones o éxitos falsos.
 class DioQualityRepository implements QualityRepository {
   final ApiClient _apiClient;
+  final String Function() _generateIdempotencyKey;
+  final Map<String, String> _pendingIdempotencyKeys = {};
 
-  DioQualityRepository(this._apiClient);
+  DioQualityRepository(
+    this._apiClient, {
+    String Function()? idempotencyKeyGenerator,
+  }) : _generateIdempotencyKey = idempotencyKeyGenerator ?? _defaultUuidV4;
 
   // ---------------------------------------------------------------------------
   // Favoritos
@@ -161,16 +171,23 @@ class DioQualityRepository implements QualityRepository {
   Future<Report> createReport(
     String materialId,
     ReportCreate request, {
+    String? idempotencyKey,
     CancelToken? cancelToken,
   }) async {
     _validateUuid(materialId, 'materialId');
+    final payload = request.toJson();
+    final fingerprint = 'createReport:$materialId:${jsonEncode(payload)}';
+    final resolvedKey = _resolveIdempotencyKey(fingerprint, idempotencyKey);
     try {
       final response = await _apiClient.dio.post<dynamic>(
         '/quality/materials/$materialId/reports',
-        data: request.toJson(),
+        data: payload,
+        options: Options(headers: {'Idempotency-Key': resolvedKey}),
         cancelToken: cancelToken,
       );
-      return Report.fromJson(QualityJson.object(response.data));
+      final report = Report.fromJson(QualityJson.object(response.data));
+      _pendingIdempotencyKeys.remove(fingerprint);
+      return report;
     } on DioException catch (e) {
       _handleError(e);
     }
@@ -266,20 +283,22 @@ class DioQualityRepository implements QualityRepository {
     CancelToken? cancelToken,
   }) async {
     _validateUuid(materialId, 'materialId');
+    final payload = request.toJson();
+    final fingerprint =
+        'submitModerationDecision:$materialId:${jsonEncode(payload)}';
+    final resolvedKey = _resolveIdempotencyKey(fingerprint, idempotencyKey);
     try {
-      final options = Options(
-        headers: {
-          if (idempotencyKey != null && idempotencyKey.trim().isNotEmpty)
-            'Idempotency-Key': idempotencyKey.trim(),
-        },
-      );
       final response = await _apiClient.dio.post<dynamic>(
         '/quality/moderation/materials/$materialId/decisions',
-        data: request.toJson(),
-        options: options,
+        data: payload,
+        options: Options(headers: {'Idempotency-Key': resolvedKey}),
         cancelToken: cancelToken,
       );
-      return ModerationOperation.fromJson(QualityJson.object(response.data));
+      final operation = ModerationOperation.fromJson(
+        QualityJson.object(response.data),
+      );
+      _pendingIdempotencyKeys.remove(fingerprint);
+      return operation;
     } on DioException catch (e) {
       _handleError(e);
     }
@@ -331,24 +350,69 @@ class DioQualityRepository implements QualityRepository {
   Future<Report> updateReportStatus(
     String reportId,
     ReportUpdate request, {
+    String? idempotencyKey,
     CancelToken? cancelToken,
   }) async {
     _validateUuid(reportId, 'reportId');
+    final payload = request.toJson();
+    final fingerprint = 'updateReportStatus:$reportId:${jsonEncode(payload)}';
+    final resolvedKey = _resolveIdempotencyKey(fingerprint, idempotencyKey);
     try {
       final response = await _apiClient.dio.patch<dynamic>(
         '/quality/moderation/reports/$reportId',
-        data: request.toJson(),
+        data: payload,
+        options: Options(headers: {'Idempotency-Key': resolvedKey}),
         cancelToken: cancelToken,
       );
-      return Report.fromJson(QualityJson.object(response.data));
+      final report = Report.fromJson(QualityJson.object(response.data));
+      _pendingIdempotencyKeys.remove(fingerprint);
+      return report;
     } on DioException catch (e) {
       _handleError(e);
     }
   }
 
   // ---------------------------------------------------------------------------
-  // Validaciones y Manejo de Errores
+  // Validaciones, Idempotencia y Manejo de Errores
   // ---------------------------------------------------------------------------
+
+  String _resolveIdempotencyKey(
+    String operationFingerprint,
+    String? explicitKey,
+  ) {
+    if (explicitKey != null) {
+      final trimmed = explicitKey.trim();
+      _validateUuid(trimmed, 'idempotencyKey');
+      _pendingIdempotencyKeys[operationFingerprint] = trimmed;
+      return trimmed;
+    }
+    final existing = _pendingIdempotencyKeys[operationFingerprint];
+    if (existing != null) {
+      return existing;
+    }
+    final generated = _generateIdempotencyKey().trim();
+    _validateUuid(generated, 'idempotencyKey');
+    _pendingIdempotencyKeys[operationFingerprint] = generated;
+    return generated;
+  }
+
+  static String _defaultUuidV4() {
+    Random random;
+    try {
+      random = Random.secure();
+    } catch (_) {
+      random = Random();
+    }
+    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    String hex(int b) => b.toRadixString(16).padLeft(2, '0');
+    return '${hex(bytes[0])}${hex(bytes[1])}${hex(bytes[2])}${hex(bytes[3])}-'
+        '${hex(bytes[4])}${hex(bytes[5])}-'
+        '${hex(bytes[6])}${hex(bytes[7])}-'
+        '${hex(bytes[8])}${hex(bytes[9])}-'
+        '${hex(bytes[10])}${hex(bytes[11])}${hex(bytes[12])}${hex(bytes[13])}${hex(bytes[14])}${hex(bytes[15])}';
+  }
 
   void _validatePagination(int page, int pageSize) {
     if (page < 1 ||
@@ -356,7 +420,9 @@ class DioQualityRepository implements QualityRepository {
         pageSize > 100 ||
         page > 2147483647 ||
         (page - 1) * pageSize > 2147483647) {
-      throw ArgumentError('Parámetros de paginación fuera de los límites del contrato.');
+      throw ArgumentError(
+        'Parámetros de paginación fuera de los límites del contrato.',
+      );
     }
   }
 
