@@ -80,23 +80,49 @@ class Rating {
 }
 
 /// Resumen público consolidado de calificaciones de un material (`RatingSummaryDto`).
+///
+/// Cuando el material aún no posee calificaciones (`count == 0`), el contrato
+/// devuelve `average: null`, sin sustituirlo por cero.
 class RatingSummary {
   final String materialId;
   final int count;
-  final double average;
+  final double? average;
 
   const RatingSummary({
     required this.materialId,
     required this.count,
-    required this.average,
+    this.average,
   }) : assert(count >= 0, 'Count no puede ser negativo'),
-       assert(average >= 0.0 && average <= 5.0, 'Average debe estar entre 0.0 y 5.0');
+       assert(
+         average == null || (average >= 1.0 && average <= 5.0),
+         'Average debe ser null o estar entre 1.0 y 5.0',
+       ),
+       assert(
+         count > 0 || average == null,
+         'Cuando count es 0, average debe ser null',
+       ),
+       assert(
+         count == 0 || average != null,
+         'Cuando count > 0, average no puede ser null',
+       );
 
   factory RatingSummary.fromJson(Map<String, dynamic> json) {
+    final count = QualityJson.requiredInteger(json, 'count', min: 0);
+    final average = QualityJson.number(json, 'average', min: 1.0, max: 5.0);
+    if (count == 0 && average != null) {
+      throw const FormatException(
+        'Cuando count es 0, average debe ser null sin sustituirse por cero.',
+      );
+    }
+    if (count > 0 && average == null) {
+      throw const FormatException(
+        'Cuando count es mayor a 0, average es obligatorio.',
+      );
+    }
     return RatingSummary(
       materialId: QualityJson.requiredUuid(json, 'materialId'),
-      count: QualityJson.requiredInteger(json, 'count', min: 0),
-      average: QualityJson.requiredNumber(json, 'average', min: 0.0, max: 5.0),
+      count: count,
+      average: average,
     );
   }
 
