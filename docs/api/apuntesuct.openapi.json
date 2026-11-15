@@ -1064,7 +1064,7 @@
         "tags": ["materials"]
       },
       "post": {
-        "description": "\n**REGLAS DE SEGURIDAD Y VALIDACIÓN EN SERVIDOR:**\n- **Contexto de autor:** Requiere un contexto válido resuelto por MaterialAuthorProvider (retorna `401` si no está disponible o habilitado). El contexto local temporal está limitado a development según la configuración del servicio.\n- **Tamaño máximo:** 15 MB del contrato equivalen a 15.728.640 bytes (15 MiB). Retorna `413` si se excede.\n- **Tipos MIME permitidos:** application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation (retorna `415` si no es compatible).\n- **Archivo vacío:** Se rechaza si el archivo pesa 0 bytes (retorna `400`).\n- **Metadatos obligatorios:** `title`, `year` (YYYY), `type` y `subjectId` (retorna `400` si fallan).\n- **Referencias de Catalog:** `subjectId` debe ser un UUID de una asignatura activa con carrera y universidad activas. Si se envían `careerId` o `professorId`, deben existir, estar activos y ser compatibles con la asignatura. La universidad del contexto de autor también debe ser compatible cuando esté configurada. Referencias inválidas retornan `400` con `field`; Catalog no disponible retorna `502`.\n- **Ejemplos académicos:** Los UUID del formulario son ilustrativos; reemplazarlos por referencias existentes en Catalog.\n- **Reglas por tipo:** `LINK` exige `externalLink` válido y prohíbe archivo. `DOCUMENT`, `PRESENTATION`, `EXAM` y `SUMMARY` exigen archivo local.\n- **Relación del tipo:** Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.\n- **Endpoint relacionado:** GET /materials lista materiales publicados con materialTypeId.\n- **Almacenamiento:** Las validaciones previas, incluidas las referencias de Catalog, se ejecutan antes de almacenar el archivo y persistir el material.\n    ",
+        "description": "\n**REGLAS DE SEGURIDAD Y VALIDACIÓN EN SERVIDOR:**\n- **Identidad del autor:** Requiere `Authorization: Bearer <JWT firmado>` con `sub` = UUID del usuario autenticado (retorna `401` si falta, expiró o la firma no es verificable). Los tokens mock (`alg: none` o `mock: true`) se rechazan. El contexto local `MATERIAL_LOCAL_*` solo se admite con `NODE_ENV=development` y nunca en producción.\n- **Tamaño máximo:** 15 MB del contrato equivalen a 15.728.640 bytes (15 MiB). Retorna `413` si se excede.\n- **Tipos MIME permitidos:** application/pdf, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-powerpoint, application/vnd.openxmlformats-officedocument.presentationml.presentation (retorna `415` si no es compatible).\n- **Archivo vacío:** Se rechaza si el archivo pesa 0 bytes (retorna `400`).\n- **Metadatos obligatorios:** `title`, `year` (YYYY), `type` y `subjectId` (retorna `400` si fallan).\n- **Referencias de Catalog:** `subjectId` debe ser un UUID de una asignatura activa con carrera y universidad activas. Si se envían `careerId` o `professorId`, deben existir, estar activos y ser compatibles con la asignatura. La universidad del contexto de autor también debe ser compatible cuando esté configurada. Referencias inválidas retornan `400` con `field`; Catalog no disponible retorna `502`.\n- **Ejemplos académicos:** Los UUID del formulario son ilustrativos; reemplazarlos por referencias existentes en Catalog.\n- **Reglas por tipo:** `LINK` exige `externalLink` válido y prohíbe archivo. `DOCUMENT`, `PRESENTATION`, `EXAM` y `SUMMARY` exigen archivo local.\n- **Relación del tipo:** Código público del tipo de material. type se resuelve por coincidencia exacta con MaterialType.name de un registro activo y su id se guarda como materialTypeId. GET /materials expone ese id como materialTypeId y el nombre como materialType. Los tipos deben existir y estar activos en BD. El enum limita los códigos aceptados por este POST, no todos los tipos existentes en el listado.\n- **Endpoint relacionado:** GET /materials lista materiales publicados con materialTypeId.\n- **Almacenamiento:** Las validaciones previas, incluidas las referencias de Catalog, se ejecutan antes de almacenar el archivo y persistir el material.\n    ",
         "operationId": "MaterialService_MaterialController_createMaterial",
         "parameters": [],
         "requestBody": {
@@ -1107,7 +1107,7 @@
             }
           },
           "401": {
-            "description": "Contexto de autor ausente, inválido o no habilitado.",
+            "description": "Identidad ausente, token inválido/expirado, firma no verificable o token mock.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1116,7 +1116,7 @@
                 "example": {
                   "statusCode": 401,
                   "error": "Unauthorized",
-                  "message": "Se requiere un contexto de autor válido.",
+                  "message": "Se requiere una identidad autenticada válida.",
                   "timestamp": "2026-11-08T12:00:00.000Z",
                   "path": "/api/v1/materials"
                 }
@@ -1446,7 +1446,7 @@
     },
     "/api/v1/materials/{id}/versions": {
       "post": {
-        "description": "Requiere contexto local de autor habilitado en development; el JWT mock no autentica. Solo el autor puede agregar versiones. No cambia el estado del material. Archivo obligatorio, máximo 15 MiB; mismos MIME admitidos que POST /materials.",
+        "description": "Requiere Authorization: Bearer <JWT firmado> con sub = UUID del usuario autenticado. Los tokens mock se rechazan. Solo el autor del material puede agregar versiones (403 en caso contrario). No cambia el estado del material. Archivo obligatorio, máximo 15 MiB; mismos MIME admitidos que POST /materials.",
         "operationId": "MaterialService_MaterialVersionController_createVersion",
         "parameters": [
           {
@@ -1514,7 +1514,7 @@
             }
           },
           "401": {
-            "description": "Contexto de autor no disponible.",
+            "description": "Identidad ausente, token inválido/expirado, firma no verificable o token mock.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1523,7 +1523,7 @@
                 "example": {
                   "statusCode": 401,
                   "error": "Unauthorized",
-                  "message": "Se requiere un contexto de autor válido.",
+                  "message": "Se requiere una identidad autenticada válida.",
                   "timestamp": "2026-11-08T12:00:00.000Z",
                   "path": "/api/v1/materials/00000000-0000-4000-8000-000000000001/versions"
                 }

@@ -9,6 +9,7 @@ import { StorageModule } from '../../infrastructure/storage/storage.module';
 import { MaterialController } from '../controllers/material.controller';
 import { CreateMaterial } from '../../application/use-cases/create-material';
 import { MaterialAuthorProvider } from '../../infrastructure/auth/material-author.provider';
+import { AccessTokenVerifier } from '../../infrastructure/auth/access-token.verifier';
 import { CatalogPort } from '../../application/ports/catalog.port';
 import { CatalogHttpAdapter } from '../../infrastructure/catalog/catalog-http.adapter';
 
@@ -19,6 +20,7 @@ import { CatalogHttpAdapter } from '../../infrastructure/catalog/catalog-http.ad
     MaterialsService,
     CreateMaterial,
     CreateMaterialVersion,
+    AccessTokenVerifier,
     MaterialAuthorProvider,
     { provide: CatalogPort, useClass: CatalogHttpAdapter },
   ],

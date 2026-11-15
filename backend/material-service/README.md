@@ -45,7 +45,7 @@ La compilación genera `dist/main.js`. También se puede ejecutar `npm run start
 
 | Endpoint | Propósito |
 | --- | --- |
-| `POST http://localhost:3003/api/v1/materials` | Creación y subida real (contexto de autor local temporal) |
+| `POST http://localhost:3003/api/v1/materials` | Creación y subida autenticada con JWT firmado |
 | `GET http://localhost:3003/api/v1/materials` | Listado paginado de materiales publicados |
 | `GET http://localhost:3003/api/v1/materials/:id/download` | Descarga del archivo de un material publicado |
 | `GET http://localhost:3003/api/v1/health` | Estado del proceso |
@@ -413,11 +413,34 @@ npm run prisma:deploy --workspace=material-service
 La migración agrega `Material.externalLink` nullable y los cinco tipos del POST.
 No reinicia tablas ni cambia tipos ya existentes, incluidos los desactivados.
 
-### Autor temporal de desarrollo
+### Identidad autenticada (#446)
 
-Auth todavía entrega tokens simulados sin firma. Esos tokens **no autorizan**
-este endpoint. Hasta integrar Auth real, el POST requiere configurar explícitamente
-en `material-service/.env`:
+La subida (`POST /materials`) y el versionado (`POST /materials/:id/versions`)
+exigen `Authorization: Bearer <JWT firmado>` con el claim `sub` igual al UUID del
+usuario autenticado. El autor se toma siempre del token; un `uploaderId` u otro
+campo equivalente enviado por el cliente se rechaza por la validación del DTO.
+Los tokens mock del login temporal (`alg: none` o `mock: true`) se rechazan con
+`401`. Un token ausente, expirado o con firma no verificable también responde `401`.
+
+La verificación se configura en `material-service/.env`:
+
+```dotenv
+# HS256 con secreto compartido (desarrollo/integración)
+JWT_ACCESS_SECRET=<secreto-compartido-con-auth>
+
+# O RS256/ES256 con la clave pública de Auth (recomendado en producción)
+JWT_ACCESS_PUBLIC_KEY=<PEM-o-PEM-con-\n>
+
+# Opcionales: si se definen, se validan emisor y audiencia
+JWT_ISSUER=apuntesuct-auth
+JWT_AUDIENCE=apuntesuct-api
+```
+
+Si no hay `JWT_ACCESS_SECRET` ni `JWT_ACCESS_PUBLIC_KEY`, el servicio falla
+cerrado: no acepta tokens. La emisión de JWT reales corresponde a #441.
+
+Mientras Auth aún no emita tokens firmados, se conserva el contexto local
+explícito **solo para desarrollo**:
 
 ```dotenv
 NODE_ENV=development
@@ -426,11 +449,10 @@ MATERIAL_LOCAL_UPLOADER_ID=<UUID-del-autor-de-prueba>
 MATERIAL_LOCAL_UNIVERSITY_ID=<ID-institucional-opcional>
 ```
 
-Este modo asigna el mismo autor configurado a todas las subidas locales. No es
-un mecanismo de autenticación. Fuera de `NODE_ENV=development`, con el modo
-apagado o sin UUID válido, el POST responde 401. Está apagado por defecto y no
-acepta IDs de autor enviados en el body. El despliegue con autenticación real
-requiere reemplazar `MaterialAuthorProvider` por contexto verificado de Auth.
+Este modo asigna el mismo autor a todas las subidas locales y no es
+autenticación. Fuera de `NODE_ENV=development`, con el modo apagado o sin UUID
+válido, responde `401`. Si `NODE_ENV=production`, el servicio **no arranca** con
+`MATERIAL_LOCAL_AUTHOR_ENABLED=true`. Está apagado por defecto.
 Las referencias académicas se guardan como IDs lógicos; la comprobación de su
 existencia en Catalog sigue pendiente. Universidad es null si no está configurada.
 
