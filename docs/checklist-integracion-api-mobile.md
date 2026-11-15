@@ -54,7 +54,7 @@ La aplicación Mobile **no consume los microservicios directamente**, sino exclu
 | **Auth** | `POST` | `/api/v1/auth/login` | 🟢 **Integrado** | `login_dio_test.dart`, `dio_auth_repository.dart` | Autenticación mock JWT con claim `mock: true`. |
 | **Auth** | `POST` | `/api/v1/auth/register` | ⚪ **Pendiente** | `RegisterScreen`, `register_navigation_test.dart` | Devuelve `404 Not Found` en Gateway; backend no expone registro aún. |
 | **Auth** | `GET` | `/api/v1/auth/me` | ⚪ **Pendiente** | `profile_screen_test.dart`, `profile_screen.dart` | No publicado en Swagger; Mobile preserva datos del usuario autenticado en login. |
-| **Auth** | `POST` | `/api/v1/auth/logout` | ⚪ **Pendiente** | `home_screen_test.dart`, `auth_notifier.dart` | Mobile realiza logout local seguro (limpieza de tokens y estado en Riverpod). |
+| **Auth** | `POST` | `/api/v1/auth/logout` | ⚪ **Pendiente** | `home_screen_test.dart`, `mock_auth_repository.dart` | Mobile limpia el estado de usuario en memoria (`AuthStateNotifier` en Riverpod); aún no implementa persistencia ni almacenamiento seguro de tokens. |
 | **Catalog** | `GET` | `/api/v1/catalog/universities` | 🟡 **Probado con Mock** | `academic_filter_sheet_test.dart`, `academic_hierarchy_provider_test.dart` | Backend implementó #221 en `main`. Mobile maquetó selector con validación de fallback. |
 | **Catalog** | `GET` | `/api/v1/catalog/careers` | 🟡 **Probado con Mock** | `academic_filter_sheet_test.dart` (cascada aislada por `universityId`) | Cascada dependiente del padre; validado con fixtures idénticos al contrato. |
 | **Catalog** | `GET` | `/api/v1/catalog/subjects` | 🟡 **Probado con Mock** | `academic_filter_sheet_test.dart` (cascada por `careerId`) | Cascada dependiente del padre; validado con fixtures idénticos al contrato. |
@@ -62,11 +62,11 @@ La aplicación Mobile **no consume los microservicios directamente**, sino exclu
 | **Catalog** | `GET` | `/api/v1/catalog/filter` | 🟡 **Probado con Mock** | `catalog_screen_test.dart`, `catalog_repository_test.dart` | Endpoint de consulta jerárquica combinada. |
 | **Material** | `GET` | `/api/v1/materials` | 🟢 **Integrado** | `materials_discovery_provider.dart`, `gateway_discovery_ui_test.dart` | Listado paginado general con `page` y `pageSize`. |
 | **Material** | `POST` | `/api/v1/materials` | 🟢 **Integrado** | `material_upload_screen_test.dart`, `material_upload_live_test.dart` | Subida multipart hasta 15 MB (PDF, Word, PPT) o enlace `LINK`. Retorna `PENDING_REVIEW`. |
-| **Material** | `GET` | `/api/v1/materials/:id` | 🟢 **Integrado** | `material_detail_screen_test.dart`, `material_detail_refresh_test.dart` | Detalle estructurado con historial de versiones, metadatos y referencias académicas. |
+| **Material** | `GET` | `/api/v1/materials/:id` | 🟢 **Integrado** | `material_detail_dio_test.dart`, `material_detail_refresh_test.dart` | Detalle estructurado con historial de versiones, metadatos y referencias académicas. |
 | **Material** | `GET` | `/api/v1/materials/:id/download` | 🟢 **Integrado** | `material_download_test.dart`, `material_file_handler_test.dart` | Descarga binaria con streaming, cabeceras `Content-Disposition` UTF-8 y guardado local. |
 | **Material** | `POST` | `/api/v1/materials/:id/versions` | 🟢 **Integrado** | `material_version_history_test.dart`, `material_version_upload_sheet_test.dart` | Subida de nueva versión exclusivamente con archivo local (`file`). No admite enlaces externos ni `changesDescription`. |
 | **Material** | `GET` | `/api/v1/materials/:id/preview` | 🔴 **Bloqueado** | — | Endpoint de visualización embebida/streaming no diseñado en Backend para Sprint 2. |
-| **Search** | `GET` | `/api/v1/search` | 🟢 **Integrado** | `material_hierarchy_filter_connection_test.dart`, `material_discovery_search_page_test.dart`, `material_search_provider_test.dart` | Búsqueda desacoplada por texto (`q`), 6 filtros oficiales (`universityId`, `careerId`, `subjectId`, `professorId`, `year`, `type`), ordenamiento y paginación. |
+| **Search** | `GET` | `/api/v1/search` | 🟢 **Integrado** | `dio_search_repository_test.dart`, `material_discovery_search_page_test.dart`, `material_search_provider_test.dart` | Búsqueda desacoplada por texto (`q`), 6 filtros oficiales (`universityId`, `careerId`, `subjectId`, `professorId`, `year`, `type`), ordenamiento y paginación. |
 | **Quality** | `POST` | `/api/v1/quality/ratings` | 🔴 **Bloqueado** | — | Quality Service no enrutado por Gateway ni implementado en Sprint 2 (Sprint 3). |
 | **Quality** | `POST` | `/api/v1/quality/favorites` | 🔴 **Bloqueado** | — | No enrutado en Gateway. |
 | **Quality** | `DELETE` | `/api/v1/quality/favorites/:id`| 🔴 **Bloqueado** | — | No enrutado en Gateway. |
@@ -95,8 +95,8 @@ Total de endpoints evaluados: 20
 - **Login (`POST /auth/login`)**:
   - Implementado con `DioAuthRepository` utilizando el cliente HTTP centralizado `ApiClient`.
   - Envía `LoginDto` (`email`, `password`) validando formato de correo institucional y rechazando cadenas vacías.
-  - Almacena el `accessToken` en memoria y sesión local.
-  - Evidencia: `mobile/test/features/auth/presentation/login_dio_test.dart`.
+  - Valida la presencia de `accessToken` en la respuesta y conserva el usuario autenticado (`UserModel`) en memoria mediante `AuthStateNotifier` (Riverpod), sin persistencia en almacenamiento local seguro en esta versión.
+  - Evidencia: `mobile/test/features/auth/presentation/login_dio_test.dart` y `mobile/test/features/auth/data/dio_auth_repository_test.dart`.
 - **Dependencias pendientes**:
   - El backend actualmente opera con token mock JWT sin firma criptográfica (`alg: none`) con claim `mock: true`. La integración con hash bcrypt y PostgreSQL real quedó pospuesta por Backend.
   - Registro de usuarios (`POST /auth/register`) retorna `404 Not Found`; la pantalla `RegisterScreen` cuenta con validaciones completas a nivel cliente listas para conectar.
@@ -110,7 +110,7 @@ Total de endpoints evaluados: 20
   - Evidencia: `mobile/test/features/materials/presentation/material_upload_screen_test.dart` y `mobile/test/integration/material_upload_live_test.dart`.
 - **Detalle de Material (`GET /materials/:id`)**:
   - Resuelve metadatos, autor, carrera, asignatura, profesor y el historial completo de versiones publicadas.
-  - Evidencia: `mobile/test/features/materials/presentation/material_detail_screen_test.dart`.
+  - Evidencia: `mobile/test/features/materials/presentation/material_detail_dio_test.dart` y `mobile/test/features/materials/presentation/material_detail_refresh_test.dart`.
 - **Descarga de Binarios (`GET /materials/:id/download`)**:
   - Descarga mediante streaming binario conservando cabeceras `Content-Type` y `Content-Disposition` con soporte para nombres UTF-8 (`filename*`).
   - Integración nativa con `open_filex` para visualización en aplicaciones externas del dispositivo.
@@ -131,7 +131,7 @@ Total de endpoints evaluados: 20
     6. `type` (Enum contractual: `DOCUMENT`, `PRESENTATION`, `EXAM`, `SUMMARY`, `LINK`)
   - Soporta ordenamiento por `sortBy` (`createdAt`, `title`, `year`) y `order` (`asc`, `desc`).
   - Maneja respuestas vacías, debounce de 300 ms en entrada de texto y deduplicación en paginación.
-  - Evidencia: `mobile/test/features/materials/presentation/material_hierarchy_filter_connection_test.dart` y `mobile/test/features/materials/presentation/material_discovery_search_page_test.dart`.
+  - Evidencia: `mobile/test/features/materials/data/dio_search_repository_test.dart`, `mobile/test/features/materials/presentation/material_discovery_search_page_test.dart` y `mobile/test/features/materials/presentation/material_search_provider_test.dart`.
 
 ### 4.4. Catalog Service (`/api/v1/catalog`)
 - **Selectores Académicos**:
@@ -168,7 +168,7 @@ En Flutter, `ErrorInterceptor` y `apiErrorMessage(...)` capturan estos códigos 
 
 - **Ausencia de secretos**: No se incluyen tokens JWT válidos, contraseñas de producción ni variables privadas en el repositorio.
 - **Datos controlados**: Los datos de prueba utilizados en pruebas de integración y ejemplos utilizan correos de formato institucional genérico (`estudiante@alu.uct.cl`) y UUIDs estándar RFC 4122 generados aleatoriamente.
-- **Seguridad en almacenamiento local**: Los tokens de sesión se gestionan mediante almacenamiento seguro sin exposición a logs o capturas de pantalla.
+- **Gestión de sesión en memoria**: El código actual conserva el estado de autenticación únicamente en memoria (`AuthStateNotifier` en Riverpod) sin persistir tokens en almacenamiento local del dispositivo; la persistencia segura queda pendiente para la integración de autenticación real.
 
 ---
 
