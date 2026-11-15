@@ -104,7 +104,7 @@ class MockQualityRepository implements QualityRepository {
   }) async {
     await _simulate();
     return summariesByMaterialId[materialId] ??
-        RatingSummary(materialId: materialId, count: 0, average: 0.0);
+        RatingSummary(materialId: materialId, count: 0, average: null);
   }
 
   @override
@@ -149,6 +149,7 @@ class MockQualityRepository implements QualityRepository {
   Future<Report> createReport(
     String materialId,
     ReportCreate request, {
+    String? idempotencyKey,
     CancelToken? cancelToken,
   }) async {
     await _simulate();
@@ -344,6 +345,7 @@ class MockQualityRepository implements QualityRepository {
   Future<Report> updateReportStatus(
     String reportId,
     ReportUpdate request, {
+    String? idempotencyKey,
     CancelToken? cancelToken,
   }) async {
     await _simulate();

@@ -124,6 +124,20 @@ void main() {
         expect(summary.average, 4.5);
       });
 
+      test('getRatingSummary admite count=0 con average=null sin sustituirlo por cero', () async {
+        final adapter = QualityResponseAdapter({
+          'materialId': validMaterialUuid,
+          'count': 0,
+          'average': null,
+        });
+        final repo = createRepo(adapter);
+
+        final summary = await repo.getRatingSummary(validMaterialUuid);
+
+        expect(summary.count, 0);
+        expect(summary.average, isNull);
+      });
+
       test('getMyRating devuelve Rating cuando existe calificación propia', () async {
         final adapter = QualityResponseAdapter({
           'id': '77777777-6666-4555-8444-333333333333',
@@ -193,8 +207,31 @@ void main() {
     });
 
     group('Reportes (Reports)', () {
-      test('createReport realiza POST /quality/materials/:id/reports', () async {
+      test('createReport realiza POST /quality/materials/:id/reports con Idempotency-Key obligatorio y la conserva en reintentos', () async {
         final adapter = QualityResponseAdapter({
+          'statusCode': 502,
+          'code': 'DEPENDENCY_INVALID_RESPONSE',
+          'message': 'Fallo temporal de Gateway.',
+          'requestId': '11111111-1111-4111-8111-111111111111',
+        }, statusCode: 502);
+        final repo = createRepo(adapter);
+        const requestDto = ReportCreate(
+          reason: ReportReason.brokenResource,
+          details: 'Enlace roto',
+        );
+
+        // Primer intento falla con 502 pero genera y envía Idempotency-Key UUID
+        await expectLater(
+          () => repo.createReport(validMaterialUuid, requestDto),
+          throwsA(isA<QualityApiException>()),
+        );
+        final firstKey = adapter.request?.headers['Idempotency-Key'] as String?;
+        expect(firstKey, isNotNull);
+        expect(firstKey!.length, 36);
+
+        // Segundo intento (reintento de la misma operación) conserva la misma Idempotency-Key
+        adapter.statusCode = 201;
+        adapter.data = {
           'id': validReportUuid,
           'materialId': validMaterialUuid,
           'userId': '88888888-7777-4666-8555-444444444444',
@@ -204,21 +241,58 @@ void main() {
           'resolutionNote': null,
           'createdAt': '2026-11-14T12:00:00Z',
           'updatedAt': '2026-11-14T12:00:00Z',
-        }, statusCode: 201);
-        final repo = createRepo(adapter);
+        };
 
-        final result = await repo.createReport(
-          validMaterialUuid,
-          const ReportCreate(reason: ReportReason.brokenResource, details: 'Enlace roto'),
-        );
+        final result = await repo.createReport(validMaterialUuid, requestDto);
+        final retryKey = adapter.request?.headers['Idempotency-Key'] as String?;
 
         expect(adapter.request?.method, 'POST');
         expect(adapter.request?.path, '/quality/materials/$validMaterialUuid/reports');
-        expect(adapter.request?.data, {
+        expect(retryKey, equals(firstKey));
+        expect(result.id, validReportUuid);
+      });
+
+      test('updateReportStatus realiza PATCH con Idempotency-Key obligatorio y la conserva en reintentos', () async {
+        final adapter = QualityResponseAdapter({
+          'statusCode': 503,
+          'code': 'DEPENDENCY_UNAVAILABLE',
+          'message': 'Servicio temporalmente no disponible.',
+          'requestId': '11111111-1111-4111-8111-111111111111',
+        }, statusCode: 503);
+        final repo = createRepo(adapter);
+        final requestDto = ReportUpdate(
+          status: ReportStatus.resolved,
+          resolutionNote: 'Revisado y corregido',
+          expectedUpdatedAt: DateTime.parse('2026-11-14T12:00:00Z'),
+        );
+
+        await expectLater(
+          () => repo.updateReportStatus(validReportUuid, requestDto),
+          throwsA(isA<QualityApiException>()),
+        );
+        final firstKey = adapter.request?.headers['Idempotency-Key'] as String?;
+        expect(firstKey, isNotNull);
+
+        adapter.statusCode = 200;
+        adapter.data = {
+          'id': validReportUuid,
+          'materialId': validMaterialUuid,
+          'userId': '88888888-7777-4666-8555-444444444444',
           'reason': 'BROKEN_RESOURCE',
           'details': 'Enlace roto',
-        });
-        expect(result.id, validReportUuid);
+          'status': 'RESOLVED',
+          'resolutionNote': 'Revisado y corregido',
+          'createdAt': '2026-11-14T12:00:00Z',
+          'updatedAt': '2026-11-14T12:05:00Z',
+        };
+
+        final updated = await repo.updateReportStatus(validReportUuid, requestDto);
+        final retryKey = adapter.request?.headers['Idempotency-Key'] as String?;
+
+        expect(adapter.request?.method, 'PATCH');
+        expect(adapter.request?.path, '/quality/moderation/reports/$validReportUuid');
+        expect(retryKey, equals(firstKey));
+        expect(updated.status, ReportStatus.resolved);
       });
 
       test('getMyReports realiza GET /quality/reports/me con paginación', () async {
@@ -258,8 +332,42 @@ void main() {
         expect(adapter.request?.queryParameters['status'], 'PENDING_REVIEW');
       });
 
-      test('submitModerationDecision envía Idempotency-Key y DTO requerido', () async {
+      test('submitModerationDecision envía Idempotency-Key UUID obligatoria, la conserva en reintentos y rechaza claves inválidas', () async {
         final adapter = QualityResponseAdapter({
+          'statusCode': 502,
+          'code': 'DEPENDENCY_INVALID_RESPONSE',
+          'message': 'Error de red en moderación.',
+          'requestId': '11111111-1111-4111-8111-111111111111',
+        }, statusCode: 502);
+        final repo = createRepo(adapter);
+
+        const request = ModerationDecisionRequest(
+          action: ModerationAction.approve,
+          expectedRevision: 3,
+          reason: 'Contenido correcto',
+        );
+
+        // Rechaza clave de idempotencia no UUID
+        expect(
+          () => repo.submitModerationDecision(
+            validMaterialUuid,
+            request,
+            idempotencyKey: 'clave-invalida',
+          ),
+          throwsA(isA<ArgumentError>()),
+        );
+
+        // Primer intento genera clave UUID y falla con 502
+        await expectLater(
+          () => repo.submitModerationDecision(validMaterialUuid, request),
+          throwsA(isA<QualityApiException>()),
+        );
+        final firstKey = adapter.request?.headers['Idempotency-Key'] as String?;
+        expect(firstKey, isNotNull);
+
+        // Reintento conserva la misma clave
+        adapter.statusCode = 202;
+        adapter.data = {
           'id': validOperationUuid,
           'materialId': validMaterialUuid,
           'actorId': '88888888-7777-4666-8555-444444444444',
@@ -276,23 +384,15 @@ void main() {
           'failure': null,
           'createdAt': '2026-11-14T14:00:00Z',
           'updatedAt': '2026-11-14T14:00:01Z',
-        }, statusCode: 202);
-        final repo = createRepo(adapter);
-
-        const request = ModerationDecisionRequest(
-          action: ModerationAction.approve,
-          expectedRevision: 3,
-          reason: 'Contenido correcto',
-        );
+        };
 
         final op = await repo.submitModerationDecision(
           validMaterialUuid,
           request,
-          idempotencyKey: 'idemp-key-12345',
         );
 
         expect(adapter.request?.path, '/quality/moderation/materials/$validMaterialUuid/decisions');
-        expect(adapter.request?.headers['Idempotency-Key'], 'idemp-key-12345');
+        expect(adapter.request?.headers['Idempotency-Key'], equals(firstKey));
         expect(op.id, validOperationUuid);
         expect(op.state, ModerationOperationState.applied);
       });

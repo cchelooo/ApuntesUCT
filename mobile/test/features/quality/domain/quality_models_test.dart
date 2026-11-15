@@ -145,6 +145,33 @@ void main() {
         expect(summary.materialId, '22222222-3333-4444-8555-666666666666');
       });
 
+      test('RatingSummaryDto admite count=0 con average=null sin sustituirlo por cero', () {
+        final json = {
+          'materialId': '22222222-3333-4444-8555-666666666666',
+          'count': 0,
+          'average': null,
+        };
+
+        final summary = RatingSummary.fromJson(json);
+
+        expect(summary.count, 0);
+        expect(summary.average, isNull);
+        expect(summary.toJson(), {
+          'materialId': '22222222-3333-4444-8555-666666666666',
+          'count': 0,
+          'average': null,
+        });
+
+        expect(
+          () => RatingSummary.fromJson({
+            'materialId': '22222222-3333-4444-8555-666666666666',
+            'count': 0,
+            'average': 0,
+          }),
+          throwsA(isA<FormatException>()),
+        );
+      });
+
       test('RatingUpsert serializa con o sin comentario', () {
         const upsert1 = RatingUpsert(score: 5, comment: 'Excelente');
         expect(upsert1.toJson(), {'score': 5, 'comment': 'Excelente'});

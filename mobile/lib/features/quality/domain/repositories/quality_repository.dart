@@ -65,9 +65,13 @@ abstract interface class QualityRepository {
   // ---------------------------------------------------------------------------
 
   /// Registra un nuevo reporte sobre un material publicado.
+  ///
+  /// Envía obligatoriamente el encabezado `Idempotency-Key` (UUID) y conserva
+  /// la misma clave si se reintenta la misma operación tras un fallo.
   Future<Report> createReport(
     String materialId,
     ReportCreate request, {
+    String? idempotencyKey,
     CancelToken? cancelToken,
   });
 
@@ -125,9 +129,13 @@ abstract interface class QualityRepository {
   });
 
   /// Cambia el estado de tratamiento de un reporte (IN_REVIEW, RESOLVED, DISMISSED).
+  ///
+  /// Envía obligatoriamente el encabezado `Idempotency-Key` (UUID) y conserva
+  /// la misma clave si se reintenta la misma operación tras un fallo.
   Future<Report> updateReportStatus(
     String reportId,
     ReportUpdate request, {
+    String? idempotencyKey,
     CancelToken? cancelToken,
   });
 }
