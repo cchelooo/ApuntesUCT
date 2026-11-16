@@ -1,23 +1,9 @@
+import { formatMaterialType } from './formatMaterialType';
 import { Link } from 'react-router-dom';
 import type { MaterialListItem } from '../../../domain/material/materialListItem';
 
 interface MaterialCardProps {
   material: MaterialListItem;
-}
-
-const TYPE_LABELS: Record<string, string> = {
-  SUMMARY: 'Resumen',
-  EXAM: 'Prueba',
-  GUIDE: 'Guía',
-  CLASS_NOTES: 'Apuntes de clase',
-  OTHER: 'Otro',
-};
-
-const EMPTY_VALUE = 'Por definir';
-
-function formatMaterialType(type: string | null): string {
-  if (!type) return EMPTY_VALUE;
-  return TYPE_LABELS[type] ?? type;
 }
 
 function DocumentIcon() {

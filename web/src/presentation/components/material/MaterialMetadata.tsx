@@ -1,3 +1,4 @@
+import { formatMaterialType } from './formatMaterialType';
 import type { MaterialDetail } from '../../../domain/material/material';
 
 interface MaterialMetadataProps {
@@ -13,7 +14,7 @@ export function MaterialMetadata({ material }: MaterialMetadataProps) {
   }> = [
     { label: 'Asignatura', value: material?.subjectName },
     { label: 'Profesor', value: material?.professorName },
-    { label: 'Tipo de material', value: material?.type },
+    { label: 'Tipo de material', value: formatMaterialType(material?.type) },
     { label: 'Año', value: material?.year },
   ];
 
@@ -29,7 +30,7 @@ export function MaterialMetadata({ material }: MaterialMetadataProps) {
         Datos del material
       </h2>
 
-      <p className="mt-3 break-words text-sm leading-relaxed text-catalog-ink/70">
+      <p className="mt-3 [overflow-wrap:anywhere] break-words text-sm leading-relaxed text-catalog-ink/70">
         {material?.description ?? 'La descripción del material aparecerá aquí.'}
       </p>
 

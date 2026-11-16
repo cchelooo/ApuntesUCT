@@ -155,7 +155,7 @@ function SearchPageView() {
               value={sort}
               onChange={(next: SearchSort) => update({ sort: next })}
             />
-            <Button type="submit" className="min-h-10">
+            <Button type="submit" className="min-h-10 w-full sm:w-auto">
               Buscar
             </Button>
           </div>

@@ -102,7 +102,7 @@ export function MaterialVersionCard({
           >
             <dt className="shrink-0 text-catalog-ink/60">{label}</dt>
             <dd
-              className={`min-w-0 break-words text-right ${
+              className={`min-w-0 [overflow-wrap:anywhere] break-words text-right ${
                 value ? 'text-catalog-ink' : 'text-catalog-ink/40'
               }`}
             >

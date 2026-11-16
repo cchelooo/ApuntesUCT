@@ -11,6 +11,8 @@ type LoginAlert = {
   message: string;
 };
 
+class LoginUserError extends Error {}
+
 export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,25 +32,29 @@ export function LoginPage() {
           body: JSON.stringify(credentials),
         });
       } catch {
-        throw new Error(
+        throw new LoginUserError(
           'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo nuevamente.'
         );
       }
 
       if (response.status === 400) {
-        throw new Error(
+        throw new LoginUserError(
           'Los datos ingresados no son válidos. Revisa tu correo y contraseña.'
         );
       }
 
+      if (response.status === 401) {
+        throw new LoginUserError('El correo o la contraseña no son correctos.');
+      }
+
       if (response.status === 502) {
-        throw new Error(
+        throw new LoginUserError(
           'El servicio de autenticación no está disponible. Inténtalo nuevamente más tarde.'
         );
       }
 
       if (!response.ok) {
-        throw new Error(
+        throw new LoginUserError(
           'No fue posible iniciar sesión. Inténtalo nuevamente más tarde.'
         );
       }
@@ -65,7 +71,7 @@ export function LoginPage() {
       setLoginAlert({
         variant: 'error',
         message:
-          error instanceof Error
+          error instanceof LoginUserError
             ? error.message
             : 'No fue posible iniciar sesión. Inténtalo nuevamente.',
       });
@@ -136,7 +142,7 @@ export function LoginPage() {
 
         {/* Footer del panel izquierdo */}
         <div className="relative z-10 text-xs text-slate-400 flex gap-4 mt-8">
-          <span>© 2025 ApuntesUCT</span>
+          <span>© 2026 ApuntesUCT</span>
           <a href="#" className="hover:text-white transition-colors">
             Privacidad
           </a>
