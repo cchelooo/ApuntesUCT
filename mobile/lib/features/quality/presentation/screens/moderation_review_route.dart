@@ -1,13 +1,16 @@
+import 'package:apuntesuct_mobile/core/errors/api_exception.dart';
+import 'package:apuntesuct_mobile/core/widgets/empty_state.dart';
 import 'package:apuntesuct_mobile/core/widgets/error_state.dart';
+import 'package:apuntesuct_mobile/core/widgets/loading_state.dart';
+import 'package:apuntesuct_mobile/features/quality/domain/repositories/quality_moderation_repository.dart';
 import 'package:apuntesuct_mobile/features/quality/presentation/providers/moderation_queue_provider.dart';
+import 'package:apuntesuct_mobile/features/quality/presentation/providers/moderation_review_provider.dart';
+import 'package:apuntesuct_mobile/features/quality/presentation/screens/moderation_review_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 /// Destino de navegación `/moderation/materials/:id` (#409 -> #410).
-///
-/// Conserva el [materialId] recibido por ruta, valida permisos de moderación
-/// y ofrece navegación coherente de regreso a `/moderation`.
 class ModerationReviewRoute extends ConsumerWidget {
   final String materialId;
   final String? userRole;
@@ -74,48 +77,106 @@ class ModerationReviewRoute extends ConsumerWidget {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Revisión de Material'),
-        centerTitle: true,
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.fact_check_outlined, size: 48),
-              const SizedBox(height: 12),
-              Text(
-                'Material en revisión',
-                style: Theme.of(context).textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'ID: $materialId',
-                key: Key('moderation_review_material_id_$materialId'),
-                style: Theme.of(context).textTheme.bodyMedium
-                    ?.copyWith(fontFamily: 'monospace'),
-              ),
-              const SizedBox(height: 20),
-              OutlinedButton.icon(
-                key: const Key('moderation_review_back_button'),
-                onPressed: () {
-                  if (context.canPop()) {
-                    context.pop();
-                  } else {
-                    context.go('/moderation');
-                  }
-                },
-                icon: const Icon(Icons.arrow_back),
-                label: const Text('Volver a la cola'),
-              ),
-            ],
-          ),
+    final detailAsync = ref.watch(moderationMaterialDetailProvider(materialId));
+
+    return detailAsync.when(
+      loading: () => Scaffold(
+        appBar: AppBar(
+          title: const Text('Revisión de Material'),
+          centerTitle: true,
+        ),
+        body: const Center(
+          child: LoadingState(message: 'Cargando detalle para revisión...'),
         ),
       ),
+      error: (error, _) {
+        if (error is ModerationMaterialNotFoundException) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Revisión de Material'),
+              centerTitle: true,
+            ),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const EmptyState(
+                      title: 'Material no disponible para revisión',
+                      subtitle: 'El material solicitado no existe o ya no se encuentra pendiente.',
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      key: const Key('moderation_review_back_button'),
+                      onPressed: () => context.go('/moderation'),
+                      icon: const Icon(Icons.arrow_back),
+                      label: const Text('Volver a la cola'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        final message =
+            (error is ApiException &&
+                (error.statusCode == 401 || error.statusCode == 403))
+            ? 'No tienes autorización para consultar este material.'
+            : apiErrorMessage(
+                error,
+                fallback: 'No se pudo cargar el detalle del material.',
+              );
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Revisión de Material'),
+            centerTitle: true,
+          ),
+          body: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ErrorState.fromMessage(
+                    error: error,
+                    message: message,
+                    onRetry: () => ref.invalidate(
+                      moderationMaterialDetailProvider(materialId),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    key: const Key('moderation_review_back_button'),
+                    onPressed: () => context.go('/moderation'),
+                    icon: const Icon(Icons.arrow_back),
+                    label: const Text('Volver a la cola'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      data: (detail) {
+        if (detail.materialId != materialId) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Revisión de Material'),
+              centerTitle: true,
+            ),
+            body: const Center(
+              child: EmptyState(
+                title: 'Material no disponible para revisión',
+                subtitle: 'El identificador recibido no coincide con el material solicitado.',
+              ),
+            ),
+          );
+        }
+        return ModerationReviewScreen(detail: detail);
+      },
     );
   }
 }
