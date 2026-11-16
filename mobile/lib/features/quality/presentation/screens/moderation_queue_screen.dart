@@ -1,9 +1,8 @@
 import 'package:apuntesuct_mobile/core/widgets/empty_state.dart';
 import 'package:apuntesuct_mobile/core/widgets/error_state.dart';
 import 'package:apuntesuct_mobile/core/widgets/loading_state.dart';
-import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
-import 'package:apuntesuct_mobile/features/materials/presentation/providers/moderation_queue_provider.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_summary_card.dart';
+import 'package:apuntesuct_mobile/features/quality/presentation/providers/moderation_queue_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,13 +10,8 @@ import 'package:go_router/go_router.dart';
 /// Vista privada para que personas moderadoras revisen materiales pendientes (#409).
 class ModerationQueueScreen extends ConsumerStatefulWidget {
   final String? userRole;
-  final void Function(MaterialSummary material)? onSelectMaterial;
 
-  const ModerationQueueScreen({
-    super.key,
-    this.userRole,
-    this.onSelectMaterial,
-  });
+  const ModerationQueueScreen({super.key, this.userRole});
 
   @override
   ConsumerState<ModerationQueueScreen> createState() =>
@@ -44,18 +38,6 @@ class _ModerationQueueScreenState extends ConsumerState<ModerationQueueScreen> {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 150) {
       ref.read(moderationQueueProvider.notifier).loadNextPage();
-    }
-  }
-
-  void _handleSelect(BuildContext context, MaterialSummary item) {
-    if (widget.onSelectMaterial != null) {
-      widget.onSelectMaterial!(item);
-      return;
-    }
-    try {
-      GoRouter.of(context).push('/moderation/materials/${item.id}');
-    } catch (_) {
-      // Fallback cuando GoRouter no está montado en pruebas aisladas.
     }
   }
 
@@ -211,8 +193,8 @@ class _ModerationQueueScreenState extends ConsumerState<ModerationQueueScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
               child: Text(
-                'ID: ${item.id}',
-                key: Key('pending_material_id_${item.id}'),
+                'ID: ${item.materialId}',
+                key: Key('pending_material_id_${item.materialId}'),
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   fontFamily: 'monospace',
                   color: Theme.of(context).colorScheme.outline,
@@ -220,8 +202,10 @@ class _ModerationQueueScreenState extends ConsumerState<ModerationQueueScreen> {
               ),
             ),
             MaterialSummaryCard(
-              material: item,
-              onTap: () => _handleSelect(context, item),
+              material: item.toMaterialSummary(),
+              onTap: () => context.push(
+                '/moderation/materials/${Uri.encodeComponent(item.materialId)}',
+              ),
             ),
           ],
         );

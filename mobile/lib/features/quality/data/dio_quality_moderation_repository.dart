@@ -2,20 +2,24 @@ import 'package:dio/dio.dart';
 
 import '../../../core/errors/api_exception.dart';
 import '../../../core/network/api_client.dart';
-import '../domain/models/material_page.dart';
-import '../domain/repositories/moderation_repository.dart';
+import '../domain/models/pending_moderation_item.dart';
+import '../domain/repositories/quality_moderation_repository.dart';
+import 'models/quality_moderation_queue_dto.dart';
 
-/// Implementación HTTP de [ModerationRepository] a través del API Gateway.
+/// Implementación HTTP de [QualityModerationRepository] vía API Gateway.
 ///
-/// Consume el endpoint privado de materiales pendientes de revisión
-/// (`GET /materials/pending`) utilizando la sesión autorizada en [ApiClient].
-class DioModerationRepository implements ModerationRepository {
-  DioModerationRepository(this._apiClient);
+/// Consume la ruta privada de Quality (`GET /quality/moderation/pending`)
+/// deserializando mediante el DTO privado [QualityModerationPageDto].
+class DioQualityModerationRepository implements QualityModerationRepository {
+  DioQualityModerationRepository(this._apiClient);
 
   final ApiClient _apiClient;
 
   @override
-  Future<MaterialPage> listPending({int page = 1, int pageSize = 10}) async {
+  Future<PendingModerationPage> listPendingModeration({
+    int page = 1,
+    int pageSize = 10,
+  }) async {
     if (page < 1 ||
         pageSize < 1 ||
         pageSize > 100 ||
@@ -26,23 +30,23 @@ class DioModerationRepository implements ModerationRepository {
 
     try {
       final response = await _apiClient.dio.get<dynamic>(
-        '/materials/pending',
+        '/quality/moderation/pending',
         queryParameters: {'page': page, 'pageSize': pageSize},
       );
       final data = response.data;
       if (data is! Map<String, dynamic>) {
         throw const FormatException(
-          'La respuesta de la cola de moderación no es un objeto JSON.',
+          'La respuesta de Quality no es un objeto JSON.',
         );
       }
-      return MaterialPage.fromJson(data);
+      return QualityModerationPageDto.fromJson(data).toDomain();
     } on DioException catch (error) {
       final intercepted = error.error;
       if (intercepted is ApiException) throw intercepted;
       throw ApiException.fromDioException(error);
     } on FormatException catch (error) {
       throw ApiException(
-        message: 'El servidor devolvió una cola de revisión inválida.',
+        message: 'Quality devolvió una respuesta de moderación inválida.',
         data: error,
       );
     }

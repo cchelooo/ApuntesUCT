@@ -1,11 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/errors/api_exception.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../auth/data/mock_auth_repository.dart' show authStateProvider;
-import '../../data/dio_moderation_repository.dart';
-import '../../domain/models/material_summary.dart';
-import '../../domain/repositories/moderation_repository.dart';
-import 'material_gateway_provider.dart';
+import '../../data/dio_quality_moderation_repository.dart';
+import '../../domain/models/pending_moderation_item.dart';
+import '../../domain/repositories/quality_moderation_repository.dart';
 
 /// Evalúa si el rol de sesión tiene permisos de moderación.
 bool isModeratorRole(String? role) {
@@ -24,15 +24,16 @@ final canAccessModerationProvider = Provider<bool>((ref) {
   return isModeratorRole(ref.watch(moderationUserRoleProvider));
 });
 
-/// Repositorio de moderación conectado al cliente del Gateway.
-final moderationRepositoryProvider = Provider<ModerationRepository>((ref) {
-  return DioModerationRepository(ref.watch(materialApiClientProvider));
-});
+/// Repositorio privado de Quality conectado al cliente del Gateway.
+final qualityModerationRepositoryProvider =
+    Provider<QualityModerationRepository>((ref) {
+      return DioQualityModerationRepository(ref.watch(apiclientProvider));
+    });
 
 class ModerationQueueState {
   static const Object _undefined = Object();
 
-  final List<MaterialSummary> items;
+  final List<PendingModerationItem> items;
   final bool isLoading;
   final bool isLoadingMore;
   final int currentPage;
@@ -55,7 +56,7 @@ class ModerationQueueState {
   bool get hasNextPage => currentPage < totalPages;
 
   ModerationQueueState copyWith({
-    List<MaterialSummary>? items,
+    List<PendingModerationItem>? items,
     bool? isLoading,
     bool? isLoadingMore,
     int? currentPage,
@@ -101,8 +102,8 @@ class ModerationQueueNotifier extends Notifier<ModerationQueueState> {
 
     try {
       final page = await ref
-          .read(moderationRepositoryProvider)
-          .listPending(page: 1, pageSize: pageSize);
+          .read(qualityModerationRepositoryProvider)
+          .listPendingModeration(page: 1, pageSize: pageSize);
       if (_disposed) return;
 
       state = state.copyWith(
@@ -134,8 +135,8 @@ class ModerationQueueNotifier extends Notifier<ModerationQueueState> {
 
     try {
       final page = await ref
-          .read(moderationRepositoryProvider)
-          .listPending(page: nextPage, pageSize: pageSize);
+          .read(qualityModerationRepositoryProvider)
+          .listPendingModeration(page: nextPage, pageSize: pageSize);
       if (_disposed) return;
 
       state = state.copyWith(

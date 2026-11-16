@@ -5,8 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:apuntesuct_mobile/core/widgets/widgets.dart';
 import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart'
     show authStateProvider;
-
-import 'package:apuntesuct_mobile/features/materials/presentation/providers/moderation_queue_provider.dart'
+import 'package:apuntesuct_mobile/features/quality/presentation/providers/moderation_queue_provider.dart'
     show canAccessModerationProvider;
 
 import 'providers/home_provider.dart';

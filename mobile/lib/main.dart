@@ -11,7 +11,8 @@ import 'package:apuntesuct_mobile/features/materials/presentation/screens/materi
 import 'package:apuntesuct_mobile/features/profile/presentation/profile_screen.dart';
 import 'package:apuntesuct_mobile/providers/theme_mode_provider.dart';
 import 'package:apuntesuct_mobile/features/home/presentation/home_screen.dart';
-import 'package:apuntesuct_mobile/features/materials/presentation/screens/moderation_queue_screen.dart';
+import 'package:apuntesuct_mobile/features/quality/presentation/screens/moderation_queue_screen.dart';
+import 'package:apuntesuct_mobile/features/quality/presentation/screens/moderation_review_route.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: const String.fromEnvironment(
@@ -66,8 +67,6 @@ final GoRouter appRouter = GoRouter(
           builder: (context, state) => const MaterialUploadScreen(),
         ),
         GoRoute(
-          // Declarada después de 'upload' para que /materials/upload no
-          // sea capturado como :id.
           path: ':id',
           name: 'material-detail',
           builder: (context, state) {
@@ -77,11 +76,21 @@ final GoRouter appRouter = GoRouter(
         ),
       ],
     ),
-    // Cola privada de moderación (issue #409)
+    // Cola privada de moderación y destino de revisión (issue #409)
     GoRoute(
       path: '/moderation',
       name: 'moderation-queue',
       builder: (context, state) => const ModerationQueueScreen(),
+      routes: [
+        GoRoute(
+          path: 'materials/:id',
+          name: 'moderation-material-review',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return ModerationReviewRoute(materialId: id);
+          },
+        ),
+      ],
     ),
   ],
 );
