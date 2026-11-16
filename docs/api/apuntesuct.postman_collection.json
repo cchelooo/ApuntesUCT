@@ -140,7 +140,7 @@
       "description": "Microservicio de identidad, autenticación, usuarios y roles.",
       "item": [
         {
-          "name": "Login mock temporal (#92)",
+          "name": "Inicio de sesión",
           "request": {
             "method": "POST",
             "header": [
@@ -164,7 +164,7 @@
               "host": ["{{gatewayUrl}}"],
               "path": ["api", "v1", "auth", "login"]
             },
-            "description": "Acepta cualquier credencial con formato válido. Devuelve un JWT falso sin firma, solo para integración del frontend; no autentica usuarios."
+            "description": "Verifica las credenciales de un usuario activo y devuelve un JWT firmado RS256."
           },
           "response": [
             {
@@ -192,9 +192,9 @@
                   "host": ["{{gatewayUrl}}"],
                   "path": ["api", "v1", "auth", "login"]
                 },
-                "description": "Acepta cualquier credencial con formato válido. Devuelve un JWT falso sin firma, solo para integración del frontend; no autentica usuarios."
+                "description": "Verifica las credenciales de un usuario activo y devuelve un JWT firmado RS256."
               },
-              "status": "Sesión simulada. El token no sirve para autorizar peticiones.",
+              "status": "Sesión autenticada.",
               "code": 200,
               "header": [
                 {
@@ -229,7 +229,7 @@
                   "host": ["{{gatewayUrl}}"],
                   "path": ["api", "v1", "auth", "login"]
                 },
-                "description": "Acepta cualquier credencial con formato válido. Devuelve un JWT falso sin firma, solo para integración del frontend; no autentica usuarios."
+                "description": "Verifica las credenciales de un usuario activo y devuelve un JWT firmado RS256."
               },
               "status": "Bad Gateway",
               "code": 502,
@@ -548,7 +548,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login mock; Catalog actualmente no lo valida."
+                "description": "Token del login; Catalog actualmente no lo valida."
               }
             ],
             "url": {
@@ -567,7 +567,7 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}",
-                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                    "description": "Token del login; Catalog actualmente no lo valida."
                   }
                 ],
                 "url": {
@@ -595,7 +595,7 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}",
-                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                    "description": "Token del login; Catalog actualmente no lo valida."
                   }
                 ],
                 "url": {
@@ -637,7 +637,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login mock; Catalog actualmente no lo valida."
+                "description": "Token del login; Catalog actualmente no lo valida."
               }
             ],
             "url": {
@@ -682,7 +682,7 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}",
-                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                    "description": "Token del login; Catalog actualmente no lo valida."
                   }
                 ],
                 "url": {
@@ -750,7 +750,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login mock; Catalog actualmente no lo valida."
+                "description": "Token del login; Catalog actualmente no lo valida."
               }
             ],
             "url": {
@@ -769,7 +769,7 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}",
-                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                    "description": "Token del login; Catalog actualmente no lo valida."
                   }
                 ],
                 "url": {
@@ -797,7 +797,7 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}",
-                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                    "description": "Token del login; Catalog actualmente no lo valida."
                   }
                 ],
                 "url": {
@@ -844,7 +844,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login mock; Catalog actualmente no lo valida."
+                "description": "Token del login; Catalog actualmente no lo valida."
               }
             ],
             "body": {
@@ -877,7 +877,7 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}",
-                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                    "description": "Token del login; Catalog actualmente no lo valida."
                   }
                 ],
                 "body": {
@@ -928,7 +928,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login mock; Catalog actualmente no lo valida."
+                "description": "Token del login; Catalog actualmente no lo valida."
               }
             ],
             "url": {
@@ -955,7 +955,7 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}",
-                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                    "description": "Token del login; Catalog actualmente no lo valida."
                   }
                 ],
                 "url": {
@@ -991,7 +991,7 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}",
-                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                    "description": "Token del login; Catalog actualmente no lo valida."
                   }
                 ],
                 "url": {
@@ -1046,7 +1046,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login mock; Catalog actualmente no lo valida."
+                "description": "Token del login; Catalog actualmente no lo valida."
               }
             ],
             "body": {
@@ -1079,7 +1079,7 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}",
-                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                    "description": "Token del login; Catalog actualmente no lo valida."
                   }
                 ],
                 "body": {
@@ -1130,7 +1130,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login mock; Catalog actualmente no lo valida."
+                "description": "Token del login; Catalog actualmente no lo valida."
               }
             ],
             "url": {
@@ -1157,7 +1157,7 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}",
-                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                    "description": "Token del login; Catalog actualmente no lo valida."
                   }
                 ],
                 "url": {
@@ -1193,7 +1193,7 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}",
-                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                    "description": "Token del login; Catalog actualmente no lo valida."
                   }
                 ],
                 "url": {
@@ -1248,7 +1248,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login mock; Catalog actualmente no lo valida."
+                "description": "Token del login; Catalog actualmente no lo valida."
               }
             ],
             "body": {
@@ -1281,7 +1281,7 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}",
-                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                    "description": "Token del login; Catalog actualmente no lo valida."
                   }
                 ],
                 "body": {
@@ -1332,7 +1332,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login mock; Catalog actualmente no lo valida."
+                "description": "Token del login; Catalog actualmente no lo valida."
               }
             ],
             "url": {
@@ -1359,7 +1359,7 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}",
-                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                    "description": "Token del login; Catalog actualmente no lo valida."
                   }
                 ],
                 "url": {
@@ -1395,7 +1395,7 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}",
-                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                    "description": "Token del login; Catalog actualmente no lo valida."
                   }
                 ],
                 "url": {
@@ -1450,7 +1450,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login mock; Catalog actualmente no lo valida."
+                "description": "Token del login; Catalog actualmente no lo valida."
               }
             ],
             "body": {
@@ -1483,7 +1483,7 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}",
-                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                    "description": "Token del login; Catalog actualmente no lo valida."
                   }
                 ],
                 "body": {
@@ -1534,7 +1534,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login mock; Catalog actualmente no lo valida."
+                "description": "Token del login; Catalog actualmente no lo valida."
               }
             ],
             "url": {
@@ -1553,7 +1553,7 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}",
-                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                    "description": "Token del login; Catalog actualmente no lo valida."
                   }
                 ],
                 "url": {
@@ -1601,7 +1601,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login mock; Catalog actualmente no lo valida."
+                "description": "Token del login; Catalog actualmente no lo valida."
               }
             ],
             "url": {
@@ -1620,7 +1620,7 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}",
-                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                    "description": "Token del login; Catalog actualmente no lo valida."
                   }
                 ],
                 "url": {
@@ -1662,7 +1662,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login mock; Catalog actualmente no lo valida."
+                "description": "Token del login; Catalog actualmente no lo valida."
               }
             ],
             "url": {
@@ -1681,7 +1681,7 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}",
-                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                    "description": "Token del login; Catalog actualmente no lo valida."
                   }
                 ],
                 "url": {
@@ -1729,7 +1729,7 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{accessToken}}",
-                "description": "Token del login mock; Catalog actualmente no lo valida."
+                "description": "Token del login; Catalog actualmente no lo valida."
               }
             ],
             "url": {
@@ -1748,7 +1748,7 @@
                   {
                     "key": "Authorization",
                     "value": "Bearer {{accessToken}}",
-                    "description": "Token del login mock; Catalog actualmente no lo valida."
+                    "description": "Token del login; Catalog actualmente no lo valida."
                   }
                 ],
                 "url": {
@@ -3757,7 +3757,7 @@
     },
     {
       "key": "mockPassword",
-      "value": "demo",
+      "value": "",
       "type": "string"
     },
     {

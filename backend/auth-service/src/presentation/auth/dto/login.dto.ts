@@ -9,7 +9,7 @@ export class LoginDto {
   @ApiProperty({
     example: 'demo',
     description:
-      'Debe contener al menos un carácter que no sea espacio en blanco. El mock no verifica credenciales.',
+      'Debe contener al menos un carácter que no sea espacio en blanco. Se verifica sin recortar espacios.',
   })
   @IsString()
   @IsNotEmpty()

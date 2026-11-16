@@ -27,11 +27,23 @@ jobs:
       POSTGRES_PASSWORD: ephemeral-ci-postgres
       MINIO_ROOT_USER: kubero-ci
       MINIO_ROOT_PASSWORD: ephemeral-ci-minio-password
+      JWT_ISSUER: apuntesuct-ci-auth
+      JWT_AUDIENCE: apuntesuct-ci-api
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Generate disposable Auth signing key
+        shell: bash
+        run: |
+          key_dir=$(mktemp -d "$RUNNER_TEMP/kubero-jwt.XXXXXX")
+          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "$key_dir/private.pem"
+          # Compose file secrets preserve host permissions; Auth runs as UID 1000.
+          # The containing directory remains 0700 on the runner.
+          chmod 0444 "$key_dir/private.pem"
+          echo "JWT_PRIVATE_KEY_FILE=$key_dir/private.pem" >> "$GITHUB_ENV"
+          echo "KUBERO_JWT_KEY_DIR=$key_dir" >> "$GITHUB_ENV"
       - name: Build and start isolated stack
         run: docker compose -f deploy/kubero/compose.yaml up --build --wait --wait-timeout 180
       - name: Check Web, Gateway and services
@@ -74,3 +86,10 @@ jobs:
       - name: Remove isolated stack
         if: always()
         run: docker compose -f deploy/kubero/compose.yaml down --volumes --remove-orphans
+      - name: Remove disposable signing key
+        if: always()
+        shell: bash
+        run: |
+          if [ -n "${KUBERO_JWT_KEY_DIR:-}" ]; then
+            rm -rf -- "$KUBERO_JWT_KEY_DIR"
+          fi
