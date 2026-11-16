@@ -1,3 +1,4 @@
+import { configureTestJwt } from './jwt-fixture';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import type { Server } from 'node:http';
@@ -17,14 +18,17 @@ async function createApp(
 
   const app = moduleFixture.createNestApplication();
   app.setGlobalPrefix('api/v1');
-  app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, transform: true }),
-  );
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   await app.init();
   return app;
 }
 
 describe('Auth Service (e2e)', () => {
+  let jwt: ReturnType<typeof configureTestJwt>;
+  beforeAll(() => {
+    jwt = configureTestJwt();
+  });
+  afterAll(() => jwt.cleanup());
   it('/api/v1/health (GET) devuelve 200 cuando PostgreSQL responde', async () => {
     const app = await createApp({
       $queryRaw: jest.fn().mockResolvedValue([{ '?column?': 1 }]),

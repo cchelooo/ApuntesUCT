@@ -1,7 +1,7 @@
 {
   "name": "auth-service",
   "version": "0.0.1",
-  "description": "Microservicio de identidad, autenticaci\u00f3n, usuarios y roles.",
+  "description": "Microservicio de identidad, autenticación, usuarios y roles.",
   "author": "INT2 - ApuntesUCT",
   "private": true,
   "license": "UNLICENSED",
@@ -35,6 +35,7 @@
     "@prisma/client": "6.12.0",
     "class-transformer": "0.5.1",
     "class-validator": "0.15.1",
+    "jsonwebtoken": "^9.0.3",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2"
   },
@@ -46,6 +47,7 @@
     "@nestjs/testing": "11.2.7",
     "@types/express": "5.0.6",
     "@types/jest": "^30.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "24.13.3",
     "@types/supertest": "^7.2.1",
     "eslint": "9.39.5",

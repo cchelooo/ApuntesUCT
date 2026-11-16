@@ -39,12 +39,14 @@ Las lecturas son públicas. La subida (`POST /materials`) y el versionado
 (`POST /materials/:id/versions`) exigen `Authorization: Bearer <JWT firmado>` con
 `sub` igual al UUID del usuario (contrato #445, implementación #446). El autor se
 obtiene del token; no se acepta `uploaderId` ni otro campo equivalente en el body.
-Los tokens mock del login actual (`alg: none` o `mock: true`) se rechazan con `401`,
-igual que un token ausente, expirado o con firma no verificable.
+Auth verifica credenciales registradas y emite JWT RS256; configurar su clave,
+emisor y audiencia según el [README de Auth](../../backend/auth-service/README.md).
+Los tokens mock (`alg: none` o `mock: true`) se rechazan con `401`, igual que un
+token ausente, expirado o con firma no verificable.
 
 Material verifica el token con `JWT_ACCESS_SECRET` (HS256) o
-`JWT_ACCESS_PUBLIC_KEY` (RS256/ES256). La emisión de JWT firmados corresponde a
-#441; hasta entonces se puede usar el contexto local **solo en desarrollo**:
+`JWT_ACCESS_PUBLIC_KEY` (RS256/ES256). Mientras no se use un JWT real, se puede
+usar el contexto local **solo en desarrollo**:
 
 ```dotenv
 NODE_ENV=development

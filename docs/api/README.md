@@ -36,10 +36,14 @@ Los filtros opcionales empiezan desactivados. Activar los académicos en orden
 universidad → carrera → asignatura → profesor. Año y tipo son independientes.
 
 La subida y el versionado exigen `Authorization: Bearer <JWT firmado>` con
-`sub` = UUID del usuario (#446). El login mock guarda `accessToken`, pero sus
-tokens `alg: none`/`mock: true` se rechazan con `401`. Mientras Auth no emita JWT
-reales (#441), usar el contexto local de autor **solo en desarrollo**, descrito en
-la guía. Las lecturas de Material/Search son públicas.
+`sub` = UUID del usuario (#446). Auth verifica credenciales registradas y guarda
+un `accessToken` firmado RS256; configurar sus claves según su
+[README](../../backend/auth-service/README.md). Las variables `mockEmail` y
+`mockPassword` conservan sus nombres por compatibilidad: rellenarlas con una
+cuenta registrada y su contraseña (el valor inicial está vacío). Los tokens mock
+anteriores (`alg: none` o `mock: true`) se rechazan con `401`. Mientras no se use
+un token válido, el contexto local de autor **solo en desarrollo** sigue
+disponible, descrito en la guía. Las lecturas de Material/Search son públicas.
 
 Las respuestas guardadas son ejemplos ilustrativos del contrato, no capturas de
 un entorno real. Las pruebas de descarga verifican respuesta binaria; las demás,
