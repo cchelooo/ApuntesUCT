@@ -33,6 +33,7 @@ describe('LoginPage', () => {
   }
 
   it.each([
+    [401, 'El correo o la contraseña no son correctos.'],
     [
       400,
       'Los datos ingresados no son válidos. Revisa tu correo y contraseña.',
@@ -65,6 +66,34 @@ describe('LoginPage', () => {
       'No se pudo conectar con el servidor.'
     );
     expect(screen.getByRole('button', { name: 'Ingresar' })).toBeEnabled();
+  });
+
+  it('oculta errores de configuración al usuario', async () => {
+    vi.stubEnv('VITE_API_URL', '');
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    renderAndSubmit();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'No fue posible iniciar sesión. Inténtalo nuevamente.'
+    );
+    expect(screen.getByRole('alert')).not.toHaveTextContent('VITE_API_URL');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('oculta errores técnicos cuando el servidor devuelve JSON inválido', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response('<html>Error técnico</html>', { status: 200 })
+        )
+    );
+    renderAndSubmit();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'No fue posible iniciar sesión. Inténtalo nuevamente.'
+    );
+    expect(screen.getByRole('alert')).not.toHaveTextContent('JSON');
   });
 
   it('impide el doble envío mientras espera y muestra el éxito', async () => {

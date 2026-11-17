@@ -29,10 +29,15 @@ describe('CatalogGrid — estado "Sin resultados"', () => {
     ).toBeInTheDocument();
   });
 
-  it('muestra el mensaje de "Sin resultados" también cuando la búsqueda está vacía y no hay asignaturas', () => {
+  it('distingue un catálogo vacío de una búsqueda sin coincidencias', () => {
     render(<CatalogGrid subjects={[]} query="" />);
 
-    expect(screen.getByText(/no hay asignaturas para/i)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Todavía no hay asignaturas disponibles'
+    );
+    expect(
+      screen.queryByText(/no hay asignaturas para/i)
+    ).not.toBeInTheDocument();
   });
 
   it('no muestra el mensaje de "Sin resultados" cuando existen asignaturas', () => {

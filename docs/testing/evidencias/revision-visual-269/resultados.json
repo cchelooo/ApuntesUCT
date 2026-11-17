@@ -1,0 +1,475 @@
+{
+  "scenarios": [
+    {
+      "name": "home",
+      "state": "ready",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "errors": []
+    },
+    {
+      "name": "login",
+      "state": "ready",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "errors": []
+    },
+    {
+      "name": "register",
+      "state": "ready",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "errors": []
+    },
+    {
+      "name": "catalog",
+      "state": "ready",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "errors": []
+    },
+    {
+      "name": "catalog-empty",
+      "state": "empty",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "errors": []
+    },
+    {
+      "name": "catalog-error",
+      "state": "error",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "errors": []
+    },
+    {
+      "name": "catalog-loading",
+      "state": "loading",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "errors": []
+    },
+    {
+      "name": "search",
+      "state": "ready",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "errors": []
+    },
+    {
+      "name": "search-empty",
+      "state": "empty",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "errors": []
+    },
+    {
+      "name": "search-error",
+      "state": "error",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "errors": []
+    },
+    {
+      "name": "search-loading",
+      "state": "loading",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "errors": []
+    },
+    {
+      "name": "library",
+      "state": "ready",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "errors": []
+    },
+    {
+      "name": "library-empty",
+      "state": "empty",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "errors": []
+    },
+    {
+      "name": "library-error",
+      "state": "error",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "errors": []
+    },
+    {
+      "name": "upload",
+      "state": "ready",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "errors": []
+    },
+    {
+      "name": "detail",
+      "state": "ready",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "errors": []
+    },
+    {
+      "name": "detail-long",
+      "state": "long",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "errors": []
+    },
+    {
+      "name": "detail-missing",
+      "state": "missing",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "errors": []
+    },
+    {
+      "name": "profile",
+      "state": "ready",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "errors": []
+    },
+    {
+      "name": "not-found",
+      "state": "ready",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "errors": []
+    },
+    {
+      "name": "home",
+      "state": "ready",
+      "width": 375,
+      "scrollWidth": 375,
+      "errors": []
+    },
+    {
+      "name": "login",
+      "state": "ready",
+      "width": 375,
+      "scrollWidth": 375,
+      "errors": []
+    },
+    {
+      "name": "register",
+      "state": "ready",
+      "width": 375,
+      "scrollWidth": 375,
+      "errors": []
+    },
+    {
+      "name": "catalog",
+      "state": "ready",
+      "width": 375,
+      "scrollWidth": 375,
+      "errors": []
+    },
+    {
+      "name": "catalog-empty",
+      "state": "empty",
+      "width": 375,
+      "scrollWidth": 375,
+      "errors": []
+    },
+    {
+      "name": "catalog-error",
+      "state": "error",
+      "width": 375,
+      "scrollWidth": 375,
+      "errors": []
+    },
+    {
+      "name": "catalog-loading",
+      "state": "loading",
+      "width": 375,
+      "scrollWidth": 375,
+      "errors": []
+    },
+    {
+      "name": "search",
+      "state": "ready",
+      "width": 375,
+      "scrollWidth": 375,
+      "errors": []
+    },
+    {
+      "name": "search-empty",
+      "state": "empty",
+      "width": 375,
+      "scrollWidth": 375,
+      "errors": []
+    },
+    {
+      "name": "search-error",
+      "state": "error",
+      "width": 375,
+      "scrollWidth": 375,
+      "errors": []
+    },
+    {
+      "name": "search-loading",
+      "state": "loading",
+      "width": 375,
+      "scrollWidth": 375,
+      "errors": []
+    },
+    {
+      "name": "library",
+      "state": "ready",
+      "width": 375,
+      "scrollWidth": 375,
+      "errors": []
+    },
+    {
+      "name": "library-empty",
+      "state": "empty",
+      "width": 375,
+      "scrollWidth": 375,
+      "errors": []
+    },
+    {
+      "name": "library-error",
+      "state": "error",
+      "width": 375,
+      "scrollWidth": 375,
+      "errors": []
+    },
+    {
+      "name": "upload",
+      "state": "ready",
+      "width": 375,
+      "scrollWidth": 375,
+      "errors": []
+    },
+    {
+      "name": "detail",
+      "state": "ready",
+      "width": 375,
+      "scrollWidth": 375,
+      "errors": []
+    },
+    {
+      "name": "detail-long",
+      "state": "long",
+      "width": 375,
+      "scrollWidth": 375,
+      "errors": []
+    },
+    {
+      "name": "detail-missing",
+      "state": "missing",
+      "width": 375,
+      "scrollWidth": 375,
+      "errors": []
+    },
+    {
+      "name": "profile",
+      "state": "ready",
+      "width": 375,
+      "scrollWidth": 375,
+      "errors": []
+    },
+    {
+      "name": "not-found",
+      "state": "ready",
+      "width": 375,
+      "scrollWidth": 375,
+      "errors": []
+    },
+    {
+      "name": "home",
+      "state": "ready",
+      "width": 320,
+      "scrollWidth": 320,
+      "errors": []
+    },
+    {
+      "name": "login",
+      "state": "ready",
+      "width": 320,
+      "scrollWidth": 320,
+      "errors": []
+    },
+    {
+      "name": "register",
+      "state": "ready",
+      "width": 320,
+      "scrollWidth": 320,
+      "errors": []
+    },
+    {
+      "name": "catalog",
+      "state": "ready",
+      "width": 320,
+      "scrollWidth": 320,
+      "errors": []
+    },
+    {
+      "name": "catalog-empty",
+      "state": "empty",
+      "width": 320,
+      "scrollWidth": 320,
+      "errors": []
+    },
+    {
+      "name": "catalog-error",
+      "state": "error",
+      "width": 320,
+      "scrollWidth": 320,
+      "errors": []
+    },
+    {
+      "name": "catalog-loading",
+      "state": "loading",
+      "width": 320,
+      "scrollWidth": 320,
+      "errors": []
+    },
+    {
+      "name": "search",
+      "state": "ready",
+      "width": 320,
+      "scrollWidth": 320,
+      "errors": []
+    },
+    {
+      "name": "search-empty",
+      "state": "empty",
+      "width": 320,
+      "scrollWidth": 320,
+      "errors": []
+    },
+    {
+      "name": "search-error",
+      "state": "error",
+      "width": 320,
+      "scrollWidth": 320,
+      "errors": []
+    },
+    {
+      "name": "search-loading",
+      "state": "loading",
+      "width": 320,
+      "scrollWidth": 320,
+      "errors": []
+    },
+    {
+      "name": "library",
+      "state": "ready",
+      "width": 320,
+      "scrollWidth": 320,
+      "errors": []
+    },
+    {
+      "name": "library-empty",
+      "state": "empty",
+      "width": 320,
+      "scrollWidth": 320,
+      "errors": []
+    },
+    {
+      "name": "library-error",
+      "state": "error",
+      "width": 320,
+      "scrollWidth": 320,
+      "errors": []
+    },
+    {
+      "name": "upload",
+      "state": "ready",
+      "width": 320,
+      "scrollWidth": 320,
+      "errors": []
+    },
+    {
+      "name": "detail",
+      "state": "ready",
+      "width": 320,
+      "scrollWidth": 320,
+      "errors": []
+    },
+    {
+      "name": "detail-long",
+      "state": "long",
+      "width": 320,
+      "scrollWidth": 320,
+      "errors": []
+    },
+    {
+      "name": "detail-missing",
+      "state": "missing",
+      "width": 320,
+      "scrollWidth": 320,
+      "errors": []
+    },
+    {
+      "name": "profile",
+      "state": "ready",
+      "width": 320,
+      "scrollWidth": 320,
+      "errors": []
+    },
+    {
+      "name": "not-found",
+      "state": "ready",
+      "width": 320,
+      "scrollWidth": 320,
+      "errors": []
+    }
+  ],
+  "interactions": {
+    "focusFirstInvalid": true,
+    "errorContrast": {
+      "rgb": [
+        193,
+        0,
+        7
+      ],
+      "ratio": 6.420920075570489
+    },
+    "registerAlertCleared": true,
+    "catalogRecovery": true,
+    "keyboardFilters": true,
+    "tabs": [
+      {
+        "tag": "A",
+        "text": "ApuntesUCT"
+      },
+      {
+        "tag": "A",
+        "text": "Subir material"
+      },
+      {
+        "tag": "A",
+        "text": "Catálogo"
+      },
+      {
+        "tag": "A",
+        "text": "Búsqueda"
+      },
+      {
+        "tag": "A",
+        "text": "Biblioteca"
+      },
+      {
+        "tag": "A",
+        "text": "Perfil"
+      },
+      {
+        "tag": "INPUT",
+        "text": null
+      },
+      {
+        "tag": "BUTTON",
+        "text": "Mostrar filtros"
+      }
+    ],
+    "reviewFocus": true,
+    "uploadFriendlyError": true,
+    "loginFriendlyError": true
+  }
+}

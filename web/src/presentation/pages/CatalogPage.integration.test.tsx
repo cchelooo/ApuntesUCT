@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CatalogPage } from './CatalogPage';
 
@@ -40,7 +40,9 @@ describe('Pruebas de Integración - CatalogPage', () => {
     );
 
     // Verificamos que se muestra el texto de carga o los elementos con animación (skeleton)
-    expect(screen.getByText(/cargando asignaturas/i)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Cargando asignaturas'
+    );
   });
 
   it('2. Debe mostrar alerta de error cuando la API falla', async () => {
@@ -64,9 +66,27 @@ describe('Pruebas de Integración - CatalogPage', () => {
       ).toBeInTheDocument();
     });
 
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'No se pudo cargar el catálogo. Comprueba tu conexión e inténtalo nuevamente.'
+    );
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeEnabled();
+  });
+
+  it('permite recuperarse del error y distingue el catálogo vacío', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(new Response('{}', { status: 502 }))
+      .mockResolvedValueOnce(new Response('[]', { status: 200 }));
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CatalogPage />
+      </QueryClientProvider>
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Reintentar' }));
     expect(
-      screen.getByText(/intenta recargar la página en unos minutos/i)
+      await screen.findByText('Todavía no hay asignaturas disponibles')
     ).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it('3. Debe renderizar los datos del backend correctamente (contrato válido)', async () => {
