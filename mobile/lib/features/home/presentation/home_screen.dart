@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:apuntesuct_mobile/core/widgets/widgets.dart';
 import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart'
     show authStateProvider;
+import 'package:apuntesuct_mobile/features/quality/presentation/providers/moderation_queue_provider.dart'
+    show canAccessModerationProvider;
 
 import 'providers/home_provider.dart';
 import 'widgets/course_card.dart';
@@ -58,6 +60,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final homeState = ref.watch(homeProvider);
     final activeTab = ref.watch(navTabProvider);
+    final canModerate = ref.watch(canAccessModerationProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -161,6 +164,21 @@ class HomeScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 8),
+            if (canModerate) ...[
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.tonalIcon(
+                    key: const Key('home_moderation_queue_button'),
+                    onPressed: () => context.push('/moderation'),
+                    icon: const Icon(Icons.admin_panel_settings_outlined),
+                    label: const Text('Cola de moderación'),
+                  ),
+                ),
+              ),
+            ],
             // ---- Tus cursos ----
             AppSectionHeader(
               title: 'Tus cursos',
