@@ -34,7 +34,7 @@ enum MaterialStatus {
       'PUBLISHED' => published,
       'APPROVED' || 'APROBADO' => approved,
       'REJECTED' || 'RECHAZADO' => rejected,
-      'WITHDRAWN' || 'RETIRADO' => withdrawn,
+      'WITHDRAWN' || 'RETIRADO' || 'RETIRED' => withdrawn,
       _ => unknown,
     };
   }
