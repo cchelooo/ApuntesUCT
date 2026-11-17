@@ -11,6 +11,7 @@ import 'package:apuntesuct_mobile/features/materials/presentation/screens/materi
 import 'package:apuntesuct_mobile/features/profile/presentation/profile_screen.dart';
 import 'package:apuntesuct_mobile/providers/theme_mode_provider.dart';
 import 'package:apuntesuct_mobile/features/home/presentation/home_screen.dart';
+import 'package:apuntesuct_mobile/features/quality/quality.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: const String.fromEnvironment(
@@ -52,6 +53,11 @@ final GoRouter appRouter = GoRouter(
       path: '/library',
       name: 'library',
       builder: (context, state) => const PendingScreen(title: 'Biblioteca'),
+    ),
+    GoRoute(
+      path: '/favorites',
+      name: 'favorites',
+      builder: (context, state) => const FavoritesScreen(),
     ),
     // Módulo Materiales (issue #279). Convive con /catalog sin reemplazarlo.
     GoRoute(
