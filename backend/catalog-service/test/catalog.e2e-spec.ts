@@ -1,3 +1,4 @@
+import { accessToken, jwtSettings } from './authorization-fixture';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -18,6 +19,7 @@ describe('Catalog Service (e2e)', () => {
   };
 
   beforeAll(async () => {
+    Object.assign(process.env, jwtSettings);
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -26,7 +28,9 @@ describe('Catalog Service (e2e)', () => {
 
     // Mismo prefijo y pipes que src/main.ts
     app.setGlobalPrefix('api/v1', { exclude: ['health'] });
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
 
     await app.init();
     prisma = app.get(PrismaService);
@@ -89,6 +93,7 @@ describe('Catalog Service (e2e)', () => {
     it('responde 404 al crear una carrera con universidad inexistente', async () => {
       await request(app.getHttpServer())
         .post('/api/v1/catalog/careers')
+        .set('Authorization', `Bearer ${accessToken()}`)
         .send({
           universityId: missing.universityId,
           name: 'Carrera huérfana',
@@ -102,6 +107,7 @@ describe('Catalog Service (e2e)', () => {
       async (recurso: string) => {
         await request(app.getHttpServer())
           .delete(`/api/v1/catalog/${recurso}/${missing.universityId}`)
+          .set('Authorization', `Bearer ${accessToken()}`)
           .expect(404);
       },
     );
@@ -142,7 +148,11 @@ describe('Catalog Service (e2e)', () => {
         data: { name: `E2E Uni B ${run}`, code: `E2E-UB-${run}`, active: true },
       });
       const universityInactive = await prisma.university.create({
-        data: { name: `E2E Uni inactiva ${run}`, code: `E2E-UI-${run}`, active: false },
+        data: {
+          name: `E2E Uni inactiva ${run}`,
+          code: `E2E-UI-${run}`,
+          active: false,
+        },
       });
 
       const careerA = await prisma.career.create({
@@ -171,7 +181,11 @@ describe('Catalog Service (e2e)', () => {
       });
 
       const subjectA = await prisma.subject.create({
-        data: { name: `E2E Asignatura A ${run}`, code: `E2E-SA-${run}`, careerId: careerA.id },
+        data: {
+          name: `E2E Asignatura A ${run}`,
+          code: `E2E-SA-${run}`,
+          careerId: careerA.id,
+        },
       });
       const subjectAInactive = await prisma.subject.create({
         data: {
@@ -182,7 +196,11 @@ describe('Catalog Service (e2e)', () => {
         },
       });
       const subjectB = await prisma.subject.create({
-        data: { name: `E2E Asignatura B ${run}`, code: `E2E-SB-${run}`, careerId: careerB.id },
+        data: {
+          name: `E2E Asignatura B ${run}`,
+          code: `E2E-SB-${run}`,
+          careerId: careerB.id,
+        },
       });
 
       const professorA = await prisma.professor.create({
@@ -233,7 +251,11 @@ describe('Catalog Service (e2e)', () => {
       await prisma.university.deleteMany({
         where: {
           id: {
-            in: [ids.universityA, ids.universityB, ids.universityInactive].filter(Boolean),
+            in: [
+              ids.universityA,
+              ids.universityB,
+              ids.universityInactive,
+            ].filter(Boolean),
           },
         },
       });
@@ -246,7 +268,9 @@ describe('Catalog Service (e2e)', () => {
           .expect(200);
 
         const returnedIds = body.map((u: { id: string }) => u.id);
-        expect(returnedIds).toEqual(expect.arrayContaining([ids.universityA, ids.universityB]));
+        expect(returnedIds).toEqual(
+          expect.arrayContaining([ids.universityA, ids.universityB]),
+        );
         expect(returnedIds).not.toContain(ids.universityInactive);
       });
     });

@@ -1,3 +1,5 @@
+import { AccessTokenVerifier } from '../../infrastructure/auth/access-token.verifier';
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { CatalogController } from './catalog.controller';
 import { CatalogService } from '../../application/services/catalog.service';
@@ -28,6 +30,8 @@ describe('CatalogController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [CatalogController],
       providers: [
+        AccessTokenVerifier,
+        ConfigService,
         {
           provide: CatalogService,
           useValue: mockCatalogService,
@@ -220,7 +224,11 @@ describe('CatalogController', () => {
 
   describe('POST /catalog/professors', () => {
     it('debe delegar la creación en catalogService.createProfessor', async () => {
-      const dto = { name: 'Ana Pérez', email: 'ana@uct.cl', subjectIds: ['s1'] };
+      const dto = {
+        name: 'Ana Pérez',
+        email: 'ana@uct.cl',
+        subjectIds: ['s1'],
+      };
       const created = { id: 'prof-1', ...dto, active: true, subjects: [] };
 
       mockCatalogService.createProfessor.mockResolvedValue(created);
