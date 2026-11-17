@@ -12,13 +12,13 @@ Este documento define el contrato de autorización **cliente → Gateway → mic
 - Tener un único mecanismo de propagación de identidad/autorización desde el Gateway hacia los microservicios.
 - Definir qué claims/campos representan al usuario autenticado y cómo se obtiene el contexto de autor (p. ej. subidas/versiones de Material).
 - Establecer respuestas de error consistentes (`401`, `403`, `502/503` según caso).
-- Permitir una transición segura desde el estado actual (Auth mock + contexto local de autor en Material) hacia autenticación/autorización verificable.
-- Coordinar el registro público (#440) con el contrato de identidad: `user.id` será la base del futuro claim `sub`.
+- Permitir una transición segura desde el estado anterior (login mock + contexto local de autor en Material) hacia autenticación verificable, ya implementada con JWT RS256 (#441) y verificación en Material (#446).
+- Coordinar el registro público (#440) con el contrato de identidad: `user.id` es la base del claim `sub`.
 
 ## 2. Actores y flujo
 
 1. **Cliente (Web/Mobile/externo)** envía solicitudes al **API Gateway** (`:3000`, prefijo `/api/v1`).
-2. **Auth Service** expone el registro público (`POST /api/v1/auth/register`) y emite credenciales/tokens de sesión (actualmente login mock; objetivo: JWT verificable; login real/JWT en #441).
+2. **Auth Service** expone el registro público (`POST /api/v1/auth/register`) y verifica credenciales emitidas por el login real (`POST /api/v1/auth/login`) devolviendo un JWT RS256 firmado (#441).
 3. **Gateway** actúa como punto único de entrada y **propaga** el contexto de autorización a los microservicios destino sin alterarlo, salvo lo necesario para el proxy (p. ej. reescritura puntual de rutas ya definida, reconstrucción de body consumido por Nest).
 4. **Microservicios de dominio** (Material, Catalog, Search, etc.) aplican las reglas de autorización del recurso:
    - resuelven identidad/autor desde el contrato definido;
@@ -32,9 +32,9 @@ Llamadas **servicio → servicio** internas (si se incorporan) deben usar el mis
 | Componente | Comportamiento actual | Implicancia |
 | --- | --- | --- |
 | Gateway (`backend/api-gateway/src/modules/proxy/service-proxy.ts`) | Proxy HTTP con `httpxy`; reenvía la solicitud al upstream. Reconstruye `Content-Length`/body para JSON y `x-www-form-urlencoded` cuando Nest ya consumió el body; los streams no parseados pasan directo. Responde `502` `{ statusCode, message }` si el servicio no está disponible. | El Gateway es el lugar natural para propagar `Authorization` y, en el futuro, validar/enriquecer contexto. |
-| Auth (`POST /api/v1/auth/login`) | Login **mock**: no verifica credenciales reales. Devuelve JWT **sin firma** (`alg: none`) con claims como `mock: true`, `sub`, `email`, `role`, `iat`, `exp`, además de `user`. | **No** debe considerarse prueba de identidad fuerte. Sirve para integración/transición. |
+| Auth (`POST /api/v1/auth/login`) | Implementado en #441: verifica credenciales registradas y devuelve un JWT firmado **RS256** con `sub` (UUID de `user.id`), `email`, `role`, `iss`, `aud`, `iat` y `exp`. Rechaza credenciales inválidas. | Identidad verificable para los servicios; los tokens mock anteriores (`alg: none`, `mock: true`) ya no se emiten. |
 | Auth (`POST /api/v1/auth/register`) | Registro público planificado en #440 (sin token). Ver sección 4 para el contrato coordinado. | Define el `user.id` que luego debe alimentar `sub`. |
-| Material (`MaterialAuthorProvider`) | Resuelve autor desde configuración local **solo en desarrollo** (`NODE_ENV=development`, `MATERIAL_LOCAL_AUTHOR_ENABLED=true`, `MATERIAL_LOCAL_UPLOADER_ID` UUID). Si no hay contexto válido, responde `401`. | Las operaciones que requieren autor (subida, creación de versión) dependen hoy de este mecanismo transitorio; el contrato objetivo debe reemplazarlo/compatibilizarlo. |
+| Material (`MaterialAuthorProvider`) | Implementado en #446: resuelve el autor desde `Authorization: Bearer <JWT firmado>` verificando firma, `exp`, `sub` UUID, `iss` y `aud`. En producción, con una clave de verificación configurada, `JWT_ISSUER` y `JWT_AUDIENCE` son obligatorios (el servicio no arranca sin ambos). Rechaza `alg: none`/`mock: true` con `401`. Conserva el contexto local (`NODE_ENV=development` y `MATERIAL_LOCAL_AUTHOR_ENABLED=true`) solo como transición; el servicio no arranca en producción con el modo local habilitado. | Subida y versionado ya no dependen de un ID configurado ni de campos del cliente. La emisión de JWT firmados está implementada en #441. |
 | Search/Catalog | Consultas de lectura con filtros/validaciones propias; disponibilidad/dependencias se reflejan en `400/502/503` según contrato existente. | La autorización de lectura/escritura por endpoint debe declararse explícitamente al aplicar este contrato. |
 
 ## 4. Registro público (#440)
@@ -118,7 +118,7 @@ El registro público sigue creando **únicamente** usuarios `STUDENT`; la asigna
 ### 5.2 Token de acceso (objetivo)
 
 - Formato objetivo: **JWT firmado** (algoritmo asimétrico recomendado, p. ej. RS256/ES256) emitido por Auth Service.
-- El Gateway y/o los servicios deben **verificar** firma, expiración (`exp`), emisor (`iss`) y audiencia (`aud`) cuando la verificación esté habilitada.
+- El Gateway y/o los servicios deben **verificar** firma, expiración (`exp`), emisor (`iss`) y audiencia (`aud`) cuando la verificación esté habilitada. En producción, con la verificación habilitada, `iss` y `aud` son obligatorios: un servicio no debe arrancar sin configurarlos, para no aceptar un token firmado con la clave correcta pero con otro emisor o audiencia.
 - **Transición:** mientras exista login mock (`alg: none`, `mock: true`), los tokens mock **no** otorgan confianza de identidad en entornos productivos. Su aceptación debe estar limitada a entornos controlados de desarrollo/integración y explícitamente configurada.
 
 ### 5.3 Claims / contexto de identidad mínimo
@@ -186,8 +186,8 @@ Formato de error: mantener compatibilidad con Nest (`{ statusCode, message, erro
 ## 8. Referencias
 
 - `backend/api-gateway/src/modules/proxy/service-proxy.ts` (proxy y manejo de body/502).
-- `backend/auth-service/src/presentation/auth/auth.controller.ts` (login mock, JWT sin firma).
-- `backend/material-service/src/infrastructure/auth/material-author.provider.ts` (contexto de autor transitorio).
+- `backend/auth-service/src/presentation/auth/auth.controller.ts` y `src/infrastructure/security/access-token.service.ts` (login real y JWT RS256 firmado).
+- `backend/material-service/src/infrastructure/auth/material-author.provider.ts` y `access-token.verifier.ts` (verificación de identidad y contexto local solo en desarrollo).
 - `backend/material-service/src/presentation/controllers/material.controller.ts` y `material-version.controller.ts` (operaciones que requieren autor).
 - `docs/api/README.md`, `docs/mobile/integracion-api-mobile.md`, `docs/checklist-integracion-api-mobile.md` (integración cliente/Gateway).
 - #440 (registro público) y #441 (login real/emisión de JWT).

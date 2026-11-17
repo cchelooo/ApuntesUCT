@@ -35,11 +35,21 @@ El Gateway usa las URLs internas sin prefijo. Mantener estas variables por proce
 
 ## Autenticación y visibilidad
 
+Las lecturas son públicas. La subida (`POST /materials`) y el versionado
+(`POST /materials/:id/versions`) exigen `Authorization: Bearer <JWT firmado>` con
+`sub` igual al UUID del usuario (contrato #445, implementación #446). El autor se
+obtiene del token; no se acepta `uploaderId` ni otro campo equivalente en el body.
 Auth verifica credenciales registradas y emite JWT RS256; configurar su clave,
 emisor y audiencia según el [README de Auth](../../backend/auth-service/README.md).
-La integración de esa identidad en Material está pendiente. Las lecturas son
-públicas. Los POST de Material resuelven un contexto local de autor, que solo
-funciona con estas variables en el proceso de Material:
+Los tokens mock (`alg: none` o `mock: true`) se rechazan con `401`, igual que un
+token ausente, expirado o con firma no verificable.
+
+Material verifica el token con `JWT_ACCESS_SECRET` (HS256) o
+`JWT_ACCESS_PUBLIC_KEY` (RS256/ES256) y valida `iss`/`aud`. En producción, con una
+clave configurada, `JWT_ISSUER` y `JWT_AUDIENCE` son obligatorios: si faltan, el
+servicio no arranca (así no se acepta un token con otro emisor o audiencia).
+Mientras no se use un JWT real, se puede usar el contexto local **solo en
+desarrollo**:
 
 ```dotenv
 NODE_ENV=development
@@ -48,9 +58,9 @@ MATERIAL_LOCAL_UPLOADER_ID=00000000-0000-4000-8000-000000000092
 ```
 
 `MATERIAL_LOCAL_UNIVERSITY_ID` es opcional y restringe la universidad compatible.
-Sin contexto habilitado/válido se responde `401` cuando la solicitud supera las
-validaciones previas. El contexto es común al proceso, no se deriva del Bearer ni
-representa autenticación real. Crear versiones exige el mismo autor (`403` si difiere).
+Sin token válido ni contexto local habilitado se responde `401`. El contexto local
+es común al proceso, no se deriva del Bearer y no debe habilitarse en producción.
+Crear versiones exige el mismo autor (`403` si el token corresponde a otro usuario).
 
 Una subida crea un material **PENDING_REVIEW**. Listado, detalle y descarga leen
 **PUBLISHED**. No usar automáticamente el ID recién subido para esperar un detalle
