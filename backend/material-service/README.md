@@ -431,13 +431,17 @@ JWT_ACCESS_SECRET=<secreto-compartido-con-auth>
 # O RS256/ES256 con la clave pública de Auth (recomendado en producción)
 JWT_ACCESS_PUBLIC_KEY=<PEM-o-PEM-con-\n>
 
-# Opcionales: si se definen, se validan emisor y audiencia
+# Emisor y audiencia esperados. En producción, con una clave de verificación
+# configurada, son obligatorios y el servicio no arranca sin ambos.
 JWT_ISSUER=apuntesuct-auth
 JWT_AUDIENCE=apuntesuct-api
 ```
 
 Si no hay `JWT_ACCESS_SECRET` ni `JWT_ACCESS_PUBLIC_KEY`, el servicio falla
-cerrado: no acepta tokens. La emisión de JWT reales corresponde a #441.
+cerrado: no acepta tokens. Con una clave configurada se validan firma, `exp`,
+`sub` y, en todos los entornos, `iss`/`aud`; en producción `JWT_ISSUER` y
+`JWT_AUDIENCE` son obligatorios (si faltan, el servicio **no arranca**). La
+emisión de JWT reales corresponde a #441.
 
 Mientras Auth aún no emita tokens firmados, se conserva el contexto local
 explícito **solo para desarrollo**:

@@ -9,6 +9,8 @@ import { PrismaService } from '../src/infrastructure/prisma/prisma.service';
 import { setupApp } from '../src/setup-app';
 
 const SECRET = 'e2e-only-secret-with-enough-entropy';
+const ISSUER = 'e2e-auth';
+const AUDIENCE = 'e2e-api';
 const AUTHOR_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_ID = '22222222-2222-4222-8222-222222222222';
 const MATERIAL_ID = '33333333-3333-4333-8333-333333333333';
@@ -22,7 +24,7 @@ const LINK_BODY = {
 
 function token(sub: string, overrides: Record<string, unknown> = {}): string {
   return sign(
-    { sub, email: 'estudiante@alu.uct.cl', role: 'STUDENT', ...overrides },
+    { sub, email: 'estudiante@alu.uct.cl', role: 'STUDENT', iss: ISSUER, aud: AUDIENCE, ...overrides },
     SECRET,
     { algorithm: 'HS256', expiresIn: '5m' },
   );
@@ -50,6 +52,8 @@ describe('Identidad real en subida y versionado de Material (#446)', () => {
 
   beforeAll(async () => {
     process.env.JWT_ACCESS_SECRET = SECRET;
+    process.env.JWT_ISSUER = ISSUER;
+    process.env.JWT_AUDIENCE = AUDIENCE;
     process.env.NODE_ENV = 'test';
     delete process.env.MATERIAL_LOCAL_AUTHOR_ENABLED;
     delete process.env.MATERIAL_LOCAL_UPLOADER_ID;
@@ -97,6 +101,8 @@ describe('Identidad real en subida y versionado de Material (#446)', () => {
   afterAll(async () => {
     await app.close();
     delete process.env.JWT_ACCESS_SECRET;
+    delete process.env.JWT_ISSUER;
+    delete process.env.JWT_AUDIENCE;
   });
 
   const upload = (headers: Record<string, string> = {}) =>
@@ -114,6 +120,8 @@ describe('Identidad real en subida y versionado de Material (#446)', () => {
     ['firma inválida', () => sign({ sub: AUTHOR_ID, exp: 9999999999 }, 'otro-secreto')],
     ['alg none', () => noneToken(AUTHOR_ID)],
     ['token mock', () => token(AUTHOR_ID, { mock: true })],
+    ['emisor distinto', () => token(AUTHOR_ID, { iss: 'otro-emisor' })],
+    ['audiencia distinta', () => token(AUTHOR_ID, { aud: 'otra-audiencia' })],
   ])('rechaza la subida con %s', async (_case, build) => {
     await upload({ Authorization: `Bearer ${build()}` }).expect(401);
     expect(prisma.material.create).not.toHaveBeenCalled();

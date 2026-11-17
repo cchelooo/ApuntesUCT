@@ -45,8 +45,11 @@ Los tokens mock (`alg: none` o `mock: true`) se rechazan con `401`, igual que un
 token ausente, expirado o con firma no verificable.
 
 Material verifica el token con `JWT_ACCESS_SECRET` (HS256) o
-`JWT_ACCESS_PUBLIC_KEY` (RS256/ES256). Mientras no se use un JWT real, se puede
-usar el contexto local **solo en desarrollo**:
+`JWT_ACCESS_PUBLIC_KEY` (RS256/ES256) y valida `iss`/`aud`. En producción, con una
+clave configurada, `JWT_ISSUER` y `JWT_AUDIENCE` son obligatorios: si faltan, el
+servicio no arranca (así no se acepta un token con otro emisor o audiencia).
+Mientras no se use un JWT real, se puede usar el contexto local **solo en
+desarrollo**:
 
 ```dotenv
 NODE_ENV=development

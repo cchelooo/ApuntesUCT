@@ -26,9 +26,11 @@ La infraestructura no completa las funciones pendientes de la aplicación:
   RS256; requiere una clave privada externa, emisor y audiencia configurados.
 - Material valida `Authorization: Bearer <JWT firmado>` (#446): crear material y
   nuevas versiones requiere configurar `JWT_ACCESS_PUBLIC_KEY` o
-  `JWT_ACCESS_SECRET` en el servicio y, si se usan, `JWT_ISSUER`/`JWT_AUDIENCE`.
-  Las imágenes usan `NODE_ENV=production` y no habilitan el autor local; sin esa
-  configuración, las subidas responden `401`.
+  `JWT_ACCESS_SECRET` en el servicio. Las imágenes usan `NODE_ENV=production`, así
+  que, con una clave de verificación configurada, `JWT_ISSUER` y `JWT_AUDIENCE`
+  son obligatorios (el servicio no arranca sin ambos). Sin clave configurada el
+  servicio arranca y no habilita el autor local, por lo que las subidas responden
+  `401`.
 - El despliegue permite consultas y descargas de datos existentes. Una instalación
   vacía tendrá un catálogo y un listado vacíos; las migraciones no cargan una demo.
 - La prueba de infraestructura inserta un fixture temporal directamente en la DB

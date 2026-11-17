@@ -55,6 +55,19 @@ describe('AccessTokenVerifier (#446)', () => {
   });
 
   it.each([
+    ['emisor distinto', { iss: 'otro-emisor', aud: 'apuntesuct-api' }],
+    ['audiencia distinta', { iss: 'apuntesuct-auth', aud: 'otra-audiencia' }],
+  ])('rechaza un token con %s aunque la firma sea válida', (_case, claims) => {
+    const instance = verifier({
+      JWT_ACCESS_SECRET: SECRET,
+      JWT_ISSUER: 'apuntesuct-auth',
+      JWT_AUDIENCE: 'apuntesuct-api',
+    });
+
+    expectUnauthorized(() => instance.verify(hsToken(claims)));
+  });
+
+  it.each([
     ['firma con otro secreto', () => sign({ sub: AUTHOR_ID, exp: 9999999999 }, 'otro-secreto')],
     ['token expirado', () => hsToken({}, { expiresIn: -10 })],
     ['alg none', () => noneToken()],
@@ -98,6 +111,59 @@ describe('AccessTokenVerifier (#446)', () => {
       email: 'docente@uct.cl',
       role: 'MODERATOR',
     });
+  });
+});
+
+describe('AccessTokenVerifier en producción (#446)', () => {
+  const PRODUCTION_REQUIRED_MESSAGE =
+    'JWT_ISSUER y JWT_AUDIENCE son obligatorios en producción cuando la verificación de identidad está habilitada.';
+  const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const publicPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
+  const privatePem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+
+  function rsToken(overrides: Record<string, unknown> = {}): string {
+    return sign(
+      { sub: AUTHOR_ID, email: 'docente@uct.cl', role: 'MODERATOR', ...overrides },
+      privatePem,
+      { algorithm: 'RS256', expiresIn: '5m' },
+    );
+  }
+
+  it.each([
+    ['solo la clave pública', { JWT_ACCESS_PUBLIC_KEY: publicPem }],
+    ['solo el secreto HS256', { JWT_ACCESS_SECRET: SECRET }],
+    ['clave y emisor sin audiencia', { JWT_ACCESS_PUBLIC_KEY: publicPem, JWT_ISSUER: 'apuntesuct-auth' }],
+    ['clave y audiencia sin emisor', { JWT_ACCESS_PUBLIC_KEY: publicPem, JWT_AUDIENCE: 'apuntesuct-api' }],
+  ])('no arranca con %s', (_case, settings) => {
+    expect(() => verifier({ NODE_ENV: 'production', ...settings })).toThrow(
+      PRODUCTION_REQUIRED_MESSAGE,
+    );
+  });
+
+  it('arranca con la configuración completa y valida emisor y audiencia', () => {
+    const instance = verifier({
+      NODE_ENV: 'production',
+      JWT_ACCESS_PUBLIC_KEY: publicPem,
+      JWT_ISSUER: 'apuntesuct-auth',
+      JWT_AUDIENCE: 'apuntesuct-api',
+    });
+
+    expect(
+      instance.verify(rsToken({ iss: 'apuntesuct-auth', aud: 'apuntesuct-api' })).id,
+    ).toBe(AUTHOR_ID);
+    expectUnauthorized(() =>
+      instance.verify(rsToken({ iss: 'otro-emisor', aud: 'apuntesuct-api' })),
+    );
+    expectUnauthorized(() =>
+      instance.verify(rsToken({ iss: 'apuntesuct-auth', aud: 'otra-audiencia' })),
+    );
+  });
+
+  it('no exige iss/aud en producción si no hay clave de verificación', () => {
+    const instance = verifier({ NODE_ENV: 'production' });
+
+    expect(instance.isConfigured()).toBe(false);
+    expectUnauthorized(() => instance.verify(hsToken()));
   });
 });
 

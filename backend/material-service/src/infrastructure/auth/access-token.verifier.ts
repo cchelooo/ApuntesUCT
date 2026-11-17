@@ -40,12 +40,26 @@ export function extractBearerToken(authorization?: string): string | null {
  * Verifica access tokens JWT firmados según el contrato de autorización (#445).
  *
  * - Rechaza `alg: none` y tokens marcados con `mock: true` (login simulado).
- * - Exige `sub` UUID, `exp` y, si están configurados, `iss` y `aud`.
+ * - Exige `sub` UUID y `exp`, y valida `iss`/`aud` cuando están configurados.
+ * - En producción, con una clave de verificación configurada, `JWT_ISSUER` y
+ *   `JWT_AUDIENCE` son obligatorios y el servicio no arranca sin ellos (#445).
  * - HS256 usa `JWT_ACCESS_SECRET`; RS256/ES256 usan `JWT_ACCESS_PUBLIC_KEY`.
  */
 @Injectable()
 export class AccessTokenVerifier {
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly config: ConfigService) {
+    // El contrato #445 exige validar emisor y audiencia. En producción, si hay
+    // una clave de verificación, no se permite arrancar sin `JWT_ISSUER` y
+    // `JWT_AUDIENCE`: de lo contrario se aceptaría un token firmado con la clave
+    // correcta pero con otro `iss`/`aud`.
+    if (this.isProduction() && this.isConfigured()) {
+      if (!this.issuer() || !this.audience()) {
+        throw new Error(
+          'JWT_ISSUER y JWT_AUDIENCE son obligatorios en producción cuando la verificación de identidad está habilitada.',
+        );
+      }
+    }
+  }
 
   /** Indica si existe material de verificación configurado. */
   isConfigured(): boolean {
@@ -148,6 +162,10 @@ export class AccessTokenVerifier {
 
   private audience(): string | null {
     return this.value('JWT_AUDIENCE');
+  }
+
+  private isProduction(): boolean {
+    return this.value('NODE_ENV') === 'production';
   }
 
   private clockToleranceSeconds(): number {
