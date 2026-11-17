@@ -375,6 +375,164 @@
               }
             }
           ]
+        },
+        {
+          "name": "Solicitar recuperación de contraseña",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{mockEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/v1/auth/forgot-password",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "v1", "auth", "forgot-password"]
+            },
+            "description": "/api/v1/auth/forgot-password (Auth Service)"
+          },
+          "response": [
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "description": ""
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{mockEmail}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/auth/forgot-password",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "auth", "forgot-password"]
+                },
+                "description": "/api/v1/auth/forgot-password (Auth Service)"
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Auth Service no disponible\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restablecer contraseña con token temporal de un solo uso",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": ""
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"string\",\n  \"password\": \"{{mockPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{gatewayUrl}}/api/v1/auth/reset-password",
+              "host": ["{{gatewayUrl}}"],
+              "path": ["api", "v1", "auth", "reset-password"]
+            },
+            "description": "/api/v1/auth/reset-password (Auth Service)"
+          },
+          "response": [
+            {
+              "name": "502 — destino Gateway no disponible",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "description": ""
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"token\": \"string\",\n  \"password\": \"{{mockPassword}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{gatewayUrl}}/api/v1/auth/reset-password",
+                  "host": ["{{gatewayUrl}}"],
+                  "path": ["api", "v1", "auth", "reset-password"]
+                },
+                "description": "/api/v1/auth/reset-password (Auth Service)"
+              },
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"statusCode\": 502,\n  \"message\": \"Auth Service no disponible\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Devuelve JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
