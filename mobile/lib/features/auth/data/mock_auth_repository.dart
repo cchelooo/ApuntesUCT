@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/session/session_controller.dart';
 import '../../../models/user_model.dart';
 import 'auth_repository.dart';
 import 'dio_auth_repository.dart';
@@ -79,9 +80,8 @@ class MockAuthRepository implements AuthRepository {
 
 /// Provider de autenticación usado por Login, Registro y Logout.
 ///
-/// Login consume el endpoint mock real del Gateway mediante Dio. Las operaciones
-/// que Backend todavía no expone se mantienen en [MockAuthRepository] a través
-/// del fallback de [DioAuthRepository].
+/// En modo normal las operaciones consumen el contrato real de Auth por Gateway.
+/// El mock solo se activa explícitamente mediante AUTH_DEMO_MODE.
 ///
 /// Para demostraciones sin Backend se puede ejecutar Mobile con
 /// `--dart-define=AUTH_DEMO_MODE=true`. El modo normal sigue usando Dio para que
@@ -96,7 +96,7 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   }
 
   final apiClient = ref.watch(apiclientProvider);
-  return DioAuthRepository(apiClient, const MockAuthRepository());
+  return DioAuthRepository(apiClient);
 });
 
 /// AsyncNotifier para gestionar el estado del usuario autenticado (Riverpod 3.x).
@@ -105,46 +105,61 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 /// - Data (usuario logueado o null si no hay sesión)
 /// - Error (fallo de red o credenciales incorrectas)
 class AuthStateNotifier extends AsyncNotifier<UserModel?> {
+  int _operation = 0;
+
   @override
   Future<UserModel?> build() async {
-    // Inicialmente no hay usuario en sesión
-    return null;
+    if (ref.watch(authDemoModeProvider)) return null;
+    final session = ref.watch(sessionControllerProvider);
+    void changed() {
+      if (!ref.mounted) return;
+      final user = session.current?.user;
+      // beginLogin clears the old identity; keep the pending login indicator.
+      if (state.isLoading && user == null) return;
+      state = AsyncData(user);
+    }
+
+    session.addListener(changed);
+    ref.onDispose(() => session.removeListener(changed));
+    await session.restore();
+    return session.current?.user;
   }
 
-  /// Ejecuta login asíncrono actualizando el estado de Riverpod
   Future<void> login(String email, String password) async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      final repository = ref.read(authRepositoryProvider);
-      return await repository.login(email: email, password: password);
-    });
+    final operation = ++_operation;
+    state = const AsyncLoading();
+    final result = await AsyncValue.guard(
+      () => ref
+          .read(authRepositoryProvider)
+          .login(email: email, password: password),
+    );
+    if (ref.mounted && operation == _operation) state = result;
   }
 
-  /// Registra una cuenta nueva y deja al usuario con sesión iniciada
   Future<void> register(String name, String email, String password) async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      final repository = ref.read(authRepositoryProvider);
-      return await repository.register(
-        name: name,
-        email: email,
-        password: password,
-      );
-    });
+    final operation = ++_operation;
+    state = const AsyncLoading();
+    final repository = ref.read(authRepositoryProvider);
+    final result = await AsyncValue.guard(
+      () => repository.register(name: name, email: email, password: password),
+    );
+    if (!ref.mounted || operation != _operation) return;
+    // Registration returns a user, not an authenticated session.
+    state = repository is DioAuthRepository && !result.hasError
+        ? const AsyncData(null)
+        : result;
   }
 
-  /// Cierra la sesión
   Future<void> logout() async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      final repository = ref.read(authRepositoryProvider);
-      await repository.logout();
-      return null;
-    });
+    ++_operation;
+    final repository = ref.read(authRepositoryProvider);
+    final cleanup = repository.logout();
+    // Clear the UI immediately, including repositories substituted in tests/demo.
+    state = const AsyncData(null);
+    await cleanup;
   }
 }
 
-/// Provider global reactivo del estado de autenticación con Notifier moderno
 final authStateProvider = AsyncNotifierProvider<AuthStateNotifier, UserModel?>(
   AuthStateNotifier.new,
 );

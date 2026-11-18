@@ -14,6 +14,8 @@ import 'package:apuntesuct_mobile/features/materials/presentation/screens/materi
 import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_upload_screen.dart';
 import 'package:apuntesuct_mobile/main.dart';
 
+import '../helpers/auth_session_fixture.dart';
+
 void main() {
   testWidgets(
     'issue #279: rutas del módulo materiales sin pantalla en blanco',
@@ -33,6 +35,7 @@ void main() {
             materialsRepositoryProvider.overrideWithValue(
               MockMaterialsRepository(),
             ),
+            authStateProvider.overrideWith(AuthenticatedFixture.new),
             authRepositoryProvider.overrideWith(
               (ref) => const MockAuthRepository(simulatedDelay: Duration.zero),
             ),

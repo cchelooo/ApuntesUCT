@@ -13,7 +13,6 @@ class ErrorInterceptor extends Interceptor {
       debugPrint(
         '[API ERROR] ${err.requestOptions.method} ${err.requestOptions.path}',
       );
-      debugPrint('[API ERROR DETAIL] $apiException');
     }
 
     // Reenvía el error encapsulado en el DioException para que la app lo reciba ordenado

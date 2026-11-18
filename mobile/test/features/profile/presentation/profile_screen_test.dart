@@ -7,6 +7,10 @@ import 'package:apuntesuct_mobile/features/profile/presentation/profile_screen.d
 import 'package:apuntesuct_mobile/main.dart';
 import 'package:apuntesuct_mobile/providers/theme_mode_provider.dart';
 
+import '../../../helpers/auth_session_fixture.dart';
+
+import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart';
+
 void main() {
   group('ProfileScreen Tests', () {
     testWidgets(
@@ -285,11 +289,18 @@ void main() {
         });
 
         appRouter.go('/profile');
-        await tester.pumpWidget(const ProviderScope(child: MyApp()));
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              authStateProvider.overrideWith(AuthenticatedFixture.new),
+            ],
+            child: const MyApp(),
+          ),
+        );
         await tester.pumpAndSettle();
 
         expect(find.byType(ProfileScreen), findsOneWidget);
-        expect(find.text('Marcelo Santana'), findsOneWidget);
+        expect(find.text('Marcelo Henríquez'), findsOneWidget);
         expect(find.text('Perfil'), findsWidgets);
       },
     );
