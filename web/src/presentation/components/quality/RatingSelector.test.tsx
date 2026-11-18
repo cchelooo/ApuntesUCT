@@ -28,6 +28,24 @@ describe('RatingSelector', () => {
     ).toBeInTheDocument();
   });
 
+  it.each(['', '   '])('rechaza el token %j', async (accessToken) => {
+    const user = userEvent.setup();
+    const submitRating = vi.fn();
+
+    render(
+      <RatingSelector
+        materialId="material-1"
+        accessToken={accessToken}
+        adapter={createAdapter(submitRating)}
+      />
+    );
+
+    const firstStar = screen.getByRole('radio', { name: '1 estrella' });
+    expect(firstStar).toBeDisabled();
+    await user.click(firstStar);
+    expect(submitRating).not.toHaveBeenCalled();
+  });
+
   it('permite elegir estrellas con el teclado', async () => {
     const user = userEvent.setup();
     const submitRating = vi.fn(async () => ({ source: 'local-demo' as const }));
@@ -105,6 +123,36 @@ describe('RatingSelector', () => {
       'No se pudo guardar la calificación.'
     );
     expect(screen.getByRole('radio', { name: '2 estrellas' })).toBeChecked();
+    expect(
+      screen.queryByText(/Calificación actualizada localmente/)
+    ).not.toBeInTheDocument();
+  });
+
+  it('ignora una respuesta tardía después de perder la sesión', async () => {
+    const user = userEvent.setup();
+    let resolveOperation!: (receipt: QualityOperationReceipt) => void;
+    const submitRating = vi.fn(
+      () =>
+        new Promise<QualityOperationReceipt>((resolve) => {
+          resolveOperation = resolve;
+        })
+    );
+    const adapter = createAdapter(submitRating);
+    const { rerender } = render(
+      <RatingSelector
+        materialId="material-1"
+        accessToken="session-token"
+        adapter={adapter}
+      />
+    );
+
+    await user.click(screen.getByRole('radio', { name: '4 estrellas' }));
+    rerender(<RatingSelector materialId="material-1" adapter={adapter} />);
+    resolveOperation({ source: 'local-demo' });
+
+    expect(
+      await screen.findByText('Inicia sesión para calificar este material.')
+    ).toBeInTheDocument();
     expect(
       screen.queryByText(/Calificación actualizada localmente/)
     ).not.toBeInTheDocument();

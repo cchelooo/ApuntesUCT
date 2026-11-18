@@ -39,6 +39,12 @@ export interface QualityInteractionsAdapter {
   submitReport(operation: ReportOperation): Promise<QualityOperationReceipt>;
 }
 
+export function hasValidAccessToken(
+  accessToken: string | undefined
+): accessToken is string {
+  return typeof accessToken === 'string' && accessToken.trim().length > 0;
+}
+
 export function getOperationFeedback(
   receipt: QualityOperationReceipt,
   localMessage: string,

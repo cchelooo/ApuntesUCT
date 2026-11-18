@@ -5,6 +5,7 @@ import type {
   RatingOperation,
   ReportOperation,
 } from '../domain/quality/qualityInteractions';
+import { hasValidAccessToken } from '../domain/quality/qualityInteractions';
 
 const DEMO_RECEIPT: QualityOperationReceipt = { source: 'local-demo' };
 
@@ -12,7 +13,7 @@ function assertAuthenticated(materialId: string, accessToken: string): void {
   if (!materialId.trim()) {
     throw new Error('Se requiere el identificador del material.');
   }
-  if (!accessToken.trim()) {
+  if (!hasValidAccessToken(accessToken)) {
     throw new Error('Se requiere una sesión autenticada.');
   }
 }

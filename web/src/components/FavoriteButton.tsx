@@ -1,6 +1,9 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { QualityInteractionsAdapter } from '../domain/quality/qualityInteractions';
-import { getOperationFeedback } from '../domain/quality/qualityInteractions';
+import {
+  getOperationFeedback,
+  hasValidAccessToken,
+} from '../domain/quality/qualityInteractions';
 import { localQualityAdapter } from '../adapters/localQualityAdapter';
 
 export interface FavoriteButtonProps {
@@ -10,7 +13,17 @@ export interface FavoriteButtonProps {
   adapter?: QualityInteractionsAdapter;
 }
 
-export function FavoriteButton({
+export function FavoriteButton({ accessToken, ...props }: FavoriteButtonProps) {
+  return (
+    <FavoriteButtonForSession
+      key={accessToken ?? ''}
+      accessToken={accessToken}
+      {...props}
+    />
+  );
+}
+
+function FavoriteButtonForSession({
   materialId,
   accessToken,
   initialFavorite = false,
@@ -21,12 +34,21 @@ export function FavoriteButton({
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [error, setError] = useState('');
-  const isAuthenticated = Boolean(accessToken?.trim());
+  const isAuthenticated = hasValidAccessToken(accessToken);
+  const operationIdRef = useRef(0);
+
+  useEffect(
+    () => () => {
+      operationIdRef.current += 1;
+    },
+    []
+  );
 
   async function toggleFavorite() {
-    if (!accessToken || isSaving) return;
+    if (!hasValidAccessToken(accessToken) || isSaving) return;
 
     const nextFavorite = !isFavorite;
+    const operationId = ++operationIdRef.current;
     setIsSaving(true);
     setFeedback('');
     setError('');
@@ -37,6 +59,7 @@ export function FavoriteButton({
         isFavorite: nextFavorite,
         accessToken,
       });
+      if (operationId !== operationIdRef.current) return;
       setIsFavorite(nextFavorite);
       setFeedback(
         getOperationFeedback(
@@ -50,11 +73,12 @@ export function FavoriteButton({
         )
       );
     } catch {
+      if (operationId !== operationIdRef.current) return;
       setError(
         'No se pudo actualizar favoritos. Inténtalo nuevamente más tarde.'
       );
     } finally {
-      setIsSaving(false);
+      if (operationId === operationIdRef.current) setIsSaving(false);
     }
   }
 

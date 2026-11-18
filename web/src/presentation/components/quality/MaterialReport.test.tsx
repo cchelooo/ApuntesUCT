@@ -35,6 +35,50 @@ describe('MaterialReport', () => {
     expect(submitReport).not.toHaveBeenCalled();
   });
 
+  it.each(['', '   '])('rechaza el token %j', async (accessToken) => {
+    const user = userEvent.setup();
+    const submitReport = vi.fn();
+
+    render(
+      <MaterialReport
+        materialId="material-1"
+        accessToken={accessToken}
+        adapter={createAdapter(submitReport)}
+      />
+    );
+
+    const trigger = screen.getByRole('button', { name: 'Reportar problema' });
+    expect(trigger).toBeDisabled();
+    await user.click(trigger);
+    expect(submitReport).not.toHaveBeenCalled();
+  });
+
+  it('invalida un formulario abierto cuando se pierde la sesión', async () => {
+    const user = userEvent.setup();
+    const submitReport = vi.fn();
+    const adapter = createAdapter(submitReport);
+    const { rerender } = render(
+      <MaterialReport
+        materialId="material-1"
+        accessToken="session-token"
+        adapter={adapter}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Reportar problema' }));
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Motivo del reporte' }),
+      'broken-link'
+    );
+    rerender(<MaterialReport materialId="material-1" adapter={adapter} />);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(submitReport).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('button', { name: 'Reportar problema' })
+    ).toBeDisabled();
+  });
+
   it('cierra al cancelar sin anunciar una confirmación exitosa', async () => {
     const user = userEvent.setup();
     const submitReport = vi.fn();

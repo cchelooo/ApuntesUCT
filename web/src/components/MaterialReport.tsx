@@ -12,6 +12,7 @@ import type {
 } from '../domain/quality/qualityInteractions';
 import {
   getOperationFeedback,
+  hasValidAccessToken,
   REPORT_REASONS,
 } from '../domain/quality/qualityInteractions';
 import { localQualityAdapter } from '../adapters/localQualityAdapter';
@@ -22,7 +23,17 @@ export interface MaterialReportProps {
   adapter?: QualityInteractionsAdapter;
 }
 
-export function MaterialReport({
+export function MaterialReport({ accessToken, ...props }: MaterialReportProps) {
+  return (
+    <MaterialReportForSession
+      key={accessToken ?? ''}
+      accessToken={accessToken}
+      {...props}
+    />
+  );
+}
+
+function MaterialReportForSession({
   materialId,
   accessToken,
   adapter = localQualityAdapter,
@@ -38,7 +49,15 @@ export function MaterialReport({
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [error, setError] = useState('');
-  const isAuthenticated = Boolean(accessToken?.trim());
+  const isAuthenticated = hasValidAccessToken(accessToken);
+  const operationIdRef = useRef(0);
+
+  useEffect(
+    () => () => {
+      operationIdRef.current += 1;
+    },
+    []
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -94,8 +113,9 @@ export function MaterialReport({
 
   async function submitReport(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!accessToken || !reason || isSubmitting) return;
+    if (!hasValidAccessToken(accessToken) || !reason || isSubmitting) return;
 
+    const operationId = ++operationIdRef.current;
     setIsSubmitting(true);
     setError('');
     setFeedback('');
@@ -107,6 +127,7 @@ export function MaterialReport({
         details: details.trim() || undefined,
         accessToken,
       });
+      if (operationId !== operationIdRef.current) return;
       setFeedback(
         getOperationFeedback(
           receipt,
@@ -116,9 +137,10 @@ export function MaterialReport({
       );
       setIsSubmitted(true);
     } catch {
+      if (operationId !== operationIdRef.current) return;
       setError('No se pudo enviar el reporte. Inténtalo nuevamente más tarde.');
     } finally {
-      setIsSubmitting(false);
+      if (operationId === operationIdRef.current) setIsSubmitting(false);
     }
   }
 
@@ -149,7 +171,7 @@ export function MaterialReport({
         </p>
       )}
 
-      {isOpen && (
+      {isOpen && isAuthenticated && (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
           <div
             ref={dialogRef}

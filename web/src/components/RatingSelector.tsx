@@ -1,9 +1,12 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type {
   QualityInteractionsAdapter,
   RatingValue,
 } from '../domain/quality/qualityInteractions';
-import { getOperationFeedback } from '../domain/quality/qualityInteractions';
+import {
+  getOperationFeedback,
+  hasValidAccessToken,
+} from '../domain/quality/qualityInteractions';
 import { localQualityAdapter } from '../adapters/localQualityAdapter';
 
 export interface RatingSelectorProps {
@@ -13,7 +16,17 @@ export interface RatingSelectorProps {
   adapter?: QualityInteractionsAdapter;
 }
 
-export function RatingSelector({
+export function RatingSelector({ accessToken, ...props }: RatingSelectorProps) {
+  return (
+    <RatingSelectorForSession
+      key={accessToken ?? ''}
+      accessToken={accessToken}
+      {...props}
+    />
+  );
+}
+
+function RatingSelectorForSession({
   materialId,
   accessToken,
   initialRating,
@@ -24,12 +37,21 @@ export function RatingSelector({
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [error, setError] = useState('');
-  const isAuthenticated = Boolean(accessToken?.trim());
+  const isAuthenticated = hasValidAccessToken(accessToken);
+  const operationIdRef = useRef(0);
+
+  useEffect(
+    () => () => {
+      operationIdRef.current += 1;
+    },
+    []
+  );
 
   async function selectRating(nextRating: RatingValue) {
-    if (!accessToken || isSaving) return;
+    if (!hasValidAccessToken(accessToken) || isSaving) return;
 
     const previousRating = rating;
+    const operationId = ++operationIdRef.current;
     setRating(nextRating);
     setIsSaving(true);
     setFeedback('');
@@ -41,6 +63,7 @@ export function RatingSelector({
         rating: nextRating,
         accessToken,
       });
+      if (operationId !== operationIdRef.current) return;
       setFeedback(
         getOperationFeedback(
           receipt,
@@ -49,12 +72,13 @@ export function RatingSelector({
         )
       );
     } catch {
+      if (operationId !== operationIdRef.current) return;
       setRating(previousRating);
       setError(
         'No se pudo guardar la calificación. Inténtalo nuevamente más tarde.'
       );
     } finally {
-      setIsSaving(false);
+      if (operationId === operationIdRef.current) setIsSaving(false);
     }
   }
 

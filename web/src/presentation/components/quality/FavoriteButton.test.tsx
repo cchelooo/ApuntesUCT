@@ -41,6 +41,26 @@ describe('FavoriteButton', () => {
     expect(setFavorite).not.toHaveBeenCalled();
   });
 
+  it.each(['', '   '])('rechaza el token %j', async (accessToken) => {
+    const user = userEvent.setup();
+    const setFavorite = vi.fn();
+
+    render(
+      <FavoriteButton
+        materialId="material-1"
+        accessToken={accessToken}
+        adapter={createAdapter(setFavorite)}
+      />
+    );
+
+    const button = screen.getByRole('button', {
+      name: 'Agregar a favoritos',
+    });
+    expect(button).toBeDisabled();
+    await user.click(button);
+    expect(setFavorite).not.toHaveBeenCalled();
+  });
+
   it('actualiza el estado solo después de completar la operación', async () => {
     const user = userEvent.setup();
     let resolveOperation!: (receipt: QualityOperationReceipt) => void;
@@ -102,5 +122,38 @@ describe('FavoriteButton', () => {
     expect(
       screen.queryByText(/Favorito actualizado localmente/)
     ).not.toBeInTheDocument();
+  });
+
+  it('ignora una respuesta tardía después de perder la sesión', async () => {
+    const user = userEvent.setup();
+    let resolveOperation!: (receipt: QualityOperationReceipt) => void;
+    const setFavorite = vi.fn(
+      () =>
+        new Promise<QualityOperationReceipt>((resolve) => {
+          resolveOperation = resolve;
+        })
+    );
+    const adapter = createAdapter(setFavorite);
+    const { rerender } = render(
+      <FavoriteButton
+        materialId="material-1"
+        accessToken="session-token"
+        adapter={adapter}
+      />
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Agregar a favoritos' })
+    );
+    rerender(<FavoriteButton materialId="material-1" adapter={adapter} />);
+    resolveOperation({ source: 'local-demo' });
+
+    expect(
+      await screen.findByText('Inicia sesión para guardar favoritos.')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Favorito actualizado localmente/)
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'false');
   });
 });
