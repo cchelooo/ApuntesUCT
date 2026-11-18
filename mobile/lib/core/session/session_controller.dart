@@ -21,7 +21,15 @@ class SessionController extends ChangeNotifier {
   AuthSession? _current;
   AuthSession? get current {
     if (_current != null && !_current!.expiresAt.isAfter(now().toUtc())) {
-      unawaited(clear().catchError((Object _) {}));
+      final generation = ++_generation;
+      _current = null;
+      _timer?.cancel();
+      unawaited(_serial(storage.delete).catchError((Object _) {}));
+      // Reading expired credentials can happen during a widget/provider build.
+      // Clear immediately, then notify without mutating providers in that build.
+      scheduleMicrotask(() {
+        if (!_disposed && generation == _generation) notifyListeners();
+      });
     }
     return _current;
   }
@@ -57,7 +65,7 @@ class SessionController extends ChangeNotifier {
   }
 
   int beginLogin() {
-    _restoration ??= Future.value();
+    _restoration = Future.value();
     final generation = ++_generation;
     _publish(null);
     // Delete an older persisted identity before any new login can be committed.

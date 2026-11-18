@@ -27,6 +27,20 @@ class _BlockedStorage implements SessionStorage {
 }
 
 void main() {
+  test('a new login supersedes a failed restoration rather than keeping its failed future', () async {
+    final store = _BlockedStorage();
+    final session = SessionController(store);
+    addTearDown(session.dispose);
+    final failed = expectLater(session.restore(), throwsStateError);
+    store.pendingRead.completeError(StateError('controlled read failure'));
+    await failed;
+    await session.accept(
+      AuthSession.fromLogin(loginFixture(), DateTime.now()),
+      session.beginLogin(),
+    );
+    await session.restore();
+    expect(session.current?.user.email, 'estudiante@alu.uct.cl');
+  });
   test('secure adapter restores a valid session across controller instances and deletes only its key', () async {
     FlutterSecureStorage.setMockInitialValues({'another-feature': 'keep'});
     final store = SecureSessionStorage(gatewayUrl: 'https://a.test/api/v1');
