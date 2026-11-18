@@ -1,7 +1,7 @@
 /* Stack desechable para la comprobación nativa de Mobile.
  * Prerrequisitos: Docker activo, backend con npm ci y npm run build.
  * Crea solo recursos qa278-*; SIGINT/SIGTERM retiran esos recursos.
- * No inicia la Web ni modifica bases compartidas. El login sigue siendo mock.
+ * No inicia la Web ni modifica bases compartidas. Auth emite JWT RS256 reales con claves y cuentas desechables.
  */
 const fs = require("node:fs");
 const path = require("node:path");
@@ -9,7 +9,7 @@ const os = require("node:os");
 const net = require("node:net");
 const assert = require("node:assert/strict");
 const { spawn, execFileSync } = require("node:child_process");
-const { randomUUID, createHash } = require("node:crypto");
+const { randomUUID, createHash, generateKeyPairSync } = require("node:crypto");
 const root = path.resolve(__dirname, "../..");
 const backend = path.join(root, "backend");
 
@@ -200,7 +200,6 @@ async function main() {
   const subject = await catalog.subject.create({
     data: { name: "Asignatura QA278", code: runId, careerId: career.id },
   });
-  const uploader = randomUUID();
   const ports = {};
   for (const name of ["gateway", "auth", "catalog", "material", "search"])
     ports[name] = await freePort();
@@ -213,7 +212,16 @@ async function main() {
     careerId: career.id,
     subjectId: subject.id,
   };
-  const common = { NODE_ENV: "development" };
+  const keys = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const privateKeyPath = path.join(out, "private.pem");
+  fs.writeFileSync(privateKeyPath, keys.privateKey.export({type: "pkcs8", format: "pem"}), {mode: 0o600});
+  const common = {
+    NODE_ENV: "development",
+    JWT_PRIVATE_KEY_PATH: privateKeyPath,
+    JWT_ACCESS_PUBLIC_KEY: keys.publicKey.export({type: "spki", format: "pem"}),
+    JWT_ISSUER: "apuntesuct-qa",
+    JWT_AUDIENCE: "apuntesuct-mobile-qa",
+  };
   for (const service of ["auth", "catalog", "material", "search", "gateway"]) {
     const folder = service === "gateway" ? "api-gateway" : `${service}-service`;
     const entry = fs.existsSync(path.join(backend, folder, "dist/main.js"))
@@ -227,9 +235,7 @@ async function main() {
     if (service === "material")
       Object.assign(env, {
         CATALOG_SERVICE_URL: `${origin("catalog")}/api/v1`,
-        MATERIAL_LOCAL_AUTHOR_ENABLED: "true",
-        MATERIAL_LOCAL_UPLOADER_ID: uploader,
-        MATERIAL_LOCAL_UNIVERSITY_ID: university.id,
+        MATERIAL_LOCAL_AUTHOR_ENABLED: "false",
         MINIO_ENDPOINT: "127.0.0.1",
         MINIO_PORT: String(minioPort),
         MINIO_USE_SSL: "false",
@@ -250,6 +256,20 @@ async function main() {
     );
   }
 
+  const credentials = {email: "qa278@alu.uct.cl", password: "ApuntesQA2026!"};
+  const registration = await fetch(`${gateway}/auth/register`, {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({...credentials, name: "Estudiante QA"}),
+  });
+  assert.equal(registration.status, 201, await registration.text());
+  const login = await fetch(`${gateway}/auth/login`, {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(credentials),
+  });
+  assert.equal(login.status, 200);
+  const session = await login.json();
+  assert.ok(session.accessToken);
+  report.auth = {register: 201, login: 200, signed: "RS256", localAuthor: false};
   const title = "Integracion278";
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
@@ -283,6 +303,7 @@ async function main() {
   form.set("file", new Blob([pdf], { type: "application/pdf" }), "Guía278.pdf");
   const response = await fetch(`${gateway}/materials`, {
     method: "POST",
+    headers: {Authorization: `Bearer ${session.accessToken}`},
     body: form,
   });
   const body = await response.json();
@@ -304,6 +325,7 @@ async function main() {
       "Actualizacion directa solo en base desechable; no valida moderacion",
     downloadSha256: createHash("sha256").update(pdf).digest("hex"),
   });
+  assert.equal((await material.material.findUniqueOrThrow({where: {id: materialId}})).uploaderId, session.user.id);
   report.result = "READY";
   fs.writeFileSync(
     path.join(out, "fixture.json"),
@@ -350,6 +372,7 @@ main()
         report.cleanup.push({ name, removed: false });
       }
     }
+    fs.rmSync(path.join(out, "private.pem"), {force: true});
     report.finishedAt = new Date().toISOString();
     fs.writeFileSync(
       path.join(out, "report.json"),

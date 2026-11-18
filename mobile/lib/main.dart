@@ -12,13 +12,51 @@ import 'package:apuntesuct_mobile/features/profile/presentation/profile_screen.d
 import 'package:apuntesuct_mobile/providers/theme_mode_provider.dart';
 import 'package:apuntesuct_mobile/features/home/presentation/home_screen.dart';
 import 'package:apuntesuct_mobile/features/quality/quality.dart';
+import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart'
+    show authStateProvider;
 
 final GoRouter appRouter = GoRouter(
   initialLocation: const String.fromEnvironment(
     'INITIAL_ROUTE',
     defaultValue: '/login',
   ),
+  redirect: (context, state) {
+    final path = state.uri.path;
+    final auth = ProviderScope.containerOf(context).read(authStateProvider);
+    if (path == '/session') {
+      if (auth.isLoading) return null;
+      final requested = state.uri.queryParameters['next'];
+      final target =
+          const {
+            '/',
+            '/profile',
+            '/favorites',
+            '/library',
+            '/materials/upload',
+          }.contains(requested)
+          ? requested!
+          : '/';
+      return auth.asData?.value == null ? '/login' : target;
+    }
+    final private =
+        path == '/' ||
+        path == '/profile' ||
+        path == '/favorites' ||
+        path == '/library' ||
+        path == '/materials/upload' ||
+        path.startsWith('/moderation');
+    if (!private) return null;
+    if (auth.isLoading) {
+      return Uri(path: '/session', queryParameters: {'next': path}).toString();
+    }
+    return auth.asData?.value == null ? '/login' : null;
+  },
   routes: [
+    GoRoute(
+      path: '/session',
+      builder: (context, state) =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+    ),
     GoRoute(
       path: '/',
       name: 'home',
@@ -86,6 +124,7 @@ final GoRouter appRouter = GoRouter(
 );
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const ProviderScope(child: MyApp()));
 }
 
@@ -94,6 +133,9 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen(authStateProvider, (_, next) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => appRouter.refresh());
+    });
     return MaterialApp.router(
       title: 'ApuntesUCT',
       debugShowCheckedModeBanner: false,

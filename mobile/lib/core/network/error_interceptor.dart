@@ -11,9 +11,8 @@ class ErrorInterceptor extends Interceptor {
 
     if (kDebugMode) {
       debugPrint(
-        '[API ERROR] ${err.requestOptions.method} ${err.requestOptions.path}',
+        '[API ERROR] ${err.requestOptions.method} ${err.requestOptions.uri.path} status=${err.response?.statusCode} type=${err.type.name}',
       );
-      debugPrint('[API ERROR DETAIL] $apiException');
     }
 
     // Reenvía el error encapsulado en el DioException para que la app lo reciba ordenado

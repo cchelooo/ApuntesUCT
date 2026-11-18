@@ -1,3 +1,5 @@
+import '../../../../core/session/session_revision.dart';
+
 import 'package:apuntesuct_mobile/features/materials/data/dio_material_repository.dart';
 import 'package:apuntesuct_mobile/features/materials/data/material_file_handler.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_requests.dart';
@@ -23,7 +25,10 @@ final materialFileHandlerProvider = Provider<MaterialFileHandler>(
 
 class MaterialDownloadNotifier extends Notifier<AsyncValue<DownloadResult?>> {
   @override
-  AsyncValue<DownloadResult?> build() => const AsyncData(null);
+  AsyncValue<DownloadResult?> build() {
+    ref.watch(sessionRevisionProvider);
+    return const AsyncData(null);
+  }
 
   Future<DownloadResult?> download(
     String materialId, {
@@ -32,6 +37,7 @@ class MaterialDownloadNotifier extends Notifier<AsyncValue<DownloadResult?>> {
     // Si ya hay una descarga en proceso, evita peticiones concurrentes
     if (state.isLoading) return null;
 
+    final revision = ref.read(sessionRevisionProvider);
     state = const AsyncLoading();
 
     try {
@@ -41,6 +47,9 @@ class MaterialDownloadNotifier extends Notifier<AsyncValue<DownloadResult?>> {
         versionId: versionId,
       );
 
+      if (!ref.mounted || ref.read(sessionRevisionProvider) != revision) {
+        return null;
+      }
       final savedPath = await ref
           .read(materialFileHandlerProvider)
           .save(downloadData);
@@ -52,10 +61,15 @@ class MaterialDownloadNotifier extends Notifier<AsyncValue<DownloadResult?>> {
         savedPath: savedPath,
       );
 
-      if (ref.mounted) state = AsyncData(result);
+      if (!ref.mounted || ref.read(sessionRevisionProvider) != revision) {
+        return null;
+      }
+      state = AsyncData(result);
       return result;
     } catch (e, st) {
-      if (ref.mounted) state = AsyncError(e, st);
+      if (ref.mounted && ref.read(sessionRevisionProvider) == revision) {
+        state = AsyncError(e, st);
+      }
       rethrow;
     }
   }

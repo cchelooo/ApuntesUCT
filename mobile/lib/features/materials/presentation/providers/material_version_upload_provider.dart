@@ -1,3 +1,5 @@
+import '../../../../core/session/session_revision.dart';
+
 import 'package:apuntesuct_mobile/core/errors/api_exception.dart';
 import 'package:apuntesuct_mobile/features/materials/data/dio_material_repository.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_requests.dart';
@@ -12,7 +14,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Contiene el [materialId] dueño de la subida en curso, o null si libre.
 class MaterialVersionUploadLock extends Notifier<String?> {
   @override
-  String? build() => null;
+  String? build() {
+    ref.watch(sessionRevisionProvider);
+    return null;
+  }
 
   /// Reserva la subida para [materialId]. Retorna false si otro material
   /// ya tiene una subida en curso.
@@ -108,6 +113,8 @@ class MaterialVersionUploadNotifier
 
   @override
   MaterialVersionUploadState build() {
+    ref.watch(sessionRevisionProvider);
+    _cancelToken?.cancel();
     ref.onDispose(() => _cancelToken?.cancel());
     return const MaterialVersionUploadState.idle();
   }
@@ -124,6 +131,7 @@ class MaterialVersionUploadNotifier
       return false;
     }
 
+    final revision = ref.read(sessionRevisionProvider);
     final cancelToken = CancelToken();
     _cancelToken = cancelToken;
     state = const MaterialVersionUploadState.uploading();
@@ -134,13 +142,17 @@ class MaterialVersionUploadNotifier
         file,
         cancelToken: cancelToken,
         onSendProgress: (sent, total) {
-          if (!ref.mounted) return;
+          if (!ref.mounted || ref.read(sessionRevisionProvider) != revision) {
+            return;
+          }
           state = MaterialVersionUploadState.uploading(
             total > 0 ? sent / total : null,
           );
         },
       );
-      if (!ref.mounted) return false;
+      if (!ref.mounted || ref.read(sessionRevisionProvider) != revision) {
+        return false;
+      }
       state = MaterialVersionUploadState.success(created);
       // Refresca el detalle y el historial en todos sus consumidores: la
       // ruta normal (`materialDetailByIdProvider`) y la pantalla byId
@@ -150,14 +162,16 @@ class MaterialVersionUploadNotifier
       ref.invalidate(materialDetailByIdProvider(materialId));
       return true;
     } catch (e) {
-      if (!ref.mounted) return false;
+      if (!ref.mounted || ref.read(sessionRevisionProvider) != revision) {
+        return false;
+      }
       state = MaterialVersionUploadState.error(
         materialVersionUploadErrorMessage(e),
       );
       return false;
     } finally {
-      _cancelToken = null;
-      if (ref.mounted) {
+      if (identical(_cancelToken, cancelToken)) _cancelToken = null;
+      if (ref.mounted && ref.read(sessionRevisionProvider) == revision) {
         ref
             .read(materialVersionUploadLockProvider.notifier)
             .release(materialId);

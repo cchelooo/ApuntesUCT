@@ -58,9 +58,9 @@ void main() {
     }
     await binding.takeScreenshot('login');
 
-    // Auth responde por HTTP, pero su login del Sprint 2 sigue siendo simulado.
+    // Cuenta desechable creada por start_gateway_smoke.cjs; Auth firma RS256.
     await tester.enterText(find.byType(TextFormField).at(0), 'qa278');
-    await tester.enterText(find.byType(TextFormField).at(1), 'smoke-only');
+    await tester.enterText(find.byType(TextFormField).at(1), 'ApuntesQA2026!');
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ingresar'));
