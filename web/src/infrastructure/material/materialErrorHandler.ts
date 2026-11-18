@@ -58,7 +58,9 @@ export function mapMaterialError(
           ? 'Debes iniciar sesión para subir material. Por favor, autentícate para continuar.'
           : 'No tienes autorización para realizar esta acción. Por favor, inicia sesión nuevamente.';
       case 403:
-        return 'Solo el autor del material puede subir una nueva versión.';
+        return context === 'version'
+          ? 'Solo el autor del material puede subir una nueva versión.'
+          : 'No tienes permisos para realizar esta acción.';
       case 413:
         if (context === 'version')
           return 'El archivo supera el límite de 15 MiB.';
