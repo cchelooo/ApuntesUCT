@@ -15,7 +15,7 @@ enum MaterialStatus {
   String get label => switch (this) {
     pendingReview => 'En revisión',
     published => 'Publicado',
-    approved => 'Aprobado',
+    approved => 'Aprobado (legado)',
     rejected => 'Rechazado',
     withdrawn => 'Retirado',
     unknown => 'Sin estado',

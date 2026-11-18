@@ -1,3 +1,7 @@
+import '../../../helpers/material_author_fixture.dart';
+
+import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart';
+
 import 'dart:typed_data';
 
 import 'package:apuntesuct_mobile/features/materials/data/dio_material_repository.dart';
@@ -104,10 +108,11 @@ MaterialDetail _initialDetail() {
   return MaterialDetail(
     summary: const MaterialSummary(
       id: 'mat-1',
+      uploaderId: 'author-1',
+      status: 'PUBLISHED',
       title: 'Guía de Integrales',
       subjectName: 'Cálculo',
       materialType: 'DOCUMENT',
-      status: 'APPROVED',
     ),
     versions: [v(1), v(2)],
     currentVersionId: 'ver-2',
@@ -123,6 +128,7 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
+              authStateProvider.overrideWith(MaterialAuthorFixture.new),
               materialsRepositoryProvider.overrideWithValue(fake),
               dioMaterialRepositoryProvider.overrideWithValue(fake),
             ],

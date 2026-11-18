@@ -1,3 +1,6 @@
+import '../widgets/material_publication_badges.dart';
+import '../../../auth/data/mock_auth_repository.dart';
+
 import 'package:apuntesuct_mobile/core/widgets/empty_state.dart';
 import 'package:apuntesuct_mobile/core/errors/api_exception.dart';
 import 'package:apuntesuct_mobile/core/widgets/error_state.dart';
@@ -196,38 +199,7 @@ class MaterialDetailScreen extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 visualDensity: VisualDensity.compact,
               ),
-              Builder(
-                builder: (context) {
-                  final s = summary.status.trim().toUpperCase();
-                  final isPending = s == 'PENDING_REVIEW' || s == 'EN REVISIÓN';
-                  final isApproved = s == 'APROBADO' || s == 'APPROVED';
-                  final label = isPending
-                      ? 'EN REVISIÓN'
-                      : (isApproved ? 'APROBADO' : s);
-
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isApproved
-                          ? Colors.green.withValues(alpha: 0.15)
-                          : Colors.amber.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      label,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: isApproved
-                            ? Colors.green.shade800
-                            : Colors.amber.shade900,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  );
-                },
-              ),
+              MaterialPublicationBadges(material: summary),
             ],
           ),
           const SizedBox(height: 12),
@@ -378,28 +350,39 @@ class MaterialDetailScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 28),
-          if (summary.materialType.toUpperCase() != 'LINK') ...[
+          if (summary.canDownload) ...[
             MaterialDownloadActions(
               materialId: materialId,
               versionId: currentVersion?.id,
             ),
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () => showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                builder: (_) => MaterialVersionUploadSheet(
-                  materialId: materialId,
-                  currentVersionNumber: currentVersion?.versionNumber,
-                  pickFile: versionPickFile,
-                ),
-              ),
-              icon: const Icon(Icons.upload_file_outlined),
-              label: const Text('Subir nueva versión'),
+            Consumer(
+              builder: (context, ref, _) {
+                final user = ref.watch(authStateProvider).asData?.value;
+                if (user == null ||
+                    !user.active ||
+                    user.id != summary.uploaderId) {
+                  return const SizedBox.shrink();
+                }
+                return OutlinedButton.icon(
+                  onPressed: () => showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (_) => MaterialVersionUploadSheet(
+                      materialId: materialId,
+                      currentVersionNumber: currentVersion?.versionNumber,
+                      pickFile: versionPickFile,
+                    ),
+                  ),
+                  icon: const Icon(Icons.upload_file_outlined),
+                  label: const Text('Subir nueva versión'),
+                );
+              },
             ),
           ],
           const SizedBox(height: 28),
-          MaterialVersionHistory(materialId: materialId, detail: data),
+          if (summary.isPublished)
+            MaterialVersionHistory(materialId: materialId, detail: data),
         ],
       ),
     );

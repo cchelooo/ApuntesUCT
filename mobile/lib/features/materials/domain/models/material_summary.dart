@@ -19,6 +19,7 @@ class MaterialSummary {
   final int? academicYear;
   final String materialType;
   final String status;
+  final bool verified;
   final int downloadCount;
   final double rating;
   final DateTime? createdAt;
@@ -41,6 +42,7 @@ class MaterialSummary {
     this.academicYear,
     this.materialType = '',
     this.status = 'UNKNOWN',
+    this.verified = false,
     this.downloadCount = 0,
     this.rating = 0,
     this.createdAt,
@@ -57,8 +59,14 @@ class MaterialSummary {
   String? get professor => professorReference?.name ?? _professor;
   MaterialStatus get reviewStatus => MaterialStatus.fromJson(status);
 
+  bool get isPublished => reviewStatus == MaterialStatus.published;
+  bool get canDownload => isPublished && materialType.toUpperCase() != 'LINK';
+
   factory MaterialSummary.fromJson(Map<String, dynamic> json) {
     final status = MaterialStatus.fromJson(json['status']);
+    if (json['verified'] != null && json['verified'] is! bool) {
+      throw const FormatException('verified debe ser un booleano.');
+    }
     return MaterialSummary(
       id: MaterialJson.requiredText(json, 'id'),
       title: MaterialJson.requiredText(json, 'title'),
@@ -94,9 +102,13 @@ class MaterialSummary {
           MaterialJson.text(json, 'materialType') ??
           MaterialJson.text(json, 'type') ??
           '',
-      status: status == MaterialStatus.unknown
+      // Preserve RETIRED on the wire while the current Material uses WITHDRAWN.
+      status: json['status'] == 'RETIRED'
+          ? 'RETIRED'
+          : status == MaterialStatus.unknown
           ? (MaterialJson.text(json, 'status') ?? 'UNKNOWN')
           : status.code,
+      verified: json['verified'] == true,
       downloadCount: MaterialJson.integer(json, 'downloadCount') ?? 0,
       rating: MaterialJson.number(json, 'rating') ?? 0,
       createdAt: MaterialJson.timestamp(json, 'createdAt'),
@@ -120,9 +132,12 @@ class MaterialSummary {
     'fileType': fileType,
     if (academicYear != null) 'academicYear': academicYear,
     'materialType': materialType,
-    'status': reviewStatus == MaterialStatus.unknown
+    'status': status == 'RETIRED'
+        ? status
+        : reviewStatus == MaterialStatus.unknown
         ? status
         : reviewStatus.code,
+    'verified': verified,
     'downloadCount': downloadCount,
     'rating': rating,
     if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
