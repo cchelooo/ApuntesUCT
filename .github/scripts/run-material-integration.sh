@@ -10,6 +10,7 @@ echo "Logs de integración: $log_dir"
 postgres_name="apuntes-ci-postgres-$$"
 minio_name="apuntes-ci-minio-$$"
 catalog_pid=''
+jwt_fixture_file=''
 
 cleanup() {
   result=$?
@@ -19,6 +20,7 @@ cleanup() {
     kill "$catalog_pid" 2>/dev/null
     wait "$catalog_pid" 2>/dev/null
   fi
+  if [[ -n "$jwt_fixture_file" ]]; then rm -f "$jwt_fixture_file"; fi
   docker logs "$postgres_name" > "$log_dir/postgres.log" 2>&1
   docker logs "$minio_name" > "$log_dir/minio.log" 2>&1
   docker rm --force --volumes "$postgres_name" "$minio_name"
@@ -75,6 +77,14 @@ const client = new Client({
   }
 })().catch(error => { console.error(error); process.exitCode = 1; });
 NODE
+
+# Credencial ADMIN efímera para crear y limpiar las referencias de Catalog.
+# El archivo queda fuera de los logs subidos como evidencia y se elimina al salir.
+jwt_fixture_file="$(mktemp "${RUNNER_TEMP:-/tmp}/apuntes-integration-jwt.XXXXXX")"
+node -e 'const f=require("./test/jwt-fixture.cjs").jwtFixture(); require("node:fs").writeFileSync(process.argv[1], JSON.stringify({...f.settings, MATERIAL_TEST_CATALOG_AUTHORIZATION:f.authorization(undefined,"ADMIN")}))' "$jwt_fixture_file"
+export JWT_ACCESS_PUBLIC_KEY="$(node -e 'console.log(JSON.parse(require("node:fs").readFileSync(process.argv[1])).JWT_ACCESS_PUBLIC_KEY)' "$jwt_fixture_file")"
+export JWT_ISSUER=integration-auth JWT_AUDIENCE=integration-api JWT_ACCESS_SECRET=
+export MATERIAL_TEST_CATALOG_AUTHORIZATION="$(node -e 'console.log(JSON.parse(require("node:fs").readFileSync(process.argv[1])).MATERIAL_TEST_CATALOG_AUTHORIZATION)' "$jwt_fixture_file")"
 
 catalog_database_url="${DATABASE_URL%public}catalog"
 DATABASE_URL="$catalog_database_url" npm run prisma:deploy --workspace=catalog-service

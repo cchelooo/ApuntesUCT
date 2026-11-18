@@ -271,6 +271,26 @@ MATERIAL_TEST_DATABASE_URL='postgresql://uct_admin:uct_password_123@localhost:54
   npm run test:integration --workspace=material-service
 ```
 
+Para reproducir el job completo de CI desde la raíz, con backend compilado y
+la imagen `apuntesuct/pr-test-minio:local` disponible, ejecutar
+`bash .github/scripts/run-material-integration.sh`. El script inicia servicios
+desechables y genera una credencial ADMIN RS256 temporal para preparar y limpiar
+Catalog. Al ejecutar manualmente la subida optativa
+(`MATERIAL_TEST_UPLOAD=1`), proporcionar `MATERIAL_TEST_CATALOG_AUTHORIZATION`
+con un Bearer ADMIN verificable por el Catalog de prueba.
+
+El recorrido de versiones con Gateway genera su propia identidad STUDENT y
+distribuye la clave pública a Gateway y Material; no utiliza autor local.
+La suite de creación directa conserva sus casos específicos del contexto local
+de desarrollo, incluida su prohibición en producción.
+
+La regresión de navegador obtiene el JWT mediante el login real y Playwright lo
+añade únicamente al POST de subida hacia Gateway. Esta preparación se registra
+en la evidencia: no demuestra persistencia ni propagación de sesión por Web
+(tarea S3-08). Gateway y Material verifican el token; el autor local está
+deshabilitado y se comprueba que material y versión pertenecen al usuario
+registrado.
+
 Cada prueba crea un esquema temporal de nombre aleatorio y lo elimina al terminar.
 La prueba de persistencia comprueba
 la aplicación y reaplicación de la migración, la ausencia de diferencias frente
