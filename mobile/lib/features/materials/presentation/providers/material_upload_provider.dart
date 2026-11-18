@@ -1,3 +1,5 @@
+import '../../../../core/session/session_revision.dart';
+
 import 'package:apuntesuct_mobile/core/errors/api_exception.dart';
 import 'package:apuntesuct_mobile/features/materials/data/dio_material_repository.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
@@ -67,22 +69,30 @@ String materialUploadErrorMessage(Object error) {
 
 class MaterialUploadNotifier extends Notifier<MaterialUploadState> {
   @override
-  MaterialUploadState build() => const MaterialUploadState.idle();
+  MaterialUploadState build() {
+    ref.watch(sessionRevisionProvider);
+    return const MaterialUploadState.idle();
+  }
 
   /// Envía [request] al backend. Retorna true si el material quedó creado
   /// (201) y deja el detalle en [MaterialUploadState.created].
   Future<bool> upload(UploadMaterialRequest request) async {
     if (state.isUploading) return false;
 
+    final revision = ref.read(sessionRevisionProvider);
     state = const MaterialUploadState.uploading();
     try {
       final repository = ref.read(dioMaterialRepositoryProvider);
       final created = await repository.upload(request);
-      if (!ref.mounted) return false;
+      if (!ref.mounted || ref.read(sessionRevisionProvider) != revision) {
+        return false;
+      }
       state = MaterialUploadState.success(created);
       return true;
     } catch (e) {
-      if (!ref.mounted) return false;
+      if (!ref.mounted || ref.read(sessionRevisionProvider) != revision) {
+        return false;
+      }
       state = MaterialUploadState.error(materialUploadErrorMessage(e));
       return false;
     }

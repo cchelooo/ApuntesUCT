@@ -26,3 +26,26 @@ la preparación de UI existente; el nombre del usuario sí viene de Auth.
 Pruebas: `flutter analyze` y `flutter test`. Los JWT de
 `test/helpers/auth_session_fixture.dart` son datos controlados sin firma válida:
 prueban comportamiento del cliente, no autenticación contra un servidor real.
+
+## Persistencia nativa
+
+Android e iOS guardan una única sesión mediante `flutter_secure_storage`;
+Android tiene desactivado el backup de la app e iOS declara el acceso a Keychain
+con accesibilidad limitada al dispositivo desbloqueado. La clave incluye el
+Gateway para aislar entornos. No se guardan contraseñas ni refresh tokens.
+En Web la sesión se conserva solo en memoria y requiere login al recargar.
+
+Al arrancar, el estado permanece en espera mientras lee el almacenamiento.
+Los valores corruptos, incompletos o vencidos se eliminan. Si falla leer,
+guardar o confirmar el guardado, no se habilita una sesión nueva en memoria.
+Logout borra únicamente la clave de sesión y limpia inmediatamente la memoria;
+un fallo de borrado se comunica como error, nunca como confirmación de borrado.
+Un dispositivo bloqueado puede impedir operar con Keychain: hay que desbloquearlo
+y reintentar. No se promete revocar el JWT en el servidor, pues Auth no dispone
+de ese endpoint.
+
+Subida, versiones y resultado de descarga se reinician al cambiar de identidad.
+Sus respuestas atrasadas no repueblan el estado de otra cuenta; no se borran
+los archivos que el usuario ya descargó. Favoritos y perfil también reaccionan
+al usuario activo. Los dobles de almacenamiento de `flutter_test_config.dart`
+solo se aplican a pruebas unitarias/widgets, nunca a la app instalada.

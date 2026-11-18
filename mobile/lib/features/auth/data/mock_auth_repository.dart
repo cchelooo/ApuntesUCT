@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/errors/api_exception.dart';
 import '../../../core/session/session_controller.dart';
 import '../../../models/user_model.dart';
 import 'auth_repository.dart';
@@ -121,7 +122,13 @@ class AuthStateNotifier extends AsyncNotifier<UserModel?> {
 
     session.addListener(changed);
     ref.onDispose(() => session.removeListener(changed));
-    await session.restore();
+    try {
+      await session.restore();
+    } on Object {
+      throw ApiException(
+        message: 'No se pudo leer el acceso guardado de forma segura. Vuelve a iniciar sesión.',
+      );
+    }
     return session.current?.user;
   }
 
@@ -156,10 +163,22 @@ class AuthStateNotifier extends AsyncNotifier<UserModel?> {
     final cleanup = repository.logout();
     // Clear the UI immediately, including repositories substituted in tests/demo.
     state = const AsyncData(null);
-    await cleanup;
+    try {
+      await cleanup;
+    } on Object catch (_, trace) {
+      if (ref.mounted) {
+        state = AsyncError(
+          ApiException(
+            message: 'La sesión se cerró en memoria, pero no se pudo borrar el acceso guardado. Reintenta cerrar sesión antes de compartir el dispositivo.',
+          ),
+          trace,
+        );
+      }
+    }
   }
 }
 
 final authStateProvider = AsyncNotifierProvider<AuthStateNotifier, UserModel?>(
   AuthStateNotifier.new,
+  retry: (count, error) => null,
 );

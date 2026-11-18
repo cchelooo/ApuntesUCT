@@ -1,3 +1,5 @@
+import '../../../../core/session/session_revision.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart';
@@ -35,7 +37,10 @@ final profileDataProvider =
 /// Notifier que controla la pestaña seleccionada en el perfil
 class ProfileTabNotifier extends Notifier<ProfileSectionTab> {
   @override
-  ProfileSectionTab build() => ProfileSectionTab.materialSubido;
+  ProfileSectionTab build() {
+    ref.watch(sessionRevisionProvider);
+    return ProfileSectionTab.materialSubido;
+  }
 
   void selectTab(ProfileSectionTab tab) {
     state = tab;

@@ -37,17 +37,25 @@ class DioAuthRepository implements AuthRepository {
       }
       return session.user;
     } on DioException catch (error) {
-      await _apiClient.session.cancelLogin(generation);
+      await _cancel(generation);
       final intercepted = error.error;
       if (intercepted is ApiException) throw intercepted;
       throw ApiException.fromDioException(error);
     } on ApiException {
       rethrow;
     } on Object {
-      await _apiClient.session.cancelLogin(generation);
+      await _cancel(generation);
       throw ApiException(
         message: 'No se pudo establecer una sesión válida y segura.',
       );
+    }
+  }
+
+  Future<void> _cancel(int generation) async {
+    try {
+      await _apiClient.session.cancelLogin(generation);
+    } on Object {
+      /* Memory is already cleared; do not expose storage details. */
     }
   }
 
