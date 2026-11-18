@@ -49,3 +49,42 @@ Sus respuestas atrasadas no repueblan el estado de otra cuenta; no se borran
 los archivos que el usuario ya descargó. Favoritos y perfil también reaccionan
 al usuario activo. Los dobles de almacenamiento de `flutter_test_config.dart`
 solo se aplican a pruebas unitarias/widgets, nunca a la app instalada.
+
+## Validación reproducible de sesión
+
+`flutter test` cubre rechazo y éxito, indicador de login pendiente, rutas
+privadas, identidad en Perfil, logout, expiración, un 401 frente a 403/502,
+restauración corrupta/vencida, aislamiento de Gateway, almacenamiento fallido y
+resultados atrasados de login/subida. Son pruebas con transporte y plataforma
+controlados; no acreditan una firma JWT de servidor.
+
+Para comprobar la integración nativa sin cuentas ni bases compartidas:
+
+1. Activar Docker y preparar Backend con `npm ci` y `npm run build`.
+2. Desde Mobile ejecutar `node tool/start_gateway_smoke.cjs`.
+3. Tomar `gateway`, `androidGateway` y `materialId` del `fixture.json` generado.
+4. Ejecutar, usando la URL apropiada para el dispositivo:
+
+```sh
+flutter test integration_test/session_gateway_native_test.dart -d <device> \
+  --dart-define=RUN_NATIVE_SESSION_SMOKE=true \
+  --dart-define=API_GATEWAY_URL=<gateway> \
+  --dart-define=EXPECTED_MATERIAL_ID=<materialId>
+```
+
+La URL del fixture ya incluye `/api/v1`: no agregar el prefijo dos veces.
+El stack crea una cuenta sintética, claves RSA nuevas, PostgreSQL y MinIO
+propios. Desactiva el autor local de Material: la creación y una nueva versión
+necesitan la firma real y el autor de Auth. Una actualización directa en esa
+base desechable publica el PDF de prueba; esto NO valida moderación de Quality.
+`Ctrl+C` retira los contenedores y procesos y elimina la clave privada temporal.
+El reporte conserva estados HTTP y referencias, nunca tokens ni contraseñas.
+
+El 17-11-2026 se verificó este recorrido en simulador iOS 26.5 y emulador
+Android: rechazo de credenciales, login RS256, versión autorizada en Material,
+guardado nativo, restauración con un nuevo contenedor de aplicación, logout,
+bloqueo de ruta privada y rechazo de una firma deliberadamente dañada con 401,
+borrando también la sesión guardada. No se sustituyen repositorios, transporte
+ni plugins en esta prueba. La entrada del reintento se fija en el controlador
+del campo porque el canal de texto seguro del simulador retenía el valor previo;
+no acredita el comportamiento del teclado físico ni una prueba en iPhone real.

@@ -11,7 +11,7 @@ class ErrorInterceptor extends Interceptor {
 
     if (kDebugMode) {
       debugPrint(
-        '[API ERROR] ${err.requestOptions.method} ${err.requestOptions.path}',
+        '[API ERROR] ${err.requestOptions.method} ${err.requestOptions.uri.path} status=${err.response?.statusCode} type=${err.type.name}',
       );
     }
 
