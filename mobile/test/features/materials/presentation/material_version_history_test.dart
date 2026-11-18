@@ -1,3 +1,7 @@
+import '../../../helpers/material_author_fixture.dart';
+
+import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart';
+
 import 'dart:typed_data';
 
 import 'package:apuntesuct_mobile/features/materials/data/dio_material_repository.dart';
@@ -34,7 +38,13 @@ MaterialDetail _detail({
   required String type,
   List<MaterialVersion> versions = const [],
 }) => MaterialDetail(
-  summary: MaterialSummary(id: 'mat-1', title: 'Guía', materialType: type),
+  summary: MaterialSummary(
+    id: 'mat-1',
+    title: 'Guía',
+    materialType: type,
+    uploaderId: 'author-1',
+    status: 'PUBLISHED',
+  ),
   versions: versions,
   currentVersionId: versions.isEmpty ? null : versions.first.id,
 );
@@ -224,6 +234,9 @@ void main() {
       Future<void> pumpDetail(MaterialDetail detail) async {
         await tester.pumpWidget(
           ProviderScope(
+            overrides: [
+              authStateProvider.overrideWith(MaterialAuthorFixture.new),
+            ],
             child: MaterialApp(home: MaterialDetailScreen(detail: detail)),
           ),
         );

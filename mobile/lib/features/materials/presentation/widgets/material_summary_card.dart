@@ -1,4 +1,5 @@
-import 'package:apuntesuct_mobile/features/materials/domain/models/material_status.dart';
+import 'material_publication_badges.dart';
+
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_detail_screen.dart';
 import 'package:flutter/material.dart';
@@ -27,55 +28,11 @@ class MaterialSummaryCard extends StatelessWidget {
     );
   }
 
-  /// Configuración de color accesible según el estado del material y el brillo del tema.
-  (Color background, Color foreground) _statusColors(
-    MaterialStatus status,
-    ColorScheme colorScheme,
-    bool isDark,
-  ) {
-    switch (status) {
-      case MaterialStatus.published:
-      case MaterialStatus.approved:
-        return isDark
-            ? (
-                Colors.green.shade900.withValues(alpha: 0.4),
-                Colors.green.shade200,
-              )
-            : (Colors.green.shade100, Colors.green.shade900);
-      case MaterialStatus.pendingReview:
-        return isDark
-            ? (
-                Colors.amber.shade900.withValues(alpha: 0.4),
-                Colors.amber.shade200,
-              )
-            : (Colors.amber.shade100, Colors.amber.shade900);
-      case MaterialStatus.rejected:
-      case MaterialStatus.withdrawn:
-        return isDark
-            ? (
-                colorScheme.errorContainer.withValues(alpha: 0.4),
-                colorScheme.onErrorContainer,
-              )
-            : (colorScheme.errorContainer, colorScheme.onErrorContainer);
-      case MaterialStatus.unknown:
-        return (
-          colorScheme.surfaceContainerHighest,
-          colorScheme.onSurfaceVariant,
-        );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-
-    final (statusBg, statusFg) = _statusColors(
-      material.reviewStatus,
-      colorScheme,
-      isDark,
-    );
 
     return Card(
       elevation: 0,
@@ -95,81 +52,26 @@ class MaterialSummaryCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Fila superior: Tipo, Año académico y Badge de Estado
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
                 children: [
-                  Flexible(
-                    child: Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            material.materialType.isEmpty
-                                ? 'SIN TIPO'
-                                : material.materialType.toUpperCase(),
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: colorScheme.onPrimaryContainer,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 10,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            material.academicYear?.toString() ?? 'Sin año',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ),
-                      ],
+                  Chip(
+                    label: Text(
+                      material.materialType.isEmpty
+                          ? 'SIN TIPO'
+                          : material.materialType.toUpperCase(),
                     ),
+                    visualDensity: VisualDensity.compact,
                   ),
-                  const SizedBox(width: 8),
-                  // Badge de estado con semántica clara
-                  Container(
-                    key: const Key('material_status_badge'),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusBg,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      material.reviewStatus.label.toUpperCase(),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: statusFg,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 10,
-                      ),
-                    ),
+                  Chip(
+                    label: Text(material.academicYear?.toString() ?? 'Sin año'),
+                    visualDensity: VisualDensity.compact,
                   ),
                 ],
               ),
+              const SizedBox(height: 6),
+              MaterialPublicationBadges(material: material),
               const SizedBox(height: 8),
               // Cuerpo: Ícono y Detalles del Contrato
               Row(

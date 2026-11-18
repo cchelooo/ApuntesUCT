@@ -21,7 +21,7 @@ void main() {
         expect(find.text('Prof. Dr. Roberto Muñoz'), findsOneWidget);
         expect(find.text('2026'), findsOneWidget);
         expect(find.text('CERTAMEN'), findsOneWidget);
-        expect(find.text('APROBADO'), findsOneWidget);
+        expect(find.text('PUBLICADO'), findsOneWidget);
       },
     );
 

@@ -19,7 +19,8 @@
     "status": "PENDING_REVIEW",
     "downloadCount": 0,
     "rating": 0,
-    "createdAt": "2026-10-04T12:00:00.000Z"
+    "createdAt": "2026-10-04T12:00:00.000Z",
+    "verified": false
   },
   "minimalSummary": {"id": "material-minimo", "title": "Material sin datos opcionales"},
   "invalidSummary": {"id": "   ", "title": "ID inválido"},
