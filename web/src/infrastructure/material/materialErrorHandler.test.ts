@@ -33,6 +33,15 @@ describe('materialErrorHandler', () => {
     );
   });
 
+  it('Debe mapear un error 403 como falta de permisos', () => {
+    expect(mapMaterialUploadError({ status: 403 })).toBe(
+      'No tienes permisos para realizar esta acción.'
+    );
+    expect(mapMaterialError({ status: 403 }, 'version')).toBe(
+      'Solo el autor del material puede subir una nueva versión.'
+    );
+  });
+
   it('Debe mapear un error 413 informando claramente sobre el límite de 15 MB', () => {
     const error = { status: 413 };
     const mensaje = mapMaterialError(error);
