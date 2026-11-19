@@ -13,6 +13,8 @@ import 'package:apuntesuct_mobile/features/profile/presentation/profile_screen.d
 
 import '../helpers/fake_catalog_repository.dart';
 
+import '../helpers/auth_session_fixture.dart';
+
 void main() {
   group('HomeScreen Tests', () {
     testWidgets(
@@ -94,6 +96,7 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
+              authStateProvider.overrideWith(AuthenticatedFixture.new),
               authRepositoryProvider.overrideWith(
                 (ref) =>
                     const MockAuthRepository(simulatedDelay: Duration.zero),
@@ -149,6 +152,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            authStateProvider.overrideWith(AuthenticatedFixture.new),
             authRepositoryProvider.overrideWith(
               (ref) => const MockAuthRepository(simulatedDelay: Duration.zero),
             ),
@@ -200,6 +204,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            authStateProvider.overrideWith(AuthenticatedFixture.new),
             authRepositoryProvider.overrideWith(
               (ref) => const MockAuthRepository(simulatedDelay: Duration.zero),
             ),

@@ -50,6 +50,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           Validators.composeInstitutionalEmail(_emailController.text),
           _passwordController.text,
         );
+    if (!mounted) return;
+    final result = ref.read(authStateProvider);
+    if (!result.hasError && !result.isLoading && result.value == null) {
+      context.go('/login');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cuenta creada. Inicia sesión para continuar.'),
+        ),
+      );
+    }
   }
 
   @override

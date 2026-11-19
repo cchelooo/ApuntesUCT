@@ -32,7 +32,7 @@ const detail = {
 };
 const errors = {
   400: 'El desplazamiento de página excede el máximo permitido.',
-  401: 'Se requiere un contexto de autor válido.',
+  401: 'Se requiere una identidad autenticada válida.',
   403: 'Solo el autor puede crear una nueva versión del material.',
   404: 'Material no encontrado.',
   413: 'El archivo excede el tamaño máximo permitido de 15 MB (15728640 bytes).',

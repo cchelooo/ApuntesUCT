@@ -13,6 +13,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../helpers/auth_session_fixture.dart';
+
 class _StubAdapter implements HttpClientAdapter {
   _StubAdapter(this.handler);
 
@@ -42,18 +44,8 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
       final adapter = _StubAdapter(
-        (_) async => _jsonResponse({
-          'accessToken': 'header.payload.',
-          'tokenType': 'Bearer',
-          'expiresIn': 3600,
-          'user': {
-            'id': '00000000-0000-4000-8000-000000000092',
-            'name': 'Estudiante de prueba',
-            'email': 'estudiante2026@alu.uct.cl',
-            'role': 'STUDENT',
-            'active': true,
-          },
-        }),
+        (_) async =>
+            _jsonResponse(loginFixture(email: 'estudiante2026@alu.uct.cl')),
       );
       final router = _router();
       addTearDown(router.dispose);
@@ -235,7 +227,11 @@ Widget _testApp({
 
   return ProviderScope(
     overrides: [
-      apiclientProvider.overrideWith((ref) => ApiClient(customDio: dio)),
+      apiclientProvider.overrideWith((ref) {
+        final client = ApiClient(customDio: dio);
+        ref.onDispose(client.session.dispose);
+        return client;
+      }),
       authDemoModeProvider.overrideWithValue(demoMode),
       if (repository != null)
         authRepositoryProvider.overrideWithValue(repository),

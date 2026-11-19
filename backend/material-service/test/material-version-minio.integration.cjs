@@ -28,6 +28,9 @@ test(
       MaterialAuthorProvider,
     } = require('../dist/infrastructure/auth/material-author.provider');
     const {
+      AccessTokenVerifier,
+    } = require('../dist/infrastructure/auth/access-token.verifier');
+    const {
       MaterialVersionController,
     } = require('../dist/presentation/controllers/material-version.controller');
     const { MaterialsController } = require('../dist/presentation/materials/materials.controller');
@@ -95,6 +98,7 @@ test(
         providers: [
           CreateMaterialVersion,
           MaterialsService,
+          AccessTokenVerifier,
           MaterialAuthorProvider,
           { provide: PrismaService, useValue: prisma },
           { provide: ObjectStorage, useValue: storage },

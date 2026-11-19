@@ -7,7 +7,7 @@ La entrada HTTP de Web, Mobile y Postman es el **Gateway** (`http://localhost:30
 | `apuntesuct.openapi.json` | OpenAPI consolidado, generado desde los controladores de los cinco servicios; rutas públicas con servidor Gateway |
 | `apuntesuct.postman_collection.json` | Peticiones de Auth, Catalog, Material y Search mediante Gateway |
 | `apuntesuct.postman_environment.json` | Variables para el entorno local |
-| [integracion-material-search.md](integracion-material-search.md) | Contratos, ejemplos, autenticación temporal, errores y arranque para INT2/INT4 |
+| [integracion-material-search.md](integracion-material-search.md) | Contratos, ejemplos, autenticación con JWT, errores y arranque para INT2/INT4 |
 
 ## Importar y ejecutar
 
@@ -26,8 +26,8 @@ sin añadir `/api/v1`: las peticiones ya incluyen ese prefijo.
 6. Para subir, seleccionar un archivo local en `Body → form-data → file` y completar
    los metadatos. Postman establece el boundary: no añadir Content-Type manualmente.
    Para `LINK`, desactivar `file`, elegir `type=LINK` y activar `externalLink`.
-7. Crear versión usa el mismo `materialId` y un nuevo archivo; requiere que el
-   contexto local de autor coincida con el autor del material.
+7. Crear versión usa el mismo `materialId` y un nuevo archivo; el `sub` del token
+   debe coincidir con el autor del material (`403` en caso contrario).
 
 `accessToken`, `materialId` y `versionId` viven solo en la colección, evitando que
 un valor vacío del environment oculte los valores capturados. `resourceId` sirve
@@ -35,8 +35,15 @@ para las rutas administrativas de Catalog que reciben `{id}`; rellenarlo manualm
 Los filtros opcionales empiezan desactivados. Activar los académicos en orden
 universidad → carrera → asignatura → profesor. Año y tipo son independientes.
 
-El login mock guarda `accessToken`, pero **no autentica las subidas**. Estas requieren
-el contexto de autor local descrito en la guía. Las lecturas de Material/Search son públicas.
+La subida y el versionado exigen `Authorization: Bearer <JWT firmado>` con
+`sub` = UUID del usuario (#446). Auth verifica credenciales registradas y guarda
+un `accessToken` firmado RS256; configurar sus claves según su
+[README](../../backend/auth-service/README.md). Las variables `mockEmail` y
+`mockPassword` conservan sus nombres por compatibilidad: rellenarlas con una
+cuenta registrada y su contraseña (el valor inicial está vacío). Los tokens mock
+anteriores (`alg: none` o `mock: true`) se rechazan con `401`. Mientras no se use
+un token válido, el contexto local de autor **solo en desarrollo** sigue
+disponible, descrito en la guía. Las lecturas de Material/Search son públicas.
 
 Las respuestas guardadas son ejemplos ilustrativos del contrato, no capturas de
 un entorno real. Las pruebas de descarga verifican respuesta binaria; las demás,

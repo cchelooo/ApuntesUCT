@@ -3,10 +3,12 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Req,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Request } from 'express';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -38,7 +40,7 @@ export class MaterialVersionController {
   @ApiOperation({
     summary: 'Crear una nueva versión de archivo conservando las anteriores',
     description:
-      'Requiere contexto local de autor habilitado en development; el JWT mock no autentica. Solo el autor puede agregar versiones. No cambia el estado del material. Archivo obligatorio, máximo 15 MiB; mismos MIME admitidos que POST /materials.',
+      'Requiere Authorization: Bearer <JWT firmado> con sub = UUID del usuario autenticado. Los tokens mock se rechazan. Solo el autor del material puede agregar versiones (403 en caso contrario). No cambia el estado del material. Archivo obligatorio, máximo 15 MiB; mismos MIME admitidos que POST /materials.',
   })
   @ApiBody({
     schema: {
@@ -60,7 +62,8 @@ export class MaterialVersionController {
   @ApiResponse({
     status: 401,
     type: ErrorResponseDto,
-    description: 'Contexto de autor no disponible.',
+    description:
+      'Identidad ausente, token inválido/expirado, firma no verificable o token mock.',
   })
   @ApiResponse({
     status: 403,
@@ -76,9 +79,14 @@ export class MaterialVersionController {
     description: 'No se pudo almacenar el archivo.',
   })
   createVersion(
+    @Req() req: Request,
     @Param('id', new ParseUUIDPipe()) id: string,
     @UploadedFile(materialUploadPipe(true)) file: Express.Multer.File,
   ) {
-    return this.create.execute(id, this.author.resolve(), file);
+    return this.create.execute(
+      id,
+      this.author.resolve(req.headers.authorization),
+      file,
+    );
   }
 }

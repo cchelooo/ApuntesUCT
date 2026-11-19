@@ -51,7 +51,7 @@ export class MaterialController {
     summary: 'Subir y registrar un nuevo material o enlace académico con validaciones de seguridad',
     description: `
 **REGLAS DE SEGURIDAD Y VALIDACIÓN EN SERVIDOR:**
-- **Contexto de autor:** Requiere un contexto válido resuelto por MaterialAuthorProvider (retorna \`401\` si no está disponible o habilitado). El contexto local temporal está limitado a development según la configuración del servicio.
+- **Identidad del autor:** Requiere \`Authorization: Bearer <JWT firmado>\` con \`sub\` = UUID del usuario autenticado (retorna \`401\` si falta, expiró o la firma no es verificable). Los tokens mock (\`alg: none\` o \`mock: true\`) se rechazan. El contexto local \`MATERIAL_LOCAL_*\` solo se admite con \`NODE_ENV=development\` y nunca en producción.
 - **Tamaño máximo:** 15 MB del contrato equivalen a 15.728.640 bytes (15 MiB). Retorna \`413\` si se excede.
 - **Tipos MIME permitidos:** ${MATERIAL_MIME_TYPES.join(', ')} (retorna \`415\` si no es compatible).
 - **Archivo vacío:** Se rechaza si el archivo pesa 0 bytes (retorna \`400\`).
@@ -87,7 +87,8 @@ export class MaterialController {
   @ApiResponse({
     status: 401,
     type: ErrorResponseDto,
-    description: 'Contexto de autor ausente, inválido o no habilitado.',
+    description:
+      'Identidad ausente, token inválido/expirado, firma no verificable o token mock.',
   })
   @ApiResponse({
     status: 413,
@@ -140,6 +141,10 @@ export class MaterialController {
       );
     }
 
-    return this.create.execute(dto, this.author.resolve(), file);
+    return this.create.execute(
+      dto,
+      this.author.resolve(req.headers.authorization),
+      file,
+    );
   }
 }

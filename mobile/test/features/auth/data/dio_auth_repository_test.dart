@@ -8,6 +8,8 @@ import 'package:apuntesuct_mobile/models/user_model.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../helpers/auth_session_fixture.dart';
+
 class _StubAdapter implements HttpClientAdapter {
   _StubAdapter(this.handler);
 
@@ -31,20 +33,7 @@ class _StubAdapter implements HttpClientAdapter {
 void main() {
   group('DioAuthRepository', () {
     test('consume POST /api/v1/auth/login y mapea el usuario real', () async {
-      final adapter = _StubAdapter(
-        (_) => _jsonResponse({
-          'accessToken': 'header.payload.',
-          'tokenType': 'Bearer',
-          'expiresIn': 3600,
-          'user': {
-            'id': '00000000-0000-4000-8000-000000000092',
-            'name': 'Estudiante de prueba',
-            'email': 'estudiante@alu.uct.cl',
-            'role': 'STUDENT',
-            'active': true,
-          },
-        }),
-      );
+      final adapter = _StubAdapter((_) => _jsonResponse(loginFixture()));
       final repository = _repository(adapter);
 
       final user = await repository.login(
@@ -107,36 +96,39 @@ void main() {
           isA<ApiException>().having(
             (error) => error.message,
             'message',
-            'El servidor devolvió una respuesta de login inválida.',
+            'No se pudo establecer una sesión válida y segura.',
           ),
         ),
       );
     });
 
-    test(
-      'delega las operaciones todavía pendientes al repositorio mock',
-      () async {
-        final fallback = _FallbackSpy();
-        final repository = _repository(
-          _StubAdapter((_) => _jsonResponse({})),
-          fallback: fallback,
-        );
+    test('registra por Gateway sin abrir sesión ni delegar al mock', () async {
+      final fallback = _FallbackSpy();
+      final repository = _repository(
+        _StubAdapter(
+          (_) => _jsonResponse({
+            'user': loginFixture(email: 'camila.soto@uct.cl')['user'],
+          }),
+        ),
+        fallback: fallback,
+      );
 
-        final registeredUser = await repository.register(
-          name: 'Camila Soto',
-          email: 'camila.soto@uct.cl',
-          password: 'Apuntes2026',
-        );
-        final currentUser = await repository.getCurrentUser();
-        await repository.logout();
+      final registeredUser = await repository.register(
+        name: 'Camila Soto',
+        email: 'camila.soto@uct.cl',
+        password: 'Apuntes2026',
+      );
+      await expectLater(
+        repository.getCurrentUser(),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 401)),
+      );
+      await repository.logout();
 
-        expect(registeredUser.email, 'camila.soto@uct.cl');
-        expect(currentUser.email, 'current@uct.cl');
-        expect(fallback.registerCalls, 1);
-        expect(fallback.currentUserCalls, 1);
-        expect(fallback.logoutCalls, 1);
-      },
-    );
+      expect(registeredUser.email, 'camila.soto@uct.cl');
+      expect(fallback.registerCalls, 0);
+      expect(fallback.currentUserCalls, 0);
+      expect(fallback.logoutCalls, 0);
+    });
   });
 }
 
@@ -151,8 +143,10 @@ DioAuthRepository _repository(
     ),
   )..httpClientAdapter = adapter;
 
+  final client = ApiClient(customDio: dio);
+  addTearDown(client.session.dispose);
   return DioAuthRepository(
-    ApiClient(customDio: dio),
+    client,
     fallback ?? const MockAuthRepository(simulatedDelay: Duration.zero),
   );
 }

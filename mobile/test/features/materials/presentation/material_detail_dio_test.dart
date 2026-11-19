@@ -45,7 +45,7 @@ void main() {
     'professor': 'Prof. Dr. Roberto Muñoz',
     'academicYear': 2026,
     'materialType': 'certamen',
-    'status': 'aprobado',
+    'status': 'PUBLISHED',
     'downloadCount': 42,
     'rating': 4.8,
     'createdAt': '2026-10-05T14:00:00.000Z',
@@ -107,7 +107,7 @@ void main() {
 
         expect(find.text('Certamen 2 Resuelto - Álgebra'), findsOneWidget);
         expect(find.text('Álgebra Lineal'), findsOneWidget);
-        expect(find.text('APROBADO'), findsOneWidget);
+        expect(find.text('PUBLICADO'), findsOneWidget);
         expect(find.text('Versión actual: v1'), findsOneWidget);
         expect(find.text('(certamen2_algebra.pdf)'), findsOneWidget);
         expect(find.text('Docente: Prof. Dr. Roberto Muñoz'), findsOneWidget);
