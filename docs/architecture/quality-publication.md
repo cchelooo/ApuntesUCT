@@ -1,6 +1,7 @@
 # Quality: publicación, visibilidad y aplicación de decisiones
 
-Estado: **propuesta 0.1.0 para revisión**, 2026-11-13. Complementa [el contrato externo](../api/quality-contracts.md). No es un registro de funcionalidades ya implementadas.
+Estado: **propuesta 0.1.0 para revisión**, 2026-11-13. Complementa [el contrato externo](../api/quality-contracts.md).
+No es un registro de funcionalidades ya implementadas.
 
 ## 1. Propiedad de los datos
 
@@ -47,6 +48,19 @@ Las versiones de archivo son inmutables una vez creadas; una sustitución crea o
 
 **Limitación explícita:** el modelo actual publica el material completo y deja descargar versiones históricas. No se implementa publicación individual por versión. Si una versión histórica no puede ser pública, no se aprueba el agregado hasta resolverlo mediante una política/operación de Material acordada; no se ignora su exposición. Publicar una versión nueva en paralelo a una antigua aprobada exige un contrato/modelo posterior.
 
+### 3.1. Calificaciones al republicar
+
+La propuesta sometida a confirmación es conservar las calificaciones
+asociadas al material cuando se rechaza o retira y volver a incluirlas
+en su resumen público cuando se publica nuevamente.
+
+Las calificaciones pertenecen al material, no exclusivamente a su versión
+más reciente. Mientras el material permanezca oculto, su resumen no se
+expone mediante rutas públicas.
+
+La conservación de calificaciones no concede visibilidad ni sustituye
+una nueva aprobación.
+
 ## 4. Flujo de aceptación y aplicación
 
 1. El cliente obtiene el snapshot privado y revision.
@@ -91,21 +105,204 @@ Ante timeout de aplicación:
 
 Una operación FAILED exige nueva lectura y nueva decisión/clave si el usuario desea actuar otra vez. No actualizar silenciosamente expectedRevision a la versión más reciente.
 
-## 6. Autorización entre servicios
+## 6. Autorización y dependencia del contrato S3-05
 
-Contrato privado: [material-quality-internal.openapi.json](../api/material-quality-internal.openapi.json), bajo `/internal/v1/quality`. No está bajo `/api/v1/materials`, para evitar que el wildcard público actual lo capture. No añadir una ruta genérica del Gateway que lo publique. Restringir también su acceso por red; la ubicación interna no sustituye autenticación.
+La identidad de usuario y la propagación de credenciales se rigen por
+[S3-05 / #445 — Contrato de autorización entre servicios](https://github.com/cchelooo/ApuntesUCT/issues/445),
+documentado en [contrato-autorizacion-entre-servicios.md](../api/contrato-autorizacion-entre-servicios.md).
 
-Propuesta concreta para acordar con Auth/infraestructura:
+S3-05 está consensuado. Su aprobación documental no implica que la emisión
+de JWT reales, la validación de credenciales o los permisos ya estén
+implementados.
 
-- Quality usa una clave asimétrica de servicio distinta de las claves de usuario. Material confía únicamente en su clave pública configurada; nunca acepta la clave indicada libremente por el cliente.
-- Aserción JWT de servicio con algoritmo permitido RS256, issuer/sub `quality-service`, audience `material-service`, exp máximo 60 s, iat, jti y scopes específicos. Proteger el transporte con TLS en entornos compartidos. No usar secretos ni tokens reales en documentación o fixtures.
-- `material:review:read` para listar/leer/descargar privados. `material:quality:apply` para aplicar/reconciliar decisiones. Material exige estos scopes y actor MODERATOR/ADMIN.
-- La aserción incluye actorId, actorRole, authorizedAt y, para aplicación/reconciliación, operationId. Son afirmaciones firmadas por un servicio de confianza, no headers libres ni campos editables por el cliente.
-- Para lecturas privadas Quality verifica la sesión vigente antes de emitir la aserción. Para decisiones se conserva la autorización verificada al aceptar duraderamente la operación. Los reintentos automáticos actúan sobre esa operación aceptada y no sobre una nueva sesión del cliente.
-- Política propuesta: una decisión aceptada conserva autorización para completarse aunque el actor cierre sesión o pierda el rol después; no existe cancelación implícita. La interfaz requiere autorización actual para consultar/reintentar desde el usuario. Si el equipo exige revocación de decisiones en cola, debe cambiar explícitamente esta política y diseñar su cancelación antes del acuerdo.
-- Material valida que operationId firmado coincide con la ruta, actor con el recibo/historial y que el actor no sea uploaderId. No acepta el JWT de login mock ni un JWT de usuario en estas rutas de servicio.
+### 6.1. Identidad de usuario
 
-No existe todavía este emisor de servicio ni la autenticación real de usuario. Este PR solo acuerda el mecanismo objetivo. Hasta implementarlo y probarlo, las rutas privadas deben permanecer deshabilitadas/cerradas; no habilitar un modo de moderador de desarrollo mediante variables como sustituto en producción.
+Quality adopta las reglas comunes de S3-05:
+
+- El cliente utiliza `Authorization: Bearer <access_token>`.
+- El Gateway propaga el token sin modificarlo.
+- La identidad procede de credenciales verificadas; `sub` corresponde al
+  UUID de `user.id`.
+- Los roles son `STUDENT`, `MODERATOR` y `ADMIN`.
+- `ADMIN` incluye los permisos de `MODERATOR`, sujeto a las mismas
+  restricciones de autoría y conflicto de interés del contrato Quality.
+- Se verifica la firma y la vigencia del token, así como el emisor y la
+  audiencia conforme a la configuración acordada con Auth.
+- Los identificadores y roles enviados libremente en el body o en
+  encabezados del cliente no acreditan identidad ni permisos.
+- Credenciales ausentes, inválidas o expiradas producen `401`.
+- Una identidad válida sin permiso para la operación produce `403`.
+
+Las rutas reales de moderación y acceso privado de Quality no aceptarán
+tokens mock ni `alg: none`. Los mocks podrán utilizarse en pruebas aisladas,
+sin otorgar acceso a materiales o archivos privados reales.
+
+Los valores de emisor, audiencia, algoritmos admitidos, distribución de
+claves y mecanismos de comprobación de actividad o revocación deberán
+proceder de la implementación y los acuerdos de Auth. Este documento no
+los declara implementados ni los sustituye por configuración local de
+moderador.
+
+### 6.2. Comunicación Quality → Material
+
+El contrato funcional privado se describe en
+[material-quality-internal.openapi.json](../api/material-quality-internal.openapi.json),
+bajo `/internal/v1/quality`.
+
+Estas rutas no se publican mediante el wildcard `/api/v1/materials`
+del Gateway. La restricción de red complementa la autorización; no
+sustituye la comprobación de identidad y permisos.
+
+S3-05, secciones 2, 5.6 y 6, permite un mecanismo interno explícitamente
+documentado y deja la definición de credenciales entre servicios para
+cuando exista un caso real. Quality → Material constituye ese caso.
+
+El perfil específico deberá permitir:
+
+- Identificar de forma verificable a Quality como servicio llamante.
+- Autorizar por separado la consulta/descarga privada y la
+  aplicación/consulta de decisiones.
+- Vincular la solicitud con el actor autenticado y, cuando corresponda,
+  con `operationId`.
+- Impedir que un cliente externo suplante al servicio o al actor mediante
+  encabezados o campos arbitrarios.
+- Correlacionar las solicitudes y su auditoría entre ambos servicios.
+- Aplicar los mismos controles aunque la solicitud llegue directamente
+  a Material, sin pasar por el Gateway.
+
+No se presume que un JWT de usuario autorice por sí solo una operación
+interna. Su eventual reutilización o intercambio requeriría una
+justificación explícita y auditada conforme a S3-05.
+
+La propuesta anterior de aserción RS256, vigencia máxima de 60 segundos
+y scopes específicos no constituye una decisión aprobada por S3-05.
+Esos detalles deberán acordarse en el perfil interno correspondiente,
+sin introducir un contrato de identidad paralelo.
+
+### 6.3. Estado de las dependencias
+
+| Dependencia | Situación documental | Consecuencia |
+| --- | --- | --- |
+| Contrato común de identidad S3-05 / #445 | Consensuado | Quality lo adopta como referencia |
+| Login real y emisión de JWT / #441 | Implementación referenciada por S3-05; estado de ejecución no acreditado por este documento | Necesaria para habilitar los flujos reales que requieren identidad de usuario |
+| Perfil específico de autorización Quality → Material | Pendiente de definición y acuerdo entre los responsables de Auth, Quality y Material | Debe resolverse antes de habilitar las rutas internas |
+| Aplicación de permisos y controles de acceso de Quality | Implementación posterior | La documentación no habilita operaciones privilegiadas |
+
+La dependencia pendiente del perfil interno queda registrada expresamente.
+No requiere implementar autenticación, endpoints ni migraciones para
+cerrar esta tarea documental.
+
+### 6.4. Autorización de decisiones ya aceptadas
+
+Se mantiene como propuesta de política de Quality, pendiente de
+confirmación en el registro de aceptación:
+
+Una decisión autorizada y aceptada duraderamente continúa procesándose
+aunque el actor cierre sesión o pierda posteriormente el rol. Los
+reintentos técnicos corresponden a esa operación aceptada y no representan
+una nueva decisión del usuario.
+
+La pérdida del permiso impide nuevas decisiones y consultas privadas.
+Una petición abierta en la interfaz no constituye aceptación durable.
+
+Esta política no se atribuye a S3-05. El perfil interno deberá permitir
+distinguir la autorización original de la operación y la identidad del
+servicio que efectúa su entrega o reconciliación.
+
+### 6.5. Auditoría de consultas administrativas y archivos privados
+
+Las consultas administrativas de pendientes, las lecturas de snapshots
+privados y las descargas privadas deben generar evidencia de acceso.
+Se registran tanto los accesos permitidos como las denegaciones y los
+fallos observados por cada servicio.
+
+Esta auditoría es distinta del historial de decisiones de moderación:
+consultar o descargar no genera por sí mismo una decisión Review.
+
+#### Eventos y recursos
+
+| Acción | Información del recurso |
+| --- | --- |
+| `LIST_PRIVATE_MATERIALS` | Filtros admitidos, página, tamaño de página y cantidad de resultados devueltos; `materialId` y `versionId` son null por tratarse de una colección |
+| `READ_PRIVATE_MATERIAL` | `materialId` solicitado y `revision` entregada cuando la lectura es exitosa |
+| `DOWNLOAD_PRIVATE_VERSION` | `materialId` y `versionId` solicitados; versión efectiva cuando pueda resolverse |
+
+Los identificadores solicitados no se presentan como recursos existentes
+si la autorización o la búsqueda no permitió comprobar su existencia.
+
+#### Campos mínimos
+
+| Campo | Regla |
+| --- | --- |
+| `eventId` | Identificador único del evento de auditoría |
+| `requestId` | Identificador de correlación propagado entre Quality y Material |
+| `occurredAt` | Fecha y hora UTC generadas por el servicio que registra el evento |
+| `service` | Servicio responsable del registro: Quality o Material |
+| `callerService` | Servicio llamante cuando su identidad haya sido verificada; null si no corresponde o no pudo verificarse |
+| `actorId` | UUID del usuario obtenido de identidad verificada; null si no pudo autenticarse |
+| `actorRole` | Rol verificado utilizado para autorizar el acceso; null si no pudo verificarse |
+| `action` | Acción administrativa consultada o ejecutada |
+| `phase` | `REQUEST_RESULT`, `AUTHORIZATION` o `TRANSFER_RESULT`, según corresponda |
+| `materialId` | Identificador del material solicitado; null para listados |
+| `versionId` | Identificador de la versión solicitada o resuelta; null cuando no corresponda |
+| `revision` | Revisión del snapshot entregado, cuando corresponda |
+| `outcome` | `SUCCESS`, `DENIED`, `NOT_FOUND`, `ERROR` o `ABORTED` |
+| `httpStatus` | Estado HTTP emitido, si llegó a emitirse |
+| `reasonCode` | Código técnico sanitizado del resultado o fallo, cuando corresponda |
+
+Cuando la identidad no pueda verificarse, no se extrae un supuesto usuario
+de un token inválido para registrarlo como actor autenticado.
+
+#### Servicio responsable
+
+Quality registra la autorización y el resultado de la solicitud
+administrativa recibida del cliente.
+
+Material registra el resultado de las consultas y descargas privadas
+atendidas por su contrato interno, incluyendo la identidad del servicio
+llamante y el contexto de actor verificado mediante el mecanismo acordado.
+
+Cada servicio es responsable de producir su evidencia. Los registros se
+correlacionan mediante `requestId`, pero conservan `eventId` independientes.
+Una denegación en Quality que no llegue a Material solo genera el registro
+de Quality; no se inventa un acceso en Material.
+
+El almacenamiento podrá centralizarse posteriormente sin cambiar estas
+responsabilidades.
+
+#### Descargas
+
+Autorizar una descarga no demuestra que la transferencia haya finalizado.
+
+Se distingue el resultado de autorización del resultado final observado
+de la transferencia. Se registra finalización, error o interrupción y,
+cuando se disponga del dato, la cantidad de bytes transmitidos.
+
+Un fallo después de enviar las cabeceras HTTP puede conservar
+`httpStatus=200` y tener `outcome=ERROR` o `ABORTED`. No se registra como
+descarga completada únicamente por haber emitido un 200.
+
+La evidencia de transferencia no acredita que el usuario haya abierto
+o leído el documento.
+
+Cada servicio registra el resultado del tramo que atiende. Una transferencia
+completada de Material a Quality no acredita que Quality haya completado
+la entrega hacia el cliente. Ambos resultados se correlacionan mediante
+requestId.
+
+#### Protección de la evidencia
+
+No se registran tokens, contraseñas, claves, `storageKey`, URLs firmadas
+ni contenido de archivos. Tampoco se copia el cuerpo completo del
+snapshot o del listado.
+
+Los registros no se exponen mediante rutas públicas ni pueden ser
+modificados o eliminados por el actor mediante los endpoints de Quality.
+La implementación deberá proteger su integridad y restringir su consulta
+a las funciones operativas autorizadas.
+
+Estas reglas son obligaciones para la implementación posterior.
+Este PR no crea endpoints, tablas ni un sistema de auditoría operativo.
 
 ## 7. Visibilidad pública y Search
 
@@ -131,7 +328,21 @@ Garantía temporal: una solicitud pública cuya comprobación autoritativa ocurr
 3. Incorporar recibo durable de aplicación idempotente, único por servicio/operationId.
 4. Añadir casos de uso privados y controles de identidad/rol/autoría.
 
-No editar una migración ya aplicada ni usar reset. Dos estrategias posibles para RETIRED: renombrar el valor PostgreSQL mediante una nueva migración con despliegue coordinado, o usar temporalmente `RETIRED @map("WITHDRAWN")` en Prisma para que el API/cliente generado use el nombre canónico conservando el valor físico. Esta segunda opción es solo una compatibilidad de almacenamiento explícita, no dos estados públicos. Elegir una sola estrategia en la tarea de implementación y probar datos existentes y reinicios. No ejecutar cambios de esquema desde este paquete documental.
+La estrategia propuesta para confirmar en A1 es adaptar `WITHDRAWN` a
+`RETIRED` mediante una nueva migración que conserve los registros
+existentes, actualizar las referencias de código y coordinar el
+despliegue de los consumidores afectados.
+
+No se editarán migraciones ya aplicadas ni se utilizará reset.
+La adaptación debe conservar la condición no pública de los materiales
+retirados.
+
+El contrato nuevo expone únicamente `RETIRED`. Cualquier compatibilidad
+temporal con `WITHDRAWN` queda delimitada al consumo del servicio legado
+y no introduce un segundo estado público.
+
+La migración y el despliegue corresponden a una tarea de implementación.
+No se ejecutan en este PR documental.
 
 ### Quality
 
@@ -147,7 +358,7 @@ No se agregan columnas de publicación autoritativas a Quality ni FKs a Material
 
 ## 9. Trabajo posterior y límites de aprobación
 
-Aprobar este PR acuerda contratos; no habilita endpoints. La implementación deberá entregar autenticación de usuario, aserciones de servicio, migraciones, endpoints, outbox/reconciliación, conexión del Gateway e integración Web/Mobile con los escenarios de prueba definidos. Se pueden usar mocks de identidad en pruebas y UI de prototipo, claramente separados de un entorno real. Ningún mock acredita permisos de producción.
+Aprobar este PR acuerda contratos; no habilita endpoints. La implementación deberá entregar autenticación de usuario, el mecanismo de autorización Quality -> Material que se acuerde conforme a S3-05, migraciones, endpoints, outbox/reconciliación, conexión del Gateway e integración Web/Mobile con los escenarios de prueba definidos. Se pueden usar mocks de identidad en pruebas y UI de prototipo, claramente separados de un entorno real. Ningún mock acredita permisos de producción.
 
 ## Referencias técnicas
 

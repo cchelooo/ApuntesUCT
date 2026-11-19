@@ -27,7 +27,9 @@ automáticamente a las otras.
 | Aplicación de cambios en Material y Search | quality-publication.md, secciones 1, 4, 6 y 7 |
 | Exclusión de materiales ocultos en búsquedas y descargas públicas | quality-publication.md, sección 7, incluyendo el alcance temporal de la garantía |
 | Contratos disponibles y acordados con Web y Mobile | Registros de las secciones 4–6 de este documento |
-| Implementaciones pendientes identificadas | Tabla de seguimiento de la sección 7 |
+| Seguimiento informativo de implementación posterior | Sección 7; completar sus ocho filas no es una condición de cierre de esta tarea |
+| Auditoría de consultas administrativas y archivos privados | quality-publication.md, sección 6.5: actor, recurso, fecha, resultado y servicio responsable |
+| Adopción de S3-05 y dependencia de autorización interna | quality-publication.md, secciones 6.1–6.4; registro de dependencias de la sección 6 de este documento |
 
 ## 2. Comprobaciones documentales de este PR
 
@@ -73,7 +75,7 @@ escenarios hayan sido implementados o ejecutados.
 | AUTH-03 | MODERATOR/ADMIN activo consulta snapshot privado | 200 con revision; sin storageKey |
 | AUTH-04 | Cuenta inactiva o headers x-role/x-user-id falsificados | Sin elevación de privilegios; cuenta inactiva 403 |
 | AUTH-05 | Acceso directo al servicio saltando Gateway | Mismas comprobaciones de autorización |
-| AUTH-06 | JWT de usuario en endpoint interno, aserción de servicio falsa o scope incorrecto | 401 por credencial inválida; 403 por scope insuficiente |
+| AUTH-06 | Credencial interna inválida, identidad de servicio no verificable o permiso insuficiente | 401 por credencial inválida; 403 por permiso insuficiente, conforme al perfil interno que se acuerde bajo S3-05 |
 | AUTH-07 | Actor decide sobre material propio, incluido ADMIN | 403 |
 | AUTH-08 | No puede verificarse una condición de autorización que depende de Auth | Error controlado; no se concede acceso por defecto |
 | MOD-01 | Aprobar PENDING_REVIEW con revision vigente | 202; luego APPLIED/PUBLISHED, verified=false |
@@ -122,6 +124,12 @@ escenarios hayan sido implementados o ejecutados.
 | MIG-02 | migrate deploy repetido | No pierde datos ni reaplica efectos |
 | COMP-01 | Cliente consume contrato nuevo de Quality | Usa RETIRED; no serializa WITHDRAWN como estado del contrato nuevo |
 | COMP-02 | Adaptador temporal consume WITHDRAWN del Material legado | Compatibilidad delimitada al servicio legado y normalización documentada; no crea un segundo estado canónico |
+| AUD-01 | Consulta administrativa de pendientes | Quality registra actor verificado, fecha, filtros/paginación, resultado y correlación; Material registra su atención interna cuando la solicitud llega a él |
+| AUD-02 | Lectura de snapshot privado | Auditoría con materialId, revision entregada cuando corresponda, actor, fecha, resultado y servicio responsable |
+| AUD-03 | Descarga privada autorizada | Se identifica material/versión y se distingue autorización de resultado final de transferencia |
+| AUD-04 | Acceso denegado o identidad inválida | Se registra la denegación; no se atribuye identidad verificada a datos procedentes de una credencial inválida |
+| AUD-05 | Transferencia interrumpida después de enviar cabeceras | Se registra ERROR o ABORTED aunque el estado HTTP emitido haya sido 200 |
+| AUD-06 | Inspección de registros de auditoría | No contienen tokens, claves, storageKey, URLs firmadas ni contenido de archivos; son correlacionables entre servicios |
 
 Los escenarios que dependan de una decisión todavía pendiente deberán
 actualizarse si el equipo acuerda una política diferente.
@@ -193,12 +201,12 @@ La columna de resolución definitiva debe completarse con el acuerdo real.
 | A3 | Versiones históricas | La publicación es a nivel de material e incluye sus versiones descargables. La revisión abarca el conjunto. No se aprueba si una versión histórica no puede exponerse. Los cambios relevantes vuelven a revisión según las reglas del contrato. | Backend / Material y Quality; Web; Mobile | Pendiente de confirmar | Pendiente | — |
 | A4 | Calificaciones al republicar | Las calificaciones pertenecen al material, se conservan al ocultarlo y reaparecen al republicar. No representan exclusivamente su nueva versión. | Backend / Quality; Web; Mobile | Pendiente de confirmar | Pendiente | — |
 | A5 | Pérdida del rol del moderador | Una decisión autorizada y aceptada duraderamente continúa procesándose aunque el actor pierda el rol después. La pérdida del rol impide nuevas decisiones y accesos privados. No se considera aceptada una petición solo por estar abierta en la interfaz. | Backend / Quality, Material y Auth; Web; Mobile | Pendiente de confirmar | Pendiente | — |
-| A6 | Autenticación y comunicación autorizada | Utilizar identidad real verificable para usuarios y credencial de servicio con permisos limitados para Quality → Material. Rechazar tokens mock y encabezados de identidad no verificados. Completar los detalles de la sección 6. | Backend / Auth, Gateway, Quality y Material; Web y Mobile para consumo | Pendiente de confirmar | Pendiente | — |
+| A6 | Autenticación y comunicación autorizada | Adoptar S3-05 / #445 para identidad, propagación y semántica de autorización. Registrar como dependencia pendiente el perfil específico Quality → Material; no atribuir a S3-05 algoritmos, scopes o credenciales internas que no define. | Backend / Auth, Gateway, Quality y Material; Web y Mobile para consumo | Referencia común consensuada; adopción y dependencia de Quality pendientes de confirmar | Pendiente | S3-05 / #445; añadir evidencia de aceptación de este alcance |
+| A7 | Auditoría de accesos administrativos | Registrar consultas de pendientes, snapshots y descargas privadas con actor verificado, material/versión cuando corresponda, fecha UTC, resultado y servicio responsable; correlacionar Quality y Material y distinguir autorización de transferencia. | Backend / Quality y Material | Pendiente de confirmar | Pendiente | — |
 
-Para A1, la propuesta de este registro selecciona migración y despliegue
-coordinado. Si se aprueba, actualizar quality-publication.md para que esa sea
-la estrategia elegida y no queden alternativas abiertas como decisiones
-equivalentes pendientes.
+Para A1, ambos documentos proponen una nueva migración que conserve
+los datos y un despliegue coordinado. Esta estrategia queda pendiente
+de confirmación; su ejecución pertenece a la implementación posterior.
 
 Para A5, si se acuerda cancelar operaciones pendientes ante pérdida de rol,
 debe definirse cómo se cancela una operación sin contradecir un cambio ya
@@ -207,7 +215,7 @@ FAILED ante un resultado incierto.
 
 ### 5.1. Otros acuerdos del contrato completo
 
-Además de A1–A6, confirmar el alcance restante:
+Además de A1–A7, confirmar el alcance restante:
 
 - [ ] Material conserva la autoridad sobre status y verified.
 - [ ] Quality conserva decisiones y evidencia; no mantiene un estado público autoritativo alternativo.
@@ -223,32 +231,35 @@ Además de A1–A6, confirmar el alcance restante:
 Una aprobación del contrato completo puede cubrir estos puntos, siempre que
 la versión revisada y el alcance de la aprobación queden identificados.
 
-## 6. Detalles de autenticación que deben confirmarse
+## 6. Referencia de autorización y dependencias
 
-Esta tabla concreta A6. Debe completarse junto con los responsables de Auth y
-de la comunicación entre servicios.
+El contrato común de identidad y autorización se encuentra consensuado en
+[S3-05 / #445](https://github.com/cchelooo/ApuntesUCT/issues/445),
+documentado en [contrato-autorizacion-entre-servicios.md](../api/contrato-autorizacion-entre-servicios.md).
 
-No incluir claves privadas, contraseñas, tokens reales ni otros secretos.
+Quality adopta esa referencia. No redefine unilateralmente los claims,
+el transporte de credenciales ni la semántica común de autorización.
 
-| ID | Aspecto | Base propuesta | Definición final acordada | Responsable | Evidencia |
-| --- | --- | --- | --- | --- | --- |
-| AUTH-C1 | Token de usuario | JWT firmado; propuesta RS256; rechazo de alg:none y mock:true | Pendiente | Pendiente | — |
-| AUTH-C2 | Emisor y audiencia | Emisor de Auth y audiencia autorizada para Quality; definir valores o reglas de configuración por entorno | Pendiente | Pendiente | — |
-| AUTH-C3 | Identidad y rol | sub UUID y role singular STUDENT, MODERATOR o ADMIN, procedentes de identidad verificada | Pendiente | Pendiente | — |
-| AUTH-C4 | Vigencia | Definir expiración, tolerancia temporal y validación de exp, iat y nbf cuando corresponda | Pendiente | Pendiente | — |
-| AUTH-C5 | Actividad y revocación | Definir cómo se comprueban cuenta activa y revocación sin consultar auth_db desde otros servicios | Pendiente | Pendiente | — |
-| AUTH-C6 | Puntos de validación | Proteger operaciones en cada servicio; Gateway no es la única barrera | Pendiente | Pendiente | — |
-| AUTH-C7 | Identidad de Quality ante Material | Aserción firmada de servicio; propuesta iss/sub=quality-service, aud=material-service y vigencia máxima de 60 segundos | Pendiente | Pendiente | — |
-| AUTH-C8 | Permisos internos | Propuesta material:review:read y material:quality:apply, limitados por operación | Pendiente | Pendiente | — |
-| AUTH-C9 | Actor y operación | Vincular actorId, actorRole y authorizedAt; incluir operationId en aplicación y reconciliación | Pendiente | Pendiente | — |
-| AUTH-C10 | Claves y transporte | Definir provisión y rotación de claves, distribución confiable de claves públicas y transporte protegido | Pendiente | Pendiente | — |
-| AUTH-C11 | Fallos de autorización | No conceder acceso si falla una comprobación necesaria; documentar 401, 403 y fallos de dependencia | Pendiente | Pendiente | — |
-| AUTH-C12 | Reintentos tras aceptación | Aplicar la política definitiva de A5 a operaciones ya aceptadas; no atribuir una autorización nueva a cada reintento técnico | Pendiente | Pendiente | — |
+| Aspecto | Referencia o definición | Situación |
+| --- | --- | --- |
+| Identidad y propagación de usuario | S3-05, secciones 5.1–5.3: Bearer, propagación del token, identidad verificada y sub correspondiente a user.id | Contrato común consensuado |
+| Roles y permisos | S3-05, secciones 4.5 y 5.4; restricciones de recurso y autoría del contrato Quality | Base común consensuada; políticas específicas sujetas a aceptación de Quality |
+| Errores de autenticación y autorización | S3-05, sección 5.5: 401 y 403, más errores de dependencia según operación | Adoptar manteniendo compatibilidad de respuestas |
+| Login real y emisión de JWT | #441, referenciada por S3-05 | Dependencia de implementación; este registro no acredita su estado de ejecución |
+| Autorización Quality → Material | S3-05, secciones 2, 5.6 y 6: requiere mecanismo interno explícitamente documentado | Perfil específico pendiente de definición y acuerdo |
+| Actor de operaciones ya aceptadas | Política A5 y quality-publication.md, sección 6.4 | Pendiente de confirmación como política de Quality |
+| Auditoría de accesos administrativos | quality-publication.md, sección 6.5 | Propuesta documentada; pendiente de aceptación A7 |
 
-No es necesario implementar estos mecanismos en esta tarea, pero sí acordar
-su contrato. Los valores específicos de entorno pueden quedar en
-configuración futura siempre que las reglas y responsabilidades estén
-definidas.
+El perfil interno deberá definir la identidad verificable del servicio,
+los permisos por operación y la vinculación del actor y de operationId.
+Su implementación será necesaria antes de habilitar las rutas internas.
+
+La dependencia se registra como pendiente. No se exige implementar el
+perfil, endpoints ni migraciones para cerrar esta tarea documental.
+
+No se consideran aprobados por S3-05 los detalles de la propuesta previa
+de aserciones de servicio: RS256 obligatorio, vigencia de 60 segundos o
+nombres concretos de scopes.
 
 ## 7. Tareas de implementación pendientes
 
@@ -272,29 +283,36 @@ Una tarea real puede cubrir varias filas. Si una tarea ya fue implementada,
 registrar su enlace y evidencia en lugar de mantenerla como pendiente.
 
 No es necesario completar estas implementaciones para cerrar la tarea de
-contratos. Sí deben quedar identificadas y vinculadas, como solicitó el
-revisor.
+contratos.
+
+Esta tabla es seguimiento informativo de implementación posterior.
+No es necesario completar, asignar o vincular sus ocho filas como
+condición de cierre de #444, conforme a la aclaración del revisor.
+
+La referencia a S3-05 y la dependencia pendiente del perfil interno
+Quality → Material sí quedan expresamente registradas en la sección 6.
 
 ## 8. Procedimiento para pasar de PROPUESTO a ACORDADO
 
-1. Completar las resoluciones definitivas de A1–A6.
-2. Completar las definiciones de autenticación de la sección 6.
-3. Incorporar las decisiones definitivas en Markdown y OpenAPI.
-4. Obtener y registrar aprobación de Backend, Web y Mobile sobre la versión correspondiente.
-5. Enlazar las tareas reales de implementación.
-6. Confirmar que Web y Mobile pueden acceder a los documentos versionados.
-7. Actualizar el estado documental a ACORDADO y registrar fecha y versión.
-8. Adaptar las comprobaciones del validador que actualmente exigen la palabra propuesta.
-9. Ejecutar nuevamente las validaciones documentales y revisar el diff.
-10. Solicitar al revisor la comprobación final de la tarea.
+1. Confirmar las decisiones de estados y publicación A1–A5.
+2. Confirmar la adopción de S3-05 y el registro de la dependencia interna A6.
+3. Confirmar la auditoría de accesos administrativos A7.
+4. Incorporar las resoluciones en los documentos y mantener coherencia
+   con ambos OpenAPI.
+5. Registrar la evidencia de aprobación de las áreas correspondientes,
+   identificando la versión o commit revisado.
+6. Confirmar que Web y Mobile tienen acceso a los contratos versionados.
+7. Actualizar el estado a ACORDADO y registrar fecha y versión.
+8. Ajustar, si corresponde, las comprobaciones del validador relativas
+   al estado documental, conservando sus controles técnicos.
+9. Ejecutar la validación documental y revisar el diff de la versión final.
+10. Solicitar la revisión final del PR.
 
-Al adaptar el validador, conservar las comprobaciones de referencias,
-seguridad, roles, DTO, estados, rutas e idempotencia.
+No se requiere implementar endpoints ni migraciones, ni completar la
+tabla de ocho tareas de implementación, para cerrar esta tarea.
 
-No eliminar controles para conseguir un resultado exitoso.
-
-Si se modifica una política después de una aprobación, registrar la
-confirmación correspondiente antes de declarar el contrato acordado.
+Los checks del PR acreditan sus comprobaciones automatizadas; no
+sustituyen la confirmación de las políticas ni la evidencia de acuerdo.
 
 ## 9. Registro de cierre
 
@@ -308,9 +326,9 @@ Completar únicamente cuando exista evidencia.
 | Aprobación de Backend | Pendiente |
 | Aprobación de Web | Pendiente |
 | Aprobación de Mobile | Pendiente |
-| Decisiones A1–A6 resueltas | Pendiente |
-| Detalles de autenticación acordados | Pendiente |
-| Tareas de implementación vinculadas | Pendiente |
+| Decisiones A1–A7 confirmadas | Pendiente |
+| Referencia a S3-05 y dependencia interna registradas | S3-05 / #445 referenciado; perfil Quality → Material pendiente de acuerdo |
+| Seguimiento de implementación | Informativo; completar sus ocho filas no condiciona el cierre |
 | Validación documental de la versión final | Pendiente |
 | Revisión final del PR | Pendiente |
 

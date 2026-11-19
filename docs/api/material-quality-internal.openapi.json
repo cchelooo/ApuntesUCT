@@ -3,7 +3,7 @@
   "info": {
     "title": "Material Service — contrato interno para Quality (propuesto)",
     "version": "0.1.0",
-    "description": "NO PÚBLICO. No exponer por las rutas wildcard del Gateway. Identidad de servicio y actor verificadas; roles y scopes según operación. Implementación pendiente. Sin acceso directo a bases ajenas. Ver quality-publication.md para firma de aserciones, outbox, recibos y revisión atómica."
+    "description": "CONTRATO FUNCIONAL PROPUESTO. NO PÚBLICO. No exponer por las rutas wildcard del Gateway. Adopta S3-05 / #445 como referencia común de identidad y autorización. El perfil específico Quality → Material está pendiente de acuerdo. qualityServiceAuth y los valores x-required-scope representan la propuesta técnica interna, no un mecanismo ya consensuado o implementado. Las rutas permanecerán cerradas hasta acordar e implementar ese perfil. Sin acceso directo a bases ajenas. Ver quality-publication.md, secciones 4–6.5, para aplicación atómica, idempotencia, dependencias y auditoría."
   },
   "servers": [
     {
@@ -24,7 +24,7 @@
           "Material interno"
         ],
         "summary": "Listar snapshots privados",
-        "description": "Solo servicio Quality, actor MODERATOR/ADMIN, estado y paginación validados. Orden createdAt DESC,id DESC.",
+        "description": "Solo servicio Quality con identidad verificable y actor MODERATOR/ADMIN con permiso vigente. Estado y paginación validados. Orden createdAt DESC,id DESC. Cache-Control:no-store. Material registra la consulta conforme a quality-publication.md, sección 6.5: actor, fecha UTC, servicio llamante verificado, filtros/paginación, cantidad de resultados, resultado y requestId. materialId y versionId son null para esta consulta de colección. Quality registra por separado el acceso que atiende del cliente.",
         "security": [
           {
             "qualityServiceAuth": []
@@ -97,7 +97,8 @@
             }
           }
         ],
-        "x-required-scope": "material:review:read"
+        "x-required-scope": "material:review:read",
+        "x-required-scope-status": "PROPOSED"
       }
     },
     "/internal/v1/quality/materials/{materialId}": {
@@ -107,7 +108,7 @@
           "Material interno"
         ],
         "summary": "Leer snapshot privado",
-        "description": "Solo Quality con actor MODERATOR/ADMIN; Cache-Control:no-store.",
+        "description": "Solo Quality con identidad verificable y actor MODERATOR/ADMIN con permiso vigente; Cache-Control:no-store. Material registra actor, materialId solicitado, revision entregada cuando corresponda, fecha UTC, resultado, servicio responsable y requestId conforme a quality-publication.md, sección 6.5. No expone storageKey.",
         "security": [
           {
             "qualityServiceAuth": []
@@ -155,7 +156,8 @@
             }
           }
         ],
-        "x-required-scope": "material:review:read"
+        "x-required-scope": "material:review:read",
+        "x-required-scope-status": "PROPOSED"
       }
     },
     "/internal/v1/quality/materials/{materialId}/versions/{versionId}/download": {
@@ -165,7 +167,7 @@
           "Material interno"
         ],
         "summary": "Descargar versión privada",
-        "description": "Solo Quality con actor MODERATOR/ADMIN; comprueba pertenencia de versión; no expone storageKey; no-store.",
+        "description": "Solo Quality con identidad verificable y actor MODERATOR/ADMIN con permiso vigente. Comprueba pertenencia de versión; no expone storageKey; Cache-Control:no-store. Material registra actor, materialId, versionId, fecha UTC, resultado, servicio responsable y requestId conforme a quality-publication.md, sección 6.5. Distingue autorización de resultado final de transferencia: SUCCESS, ERROR o ABORTED según el resultado observado. Un 200 emitido no acredita transferencia completada. Cada servicio audita su tramo: completar Material → Quality no acredita completar la entrega al cliente. No registrar tokens, URLs firmadas ni contenido del archivo.",
         "security": [
           {
             "qualityServiceAuth": []
@@ -247,7 +249,8 @@
             }
           }
         ],
-        "x-required-scope": "material:review:read"
+        "x-required-scope": "material:review:read",
+        "x-required-scope-status": "PROPOSED"
       }
     },
     "/internal/v1/quality/materials/{materialId}/decisions/{operationId}": {
@@ -257,7 +260,7 @@
           "Material interno"
         ],
         "summary": "Aplicar decisión y guardar recibo atómicamente",
-        "description": "operationId de Quality es clave idempotente durable. Misma operación/actor/payload: mismo recibo antes de revisar expectedRevision. Payload distinto:409. Transición y revision se comprueban atómicamente con cambio y recibo en BD de Material. No acepta status/verified arbitrarios. Operación desconocida y revisión inválida:409. Al aplicar, incrementa revision.",
+        "description": "operationId de Quality es clave idempotente durable. Misma operación/actor/payload: mismo recibo antes de revisar expectedRevision. Payload distinto:409. Transición y revision se comprueban atómicamente con cambio y recibo en BD de Material. No acepta status/verified arbitrarios. Un operationId sin recibo previo se procesa como una orden nueva y no constituye por sí solo un conflicto. Una action fuera del enum devuelve 400. Una transición incompatible o expectedRevision desactualizada devuelve 409. Al aplicar, incrementa revision. El actor y su autorización original se obtienen mediante el contexto verificable del perfil interno acordado; no se añaden como campos libres del cliente al DTO. Los roles declarados corresponden al actor autorizado al aceptar duraderamente la decisión. Los reintentos técnicos siguen la política propuesta de operaciones aceptadas descrita en quality-publication.md, sección 6.4; no constituyen nuevas decisiones del usuario. Material comprueba también la prohibición de autorrevisión.",
         "security": [
           {
             "qualityServiceAuth": []
@@ -327,7 +330,8 @@
             }
           }
         },
-        "x-required-scope": "material:quality:apply"
+        "x-required-scope": "material:quality:apply",
+        "x-required-scope-status": "PROPOSED"
       }
     },
     "/internal/v1/quality/decisions/{operationId}": {
@@ -337,7 +341,7 @@
           "Material interno"
         ],
         "summary": "Consultar recibo de decisión",
-        "description": "Solo Quality con aserción vinculada a operationId. 404 significa que no se observa recibo; NO demuestra que una solicitud anterior no vaya a confirmar. Reintentar mismo PUT para converger.",
+        "description": "Solo Quality mediante el perfil interno autorizado que se acuerde bajo S3-05, con vinculación verificable a operationId. La consulta técnica del recibo corresponde a la operación aceptada y no constituye una nueva decisión del actor. Los roles declarados corresponden a la autorización original de esa operación, conforme a la política propuesta en quality-publication.md, sección 6.4. La consulta del usuario a Quality exige sus permisos actuales. 404 significa que no se observa recibo; NO demuestra que una solicitud anterior no vaya a confirmar. Reintentar el mismo PUT para converger.",
         "security": [
           {
             "qualityServiceAuth": []
@@ -385,7 +389,8 @@
             }
           }
         ],
-        "x-required-scope": "material:quality:apply"
+        "x-required-scope": "material:quality:apply",
+        "x-required-scope-status": "PROPOSED"
       }
     }
   },
@@ -395,7 +400,8 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "Aserción firmada por Quality con clave asimétrica confiada por Material: iss=quality-service, sub=quality-service, aud=material-service, scope limitado, actor autenticado, exp<=60 s, jti. Nunca token de usuario ni headers sin firma. Para aplicar/reconciliar: operationId vinculante. Ver documento de arquitectura."
+        "description": "PROPUESTA TÉCNICA PENDIENTE DE ACUERDO bajo S3-05 / #445. Este esquema representa provisionalmente una credencial Bearer de servicio; no establece como definitivos el uso de JWT, el algoritmo, los claims, los scopes ni su vigencia. El perfil acordado deberá verificar la identidad de Quality, los permisos por operación y la vinculación del actor y de operationId cuando corresponda. No se aceptará identidad declarada libremente por el cliente. Antes de habilitar estas rutas se actualizará el esquema conforme al mecanismo acordado. No sustituir los requisitos de seguridad de las operaciones por acceso anónimo.",
+        "x-agreement-status": "PENDING"
       }
     },
     "schemas": {
@@ -807,5 +813,9 @@
         }
       }
     }
+  },
+  "externalDocs": {
+    "description": "S3-05 / #445 — contrato común de autorización; el perfil específico Quality → Material continúa pendiente.",
+    "url": "https://github.com/cchelooo/ApuntesUCT/issues/445"
   }
 }

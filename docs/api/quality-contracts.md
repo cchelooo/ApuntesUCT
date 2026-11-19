@@ -23,7 +23,29 @@ No se incorporan valoración en Search, cálculo de reputación, ranking, edici�
 
 ## 2. Autenticación, roles y autorización
 
-Todas las operaciones requieren usuario activo autenticado, salvo el resumen público de calificaciones. `Authorization: Bearer <accessToken>` es el contrato externo. El JWT objetivo debe ser firmado: propuesta RS256, emisor de Auth configurado, audiencia que incluya Quality, `sub` UUID, un `role` de los tres definidos, `iat` y `exp`; validar firma, algoritmo permitido, emisor, audiencia, vigencia y revocación/actividad según el mecanismo real acordado con Auth. Validar `nbf` si existe. No basta con decodificar el payload. Claves, valores de issuer/audience y mecanismo de desactivación se acuerdan antes de conectar clientes reales.
+Todas las operaciones requieren usuario activo autenticado, salvo el
+resumen público de calificaciones.
+
+La identidad y propagación de credenciales se rigen por
+[S3-05 / #445 — Contrato de autorización entre servicios](https://github.com/cchelooo/ApuntesUCT/issues/445),
+documentado en
+[contrato-autorizacion-entre-servicios.md](contrato-autorizacion-entre-servicios.md).
+
+El contrato externo utiliza `Authorization: Bearer <accessToken>`.
+El Gateway propaga el token y las operaciones protegidas requieren
+identidad verificada. `sub` corresponde al UUID del usuario y `role`
+identifica uno de los roles STUDENT, MODERATOR o ADMIN. ADMIN incluye
+los permisos de MODERATOR, sujeto a las restricciones de autoría de Quality.
+
+Se verifican firma, algoritmo permitido, emisor, audiencia y expiración
+conforme al contrato y configuración de Auth. No basta con decodificar
+el payload. Los controles adicionales de actividad y revocación deberán
+resolverse mediante el mecanismo acordado con Auth, sin consultar auth_db.
+
+Quality no fija unilateralmente RS256, valores de issuer/audience ni
+un mecanismo alternativo de identidad. El perfil específico de comunicación
+Quality → Material permanece como dependencia documentada en
+[quality-publication.md](../architecture/quality-publication.md), sección 6.
 
 El token actual con `alg:none`/`mock:true`, un Bearer arbitrario y las variables MATERIAL_LOCAL_* no autentican estas operaciones. Rechazarlos con 401. Un usuario autenticado cuya cuenta esté inactiva devuelve 403. Un token revocado devuelve 401. La comprobación de actividad/revocación puede usar el contrato de Auth o su mecanismo de invalidación verificado; nunca leer auth_db. Si esa dependencia requerida falla, devolver 503 sin conceder acceso.
 
@@ -73,6 +95,16 @@ Todos estos endpoints requieren MODERATOR o ADMIN activo.
 `ModerationMaterialDto` es un snapshot privado con estado, verificación, propietario, contenido descriptivo, enlace, versiones y `revision`. No contiene storageKey. Se obtiene por REST de Material, nunca por SQL desde Quality.
 
 La descarga privada admite cualquier estado, valida pertenencia de versión, conserva MIME, Content-Length y Content-Disposition attachment y responde no-store. No entrega URL firmada reutilizable ni hace público el bucket. LINK sin archivo devuelve 404 al descargar; su URL aparece en el snapshot privado. El backend no sigue esa URL ni promete controlar el acceso en el sitio externo.
+
+Las consultas de pendientes, lecturas de snapshots y descargas privadas
+generan auditoría conforme a
+[quality-publication.md](../architecture/quality-publication.md), sección 6.5.
+
+Quality y Material registran los accesos que atienden, incluyendo actor
+verificado, material y versión cuando corresponda, fecha UTC, resultado
+y servicio responsable. Los eventos se correlacionan mediante requestId.
+La autorización de una descarga se distingue de la finalización o
+interrupción de la transferencia.
 
 Ejemplo de decisión:
 
@@ -178,7 +210,28 @@ Sobre propuesto: `{statusCode, code, message, requestId, field?}`. `field` se co
 | 502 | DEPENDENCY_INVALID_RESPONSE | Respuesta ajena inválida o inconsistente |
 | 503 | DEPENDENCY_UNAVAILABLE | Dependencia o persistencia no disponible |
 
-El error 502 de transporte del Gateway actualmente tiene su propio sobre; Web/Mobile deben distinguirlo y tratarlo como error de infraestructura. Este PR no modifica ese contrato global. Una operación de decisión ya aceptada cuyo despacho falle permanece pendiente y consultable; no se transforma en éxito ni se elimina para responder 503.
+ErrorDto es el formato de los errores producidos por las operaciones
+de Quality y por el contrato interno de Material aquí especificado.
+No redefine globalmente los errores de Auth, Gateway ni las rutas
+públicas existentes de otros servicios.
+
+Conforme a S3-05, los clientes también deben tolerar errores de otros
+componentes con formato Nest `{statusCode, message, error?}`, donde
+message puede ser un texto o un arreglo, y el error de transporte
+del Gateway `{statusCode, message}`.
+
+La ausencia de code o requestId en esos errores no debe impedir que el
+cliente trate la respuesta como un fallo HTTP. Esa tolerancia no convierte
+una respuesta incompleta de una operación que exige ErrorDto en una
+respuesta conforme a su contrato.
+
+Quality utiliza 409 para conflictos de transición, revisión, idempotencia
+y reportes abiertos. Esta especialización se documenta por operación y
+no modifica el caso de correo duplicado definido por S3-05.
+
+Una decisión ya aceptada cuyo despacho falle permanece pendiente y
+consultable mientras el resultado sea incierto; no se transforma en
+éxito ni se elimina para responder 503.
 
 Comprobar autenticación y permiso de ruta antes de cargar datos privados. Una petición válida puede recibir después 404/409 según visibilidad o conflicto; no usar 403 para revelar que un material oculto existe en una ruta pública.
 
