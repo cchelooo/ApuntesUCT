@@ -1,3 +1,4 @@
+import { accessToken, jwtSettings } from './authorization-fixture';
 import { configureRoutes } from '../src/configure-routes';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, HttpStatus, ValidationPipe } from '@nestjs/common';
@@ -16,10 +17,10 @@ describe('API Gateway - Integration & Proxying Tests (E2E)', () => {
     body?: Record<string, unknown> | null; // 👈 Corregido: Reemplazado 'any' por Record<string, unknown> | null
   } = {};
 
-  const mockValidToken =
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkFudG9uaW8iLCJpYXQiOjE1MTYyMzkwMjJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+  const mockValidToken = accessToken();
 
   beforeAll(async () => {
+    Object.assign(process.env, jwtSettings);
     // 1. Crear el servidor HTTP simulado (Downstream Mock)
     mockDownstreamServer = http.createServer((req, res) => {
       const bodyChunks: Buffer[] = []; // 👈 Corregido: Reemplazado 'any[]' por 'Buffer[]'
@@ -92,6 +93,28 @@ describe('API Gateway - Integration & Proxying Tests (E2E)', () => {
   beforeEach(() => {
     lastCapturedRequest = {};
   });
+
+  it.each([
+    ['', 401],
+    ['Basic abc', 401],
+    ['Bearer ' + accessToken('STUDENT'), 403],
+    ['Bearer ' + accessToken('MODERATOR'), 403],
+    ['Bearer ' + accessToken('ADMIN', { exp: 1 }), 401],
+    ['Bearer ' + accessToken('ADMIN', {}, true), 401],
+    ['Bearer ' + accessToken('ADMIN', { iss: 'untrusted' }), 401],
+    ['Bearer ' + accessToken('ADMIN', { aud: 'other' }), 401],
+  ])(
+    'rechaza credenciales insuficientes antes del proxy (%s)',
+    async (authorization, status) => {
+      await request(app.getHttpServer())
+        .post('/api/v1/catalog/subjects')
+        .set('Authorization', authorization)
+        .set('X-User-Role', 'ADMIN')
+        .send({ role: 'ADMIN', userId: 'forged' })
+        .expect(status);
+      expect(lastCapturedRequest).toEqual({});
+    },
+  );
 
   // ==========================================
   // 1. RUTAS PÚBLICAS Y AUTENTICACIÓN

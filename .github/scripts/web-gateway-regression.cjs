@@ -230,7 +230,6 @@ async function main() {
   const subject = await catalog.subject.create({
     data: { name: "Asignatura QA268", code: runId, careerId: career.id },
   });
-  const uploader = randomUUID();
   const ports = {};
   for (const name of [
     "gateway",
@@ -250,7 +249,16 @@ async function main() {
     careerId: career.id,
     subjectId: subject.id,
   };
-  const common = { NODE_ENV: "development" };
+  const common = {
+    NODE_ENV: "development",
+    JWT_ACCESS_PUBLIC_KEY: publicKey
+      .export({ type: "spki", format: "pem" })
+      .toString(),
+    JWT_ACCESS_SECRET: "",
+    JWT_ISSUER: issuer,
+    JWT_AUDIENCE: audience,
+    MATERIAL_LOCAL_AUTHOR_ENABLED: "false",
+  };
   for (const service of ["auth", "catalog", "material", "search", "gateway"]) {
     const folder = service === "gateway" ? "api-gateway" : `${service}-service`;
     const entry = fs.existsSync(path.join(backend, folder, "dist/main.js"))
@@ -270,9 +278,6 @@ async function main() {
     if (service === "material")
       Object.assign(env, {
         CATALOG_SERVICE_URL: `${origin("catalog")}/api/v1`,
-        MATERIAL_LOCAL_AUTHOR_ENABLED: "true",
-        MATERIAL_LOCAL_UPLOADER_ID: uploader,
-        MATERIAL_LOCAL_UNIVERSITY_ID: university.id,
         MINIO_ENDPOINT: "127.0.0.1",
         MINIO_PORT: String(minioPort),
         MINIO_USE_SSL: "false",
@@ -400,6 +405,20 @@ async function main() {
     assert.equal(body.tokenType, "Bearer");
     assert.deepEqual(body.user, registered.user);
     assert.equal(Object.hasOwn(claims, "mock"), false);
+    // S3-08 conectará la sesión Web. Mientras tanto, el runner aporta el JWT real
+    // únicamente al POST protegido: no simula respuestas ni cambia el backend.
+    await page.route(gateway + "/materials", async (route) => {
+      const request = route.request();
+      if (request.method() !== "POST") return route.continue();
+      await route.continue({
+        headers: {
+          ...request.headers(),
+          authorization: "Bearer " + body.accessToken,
+        },
+      });
+    });
+    report.fixture.authorizationTransport =
+      "JWT del login real añadido por Playwright solo a POST /materials; sesión Web S3-08 pendiente.";
     await page
       .getByText("Inicio de sesión exitoso.", { exact: true })
       .waitFor();
@@ -470,6 +489,10 @@ async function main() {
     assert.equal(r.status(), 201, JSON.stringify(body));
     materialId = body.data.id;
     report.fixture.materialId = materialId;
+    const persisted = await material.material.findUniqueOrThrow({
+      where: { id: materialId },
+    });
+    assert.equal(persisted.uploaderId, registered.user.id);
     assert.equal(body.data.status, "PENDING_REVIEW");
     await page
       .getByText("¡Material subido exitosamente!", { exact: true })
@@ -478,6 +501,7 @@ async function main() {
       where: { materialId },
     });
     assert.equal(version.versionNumber, 1);
+    assert.equal(version.createdBy, registered.user.id);
     await storage.statObject("qa-materials", version.storageKey);
     return {
       http: 201,

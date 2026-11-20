@@ -1,3 +1,4 @@
+import { accessToken, jwtSettings } from './authorization-fixture';
 import { configureRoutes } from '../src/configure-routes';
 import { INestApplication } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -96,7 +97,7 @@ describe('Gateway → Material y Search (HTTP)', () => {
   const upstreams = new Map<string, Upstream>();
 
   beforeEach(async () => {
-    const origins = new Map<string, string>();
+    const origins = new Map<string, string>(Object.entries(jwtSettings));
     for (const service of SERVICES) {
       const upstream = await startUpstream(service.label);
       upstreams.set(service.label, upstream);
@@ -192,6 +193,7 @@ describe('Gateway → Material y Search (HTTP)', () => {
       const body = { titulo: 'Apuntes', semestre: 2 };
       const res = await request(gateway.getHttpServer())
         .post(`/api/v1/${path}`)
+        .set('Authorization', `Bearer ${accessToken()}`)
         .send(body)
         .expect(200);
       expect(res.body.service).toBe(label);
@@ -205,7 +207,9 @@ describe('Gateway → Material y Search (HTTP)', () => {
     async ({ path, label }) => {
       const client = request(gateway.getHttpServer());
       for (const method of ['put', 'patch', 'delete'] as const) {
-        const res = await client[method](`/api/v1/${path}/9`).expect(200);
+        const res = await client[method](`/api/v1/${path}/9`)
+          .set('Authorization', `Bearer ${accessToken()}`)
+          .expect(200);
         expect(res.body.service).toBe(label);
         expect(res.body.method).toBe(method.toUpperCase());
         expect(res.body.url).toBe(`/api/v1/${path}/9`);
