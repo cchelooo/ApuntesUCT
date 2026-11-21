@@ -1,7 +1,7 @@
 # Burndown S3
 
 Primer snapshot guardado: 2026-11-06.
-Ultimo snapshot: 2026-11-19.
+Ultimo snapshot: 2026-11-20.
 Corte del 07-11-2026 registrado el 08-11-2026 con las horas actuales de GitHub Projects, por actualización diferida solicitada. No corresponde a una captura histórica tomada el día 7.
 Corte del 09-11-2026 registrado el 10-11-2026 con las horas actuales de GitHub Projects, por actualización diferida solicitada; no es una captura histórica tomada el día 9.
 Corte del 10-11-2026 registrado el 11-11-2026 con las horas actuales de GitHub Projects, por actualización diferida solicitada; no es una captura histórica tomada el día 10.
@@ -10,6 +10,7 @@ Corte del 13-11-2026 registrado el 14-11-2026 con las horas actuales de GitHub P
 Corte del 16-11-2026 registrado el 17-11-2026 con las horas actuales de GitHub Projects, por actualización diferida solicitada; no es una captura histórica tomada el día 16.
 Corte del 17-11-2026 registrado el 18-11-2026 con las horas actuales de GitHub Projects, por actualización diferida solicitada; no es una captura histórica tomada el día 17.
 Corte del 19-11-2026 registrado el 20-11-2026 con las horas actuales de GitHub Projects, por actualización diferida solicitada; no es una captura histórica tomada el día 19.
+Corte del 20-11-2026 registrado el 21-11-2026 con las horas actuales de GitHub Projects, por actualización diferida solicitada; no es una captura histórica tomada el día 20.
 No se reconstruyen horas de dias sin snapshot.
 
 ## Ventanas del sprint
