@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/models/report_model.dart';
 import '../../domain/models/report_motive.dart';
+import '../providers/material_report_provider.dart';
 
-/// Formulario local para el reporte de materiales.
+/// Formulario de reporte de materiales conectado a Quality Service mediante Gateway (#398, #406).
 ///
-/// Valida datos localmente y retiene la entrada ante errores.
-/// Los códigos de motivos y esquemas son provisionales (pendiente #444).
-/// No incluye llamadas de red directas a Quality service en esta etapa.
-class MaterialReportForm extends StatefulWidget {
+/// - Utiliza los motivos contractuales de `quality.openapi.json` (`ReportMotive` / `ReportReason`).
+/// - Exige `details` cuando el motivo es `OTHER` y valida el límite contractual de 2000 caracteres.
+/// - Puede conectarse automáticamente a [materialReportProvider] con el `materialId` real o
+///   invocar un callback explícito [onSubmit] cuando se inyecta en pruebas unitarias aisladas.
+/// - Conserva la entrada del usuario ante rechazos o errores de red sin simular reportes locales.
+class MaterialReportForm extends ConsumerStatefulWidget {
   final String materialId;
   final String materialTitle;
   final bool isSubmitting;
-  final String? errorMessage; // Permite mostrar errores externos (ej. error de red) sin borrar el form
-  final void Function(ReportMotive motive, String description) onSubmit;
+  final String? errorMessage;
+  final void Function(ReportMotive motive, String description)? onSubmit;
+  final void Function(Report report)? onReportCreated;
 
   const MaterialReportForm({
     super.key,
@@ -20,14 +26,15 @@ class MaterialReportForm extends StatefulWidget {
     required this.materialTitle,
     this.isSubmitting = false,
     this.errorMessage,
-    required this.onSubmit,
+    this.onSubmit,
+    this.onReportCreated,
   });
 
   @override
-  State<MaterialReportForm> createState() => _MaterialReportFormState();
+  ConsumerState<MaterialReportForm> createState() => _MaterialReportFormState();
 }
 
-class _MaterialReportFormState extends State<MaterialReportForm> {
+class _MaterialReportFormState extends ConsumerState<MaterialReportForm> {
   final _formKey = GlobalKey<FormState>();
   final _descriptionController = TextEditingController();
   ReportMotive? _selectedMotive;
@@ -38,14 +45,42 @@ class _MaterialReportFormState extends State<MaterialReportForm> {
     super.dispose();
   }
 
-  void _submit() {
-    if (_formKey.currentState?.validate() ?? false) {
-      widget.onSubmit(_selectedMotive!, _descriptionController.text.trim());
+  Future<void> _submit(bool effectiveSubmitting) async {
+    if (effectiveSubmitting) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    final motive = _selectedMotive!;
+    final description = _descriptionController.text.trim();
+
+    if (widget.onSubmit != null) {
+      widget.onSubmit!(motive, description);
+      return;
+    }
+
+    final created = await ref
+        .read(materialReportProvider(widget.materialId).notifier)
+        .submit(
+          materialId: widget.materialId,
+          motive: motive,
+          details: description,
+        );
+
+    if (!mounted) return;
+    if (created != null) {
+      widget.onReportCreated?.call(created);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final providerState = widget.onSubmit == null
+        ? ref.watch(materialReportProvider(widget.materialId))
+        : const MaterialReportSubmissionState.idle();
+
+    final effectiveSubmitting =
+        widget.isSubmitting || providerState.isSubmitting;
+    final effectiveError = widget.errorMessage ?? providerState.errorMessage;
+
     return Form(
       key: _formKey,
       child: Column(
@@ -64,7 +99,7 @@ class _MaterialReportFormState extends State<MaterialReportForm> {
           ),
           const SizedBox(height: 16),
 
-          if (widget.errorMessage != null) ...[
+          if (effectiveError != null) ...[
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -72,7 +107,7 @@ class _MaterialReportFormState extends State<MaterialReportForm> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                widget.errorMessage!,
+                effectiveError,
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onErrorContainer,
                 ),
@@ -82,7 +117,8 @@ class _MaterialReportFormState extends State<MaterialReportForm> {
           ],
 
           DropdownButtonFormField<ReportMotive>(
-            initialValue: _selectedMotive, // <-- Si persiste el error aquí, cambia DropdownButtonFormField por DropdownButton
+            key: ValueKey<ReportMotive?>(_selectedMotive),
+            initialValue: _selectedMotive,
             decoration: const InputDecoration(
               labelText: 'Motivo del reporte *',
               border: OutlineInputBorder(),
@@ -90,7 +126,7 @@ class _MaterialReportFormState extends State<MaterialReportForm> {
             items: ReportMotive.values.map((motive) {
               return DropdownMenuItem(value: motive, child: Text(motive.label));
             }).toList(),
-            onChanged: widget.isSubmitting
+            onChanged: effectiveSubmitting
                 ? null
                 : (value) => setState(() => _selectedMotive = value),
             validator: (value) => value == null
@@ -101,17 +137,24 @@ class _MaterialReportFormState extends State<MaterialReportForm> {
 
           TextFormField(
             controller: _descriptionController,
-            enabled: !widget.isSubmitting,
-            decoration: const InputDecoration(
-              labelText: 'Detalles adicionales (Opcional)',
-              border: OutlineInputBorder(),
+            enabled: !effectiveSubmitting,
+            decoration: InputDecoration(
+              labelText: (_selectedMotive?.requiresDetails ?? false)
+                  ? 'Detalles adicionales *'
+                  : 'Detalles adicionales (Opcional)',
+              border: const OutlineInputBorder(),
               hintText: 'Explique brevemente el problema...',
             ),
             maxLines: 3,
-            maxLength: 500,
+            maxLength: 2000,
             validator: (value) {
-              if (value != null && value.length > 500) {
-                return 'El detalle no puede superar los 500 caracteres.';
+              final trimmed = value?.trim() ?? '';
+              if ((_selectedMotive?.requiresDetails ?? false) &&
+                  trimmed.isEmpty) {
+                return 'Debes especificar los detalles cuando seleccionas "Otro motivo".';
+              }
+              if (value != null && value.length > 2000) {
+                return 'El detalle no puede superar los 2000 caracteres.';
               }
               return null;
             },
@@ -119,8 +162,10 @@ class _MaterialReportFormState extends State<MaterialReportForm> {
           const SizedBox(height: 24),
 
           ElevatedButton(
-            onPressed: widget.isSubmitting ? null : _submit,
-            child: widget.isSubmitting
+            onPressed: effectiveSubmitting
+                ? null
+                : () => _submit(effectiveSubmitting),
+            child: effectiveSubmitting
                 ? const SizedBox(
                     height: 20,
                     width: 20,
