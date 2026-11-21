@@ -8,3 +8,4 @@ export 'presentation/providers/quality_repository_provider.dart';
 export 'presentation/screens/favorites_screen.dart';
 export 'presentation/widgets/favorite_card.dart';
 export 'presentation/widgets/material_report_form.dart';
+export 'presentation/widgets/material_report_sheet.dart';
