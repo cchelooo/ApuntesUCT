@@ -149,10 +149,10 @@ void main() {
 
       final adapter = _StubAdapter(
         (_) async => _jsonResponse({
-          'statusCode': 400,
+          'statusCode': 401,
           'message': 'Credenciales inválidas',
-          'error': 'Bad Request',
-        }, statusCode: 400),
+          'error': 'Unauthorized',
+        }, statusCode: 401),
       );
       final router = _router();
       addTearDown(router.dispose);
@@ -169,9 +169,159 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(LoginScreen), findsOneWidget);
-      expect(find.text('Credenciales inválidas'), findsOneWidget);
+      expect(
+        find.text(
+          'Credenciales inválidas. Verifica tu correo institucional y contraseña.',
+        ),
+        findsOneWidget,
+      );
       expect(find.text('HOME_AUTENTICADO'), findsNothing);
     });
+
+    testWidgets(
+      'impide envíos repetidos mientras una solicitud de login está en curso',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(390, 844));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        final pending = Completer<ResponseBody>();
+        var requestCount = 0;
+        final adapter = _StubAdapter((_) {
+          requestCount++;
+          return pending.future;
+        });
+        final router = _router();
+        addTearDown(router.dispose);
+
+        await tester.pumpWidget(_testApp(router: router, adapter: adapter));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(
+          find.byType(TextFormField).first,
+          'estudiante2026',
+        );
+        await tester.enterText(find.byType(TextFormField).last, 'demo');
+
+        await tester.tap(find.widgetWithText(FilledButton, 'Ingresar'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        expect(requestCount, 1);
+
+        // Intentos adicionales por botón o acción del teclado mientras carga
+        await tester.tap(find.byType(FilledButton), warnIfMissed: false);
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+
+        expect(requestCount, 1);
+
+        pending.complete(
+          _jsonResponse(loginFixture(email: 'estudiante2026@alu.uct.cl')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(requestCount, 1);
+        expect(find.text('HOME_AUTENTICADO'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'distingue errores de validación, credenciales y conexión sin exponer información sensible',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(390, 844));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        var mode = '401';
+        final adapter = _StubAdapter((options) async {
+          if (mode == 'network') {
+            throw DioException(
+              requestOptions: options,
+              type: DioExceptionType.connectionError,
+              error: 'SocketException: Connection refused 10.0.2.2:3000',
+            );
+          }
+          if (mode == '502') {
+            return _jsonResponse({
+              'statusCode': 502,
+              'message': 'Auth Service no disponible',
+            }, statusCode: 502);
+          }
+          return _jsonResponse({
+            'statusCode': 401,
+            'message': 'Credenciales inválidas',
+            'error': 'Unauthorized',
+          }, statusCode: 401);
+        });
+        final router = _router();
+        addTearDown(router.dispose);
+
+        await tester.pumpWidget(_testApp(router: router, adapter: adapter));
+        await tester.pumpAndSettle();
+
+        // 1. Error de validación local
+        await tester.tap(find.widgetWithText(FilledButton, 'Ingresar'));
+        await tester.pump();
+        expect(find.text('El correo es obligatorio.'), findsOneWidget);
+        expect(find.text('La contraseña es obligatoria.'), findsOneWidget);
+        expect(adapter.lastRequest, isNull);
+
+        // 2. Error de credenciales (401)
+        await tester.enterText(
+          find.byType(TextFormField).first,
+          'estudiante2026',
+        );
+        await tester.enterText(
+          find.byType(TextFormField).last,
+          'ClaveSecreta99',
+        );
+        await tester.tap(find.widgetWithText(FilledButton, 'Ingresar'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text(
+            'Credenciales inválidas. Verifica tu correo institucional y contraseña.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('HOME_AUTENTICADO'), findsNothing);
+
+        // 3. Error de disponibilidad del servicio en Gateway (502)
+        mode = '502';
+        await tester.ensureVisible(
+          find.widgetWithText(FilledButton, 'Ingresar'),
+        );
+        await tester.tap(find.widgetWithText(FilledButton, 'Ingresar'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text(
+            'El servicio de autenticación no está disponible en este momento. Intenta nuevamente más tarde.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('HOME_AUTENTICADO'), findsNothing);
+
+        // 4. Error de conexión de red
+        mode = 'network';
+        await tester.ensureVisible(
+          find.widgetWithText(FilledButton, 'Ingresar'),
+        );
+        await tester.tap(find.widgetWithText(FilledButton, 'Ingresar'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text(
+            'No se pudo establecer conexión con el servidor. Verifica tu red o que el servidor esté activo.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.textContaining('SocketException'), findsNothing);
+        expect(find.textContaining('10.0.2.2'), findsNothing);
+        expect(find.text('HOME_AUTENTICADO'), findsNothing);
+      },
+    );
   });
 }
 

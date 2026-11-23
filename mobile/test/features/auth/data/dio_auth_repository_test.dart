@@ -55,7 +55,7 @@ void main() {
       expect(user.role, 'STUDENT');
     });
 
-    test('expone el mensaje del Gateway cuando el login falla', () async {
+    test('expone un mensaje comprensible de validación cuando el login falla con 400', () async {
       final adapter = _StubAdapter(
         (_) => _jsonResponse({
           'statusCode': 400,
@@ -74,7 +74,58 @@ void main() {
               .having(
                 (error) => error.message,
                 'message',
-                'password must contain at least one non-whitespace character',
+                'Los datos ingresados no son válidos. Revisa tu correo institucional y contraseña.',
+              ),
+        ),
+      );
+    });
+
+    test('distingue credenciales incorrectas (401) de problemas de conexión o servidor (502)', () async {
+      final unauthorizedAdapter = _StubAdapter(
+        (_) => _jsonResponse({
+          'statusCode': 401,
+          'message': 'Credenciales inválidas',
+          'error': 'Unauthorized',
+        }, statusCode: 401),
+      );
+      final unauthorizedRepo = _repository(unauthorizedAdapter);
+
+      await expectLater(
+        unauthorizedRepo.login(
+          email: 'estudiante@alu.uct.cl',
+          password: 'incorrecta',
+        ),
+        throwsA(
+          isA<ApiException>()
+              .having((error) => error.statusCode, 'statusCode', 401)
+              .having(
+                (error) => error.message,
+                'message',
+                'Credenciales inválidas. Verifica tu correo institucional y contraseña.',
+              ),
+        ),
+      );
+
+      final unavailableAdapter = _StubAdapter(
+        (_) => _jsonResponse({
+          'statusCode': 502,
+          'message': 'Auth Service no disponible',
+        }, statusCode: 502),
+      );
+      final unavailableRepo = _repository(unavailableAdapter);
+
+      await expectLater(
+        unavailableRepo.login(
+          email: 'estudiante@alu.uct.cl',
+          password: 'demo',
+        ),
+        throwsA(
+          isA<ApiException>()
+              .having((error) => error.statusCode, 'statusCode', 502)
+              .having(
+                (error) => error.message,
+                'message',
+                'El servicio de autenticación no está disponible en este momento. Intenta nuevamente más tarde.',
               ),
         ),
       );

@@ -133,6 +133,7 @@ class AuthStateNotifier extends AsyncNotifier<UserModel?> {
   }
 
   Future<void> login(String email, String password) async {
+    if (state.isLoading) return;
     final operation = ++_operation;
     state = const AsyncLoading();
     final result = await AsyncValue.guard(
@@ -144,6 +145,7 @@ class AuthStateNotifier extends AsyncNotifier<UserModel?> {
   }
 
   Future<void> register(String name, String email, String password) async {
+    if (state.isLoading) return;
     final operation = ++_operation;
     state = const AsyncLoading();
     final repository = ref.read(authRepositoryProvider);

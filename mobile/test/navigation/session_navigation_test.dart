@@ -95,7 +95,12 @@ void main() {
       await tester.enterText(find.byType(TextFormField).last, 'incorrecta');
       await tester.tap(find.text('Ingresar'));
       await _settle(tester);
-      expect(find.text('Credenciales inválidas'), findsOneWidget);
+      expect(
+        find.text(
+          'Credenciales inválidas. Verifica tu correo institucional y contraseña.',
+        ),
+        findsOneWidget,
+      );
       expect(container.read(sessionControllerProvider).current, isNull);
       expect(appRouter.state.uri.path, '/login');
 
