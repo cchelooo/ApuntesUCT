@@ -7,7 +7,7 @@ export interface SelectOption {
 }
 
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
-  label?: string;
+  label: string;
   error?: string;
   helperText?: ReactNode;
   options: SelectOption[];
@@ -38,11 +38,11 @@ export const Select = ({
   const containerWidthClass = fullWidth ? 'w-full' : 'w-auto';
 
   const baseSelectClass =
-    'block w-full rounded-md border text-sm transition-colors px-3 py-2 outline-hidden focus:ring-2 focus:ring-offset-2 bg-white appearance-none';
+    'block w-full rounded-md border text-sm transition-colors px-3 py-2 outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 bg-white appearance-none';
 
   const stateClass = error
-    ? 'border-red-500 text-red-900 focus:border-red-500 focus:ring-red-500'
-    : 'border-catalog-line bg-catalog-paper text-catalog-ink focus:border-uct-sky focus:ring-uct-sky';
+    ? 'border-red-500 text-red-900 focus-visible:border-red-500 focus-visible:ring-red-500'
+    : 'border-catalog-line bg-catalog-paper text-catalog-ink focus-visible:border-uct-sky focus-visible:ring-uct-sky';
 
   const disabledClass = disabled
     ? 'bg-catalog-bg opacity-75 cursor-not-allowed'
@@ -55,14 +55,12 @@ export const Select = ({
     <div
       className={`flex flex-col gap-1.5 ${containerWidthClass} ${containerClassName}`.trim()}
     >
-      {label && (
-        <label
-          htmlFor={selectId}
-          className="text-sm font-medium text-catalog-ink"
-        >
-          {label}
-        </label>
-      )}
+      <label
+        htmlFor={selectId}
+        className="text-sm font-medium text-catalog-ink"
+      >
+        {label}
+      </label>
       <div className="relative">
         <select
           id={selectId}
@@ -102,7 +100,7 @@ export const Select = ({
       {(error || helperText) && (
         <p
           id={descriptionId}
-          className={`text-xs ${error ? 'text-red-500' : 'text-uct-muted'}`}
+          className={`text-xs ${error ? 'text-red-700' : 'text-uct-muted'}`}
         >
           {error || helperText}
         </p>
