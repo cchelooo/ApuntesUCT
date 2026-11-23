@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/errors/error_messages.dart';
+import '../../../core/session/session_controller.dart';
+import '../../../core/session/session_revision.dart';
 import '../../../core/validation/validators.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../../models/user_model.dart';
@@ -55,6 +57,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
+    ref.watch(sessionRevisionProvider);
+    final needsSignIn = ref.watch(sessionControllerProvider).needsSignIn;
     final colorScheme = Theme.of(context).colorScheme;
     final esOscuro = Theme.of(context).brightness == Brightness.dark;
     final colorEnlace = esOscuro ? colorScheme.secondary : colorScheme.primary;
@@ -111,7 +115,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
       children: [
         FormErrorBanner(
-          message: authState.hasError ? errorMessage(authState.error!) : null,
+          message: authState.hasError
+              ? errorMessage(authState.error!)
+              : needsSignIn
+              ? SessionController.signInAgainMessage
+              : null,
         ),
         Form(
           key: _formKey,
