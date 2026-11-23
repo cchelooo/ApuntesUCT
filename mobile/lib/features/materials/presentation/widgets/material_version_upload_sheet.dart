@@ -1,3 +1,5 @@
+import 'package:apuntesuct_mobile/core/session/session_controller.dart';
+import 'package:apuntesuct_mobile/core/session/session_revision.dart';
 import 'package:apuntesuct_mobile/core/widgets/app_primary_button.dart';
 import 'package:apuntesuct_mobile/core/widgets/form_error_banner.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_requests.dart';
@@ -41,6 +43,7 @@ class _MaterialVersionUploadSheetState
   MaterialPickedFile? _picked;
   bool _isPicking = false;
   String? _fileError;
+  bool _sessionChanged = false;
 
   /// Número de la última versión creada en esta hoja: al subir "otra", la
   /// propuesta avanza (v3 → v4) aunque el detalle aún no se haya refrescado.
@@ -108,7 +111,7 @@ class _MaterialVersionUploadSheetState
       final picked = widget.pickFile != null
           ? await widget.pickFile!()
           : await pickMaterialFile();
-      if (!mounted || picked == null) return;
+      if (!mounted || _sessionChanged || picked == null) return;
       setState(() {
         _picked = picked;
         _fileError = MaterialUploadValidation.validatePickedFile(
@@ -137,6 +140,7 @@ class _MaterialVersionUploadSheetState
   }
 
   Future<void> _submit() async {
+    if (_sessionChanged) return;
     final picked = _picked;
     if (picked == null) {
       setState(() => _fileError = 'Selecciona un archivo.');
@@ -182,7 +186,7 @@ class _MaterialVersionUploadSheetState
     // Solo una subida iniciada por ESTA hoja marca su confirmación: el
     // estado está aislado por materialId, así el éxito de otro material
     // nunca aparece aquí aunque complete mientras esta hoja está abierta.
-    if (!mounted) return;
+    if (!mounted || _sessionChanged) return;
     setState(() {
       if (ok) {
         _createdVersionNumber = ref
@@ -197,6 +201,35 @@ class _MaterialVersionUploadSheetState
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(sessionRevisionProvider, (_, _) {
+      setState(() {
+        _sessionChanged = true;
+        _picked = null;
+      });
+    });
+    if (_sessionChanged) {
+      final session = ref.read(sessionControllerProvider);
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              FormErrorBanner(
+                message: session.needsSignIn
+                    ? SessionController.signInAgainMessage
+                    : 'Cambió la sesión. Cierra y vuelve a abrir el formulario.',
+              ),
+              OutlinedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cerrar'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     final upload = ref.watch(materialVersionUploadProvider(widget.materialId));
     // Otro material con subida en curso bloquea esta hoja: no se puede
     // iniciar nada aquí hasta que termine o se cancele aquella.

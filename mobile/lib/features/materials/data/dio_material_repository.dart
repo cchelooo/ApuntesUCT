@@ -239,7 +239,9 @@ class DioMaterialRepository implements MaterialRepository {
         onSendProgress: onSendProgress,
       );
       final data = response.data;
-      if (data is! Map<String, dynamic> || data['materialId'] != materialId) {
+      if (response.statusCode != 201 ||
+          data is! Map<String, dynamic> ||
+          data['materialId'] != materialId) {
         throw const FormatException('Versión ausente o de otro material.');
       }
       final size = data['fileSize'];
