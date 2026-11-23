@@ -90,6 +90,7 @@ export class MaterialController {
     description:
       'Identidad ausente, token inválido/expirado, firma no verificable o token mock.',
   })
+  @ApiResponse({ status: 403, type: ErrorResponseDto, description: 'La identidad no tiene un rol autorizado.' })
   @ApiResponse({
     status: 413,
     type: ErrorResponseDto,

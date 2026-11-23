@@ -1,3 +1,4 @@
+const { jwtFixture } = require('../../test/jwt-fixture.cjs');
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const { Readable } = require('node:stream');
@@ -36,11 +37,18 @@ const {
   HttpExceptionFilter,
 } = require('../../material-service/dist/infrastructure/filters/http-exception.filter');
 
+const {
+  AccessTokenVerifier,
+} = require('../../material-service/dist/infrastructure/auth/access-token.verifier');
+
 // Uses the real HTTP controllers, validators and use cases with mocked persistence/storage.
 // Reproduces the acceptance topology: clients only use the Gateway on 3000, which proxies
 // to Material on its reserved 3003 for both multipart uploads and binary downloads.
 // Run after building both api-gateway and material-service (Node handles file-type ESM).
 test('Gateway → contrato HTTP real de Material', async (t) => {
+  const identity = jwtFixture();
+  const authorId = '11111111-1111-4111-8111-111111111111';
+  const authorization = identity.authorization(authorId);
   let material;
   let gateway;
   try {
@@ -62,15 +70,9 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
         CreateMaterial,
         { provide: CatalogPort, useValue: { validateReferences: async () => {} } },
         MaterialsService,
-        {
-          provide: MaterialAuthorProvider,
-          useValue: {
-            resolve: () => ({
-              id: '11111111-1111-4111-8111-111111111111',
-              universityId: null,
-            }),
-          },
-        },
+        MaterialAuthorProvider,
+        { provide: ConfigService, useValue: new ConfigService(identity.settings) },
+        AccessTokenVerifier,
         {
           provide: ObjectStorage,
           useValue: {
@@ -109,7 +111,7 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
       imports: [AppModule],
     })
       .overrideProvider(ConfigService)
-      .useValue({ get: () => undefined })
+      .useValue(new ConfigService(identity.settings))
       .compile();
     gateway = gatewayModule.createNestApplication();
     // Aplica la misma configuración CORS que producción (main.ts).
@@ -143,10 +145,25 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
       }
       const response = await fetch(`${base}/api/v1/materials`, {
         method: 'POST',
+        headers: { Authorization: authorization },
         body,
       });
       return { status: response.status, body: await response.json() };
     };
+    await t.test('rechaza identidad ausente, expirada y firma ajena', async () => {
+      for (const value of [
+        '',
+        identity.authorization(authorId, 'STUDENT', { expiresIn: -1 }),
+        jwtFixture().authorization(authorId),
+      ]) {
+        const response = await fetch(base + '/api/v1/materials', {
+          method: 'POST', headers: value ? { Authorization: value } : {},
+        });
+        assert.equal(response.status, 401);
+        await response.text();
+      }
+      assert.equal(lastSavedBuffer.length, 0);
+    });
     await t.test(
       'conserva multipart, metadatos Unicode y MIME detectado',
       async () => {
@@ -382,7 +399,7 @@ test('Gateway → contrato HTTP real de Material', async (t) => {
                 'Content-Type':
                   'multipart/form-data; boundary=' + boundary,
                 'Transfer-Encoding': 'chunked',
-                Authorization: 'Bearer test-token',
+                Authorization: authorization,
               },
             },
             (res) => {

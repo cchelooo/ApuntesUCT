@@ -52,11 +52,14 @@ test(
     let primaryError;
     const pdf = Buffer.from('%PDF-1.7\nIntegration test file\n%%EOF');
 
+    const catalogAuthorization = process.env.MATERIAL_TEST_CATALOG_AUTHORIZATION;
+    assert.ok(catalogAuthorization, 'Configurar MATERIAL_TEST_CATALOG_AUTHORIZATION con un Bearer ADMIN verificable por Catalog.');
     const catalogRequest = async (method, path, data, expectedStatus = 201) => {
       const response = await fetch(`${catalogBase}/catalog${path}`, {
         method,
         headers: {
           Accept: 'application/json',
+          ...(method !== 'GET' ? { Authorization: catalogAuthorization } : {}),
           ...(data ? { 'Content-Type': 'application/json' } : {}),
         },
         ...(data ? { body: JSON.stringify(data) } : {}),
@@ -394,6 +397,7 @@ test(
         await cleanup(`Catalog ${path}`, async () => {
           const response = await fetch(`${catalogBase}/catalog${path}`, {
             method: 'DELETE',
+            headers: { Authorization: catalogAuthorization },
             signal: AbortSignal.timeout(10000),
             redirect: 'error',
           });
