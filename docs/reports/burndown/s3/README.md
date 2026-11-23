@@ -1,7 +1,7 @@
 # Burndown S3
 
 Primer snapshot guardado: 2026-11-06.
-Ultimo snapshot: 2026-11-21.
+Ultimo snapshot: 2026-11-22.
 Corte del 07-11-2026 registrado el 08-11-2026 con las horas actuales de GitHub Projects, por actualización diferida solicitada. No corresponde a una captura histórica tomada el día 7.
 Corte del 09-11-2026 registrado el 10-11-2026 con las horas actuales de GitHub Projects, por actualización diferida solicitada; no es una captura histórica tomada el día 9.
 Corte del 10-11-2026 registrado el 11-11-2026 con las horas actuales de GitHub Projects, por actualización diferida solicitada; no es una captura histórica tomada el día 10.
