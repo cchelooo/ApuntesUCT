@@ -1,3 +1,5 @@
+import { MaterialPreviewController } from './material-preview.controller';
+import { MaterialModeratorGuard } from '../../infrastructure/auth/material-moderator.guard';
 import { CreateMaterialVersion } from '../../application/use-cases/create-material-version';
 import { MaterialVersionController } from '../controllers/material-version.controller';
 import { Module } from '@nestjs/common';
@@ -15,9 +17,15 @@ import { CatalogHttpAdapter } from '../../infrastructure/catalog/catalog-http.ad
 
 @Module({
   imports: [ConfigModule, PrismaModule, StorageModule],
-  controllers: [MaterialsController, MaterialController, MaterialVersionController],
+  controllers: [
+    MaterialPreviewController,
+    MaterialsController,
+    MaterialController,
+    MaterialVersionController,
+  ],
   providers: [
     MaterialsService,
+    MaterialModeratorGuard,
     CreateMaterial,
     CreateMaterialVersion,
     AccessTokenVerifier,

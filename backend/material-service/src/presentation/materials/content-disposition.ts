@@ -44,6 +44,9 @@ export function extendedFilename(filename?: string): string {
  * `Content-Disposition: attachment` que conserva el nombre Unicode original en
  * `filename*` (RFC 5987) y ofrece `filename` como alternativa ASCII segura.
  */
-export function buildContentDisposition(filename?: string): string {
-  return `attachment; filename="${asciiFilename(filename)}"; filename*=UTF-8''${extendedFilename(filename)}`;
+export function buildContentDisposition(
+  filename?: string,
+  disposition: 'attachment' | 'inline' = 'attachment',
+): string {
+  return `${disposition}; filename="${asciiFilename(filename)}"; filename*=UTF-8''${extendedFilename(filename)}`;
 }

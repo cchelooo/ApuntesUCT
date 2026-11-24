@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -17,6 +18,7 @@ import {
 } from '../ports/object-storage.port';
 
 export interface DownloadResult {
+  versionId: string;
   stream: Readable;
   mimeType: string;
   filename: string;
@@ -25,6 +27,8 @@ export interface DownloadResult {
 
 @Injectable()
 export class MaterialsService {
+  private readonly previewAudit = new Logger('MaterialPreviewAudit');
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: ObjectStorage,
@@ -153,8 +157,39 @@ export class MaterialsService {
   }
 
   async download(materialId: string, versionId?: string): Promise<DownloadResult> {
+    return this.openFile(materialId, versionId, 'PUBLISHED', false);
+  }
+
+  async preview(materialId: string, versionId?: string): Promise<DownloadResult> {
+    return this.openFile(materialId, versionId, 'PUBLISHED', true);
+  }
+
+  async previewPending(
+    materialId: string,
+    actor: { id: string; role: string | null },
+    versionId?: string,
+  ): Promise<DownloadResult> {
+    const result = await this.openFile(materialId, versionId, 'PENDING_REVIEW', true);
+    this.previewAudit.log({
+      event: 'material.pending.preview',
+      actorId: actor.id,
+      role: actor.role,
+      materialId,
+      versionId: result.versionId,
+      timestamp: new Date().toISOString(),
+      outcome: 'stream_opened',
+    });
+    return result;
+  }
+
+  private async openFile(
+    materialId: string,
+    versionId: string | undefined,
+    status: 'PUBLISHED' | 'PENDING_REVIEW',
+    pdfOnly: boolean,
+  ): Promise<DownloadResult> {
     const material = await this.prisma.material.findFirst({
-      where: { id: materialId, status: 'PUBLISHED' },
+      where: { id: materialId, status },
       select: { id: true },
     });
     if (!material) {
@@ -167,9 +202,13 @@ export class MaterialsService {
           orderBy: { versionNumber: 'desc' },
         });
     if (!version) throw new NotFoundException('Versión del material no encontrada.');
+    if (pdfOnly && version.mimeType !== 'application/pdf') {
+      throw new NotFoundException('Previsualización PDF no disponible.');
+    }
     try {
       const stream = await this.storage.get(version.storageKey);
       return {
+        versionId: version.id,
         stream,
         mimeType: version.mimeType,
         filename: version.originalFilename,
