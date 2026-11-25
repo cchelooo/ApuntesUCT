@@ -361,14 +361,21 @@ def rows_with_estimates(rows: list[dict], estimates_path: Path) -> list[dict]:
         latest_dates[group] = max(latest_dates.get(group, ""), row["snapshot_date"])
 
     chart_rows = {row_key(row): row for row in rows}
+    captured_keys = set(chart_rows)
     for row in read_snapshot_rows(estimates_path):
         group = row["sprint"], row["scope"], row["key"]
-        # Never extrapolate an estimate or replace the latest actual capture.
-        if (
-            row.get("origen") == "estimacion-retrospectiva"
-            and group in latest_dates
-            and row["snapshot_date"] < latest_dates[group]
-        ):
+        origin = row.get("origen")
+        latest_date = latest_dates.get(group)
+        if latest_date is None:
+            continue
+        snapshot_date = row["snapshot_date"]
+        historical = origin == "estimacion-retrospectiva" and snapshot_date < latest_date
+        # An explicit estimate may overlay an existing cut in charts only.
+        cut_estimate = (
+            origin == "estimacion-de-corte"
+            and row_key(row) in captured_keys
+        )
+        if historical or cut_estimate:
             chart_rows[row_key(row)] = row
     return list(chart_rows.values())
 
@@ -606,7 +613,10 @@ def render_chart(
   <text x="24" y="{top + plot_height / 2}" transform="rotate(-90 24,{top + plot_height / 2})" text-anchor="middle" class="axis">Horas</text>
 </svg>
 """
-    if any(row.get("origen") == "estimacion-retrospectiva" for row in rows):
+    if any(
+        row.get("origen") in {"estimacion-retrospectiva", "estimacion-de-corte"}
+        for row in rows
+    ):
         note = "Incluye una distribución retrospectiva de horas."
         svg = svg.replace("  <style>", f"  <desc>{note}</desc>\n  <style>", 1)
         title_line = f'  <text x="{left}" y="42" class="title">{html.escape(title)}</text>'
