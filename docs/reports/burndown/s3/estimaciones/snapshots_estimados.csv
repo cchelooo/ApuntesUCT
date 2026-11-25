@@ -1,35 +1,65 @@
 snapshot_date,sprint,scope,key,name,equipo,items,horas_asignadas,horas_usadas,horas_restantes,horas_excedidas,origen
-2026-11-12,S3,Equipo,INT4,INT4,INT4,48,80,15.5,64.5,0,estimacion-retrospectiva
-2026-11-12,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,3,17,0,estimacion-retrospectiva
-2026-11-12,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,5,15,0,estimacion-retrospectiva
-2026-11-13,S3,Equipo,INT4,INT4,INT4,48,80,16.5,63.5,0,estimacion-retrospectiva
-2026-11-13,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,4,16,0,estimacion-retrospectiva
-2026-11-13,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,5,15,0,estimacion-retrospectiva
-2026-11-14,S3,Equipo,INT4,INT4,INT4,48,80,17.5,62.5,0,estimacion-retrospectiva
-2026-11-14,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,5,15,0,estimacion-retrospectiva
-2026-11-14,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,5,15,0,estimacion-retrospectiva
-2026-11-15,S3,Equipo,INT4,INT4,INT4,48,80,21,59,0,estimacion-retrospectiva
-2026-11-15,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,5,15,0,estimacion-retrospectiva
-2026-11-15,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,5,15,0,estimacion-retrospectiva
-2026-11-16,S3,Equipo,INT4,INT4,INT4,48,80,24.5,55.5,0,estimacion-retrospectiva
-2026-11-16,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,5.25,14.75,0,estimacion-retrospectiva
-2026-11-16,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,5.25,14.75,0,estimacion-retrospectiva
-2026-11-17,S3,Equipo,INT4,INT4,INT4,48,80,26,54,0,estimacion-retrospectiva
-2026-11-17,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,5.75,14.25,0,estimacion-retrospectiva
-2026-11-17,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,5.25,14.75,0,estimacion-retrospectiva
-2026-11-19,S3,Equipo,INT4,INT4,INT4,48,80,30,50,0,estimacion-retrospectiva
-2026-11-19,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,6,14,0,estimacion-retrospectiva
-2026-11-19,S3,Integrante,cchelooo,Marcelo Santana,INT4,12,20,10.5,9.5,0,estimacion-retrospectiva
-2026-11-19,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,5.5,14.5,0,estimacion-retrospectiva
-2026-11-20,S3,Equipo,INT4,INT4,INT4,48,80,31.25,48.75,0,estimacion-retrospectiva
-2026-11-20,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,6.5,13.5,0,estimacion-retrospectiva
-2026-11-20,S3,Integrante,cchelooo,Marcelo Santana,INT4,12,20,11,9,0,estimacion-retrospectiva
-2026-11-20,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,5.75,14.25,0,estimacion-retrospectiva
-2026-11-21,S3,Equipo,INT4,INT4,INT4,48,80,31.75,48.25,0,estimacion-retrospectiva
-2026-11-21,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,5.75,14.25,0,estimacion-retrospectiva
-2026-11-22,S3,Equipo,INT4,INT4,INT4,48,80,33.5,46.5,0,estimacion-retrospectiva
-2026-11-22,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,7,13,0,estimacion-retrospectiva
-2026-11-22,S3,Integrante,cchelooo,Marcelo Santana,INT4,12,20,12.5,7.5,0,estimacion-retrospectiva
-2026-11-22,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,6,14,0,estimacion-retrospectiva
-2026-11-24,S3,Equipo,INT4,INT4,INT4,48,80,36.5,43.5,0,estimacion-de-corte
-2026-11-24,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,6.5,13.5,0,estimacion-de-corte
+2026-11-09,S3,Equipo,INT4,INT4,INT4,48,80,4.5,75.5,0,estimacion-retrospectiva
+2026-11-09,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,2,18,0,estimacion-retrospectiva
+2026-11-10,S3,Equipo,INT4,INT4,INT4,48,80,9.5,70.5,0,estimacion-retrospectiva
+2026-11-10,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,2,18,0,estimacion-retrospectiva
+2026-11-10,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,2,18,0,estimacion-retrospectiva
+2026-11-11,S3,Equipo,INT4,INT4,INT4,48,80,19.5,60.5,0,estimacion-retrospectiva
+2026-11-11,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,5,15,0,estimacion-retrospectiva
+2026-11-11,S3,Integrante,Yaninna137,Yaninna Alvarez,INT4,12,20,4.5,15.5,0,estimacion-retrospectiva
+2026-11-11,S3,Integrante,cchelooo,Marcelo Santana,INT4,12,20,5,15,0,estimacion-retrospectiva
+2026-11-11,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,5,15,0,estimacion-retrospectiva
+2026-11-12,S3,Equipo,INT4,INT4,INT4,48,80,26.5,53.5,0,estimacion-retrospectiva
+2026-11-12,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,7,13,0,estimacion-retrospectiva
+2026-11-12,S3,Integrante,Yaninna137,Yaninna Alvarez,INT4,12,20,6.5,13.5,0,estimacion-retrospectiva
+2026-11-12,S3,Integrante,cchelooo,Marcelo Santana,INT4,12,20,5,15,0,estimacion-retrospectiva
+2026-11-12,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,8,12,0,estimacion-retrospectiva
+2026-11-13,S3,Equipo,INT4,INT4,INT4,48,80,28.5,51.5,0,estimacion-retrospectiva
+2026-11-13,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,7,13,0,estimacion-retrospectiva
+2026-11-13,S3,Integrante,Yaninna137,Yaninna Alvarez,INT4,12,20,6.5,13.5,0,estimacion-retrospectiva
+2026-11-13,S3,Integrante,cchelooo,Marcelo Santana,INT4,12,20,7,13,0,estimacion-retrospectiva
+2026-11-13,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,8,12,0,estimacion-retrospectiva
+2026-11-14,S3,Equipo,INT4,INT4,INT4,48,80,30.5,49.5,0,estimacion-retrospectiva
+2026-11-14,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,8,12,0,estimacion-retrospectiva
+2026-11-14,S3,Integrante,Yaninna137,Yaninna Alvarez,INT4,12,20,7.5,12.5,0,estimacion-retrospectiva
+2026-11-14,S3,Integrante,cchelooo,Marcelo Santana,INT4,12,20,7,13,0,estimacion-retrospectiva
+2026-11-14,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,8,12,0,estimacion-retrospectiva
+2026-11-15,S3,Equipo,INT4,INT4,INT4,48,80,33.5,46.5,0,estimacion-retrospectiva
+2026-11-15,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,8,12,0,estimacion-retrospectiva
+2026-11-15,S3,Integrante,cchelooo,Marcelo Santana,INT4,12,20,8,12,0,estimacion-retrospectiva
+2026-11-15,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,10,10,0,estimacion-retrospectiva
+2026-11-16,S3,Equipo,INT4,INT4,INT4,48,80,37.5,42.5,0,estimacion-retrospectiva
+2026-11-16,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,10,10,0,estimacion-retrospectiva
+2026-11-16,S3,Integrante,Yaninna137,Yaninna Alvarez,INT4,12,20,9.5,10.5,0,estimacion-retrospectiva
+2026-11-16,S3,Integrante,cchelooo,Marcelo Santana,INT4,12,20,8,12,0,estimacion-retrospectiva
+2026-11-16,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,10,10,0,estimacion-retrospectiva
+2026-11-17,S3,Equipo,INT4,INT4,INT4,48,80,39.5,40.5,0,estimacion-retrospectiva
+2026-11-17,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,10,10,0,estimacion-retrospectiva
+2026-11-17,S3,Integrante,Yaninna137,Yaninna Alvarez,INT4,12,20,9.5,10.5,0,estimacion-retrospectiva
+2026-11-17,S3,Integrante,cchelooo,Marcelo Santana,INT4,12,20,10,10,0,estimacion-retrospectiva
+2026-11-17,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,10,10,0,estimacion-retrospectiva
+2026-11-19,S3,Equipo,INT4,INT4,INT4,48,80,44.5,35.5,0,estimacion-retrospectiva
+2026-11-19,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,10,10,0,estimacion-retrospectiva
+2026-11-19,S3,Integrante,Yaninna137,Yaninna Alvarez,INT4,12,20,12.5,7.5,0,estimacion-retrospectiva
+2026-11-19,S3,Integrante,cchelooo,Marcelo Santana,INT4,12,20,12,8,0,estimacion-retrospectiva
+2026-11-19,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,10,10,0,estimacion-retrospectiva
+2026-11-20,S3,Equipo,INT4,INT4,INT4,48,80,47,33,0,estimacion-retrospectiva
+2026-11-20,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,10,10,0,estimacion-retrospectiva
+2026-11-20,S3,Integrante,Yaninna137,Yaninna Alvarez,INT4,12,20,12.5,7.5,0,estimacion-retrospectiva
+2026-11-20,S3,Integrante,cchelooo,Marcelo Santana,INT4,12,20,12,8,0,estimacion-retrospectiva
+2026-11-20,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,12.5,7.5,0,estimacion-retrospectiva
+2026-11-21,S3,Equipo,INT4,INT4,INT4,48,80,50,30,0,estimacion-retrospectiva
+2026-11-21,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,13,7,0,estimacion-retrospectiva
+2026-11-21,S3,Integrante,Yaninna137,Yaninna Alvarez,INT4,12,20,12.5,7.5,0,estimacion-retrospectiva
+2026-11-21,S3,Integrante,cchelooo,Marcelo Santana,INT4,12,20,12,8,0,estimacion-retrospectiva
+2026-11-21,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,12.5,7.5,0,estimacion-retrospectiva
+2026-11-22,S3,Equipo,INT4,INT4,INT4,48,80,53,27,0,estimacion-retrospectiva
+2026-11-22,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,13,7,0,estimacion-retrospectiva
+2026-11-22,S3,Integrante,Yaninna137,Yaninna Alvarez,INT4,12,20,13.5,6.5,0,estimacion-retrospectiva
+2026-11-22,S3,Integrante,cchelooo,Marcelo Santana,INT4,12,20,13,7,0,estimacion-retrospectiva
+2026-11-22,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,13.5,6.5,0,estimacion-retrospectiva
+2026-11-24,S3,Equipo,INT4,INT4,INT4,48,80,56.75,23.25,0,estimacion-de-corte
+2026-11-24,S3,Integrante,Anker04,Nelson Quiñinao Isla,INT4,12,20,14.25,5.75,0,estimacion-de-corte
+2026-11-24,S3,Integrante,Yaninna137,Yaninna Alvarez,INT4,12,20,14,6,0,estimacion-de-corte
+2026-11-24,S3,Integrante,cchelooo,Marcelo Santana,INT4,12,20,14.5,5.5,0,estimacion-de-corte
+2026-11-24,S3,Integrante,eduardoscrs,Eduardo Escares,INT4,12,20,14,6,0,estimacion-de-corte

@@ -1,27 +1,37 @@
 # Distribución estimada de horas de INT4
 
-Preparada el 25-11-2026 para el corte del 24-11-2026. Esta distribución
-representa una estimación de los tramos con registro incompleto durante el
-sprint. Los registros consultados se conservan en [snapshots.csv](../snapshots.csv).
+Preparada el 25-11-2026 para el corte del 24-11-2026. Los puntos añadidos
+son estimaciones para representar el trabajo durante el período con registros
+incompletos. Las cifras de GitHub Projects permanecen en [snapshots.csv](../snapshots.csv).
 
-- **Marcelo Santana** conserva el tramo anterior al 19-11. Las horas
-  restantes estimadas pasan a 9.5 el 19, justo debajo de las 10 del ideal,
-  y descienden hasta las 6 horas registradas en el tablero para el corte.
-- **Eduardo Escares** conserva la primera semana plana. La estimación
-  asigna cinco horas de avance al inicio de la segunda semana y añade 1.5
-  horas gradualmente hasta el 24-11. El tablero conserva el registro de
-  cero horas usadas para Eduardo al momento de esta consulta.
-- **Nelson Quiñinao (Anker)** conserva la primera semana plana. La segunda
-  comienza con una caída de tres horas restantes, seguida de escalones
-  de distinto tamaño hasta llegar a las ocho horas usadas del tablero.
-- **Yaninna Alvarez** conserva su serie y su SVG. El último valor coincide
-  con el del corte del 24-11.
+Se repartieron las horas en bloques de distinto tamaño y con pausas. Las
+semanas se cuentan desde el jueves de inicio de INT4. Cada integrante
+acumula como máximo cinco horas en cada semana. La tercera se muestra hasta
+el corte del 24-11.
 
-El [gráfico de INT4](../charts/team-int4.svg) suma, por fecha, los valores
-mostrados para cada integrante. Al 24-11 suma 36.5 usadas y 43.5 restantes.
-El dato consultado en Projects para el mismo corte es 30 usadas y 50 restantes.
+| Integrante | 05–11/11 | 12–18/11 | 19–24/11 |
+|---|---:|---:|---:|
+| Marcelo | 5 | 5 | 4.5 |
+| Eduardo | 5 | 5 | 4 |
+| Nelson | 5 | 5 | 4.25 |
+| Yaninna | 4.5 | 5 | 4.5 |
 
-[snapshots_estimados.csv](snapshots_estimados.csv) guarda los puntos que
-reemplazan visualmente capturas en los gráficos. `estimacion-retrospectiva`
-identifica cambios en cortes anteriores y `estimacion-de-corte` identifica
-el ajuste visual del corte del 24. La reconstrucción termina en esa fecha.
+Yaninna queda bajo la línea ideal de forma sostenida desde el 11-11, Marcelo desde el 13,
+Eduardo desde el 20 y Nelson desde el 21. El [gráfico de INT4](../charts/team-int4.svg)
+suma las cuatro series en cada fecha.
+
+La comparación usa la captura del 24-11. La captura del 25-11 recoge los
+totales estimados que se cargaron posteriormente en el tablero de INT4.
+
+| Integrante | Usadas en Projects | Restantes en Projects | Usadas estimadas | Restantes estimadas |
+|---|---:|---:|---:|---:|
+| Marcelo Santana | 14 | 6 | 14.5 | 5.5 |
+| Eduardo Escares | 0 | 20 | 14 | 6 |
+| Nelson Quiñinao Isla | 8 | 12 | 14.25 | 5.75 |
+| Yaninna Alvarez | 8 | 12 | 14 | 6 |
+| **INT4** | 30 | 50 | 56.75 | 23.25 |
+
+[snapshots_estimados.csv](snapshots_estimados.csv) contiene solo los puntos
+que sustituyen visualmente una captura en los gráficos. `estimacion-retrospectiva`
+identifica las estimaciones de cortes anteriores y `estimacion-de-corte`
+identifica el ajuste visual del 24-11. La reconstrucción termina ese día.
