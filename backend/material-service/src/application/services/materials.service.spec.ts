@@ -182,6 +182,7 @@ describe('MaterialsService', () => {
       const stream = Readable.from([Buffer.from('pdf')]);
       storage.get.mockResolvedValue(stream);
       await expect(service.download('material', versionId)).resolves.toEqual({
+        versionId: 'version-2',
         stream,
         mimeType: 'application/pdf',
         filename: 'apuntes.pdf',

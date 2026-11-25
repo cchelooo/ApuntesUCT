@@ -88,3 +88,19 @@ GET {{materialBaseUrl}}/materials/{{materialId}}/download?versionId={{versionId}
 
 ### Versión inexistente: 404 (o de otro material)
 GET {{materialBaseUrl}}/materials/{{materialId}}/download?versionId=00000000-0000-4000-8000-000000000000
+
+### Previsualizar PDF publicado: application/pdf y Content-Disposition: inline
+# No expone URLs de MinIO. Material no publicado, archivo no PDF o ausente: 404.
+GET {{materialBaseUrl}}/materials/{{materialId}}/preview
+
+### Previsualizar una versión PDF del historial publicado
+GET {{materialBaseUrl}}/materials/{{materialId}}/preview?versionId={{versionId}}
+
+### Previsualización administrativa de un material PENDING_REVIEW
+# JWT firmado con rol MODERATOR o ADMIN. Sin JWT o con JWT inválido: 401; sin rol: 403.
+# Registra material.pending.preview en MaterialPreviewAudit al abrir el stream:
+# actorId, role, materialId, versionId resuelto, timestamp y outcome=stream_opened.
+# No registra tokens ni claves de almacenamiento. Cache-Control: no-store.
+@moderatorAccessToken = reemplazar-por-jwt
+GET {{materialBaseUrl}}/materials/admin/{{materialId}}/preview
+Authorization: Bearer {{moderatorAccessToken}}
