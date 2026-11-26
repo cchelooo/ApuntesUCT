@@ -12,10 +12,15 @@ const testGatewayUrl = 'https://gateway.example.test/api/v1';
 /// Reemplaza únicamente el transporte: conserva Dio, sus interceptores y los
 /// repositorios/providers de producción. No abre conexiones de red.
 class GatewayTestTransport implements HttpClientAdapter {
-  GatewayTestTransport(this.respond, {this.allowedMethods = const {'GET'}});
+  GatewayTestTransport(
+    this.respond, {
+    this.allowedMethods = const {'GET'},
+    this.expectedAuthorization = 'Bearer integration-test-session',
+  });
 
   final FutureOr<ResponseBody> Function(RequestOptions) respond;
   final Set<String> allowedMethods;
+  final String expectedAuthorization;
   final requests = <RequestOptions>[];
   final bodies = <List<int>>[];
 
@@ -29,7 +34,7 @@ class GatewayTestTransport implements HttpClientAdapter {
     expect(allowedMethods, contains(options.method));
     if (options.method == 'GET') expect(options.data, isNull);
     expect(options.uri.origin, 'https://gateway.example.test');
-    expect(options.headers['Authorization'], 'Bearer integration-test-session');
+    expect(options.headers['Authorization'], expectedAuthorization);
     bodies.add(
       requestStream == null
           ? const []
