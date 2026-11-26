@@ -12,6 +12,7 @@ import '../providers/material_report_provider.dart';
 /// - Puede conectarse automáticamente a [materialReportProvider] con el `materialId` real o
 ///   invocar un callback explícito [onSubmit] cuando se inyecta en pruebas unitarias aisladas.
 /// - Conserva la entrada del usuario ante rechazos o errores de red sin simular reportes locales.
+/// - Si un `401` invalida la sesión, conserva lo escrito y exige reautenticación antes de permitir reenviar.
 class MaterialReportForm extends ConsumerStatefulWidget {
   final String materialId;
   final String materialTitle;
@@ -45,8 +46,8 @@ class _MaterialReportFormState extends ConsumerState<MaterialReportForm> {
     super.dispose();
   }
 
-  Future<void> _submit(bool effectiveSubmitting) async {
-    if (effectiveSubmitting) return;
+  Future<void> _submit(bool effectiveSubmitting, bool requiresReauth) async {
+    if (effectiveSubmitting || requiresReauth) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     final motive = _selectedMotive!;
@@ -80,6 +81,8 @@ class _MaterialReportFormState extends ConsumerState<MaterialReportForm> {
     final effectiveSubmitting =
         widget.isSubmitting || providerState.isSubmitting;
     final effectiveError = widget.errorMessage ?? providerState.errorMessage;
+    final requiresReauth =
+        widget.onSubmit == null && providerState.requiresReauthentication;
 
     return Form(
       key: _formKey,
@@ -162,16 +165,20 @@ class _MaterialReportFormState extends ConsumerState<MaterialReportForm> {
           const SizedBox(height: 24),
 
           ElevatedButton(
-            onPressed: effectiveSubmitting
+            onPressed: (effectiveSubmitting || requiresReauth)
                 ? null
-                : () => _submit(effectiveSubmitting),
+                : () => _submit(effectiveSubmitting, requiresReauth),
             child: effectiveSubmitting
                 ? const SizedBox(
                     height: 20,
                     width: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Enviar Reporte'),
+                : Text(
+                    requiresReauth
+                        ? 'Inicia sesión para enviar'
+                        : 'Enviar Reporte',
+                  ),
           ),
         ],
       ),
