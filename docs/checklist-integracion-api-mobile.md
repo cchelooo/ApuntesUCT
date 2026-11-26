@@ -55,11 +55,12 @@ La aplicación Mobile **no consume los microservicios directamente**, sino exclu
 | **Auth** | `POST` | `/api/v1/auth/register` | ⚪ **Pendiente** | `RegisterScreen`, `register_navigation_test.dart` | Devuelve `404 Not Found` en Gateway; backend no expone registro aún. |
 | **Auth** | `GET` | `/api/v1/auth/me` | ⚪ **Pendiente** | `profile_screen_test.dart`, `profile_screen.dart` | No publicado en Swagger; Mobile preserva datos del usuario autenticado en login. |
 | **Auth** | `POST` | `/api/v1/auth/logout` | ⚪ **Pendiente** | `home_screen_test.dart`, `mock_auth_repository.dart` | Mobile limpia el estado de usuario en memoria (`AuthStateNotifier` en Riverpod); aún no implementa persistencia ni almacenamiento seguro de tokens. |
+| **Catalog** | `GET` | `/api/v1/catalog` | 🟢 **Integrado** | `catalog_screen_test.dart`, `catalog_repository_test.dart`, `catalog_gateway_provider_test.dart` | Árbol jerárquico general consumido por `CatalogRepository` y validado en Android contra Gateway. |
 | **Catalog** | `GET` | `/api/v1/catalog/universities` | 🟡 **Probado con Mock** | `academic_filter_sheet_test.dart`, `academic_hierarchy_provider_test.dart` | Backend implementó #221 en `main`. Mobile maquetó selector con validación de fallback. |
 | **Catalog** | `GET` | `/api/v1/catalog/careers` | 🟡 **Probado con Mock** | `academic_filter_sheet_test.dart` (cascada aislada por `universityId`) | Cascada dependiente del padre; validado con fixtures idénticos al contrato. |
 | **Catalog** | `GET` | `/api/v1/catalog/subjects` | 🟡 **Probado con Mock** | `academic_filter_sheet_test.dart` (cascada por `careerId`) | Cascada dependiente del padre; validado con fixtures idénticos al contrato. |
 | **Catalog** | `GET` | `/api/v1/catalog/professors` | 🟡 **Probado con Mock** | `academic_filter_sheet_test.dart` (profesores por `subjectId`) | Cascada dependiente del padre; validado con fixtures idénticos al contrato. |
-| **Catalog** | `GET` | `/api/v1/catalog/filter` | 🟡 **Probado con Mock** | `catalog_screen_test.dart`, `catalog_repository_test.dart` | Endpoint de consulta jerárquica combinada. |
+| **Catalog** | `GET` | `/api/v1/catalog/filter` | ⚪ **Pendiente** | — | No consumido por Mobile; la aplicación consulta `/api/v1/catalog` para el árbol general y `/api/v1/search` para búsqueda filtrada. |
 | **Material** | `GET` | `/api/v1/materials` | 🟢 **Integrado** | `materials_discovery_provider.dart`, `gateway_discovery_ui_test.dart` | Listado paginado general con `page` y `pageSize`. |
 | **Material** | `POST` | `/api/v1/materials` | 🟢 **Integrado** | `material_upload_screen_test.dart`, `material_upload_live_test.dart` | Subida multipart hasta 15 MB (PDF, Word, PPT) o enlace `LINK`. Retorna `PENDING_REVIEW`. |
 | **Material** | `GET` | `/api/v1/materials/:id` | 🟢 **Integrado** | `material_detail_dio_test.dart`, `material_detail_refresh_test.dart` | Detalle estructurado con historial de versiones, metadatos y referencias académicas. |
@@ -77,14 +78,14 @@ La aplicación Mobile **no consume los microservicios directamente**, sino exclu
 ## 3. Resumen Cuantitativo del Cierre de Sprint 2
 
 ```
-Total de endpoints evaluados: 20
-├── 🟢 Integrados:            7  (35.0%)
-├── 🟡 Probados con Mock:     5  (25.0%)
-├── 🔴 Bloqueados (Backend):  5  (25.0%)
-└── ⚪ Pendientes / Futuros:  3  (15.0%)
+Total de endpoints evaluados: 21
+├── 🟢 Integrados:            8  (38.1%)
+├── 🟡 Probados con Mock:     4  (19.0%)
+├── 🔴 Bloqueados (Backend):  5  (23.8%)
+└── ⚪ Pendientes / Futuros:  4  (19.0%)
 ```
 
-- **Cobertura de flujos esenciales**: Las rutas principales del flujo del estudiante (Login, Exploración, Subida, Búsqueda jerárquica, Detalle, Descarga y Nueva versión) fueron validadas contra Gateway y mediante mocks contractuales, alcanzando 7 endpoints integrados de forma funcional y 5 validados con mocks según disponibilidad de backend.
+- **Cobertura de flujos esenciales**: Las rutas principales del flujo del estudiante (Login, Catálogo general `/api/v1/catalog`, Exploración, Subida, Búsqueda jerárquica, Detalle, Descarga y Nueva versión) fueron validadas contra Gateway y mediante mocks contractuales, alcanzando 8 endpoints integrados de forma funcional y 4 selectores jerárquicos validados con mocks según disponibilidad de backend.
 - **Rutas bloqueadas**: Se limitan estrictamente al módulo de Quality (calificaciones, reportes, favoritos) y previsualización embebida, las cuales corresponden por diseño a etapas posteriores del proyecto.
 
 ---
@@ -134,10 +135,15 @@ Total de endpoints evaluados: 20
   - Evidencia: `mobile/test/features/materials/data/dio_search_repository_test.dart`, `mobile/test/features/materials/presentation/material_discovery_search_page_test.dart` y `mobile/test/features/materials/presentation/material_search_provider_test.dart`.
 
 ### 4.4. Catalog Service (`/api/v1/catalog`)
-- **Selectores Académicos**:
+- **Catálogo Jerárquico General (`GET /catalog`)**:
+  - `CatalogRepository.getCatalog` consume `GET /api/v1/catalog` a través del Gateway, aplanando el árbol `Universidad -> Carreras -> Asignaturas` para su visualización en `CatalogScreen` y validación en Android.
+  - Evidencia: `mobile/test/features/catalog/catalog_screen_test.dart`, `mobile/test/features/catalog/data/catalog_repository_test.dart` y `mobile/test/features/catalog/data/catalog_gateway_provider_test.dart`.
+- **Selectores Académicos (`/universities`, `/careers`, `/subjects`, `/professors`)**:
   - Mobile maquetó el modal interactivo `AcademicFilterSheet` que implementa la cascada dependiente: Universidad -> Carrera -> Asignatura -> Profesor -> Año -> Tipo.
   - El reseteo de niveles superiores invalida y limpia automáticamente las selecciones hijas.
   - Evidencia: `mobile/test/features/catalog/presentation/academic_filter_sheet_test.dart` y `mobile/test/features/catalog/presentation/academic_hierarchy_provider_test.dart`.
+- **Filtrado específico de catálogo (`GET /catalog/filter`)**:
+  - No es consumido por Mobile; el filtrado de materiales utiliza el endpoint unificado `GET /api/v1/search`.
 
 ### 4.5. Quality Service (`/api/v1/quality`)
 - **Estado**: Totalmente bloqueado. El Gateway no enruta ninguna ruta de `/api/v1/quality` y el microservicio correspondiente no fue implementado por el equipo de backend para el Sprint 2.
