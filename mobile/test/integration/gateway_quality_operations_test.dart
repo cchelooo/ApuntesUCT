@@ -14,6 +14,7 @@ import '../helpers/auth_session_fixture.dart';
 import '../helpers/gateway_test_transport.dart';
 
 const _materialId = '11111111-2222-4333-8444-555555555555';
+const _requestId = '22222222-2222-4222-8222-222222222222';
 const _timestamp = '2026-11-26T12:00:00Z';
 
 void main() {
@@ -126,6 +127,119 @@ void main() {
       expect(favorite.id, favoriteId);
       expect(favorite.materialId, _materialId);
       expect(favorite.available, isFalse);
+    });
+  });
+
+  group('Fallos de Quality mediante Gateway', () {
+    for (final (status, code, message) in [
+      (401, 'UNAUTHORIZED', 'La sesión ya no es válida.'),
+      (403, 'FORBIDDEN', 'Se requiere rol de moderador.'),
+    ]) {
+      test(
+        'propaga $status en moderación y aplica el efecto de sesión',
+        () async {
+          final transport = useTransport('GET', (_) {
+            return gatewayJson({
+              'statusCode': status,
+              'code': code,
+              'message': message,
+              'requestId': _requestId,
+            }, status: status);
+          });
+          final repo = container.read(qualityRepositoryProvider);
+
+          await expectLater(
+            repo.listModerationMaterials(),
+            throwsA(
+              isA<QualityApiException>()
+                  .having((error) => error.statusCode, 'statusCode', status)
+                  .having((error) => error.errorCode, 'errorCode', code)
+                  .having((error) => error.message, 'message', message)
+                  .having((error) => error.requestId, 'requestId', _requestId),
+            ),
+          );
+
+          expect(
+            transport.requests.single.uri.path,
+            '/api/v1/quality/moderation/materials',
+          );
+          if (status == 401) {
+            expect(session.current, isNull);
+            expect(await storage.read(), isNull);
+          } else {
+            expect(session.current, same(student));
+            expect(await storage.read(), student.encode());
+          }
+        },
+      );
+    }
+
+    test('propaga 502 y conserva la clave al reintentar un reporte', () async {
+      const reportId = '55555555-5555-4555-8555-555555555555';
+      const details = 'El enlace no abre';
+      var replayAvailable = false;
+      final transport = useTransport('POST', (_) {
+        if (!replayAvailable) {
+          return gatewayJson({
+            'statusCode': 502,
+            'code': 'DEPENDENCY_INVALID_RESPONSE',
+            'message': 'Quality no está disponible temporalmente.',
+            'requestId': _requestId,
+          }, status: 502);
+        }
+        return gatewayJson({
+          'id': reportId,
+          'materialId': _materialId,
+          'userId': student.user.id,
+          'reason': 'BROKEN_RESOURCE',
+          'details': details,
+          'status': 'OPEN',
+          'resolutionNote': null,
+          'createdAt': _timestamp,
+          'updatedAt': _timestamp,
+        }, status: 200);
+      });
+      final repo = container.read(qualityRepositoryProvider);
+      const report = ReportCreate(
+        reason: ReportReason.brokenResource,
+        details: details,
+      );
+
+      await expectLater(
+        repo.createReport(_materialId, report),
+        throwsA(
+          isA<QualityApiException>()
+              .having((error) => error.statusCode, 'statusCode', 502)
+              .having(
+                (error) => error.message,
+                'message',
+                'Quality no está disponible temporalmente.',
+              ),
+        ),
+      );
+      expect(
+        transport.requests.single.uri.toString(),
+        '$testGatewayUrl/quality/materials/$_materialId/reports',
+      );
+      final key = transport.requests.single.headers['Idempotency-Key'];
+      expect(key, isA<String>().having((value) => value.length, 'length', 36));
+      expect(session.current, same(student));
+
+      // El Gateway simula haber perdido la primera respuesta y entrega el
+      // reporte original al recibir de nuevo la misma clave y el mismo cuerpo.
+      replayAvailable = true;
+      final confirmed = await repo.createReport(_materialId, report);
+
+      expect(transport.requests, hasLength(2));
+      expect(transport.requests.last.uri, transport.requests.first.uri);
+      expect(transport.requests.last.headers['Idempotency-Key'], key);
+      expect(jsonDecode(utf8.decode(transport.bodies.first)), {
+        'reason': 'BROKEN_RESOURCE',
+        'details': details,
+      });
+      expect(transport.bodies.last, transport.bodies.first);
+      expect(confirmed.id, reportId);
+      expect(confirmed.status, ReportStatus.open);
     });
   });
 }
