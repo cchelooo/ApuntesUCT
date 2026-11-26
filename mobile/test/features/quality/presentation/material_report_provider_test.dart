@@ -274,5 +274,64 @@ void main() {
         await container.read(sessionControllerProvider).clear();
       },
     );
+
+    testWidgets(
+      'Regresión 401: Cuando un 401 limpia la sesión, el formulario conserva los datos y muestra que debe iniciar sesión nuevamente',
+      (WidgetTester tester) async {
+        final adapter = _ReportGatewayAdapter({
+          'statusCode': 401,
+          'code': 'UNAUTHENTICATED',
+          'message': 'Token expirado o revocado.',
+          'requestId': '11111111-1111-4111-8111-111111111199',
+        }, statusCode: 401);
+
+        final container = await createAuthenticatedContainer(adapter);
+        expect(container.read(sessionControllerProvider).current, isNotNull);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const MaterialApp(
+              home: Scaffold(
+                body: MaterialReportForm(
+                  materialId: materialUuid,
+                  materialTitle: 'Apuntes de Cálculo',
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.byType(DropdownButtonFormField<ReportMotive>));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Recurso dañado o enlace roto').last);
+        await tester.pumpAndSettle();
+
+        await tester.enterText(
+          find.byType(TextFormField),
+          'El PDF no descarga completo.',
+        );
+        await tester.tap(find.text('Enviar Reporte'));
+        await tester.pumpAndSettle();
+
+        // 1. SessionInterceptor limpió la sesión tras el 401
+        expect(container.read(sessionControllerProvider).current, isNull);
+
+        // 2. MaterialReportNotifier NO descartó el error 401 al limpiarse la sesión
+        final state = container.read(materialReportProvider(materialUuid));
+        expect(state.hasError, isTrue);
+        expect(state.statusCode, 401);
+        expect(state.errorCode, 'UNAUTHENTICATED');
+
+        // 3. El formulario explica claramente que debe iniciar sesión nuevamente y conserva lo escrito
+        expect(
+          find.text(
+            'Tu sesión expiró o no es válida. Debes iniciar sesión nuevamente para enviar el reporte.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('El PDF no descarga completo.'), findsOneWidget);
+      },
+    );
   });
 }
