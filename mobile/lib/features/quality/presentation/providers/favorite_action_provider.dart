@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/errors/api_exception.dart';
 import '../../../../core/session/session_revision.dart';
+import '../../../../models/user_model.dart';
+import '../../../auth/data/mock_auth_repository.dart' show authStateProvider;
 import '../../../materials/domain/models/material_summary.dart';
 import '../../domain/models/favorite_model.dart';
 import '../../domain/models/quality_error.dart';
@@ -121,10 +123,10 @@ String favoriteActionErrorMessage(Object error, {required bool adding}) {
 /// Notifier que coordina las acciones de agregar y quitar favoritos para un [materialId] (#418).
 ///
 /// - Utiliza `qualityRepositoryProvider` (`PUT / DELETE /quality/materials/{id}/favorite`) mediante Gateway.
-/// - Sincroniza el estado confirmado entre tarjeta, detalle y listado (`favoritesProvider`).
+/// - Sincroniza el estado confirmado entre tarjeta, detalle y listado (`favoritesProvider`)
+///   mediante `ref.listen` sin cancelar ni reconstruir peticiones pendientes de otros materiales.
 /// - Conserva el estado confirmado previo si la petición falla y habilita `retry()`.
-/// - Aísla los favoritos por sesión activa (`sessionRevisionProvider` y `resolveActiveQualityUserId`),
-///   evitando mostrar favoritos de una sesión en otra.
+/// - Aísla los favoritos por sesión activa, evitando mostrar favoritos de una sesión en otra.
 class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
   FavoriteActionNotifier(this.materialId);
 
@@ -133,12 +135,54 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
 
   @override
   FavoriteActionState build() {
-    ref.watch(sessionRevisionProvider);
-    final activeUserId = resolveActiveQualityUserId(ref);
-    final favoritesListState = ref.watch(favoritesProvider);
-
-    _cancelToken?.cancel();
     ref.onDispose(() => _cancelToken?.cancel());
+
+    // Escuchar cambios en el listado general sin reconstruir ni cancelar peticiones en vuelo de este material
+    ref.listen<FavoritesState>(favoritesProvider, (previous, next) {
+      if (state.isPending) {
+        // Si la sesión se cerró por completo mientras había una operación en vuelo
+        // de otro origen, se resolverá al terminar o cambiar de usuario; no cancelar
+        // cuando solo se confirmó otro material A mientras B sigue en vuelo.
+        return;
+      }
+
+      if (next.activeUserId == null) {
+        state = const FavoriteActionState(
+          isFavorite: false,
+          activeUserId: null,
+        );
+        return;
+      }
+
+      // Si el listado está cargando (p. ej. durante refresh()), conservar la marca confirmada actual
+      if (next.isLoading) {
+        return;
+      }
+
+      if (next.status == FavoritesStatus.data ||
+          next.status == FavoritesStatus.empty) {
+        final confirmedInList = next.containsMaterial(materialId);
+        if (state.isFavorite != confirmedInList ||
+            state.activeUserId != next.activeUserId) {
+          state = state.copyWith(
+            isFavorite: confirmedInList,
+            activeUserId: next.activeUserId,
+            clearFavorite: !confirmedInList,
+          );
+        }
+      }
+    });
+
+    // Escuchar cambios de sesión para aislar cuentas sin interrumpir otros materiales
+    ref.listen<int>(sessionRevisionProvider, (previous, next) {
+      _handleSessionChange();
+    });
+    ref.listen<AsyncValue<UserModel?>>(authStateProvider, (previous, next) {
+      _handleSessionChange();
+    });
+
+    final activeUserId = readActiveQualityUserId(ref);
+    final favoritesListState = ref.read(favoritesProvider);
 
     if (activeUserId == null) {
       return const FavoriteActionState(
@@ -157,11 +201,50 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
     );
   }
 
+  void _handleSessionChange() {
+    final currentUserId = readActiveQualityUserId(ref);
+    if (currentUserId == state.activeUserId) return;
+
+    if (state.isPending) {
+      // Si cambió a otro usuario distinto mientras estaba en vuelo, cancelar y limpiar
+      if (currentUserId != null && currentUserId != state.activeUserId) {
+        _cancelToken?.cancel();
+        _cancelToken = null;
+        final listState = ref.read(favoritesProvider);
+        state = FavoriteActionState(
+          isFavorite:
+              listState.activeUserId == currentUserId &&
+              listState.containsMaterial(materialId),
+          activeUserId: currentUserId,
+        );
+      }
+      return;
+    }
+
+    _cancelToken?.cancel();
+    _cancelToken = null;
+    if (currentUserId == null) {
+      state = const FavoriteActionState(
+        isFavorite: false,
+        activeUserId: null,
+      );
+      return;
+    }
+
+    final listState = ref.read(favoritesProvider);
+    state = FavoriteActionState(
+      isFavorite:
+          listState.activeUserId == currentUserId &&
+          listState.containsMaterial(materialId),
+      activeUserId: currentUserId,
+    );
+  }
+
   /// Guarda el material en los favoritos del usuario autenticado activo (`PUT /quality/materials/:id/favorite`).
   Future<bool> addFavorite({MaterialSummary? summary}) async {
     if (state.isPending) return false;
 
-    final userId = resolveActiveQualityUserId(ref);
+    final userId = readActiveQualityUserId(ref);
     if (userId == null) {
       state = state.copyWith(
         isFavorite: false,
@@ -197,18 +280,17 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
         cancelToken: cancelToken,
       );
 
-      if (!ref.mounted ||
-          ref.read(sessionRevisionProvider) != revision ||
-          resolveActiveQualityUserId(ref) != userId) {
+      if (!ref.mounted) return false;
+      final currentUserId = readActiveQualityUserId(ref);
+      if (ref.read(sessionRevisionProvider) != revision ||
+          currentUserId != userId) {
+        state = FavoriteActionState(
+          isFavorite: false,
+          activeUserId: currentUserId,
+        );
         return false;
       }
 
-      // Sincroniza el listado personal para mantener coherencia con tarjeta y detalle
-      ref
-          .read(favoritesProvider.notifier)
-          .syncFavoriteAdded(confirmed, summary: summary ?? state.lastSummary);
-
-      if (!ref.mounted) return false;
       state = FavoriteActionState(
         isFavorite: true,
         isPending: false,
@@ -216,34 +298,54 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
         lastSummary: summary ?? state.lastSummary,
         activeUserId: userId,
       );
+
+      // Sincroniza el listado personal para mantener coherencia con tarjeta y detalle
+      ref
+          .read(favoritesProvider.notifier)
+          .syncFavoriteAdded(confirmed, summary: summary ?? state.lastSummary);
+
       return true;
     } catch (error) {
-      if (!ref.mounted ||
-          ref.read(sessionRevisionProvider) != revision ||
-          resolveActiveQualityUserId(ref) != userId) {
-        return false;
-      }
+      if (!ref.mounted) return false;
 
       QualityApiException? qualityErr;
       ApiException? apiErr;
       if (error is QualityApiException) {
         qualityErr = error;
         apiErr = error;
+      } else if (error is DioException && error.error is QualityApiException) {
+        qualityErr = error.error as QualityApiException;
+        apiErr = qualityErr;
+      } else if (error is DioException && error.error is ApiException) {
+        apiErr = error.error as ApiException;
       } else if (error is ApiException) {
         apiErr = error;
       }
 
+      final currentUserId = readActiveQualityUserId(ref);
+      final isUnauthorized = apiErr?.statusCode == 401;
+      if (!isUnauthorized &&
+          (ref.read(sessionRevisionProvider) != revision ||
+              currentUserId != userId)) {
+        state = FavoriteActionState(
+          isFavorite: false,
+          activeUserId: currentUserId,
+        );
+        return false;
+      }
+
       // Conserva el estado confirmado previo sin simular que se agregó
       state = FavoriteActionState(
-        isFavorite: previousConfirmed,
+        isFavorite: isUnauthorized ? false : previousConfirmed,
         isPending: false,
-        favorite: previousFavorite,
+        favorite: isUnauthorized ? null : previousFavorite,
         errorMessage: favoriteActionErrorMessage(error, adding: true),
         statusCode: apiErr?.statusCode,
-        errorCode: qualityErr?.errorCode,
+        errorCode:
+            qualityErr?.errorCode ?? (isUnauthorized ? 'UNAUTHENTICATED' : null),
         lastFailedTargetState: true,
         lastSummary: summary ?? state.lastSummary,
-        activeUserId: userId,
+        activeUserId: currentUserId,
       );
       return false;
     } finally {
@@ -257,7 +359,7 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
   Future<bool> removeFavorite() async {
     if (state.isPending) return false;
 
-    final userId = resolveActiveQualityUserId(ref);
+    final userId = readActiveQualityUserId(ref);
     if (userId == null) {
       state = state.copyWith(
         isFavorite: false,
@@ -291,16 +393,17 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
         cancelToken: cancelToken,
       );
 
-      if (!ref.mounted ||
-          ref.read(sessionRevisionProvider) != revision ||
-          resolveActiveQualityUserId(ref) != userId) {
+      if (!ref.mounted) return false;
+      final currentUserId = readActiveQualityUserId(ref);
+      if (ref.read(sessionRevisionProvider) != revision ||
+          currentUserId != userId) {
+        state = FavoriteActionState(
+          isFavorite: false,
+          activeUserId: currentUserId,
+        );
         return false;
       }
 
-      // Sincroniza el listado personal para mantener coherencia con tarjeta y detalle
-      ref.read(favoritesProvider.notifier).syncFavoriteRemoved(materialId);
-
-      if (!ref.mounted) return false;
       state = FavoriteActionState(
         isFavorite: false,
         isPending: false,
@@ -308,34 +411,52 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
         lastSummary: state.lastSummary,
         activeUserId: userId,
       );
+
+      // Sincroniza el listado personal para mantener coherencia con tarjeta y detalle
+      ref.read(favoritesProvider.notifier).syncFavoriteRemoved(materialId);
+
       return true;
     } catch (error) {
-      if (!ref.mounted ||
-          ref.read(sessionRevisionProvider) != revision ||
-          resolveActiveQualityUserId(ref) != userId) {
-        return false;
-      }
+      if (!ref.mounted) return false;
 
       QualityApiException? qualityErr;
       ApiException? apiErr;
       if (error is QualityApiException) {
         qualityErr = error;
         apiErr = error;
+      } else if (error is DioException && error.error is QualityApiException) {
+        qualityErr = error.error as QualityApiException;
+        apiErr = qualityErr;
+      } else if (error is DioException && error.error is ApiException) {
+        apiErr = error.error as ApiException;
       } else if (error is ApiException) {
         apiErr = error;
       }
 
+      final currentUserId = readActiveQualityUserId(ref);
+      final isUnauthorized = apiErr?.statusCode == 401;
+      if (!isUnauthorized &&
+          (ref.read(sessionRevisionProvider) != revision ||
+              currentUserId != userId)) {
+        state = FavoriteActionState(
+          isFavorite: false,
+          activeUserId: currentUserId,
+        );
+        return false;
+      }
+
       // Conserva el estado confirmado previo sin simular que se eliminó
       state = FavoriteActionState(
-        isFavorite: previousConfirmed,
+        isFavorite: isUnauthorized ? false : previousConfirmed,
         isPending: false,
-        favorite: previousFavorite,
+        favorite: isUnauthorized ? null : previousFavorite,
         errorMessage: favoriteActionErrorMessage(error, adding: false),
         statusCode: apiErr?.statusCode,
-        errorCode: qualityErr?.errorCode,
+        errorCode:
+            qualityErr?.errorCode ?? (isUnauthorized ? 'UNAUTHENTICATED' : null),
         lastFailedTargetState: false,
         lastSummary: state.lastSummary,
-        activeUserId: userId,
+        activeUserId: currentUserId,
       );
       return false;
     } finally {

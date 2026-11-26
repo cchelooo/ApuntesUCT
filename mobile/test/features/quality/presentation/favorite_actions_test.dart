@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:apuntesuct_mobile/core/network/api_client.dart';
@@ -399,6 +400,177 @@ void main() {
         expect(find.byIcon(Icons.bookmark_border_rounded), findsNWidgets(2));
 
         await container.read(sessionControllerProvider).clear();
+      },
+    );
+
+    test(
+      'Regresión concurrencia: Confirmar el favorito A NO cancela una petición pendiente del material B',
+      () async {
+        const materialAUuid = '11111111-1111-4111-8111-111111111111';
+        const materialBUuid = '22222222-2222-4222-8222-222222222222';
+        const favAUuid = 'aaaaaaaa-1111-4111-8111-111111111111';
+        const favBUuid = 'bbbbbbbb-2222-4222-8222-222222222222';
+
+        final completerA = Completer<ResponseBody>();
+        final completerB = Completer<ResponseBody>();
+
+        final adapter = _FavoriteGatewayAdapter()
+          ..handler = (options) {
+            if (options.path.contains(materialAUuid)) {
+              return completerA.future;
+            }
+            if (options.path.contains(materialBUuid)) {
+              return completerB.future;
+            }
+            throw StateError('Ruta inesperada: ${options.path}');
+          };
+
+        final container = await createSessionContainer(adapter);
+        final subFavs = container.listen(favoritesProvider, (_, _) {});
+        final subA = container.listen(
+          favoriteActionProvider(materialAUuid),
+          (_, _) {},
+        );
+        final subB = container.listen(
+          favoriteActionProvider(materialBUuid),
+          (_, _) {},
+        );
+        addTearDown(() {
+          subA.close();
+          subB.close();
+          subFavs.close();
+        });
+
+        // Iniciar ambas peticiones en paralelo (A y B quedan pendientes)
+        final futureA = container
+            .read(favoriteActionProvider(materialAUuid).notifier)
+            .addFavorite();
+        final futureB = container
+            .read(favoriteActionProvider(materialBUuid).notifier)
+            .addFavorite();
+
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        expect(
+          container.read(favoriteActionProvider(materialAUuid)).isPending,
+          isTrue,
+        );
+        expect(
+          container.read(favoriteActionProvider(materialBUuid)).isPending,
+          isTrue,
+        );
+
+        // 1. Se confirma el favorito A primero
+        completerA.complete(
+          ResponseBody.fromString(
+            jsonEncode({
+              'id': favAUuid,
+              'materialId': materialAUuid,
+              'createdAt': '2026-11-26T15:00:00Z',
+              'available': true,
+            }),
+            201,
+            headers: {
+              Headers.contentTypeHeader: [Headers.jsonContentType],
+            },
+          ),
+        );
+
+        expect(await futureA, isTrue);
+        expect(
+          container.read(favoriteActionProvider(materialAUuid)).isFavorite,
+          isTrue,
+        );
+
+        // El material B sigue pendiente y NO fue cancelado por la confirmación de A
+        expect(
+          container.read(favoriteActionProvider(materialBUuid)).isPending,
+          isTrue,
+        );
+        expect(
+          container.read(favoriteActionProvider(materialBUuid)).hasError,
+          isFalse,
+        );
+
+        // 2. Ahora se confirma el favorito B y termina exitosamente
+        completerB.complete(
+          ResponseBody.fromString(
+            jsonEncode({
+              'id': favBUuid,
+              'materialId': materialBUuid,
+              'createdAt': '2026-11-26T15:00:01Z',
+              'available': true,
+            }),
+            201,
+            headers: {
+              Headers.contentTypeHeader: [Headers.jsonContentType],
+            },
+          ),
+        );
+
+        expect(await futureB, isTrue);
+        expect(
+          container.read(favoriteActionProvider(materialBUuid)).isFavorite,
+          isTrue,
+        );
+        expect(
+          container.read(favoritesProvider).containsMaterial(materialAUuid),
+          isTrue,
+        );
+        expect(
+          container.read(favoritesProvider).containsMaterial(materialBUuid),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'Regresión refresh: Refrescar el listado conserva los favoritos confirmados y su marca activa',
+      () async {
+        final adapter = _FavoriteGatewayAdapter()
+          ..respondJson({
+            'id': newFavoriteUuid,
+            'materialId': newMaterialUuid,
+            'createdAt': '2026-11-26T15:10:00Z',
+            'available': true,
+          }, statusCode: 201);
+
+        final container = await createSessionContainer(adapter);
+        final subFavs = container.listen(favoritesProvider, (_, _) {});
+        final subAction = container.listen(
+          favoriteActionProvider(newMaterialUuid),
+          (_, _) {},
+        );
+        addTearDown(() {
+          subAction.close();
+          subFavs.close();
+        });
+
+        // Confirmar un favorito nuevo que no estaba en los fixtures iniciales
+        final added = await container
+            .read(favoriteActionProvider(newMaterialUuid).notifier)
+            .addFavorite(summary: sampleMaterial);
+        expect(added, isTrue);
+        expect(
+          container.read(favoriteActionProvider(newMaterialUuid)).isFavorite,
+          isTrue,
+        );
+        expect(
+          container.read(favoritesProvider).containsMaterial(newMaterialUuid),
+          isTrue,
+        );
+
+        // Refrescar el listado (pull-to-refresh / loadFavorites)
+        await container.read(favoritesProvider.notifier).refresh();
+
+        // El favorito confirmado sigue en el listado y conserva su marca isFavorite: true
+        expect(
+          container.read(favoritesProvider).containsMaterial(newMaterialUuid),
+          isTrue,
+        );
+        expect(
+          container.read(favoriteActionProvider(newMaterialUuid)).isFavorite,
+          isTrue,
+        );
       },
     );
   });
