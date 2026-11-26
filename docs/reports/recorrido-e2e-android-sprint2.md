@@ -38,7 +38,7 @@
 | **4** | Subir material desde UI y confirmar `PENDING_REVIEW` | ⚠️ **Sin evidencia Android nativa** | `POST /api/v1/materials` (ejecutado por script de preparación, no desde UI Android) | *Pendiente de captura manual en emulador* | El script de preparación envió `POST /materials` recibiendo `201` y `PENDING_REVIEW`, pero falta la captura y traza de subida iniciada desde el formulario Mobile en Android. |
 | **5** | Listar y buscar material publicado | ✅ **Acreditado en Android** | `GET /api/v1/materials?page=1&pageSize=5` → `200`<br>`GET /api/v1/search?q=Integracion278&page=1&pageSize=5` → `200` | [`android/listado.png`](evidence/mobile-2026-11-04/android/listado.png), [`android/busqueda.png`](evidence/mobile-2026-11-04/android/busqueda.png), [`android/report.json`](evidence/mobile-2026-11-04/android/report.json) | Material `a7f01fd8-c769-4b86-a89b-c258ebd27d79` (`Integracion278`) listado y encontrado por texto contra Gateway real. |
 | **6** | Abrir detalle de material | ✅ **Acreditado en Android** | `GET /api/v1/materials/a7f01fd8-c769-4b86-a89b-c258ebd27d79` → `200` | [`android/detalle.png`](evidence/mobile-2026-11-04/android/detalle.png), [`android/report.json`](evidence/mobile-2026-11-04/android/report.json) | Navegación desde tarjeta al detalle mostrando metadatos y versión actual `v1`. |
-| **7a** | Descargar binario y guardar en caché nativa | ✅ **Acreditado en Android** | `GET /api/v1/materials/a7f01fd8-c769-4b86-a89b-c258ebd27d79/download?versionId=7f6ff347-513f-4fa5-9514-b610ab0e1a28` → `200` | [`android/descarga.png`](evidence/mobile-2026-11-04/android/descarga.png), [`android/report.json`](evidence/mobile-2026-11-04/android/report.json) | PDF de `414` bytes guardado en caché nativa (`SHA-256: a2b4945b6565b105cbf8ab4dc1d86bfc925d1e3eaa91cfb6ea770d292c333d28`). |
+| **7a** | Descargar binario y guardar en caché nativa | ✅ **Acreditado en Android** | `GET /api/v1/materials/a7f01fd8-c769-4b86-a89b-c258ebd27d79/download?versionId=1cbff057-38be-42bb-a473-9398cbc551eb` → `200` | [`android/descarga.png`](evidence/mobile-2026-11-04/android/descarga.png), [`android/report.json`](evidence/mobile-2026-11-04/android/report.json) | PDF de `414` bytes guardado en caché nativa (`SHA-256: a2b4945b6565b105cbf8ab4dc1d86bfc925d1e3eaa91cfb6ea770d292c333d28`). |
 | **7b** | Abrir archivo descargado en visor externo | ⚠️ **Sin evidencia Android nativa** | — | *Pendiente de captura manual en emulador* | La corrida nativa verifica la descarga y guardado en caché, pero no invoca `OpenFilex.open` ni captura un visor PDF externo de Android. |
 | **8** | Crear nueva versión desde `MaterialVersionUploadSheet` | ⚠️ **Sin evidencia Android nativa** | — | *Pendiente de captura manual en emulador* | No ejecutado en la corrida nativa de Android. |
 | **9** | Servicio caído (`502`/`503`) y errores de validación de archivo (`> 15 MB` / formato inválido) | ⚠️ **Sin evidencia Android nativa** | — | *Pendiente de captura manual en emulador* | Cubierto solo por pruebas automatizadas de cliente; falta evidencia de ejecución manual en Android Emulator. |
@@ -52,7 +52,7 @@ Los datos verificables de la corrida ejecutada en Android Emulator (`10.0.2.2:50
 - **APK Debug compilado**: `mobile/build/app/outputs/flutter-apk/app-debug.apk` (`173.327.105` bytes, `SHA-256: a666044cba0ec10ba4d4b3ddeb4911a4f16b3e25f7b92b2cd3ae89d6a19070db`), con captura de arranque en [`arranque-android.png`](evidence/mobile-2026-11-04/arranque-android.png).
 - **Fixture en PostgreSQL y MinIO reales**:
   - `materialId`: `a7f01fd8-c769-4b86-a89b-c258ebd27d79`
-  - `versionId`: `7f6ff347-513f-4fa5-9514-b610ab0e1a28`
+  - `versionId`: `1cbff057-38be-42bb-a473-9398cbc551eb`
   - `title`: `Integracion278`
   - `subjectName`: `Asignatura QA278`
   - `pdfBytes`: `414` (`SHA-256: a2b4945b6565b105cbf8ab4dc1d86bfc925d1e3eaa91cfb6ea770d292c333d28`)
@@ -62,7 +62,7 @@ Los datos verificables de la corrida ejecutada en Android Emulator (`10.0.2.2:50
   3. `GET /api/v1/materials?page=1&pageSize=5` → `200` ([`android/listado.png`](evidence/mobile-2026-11-04/android/listado.png))
   4. `GET /api/v1/search?q=Integracion278&page=1&pageSize=5` → `200` ([`android/busqueda.png`](evidence/mobile-2026-11-04/android/busqueda.png))
   5. `GET /api/v1/materials/a7f01fd8-c769-4b86-a89b-c258ebd27d79` → `200` ([`android/detalle.png`](evidence/mobile-2026-11-04/android/detalle.png))
-  6. `GET /api/v1/materials/a7f01fd8-c769-4b86-a89b-c258ebd27d79/download?versionId=7f6ff347-513f-4fa5-9514-b610ab0e1a28` → `200` ([`android/descarga.png`](evidence/mobile-2026-11-04/android/descarga.png))
+  6. `GET /api/v1/materials/a7f01fd8-c769-4b86-a89b-c258ebd27d79/download?versionId=1cbff057-38be-42bb-a473-9398cbc551eb` → `200` ([`android/descarga.png`](evidence/mobile-2026-11-04/android/descarga.png))
 
 ---
 
@@ -89,6 +89,6 @@ Para los pasos que aún no cuentan con captura en el emulador Android, se docume
 | Aspecto | Backend (#263) | Mobile (Android) | Estado |
 |---|---|---|---|
 | **Resolución de host** | `http://localhost:3000/api/v1` | `http://10.0.2.2:<PORT>/api/v1` | Resuelto en `ApiConfig.gatewayBaseUrl`. |
-| **Cobertura del recorrido nativo** | El test E2E de Backend ejecuta creación, publicación en BD, búsqueda, detalle, versionado y descarga por HTTP. | La corrida nativa Android (`mobile-2026-11-04`) ejecuta las 6 peticiones de lectura/login/descarga; subida, versionado, apertura externa y errores desde UI Android permanecen pendientes de captura manual completa. | Limitación explícita registrada para coordinación con QA de Sprint 3. |
+| **Cobertura respecto de #263** | El E2E de Backend (#263) creó un material en `PENDING_REVIEW` y consultó listado, búsqueda, detalle, historial de versiones y descarga de otro material que ya estaba `PUBLISHED` (la transición de publicación y la creación de una nueva versión quedaron fuera de esa prueba). | La corrida nativa Android (`mobile-2026-11-04`) ejecuta las 6 peticiones de login, catálogo, listado, búsqueda, detalle y descarga sobre el material `PUBLISHED`; subida desde la interfaz, versionado, apertura externa y errores en Android permanecen pendientes de captura manual. | Coherente en las rutas públicas de lectura; los flujos de escritura y errores desde UI Android quedan registrados como pendientes de evidencia nativa. |
 | **Visibilidad pública tras subida** | `POST /materials` crea el material en `PENDING_REVIEW`; listado y búsqueda pública solo exponen `PUBLISHED`. | Un material recién subido desde Mobile permanece en `PENDING_REVIEW` y no aparece en `/materials` ni `/search` hasta ser aprobado/publicado. | Coherente con el contrato de visibilidad. |
 | **Codificación de nombre de archivo con tilde** | `Guía278.pdf` se registró como `GuÃ­a278.pdf` en los metadatos devueltos por el servicio durante la corrida `#278`. | Los bytes descargados en Android conservan integridad exacta (`SHA-256` idéntico al fixture original). | Documentado en `validacion-mobile-2026-11-04.md`. |
