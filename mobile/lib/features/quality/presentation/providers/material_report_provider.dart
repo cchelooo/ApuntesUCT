@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/errors/api_exception.dart';
+import '../../../../core/session/session_controller.dart';
 import '../../../../core/session/session_revision.dart';
 import '../../domain/models/quality_error.dart';
 import '../../domain/models/report_model.dart';
@@ -86,7 +87,7 @@ String materialReportErrorMessage(Object error) {
           ? serverMessage
           : 'Revisa los datos del reporte antes de enviarlo.';
     case 401:
-      return 'Debes iniciar sesión con una cuenta activa para reportar un material.';
+      return 'Tu sesión expiró o no es válida. Debes iniciar sesión nuevamente para enviar el reporte.';
     case 403:
       return serverMessage.isNotEmpty
           ? serverMessage
@@ -119,17 +120,40 @@ String materialReportErrorMessage(Object error) {
 
 /// Notifier encargado de enviar reportes reales hacia Quality Service mediante Gateway (#406).
 ///
-/// - Se reinicia automáticamente al cambiar la sesión (`sessionRevisionProvider`).
-/// - Evita solicitudes duplicadas mientras un envío está en vuelo.
+/// - Limpia estados previos al cambiar o cerrar sesión sin descartar el error `401`
+///   cuando `SessionInterceptor` invalida la credencial durante un envío en vuelo.
+/// - Evita solicitudes duplicadas mientras un envío está en curso.
 /// - Conserva los errores tipados (`errorCode`, `errorField`, `statusCode`) sin simular éxitos locales.
 class MaterialReportNotifier extends Notifier<MaterialReportSubmissionState> {
   CancelToken? _cancelToken;
+  String? _submittingUserId;
 
   @override
   MaterialReportSubmissionState build() {
-    ref.watch(sessionRevisionProvider);
-    _cancelToken?.cancel();
     ref.onDispose(() => _cancelToken?.cancel());
+
+    ref.listen<int>(sessionRevisionProvider, (previous, next) {
+      final currentUserId = ref.read(sessionControllerProvider).current?.user.id;
+      if (state.isSubmitting) {
+        // Si durante un envío en curso se inicia sesión con otra cuenta distinta,
+        // cancelamos la petición anterior y limpiamos el estado.
+        // Si currentUserId pasa a null (p. ej. por un 401 interceptado en esta misma petición),
+        // permitimos que el bloque catch de submit() procese el error 401 y lo muestre al usuario.
+        if (currentUserId != null && currentUserId != _submittingUserId) {
+          _cancelToken?.cancel();
+          _cancelToken = null;
+          state = const MaterialReportSubmissionState.idle();
+        }
+        return;
+      }
+
+      // Si no hay envío en curso y cambia la sesión, limpiamos reportes confirmados
+      // o errores previos al iniciar una nueva sesión.
+      if (state.isSuccess || currentUserId != null) {
+        state = const MaterialReportSubmissionState.idle();
+      }
+    });
+
     return const MaterialReportSubmissionState.idle();
   }
 
@@ -167,6 +191,8 @@ class MaterialReportNotifier extends Notifier<MaterialReportSubmissionState> {
     }
 
     final revision = ref.read(sessionRevisionProvider);
+    final submittingUserId = ref.read(sessionControllerProvider).current?.user.id;
+    _submittingUserId = submittingUserId;
     final cancelToken = CancelToken();
     _cancelToken = cancelToken;
     state = const MaterialReportSubmissionState.submitting();
@@ -179,26 +205,57 @@ class MaterialReportNotifier extends Notifier<MaterialReportSubmissionState> {
         idempotencyKey: idempotencyKey,
         cancelToken: cancelToken,
       );
-      if (!ref.mounted || ref.read(sessionRevisionProvider) != revision) {
+      if (!ref.mounted) return null;
+
+      final currentUserId = ref.read(sessionControllerProvider).current?.user.id;
+      if (ref.read(sessionRevisionProvider) != revision ||
+          currentUserId != submittingUserId) {
+        state = const MaterialReportSubmissionState.idle();
         return null;
       }
+
       state = MaterialReportSubmissionState.success(report);
       return report;
     } catch (error) {
-      if (!ref.mounted || ref.read(sessionRevisionProvider) != revision) {
-        return null;
-      }
+      if (!ref.mounted) return null;
+
       QualityApiException? qualityErr;
       ApiException? apiErr;
       if (error is QualityApiException) {
         qualityErr = error;
         apiErr = error;
+      } else if (error is DioException && error.error is QualityApiException) {
+        qualityErr = error.error as QualityApiException;
+        apiErr = qualityErr;
+      } else if (error is DioException && error.error is ApiException) {
+        apiErr = error.error as ApiException;
       } else if (error is ApiException) {
         apiErr = error;
       }
+
+      final currentUserId = ref.read(sessionControllerProvider).current?.user.id;
+      final isUnauthorizedError = apiErr?.statusCode == 401;
+
+      // Si la sesión cambió a otro usuario distinto, descartamos el resultado tardío.
+      // Pero si fue un 401 que limpió la sesión actual (currentUserId == null),
+      // conservamos y mostramos el mensaje indicando que debe iniciar sesión nuevamente.
+      if (!isUnauthorizedError &&
+          (ref.read(sessionRevisionProvider) != revision ||
+              currentUserId != submittingUserId)) {
+        state = const MaterialReportSubmissionState.idle();
+        return null;
+      }
+      if (isUnauthorizedError &&
+          currentUserId != null &&
+          currentUserId != submittingUserId) {
+        state = const MaterialReportSubmissionState.idle();
+        return null;
+      }
+
       state = MaterialReportSubmissionState.error(
         message: materialReportErrorMessage(error),
-        errorCode: qualityErr?.errorCode,
+        errorCode:
+            qualityErr?.errorCode ?? (isUnauthorizedError ? 'UNAUTHENTICATED' : null),
         errorField: qualityErr?.field,
         statusCode: apiErr?.statusCode,
       );
