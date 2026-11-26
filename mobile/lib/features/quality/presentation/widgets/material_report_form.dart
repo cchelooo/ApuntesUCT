@@ -10,7 +10,9 @@ import '../providers/material_report_provider.dart';
 /// Cumple con los criterios de aceptación de S3-M19 y S3-M20:
 /// - Muestra estado de carga y deshabilita controles mientras la solicitud está pendiente.
 /// - Muestra vista de confirmación únicamente después de recibir la respuesta exitosa del servidor.
-/// - Conserva el motivo seleccionado y el texto ingresado ante errores y permite reintentar.
+/// - Conserva el motivo seleccionado y el texto ingresado ante errores y permite reintentar cuando corresponda.
+/// - Tras un `401` que limpia la sesión, conserva lo escrito, no ofrece `Reintentar` sin sesión
+///   y exige reautenticación antes de permitir reenviar.
 /// - Bloquea toques repetidos de forma síncrona y asíncrona para evitar solicitudes duplicadas.
 class MaterialReportForm extends ConsumerStatefulWidget {
   final String materialId;
@@ -65,8 +67,8 @@ class _MaterialReportFormState extends ConsumerState<MaterialReportForm> {
     super.dispose();
   }
 
-  Future<void> _submit(bool effectiveSubmitting) async {
-    if (effectiveSubmitting || _inFlight) return;
+  Future<void> _submit(bool effectiveSubmitting, bool requiresReauth) async {
+    if (effectiveSubmitting || _inFlight || requiresReauth) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     final motive = _selectedMotive!;
@@ -108,6 +110,8 @@ class _MaterialReportFormState extends ConsumerState<MaterialReportForm> {
     final effectiveSubmitting =
         widget.isSubmitting || providerState.isSubmitting || _inFlight;
     final effectiveError = widget.errorMessage ?? providerState.errorMessage;
+    final requiresReauth =
+        widget.onSubmit == null && providerState.requiresReauthentication;
     final confirmedReport =
         widget.confirmedReport ??
         (_completedHere ? providerState.submittedReport : null);
@@ -173,12 +177,15 @@ class _MaterialReportFormState extends ConsumerState<MaterialReportForm> {
                       ),
                     ],
                   ),
-                  if (!effectiveSubmitting && _selectedMotive != null) ...[
+                  if (!effectiveSubmitting &&
+                      !requiresReauth &&
+                      _selectedMotive != null) ...[
                     const SizedBox(height: 8),
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton.icon(
-                        onPressed: () => _submit(effectiveSubmitting),
+                        onPressed: () =>
+                            _submit(effectiveSubmitting, requiresReauth),
                         icon: const Icon(Icons.refresh, size: 18),
                         label: const Text('Reintentar'),
                       ),
@@ -236,9 +243,9 @@ class _MaterialReportFormState extends ConsumerState<MaterialReportForm> {
           const SizedBox(height: 24),
 
           ElevatedButton(
-            onPressed: effectiveSubmitting
+            onPressed: (effectiveSubmitting || requiresReauth)
                 ? null
-                : () => _submit(effectiveSubmitting),
+                : () => _submit(effectiveSubmitting, requiresReauth),
             child: effectiveSubmitting
                 ? const Row(
                     mainAxisSize: MainAxisSize.min,
@@ -253,7 +260,11 @@ class _MaterialReportFormState extends ConsumerState<MaterialReportForm> {
                       Text('Enviando reporte...'),
                     ],
                   )
-                : const Text('Enviar Reporte'),
+                : Text(
+                    requiresReauth
+                        ? 'Inicia sesión para enviar'
+                        : 'Enviar Reporte',
+                  ),
           ),
         ],
       ),

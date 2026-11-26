@@ -259,5 +259,109 @@ void main() {
         await container.read(sessionControllerProvider).clear();
       },
     );
+
+    testWidgets(
+      'Regresión 401 sin Authorization: Tras un 401 que limpia la sesión, NO ofrece Reintentar ni envía otro POST sin Authorization hasta reautenticarse',
+      (WidgetTester tester) async {
+        final adapter = _ControllableReportAdapter()
+          ..nextStatusCode = 401
+          ..nextData = {
+            'statusCode': 401,
+            'code': 'UNAUTHENTICATED',
+            'message': 'Token expirado.',
+          };
+        final container = await createContainer(adapter);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const MaterialApp(
+              home: Scaffold(
+                body: MaterialReportForm(
+                  materialId: materialUuid,
+                  materialTitle: 'Guía de Química',
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.byType(DropdownButtonFormField<ReportMotive>));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Recurso dañado o enlace roto').last);
+        await tester.pumpAndSettle();
+
+        const writtenDetails = 'El documento tiene páginas en blanco.';
+        await tester.enterText(find.byType(TextFormField), writtenDetails);
+
+        await tester.tap(find.text('Enviar Reporte'));
+        await tester.pumpAndSettle();
+
+        // 1. El primer POST recibió 401 y limpió la sesión
+        expect(adapter.requests.length, 1);
+        expect(container.read(sessionControllerProvider).current, isNull);
+
+        // 2. El formulario conserva lo escrito, pide reautenticación y NO ofrece "Reintentar"
+        expect(find.text(writtenDetails), findsOneWidget);
+        expect(find.text('Recurso dañado o enlace roto'), findsOneWidget);
+        expect(find.text('Reintentar'), findsNothing);
+        expect(find.text('Inicia sesión para enviar'), findsOneWidget);
+
+        // 3. Intentar pulsar el botón o invocar submit sin sesión NO envía un POST sin Authorization
+        await tester.tap(
+          find.byType(ElevatedButton),
+          warnIfMissed: false,
+        );
+        await container
+            .read(materialReportProvider(materialUuid).notifier)
+            .submit(
+              materialId: materialUuid,
+              motive: ReportMotive.brokenResource,
+              details: writtenDetails,
+            );
+        await tester.pumpAndSettle();
+        expect(adapter.requests.length, 1);
+
+        // 4. Al reautenticarse, el formulario habilita el envío conservando lo escrito y envía con Authorization
+        final sessionController = container.read(sessionControllerProvider);
+        final newGen = sessionController.beginLogin();
+        await sessionController.accept(
+          AuthSession.fromLogin(
+            loginFixture(lifetime: const Duration(hours: 2)),
+            DateTime.now().toUtc(),
+          ),
+          newGen,
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text(writtenDetails), findsOneWidget);
+        expect(find.text('Enviar Reporte'), findsOneWidget);
+
+        adapter.nextStatusCode = 201;
+        adapter.nextData = {
+          'id': reportUuid,
+          'materialId': materialUuid,
+          'userId': userUuid,
+          'reason': 'BROKEN_RESOURCE',
+          'details': writtenDetails,
+          'status': 'OPEN',
+          'resolutionNote': null,
+          'createdAt': '2026-11-26T16:30:00Z',
+          'updatedAt': '2026-11-26T16:30:00Z',
+        };
+
+        await tester.tap(find.text('Enviar Reporte'));
+        await tester.pumpAndSettle();
+
+        expect(adapter.requests.length, 2);
+        expect(
+          adapter.requests[1].headers['Authorization'] as String?,
+          startsWith('Bearer '),
+        );
+        expect(find.text('Reporte enviado'), findsOneWidget);
+
+        await sessionController.clear();
+      },
+    );
   });
 }

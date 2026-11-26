@@ -51,6 +51,8 @@ class MaterialReportSubmissionState {
       !isSubmitting && submittedReport == null && errorMessage == null;
   bool get isSuccess => submittedReport != null && !isSubmitting;
   bool get hasError => errorMessage != null && !isSubmitting;
+  bool get requiresReauthentication =>
+      hasError && (statusCode == 401 || errorCode == 'UNAUTHENTICATED');
 }
 
 /// Traduce errores de API/red durante el envío de un reporte a mensajes claros en español.
@@ -122,34 +124,34 @@ String materialReportErrorMessage(Object error) {
 ///
 /// - Limpia estados previos al cambiar o cerrar sesión sin descartar el error `401`
 ///   cuando `SessionInterceptor` invalida la credencial durante un envío en vuelo.
-/// - Evita solicitudes duplicadas mientras un envío está en curso.
-/// - Conserva los errores tipados (`errorCode`, `errorField`, `statusCode`) sin simular éxitos locales.
+/// - Ignora respuestas `401` tardías de una credencial anterior si el usuario ya inició
+///   una nueva sesión válida (incluso con la misma cuenta).
+/// - Impide reenviar solicitudes sin `Authorization` mientras no exista sesión activa.
 class MaterialReportNotifier extends Notifier<MaterialReportSubmissionState> {
   CancelToken? _cancelToken;
-  String? _submittingUserId;
+  String? _submittingAccessToken;
 
   @override
   MaterialReportSubmissionState build() {
     ref.onDispose(() => _cancelToken?.cancel());
 
     ref.listen<int>(sessionRevisionProvider, (previous, next) {
-      final currentUserId = ref.read(sessionControllerProvider).current?.user.id;
+      final currentSession = ref.read(sessionControllerProvider).current;
+      final currentToken = currentSession?.accessToken;
+
       if (state.isSubmitting) {
-        // Si durante un envío en curso se inicia sesión con otra cuenta distinta,
-        // cancelamos la petición anterior y limpiamos el estado.
-        // Si currentUserId pasa a null (p. ej. por un 401 interceptado en esta misma petición),
-        // permitimos que el bloque catch de submit() procese el error 401 y lo muestre al usuario.
-        if (currentUserId != null && currentUserId != _submittingUserId) {
-          _cancelToken?.cancel();
-          _cancelToken = null;
+        // Si durante un envío en curso se establece una credencial nueva (misma u otra cuenta),
+        // desacoplamos el estado de la solicitud anterior para que la sesión nueva quede limpia.
+        if (currentSession != null && currentToken != _submittingAccessToken) {
+          _submittingAccessToken = null;
           state = const MaterialReportSubmissionState.idle();
         }
         return;
       }
 
-      // Si no hay envío en curso y cambia la sesión, limpiamos reportes confirmados
-      // o errores previos al iniciar una nueva sesión.
-      if (state.isSuccess || currentUserId != null) {
+      // Si no hay envío en curso y se inicia una sesión válida (por ejemplo, tras reautenticarse
+      // luego de un 401), limpiamos el bloqueo/error de sesión para permitir reenviar.
+      if (state.isSuccess || currentSession != null) {
         state = const MaterialReportSubmissionState.idle();
       }
     });
@@ -168,11 +170,23 @@ class MaterialReportNotifier extends Notifier<MaterialReportSubmissionState> {
   }) async {
     if (state.isSubmitting) return null;
 
+    final currentSession = ref.read(sessionControllerProvider).current;
+    if (currentSession == null) {
+      state = const MaterialReportSubmissionState.error(
+        message:
+            'Tu sesión expiró o no es válida. Debes iniciar sesión nuevamente para enviar el reporte.',
+        errorCode: 'UNAUTHENTICATED',
+        statusCode: 401,
+      );
+      return null;
+    }
+
     final trimmedDetails = details?.trim();
     if (motive.requiresDetails &&
         (trimmedDetails == null || trimmedDetails.isEmpty)) {
       state = const MaterialReportSubmissionState.error(
-        message: 'Debes especificar los detalles cuando seleccionas "Otro motivo".',
+        message:
+            'Debes especificar los detalles cuando seleccionas "Otro motivo".',
         errorCode: 'VALIDATION_ERROR',
         errorField: 'details',
         statusCode: 400,
@@ -191,8 +205,9 @@ class MaterialReportNotifier extends Notifier<MaterialReportSubmissionState> {
     }
 
     final revision = ref.read(sessionRevisionProvider);
-    final submittingUserId = ref.read(sessionControllerProvider).current?.user.id;
-    _submittingUserId = submittingUserId;
+    final submittingUserId = currentSession.user.id;
+    final submittingToken = currentSession.accessToken;
+    _submittingAccessToken = submittingToken;
     final cancelToken = CancelToken();
     _cancelToken = cancelToken;
     state = const MaterialReportSubmissionState.submitting();
@@ -207,10 +222,13 @@ class MaterialReportNotifier extends Notifier<MaterialReportSubmissionState> {
       );
       if (!ref.mounted) return null;
 
-      final currentUserId = ref.read(sessionControllerProvider).current?.user.id;
+      final activeSession = ref.read(sessionControllerProvider).current;
       if (ref.read(sessionRevisionProvider) != revision ||
-          currentUserId != submittingUserId) {
-        state = const MaterialReportSubmissionState.idle();
+          activeSession?.user.id != submittingUserId ||
+          activeSession?.accessToken != submittingToken) {
+        if (activeSession == null) {
+          state = const MaterialReportSubmissionState.idle();
+        }
         return null;
       }
 
@@ -233,29 +251,34 @@ class MaterialReportNotifier extends Notifier<MaterialReportSubmissionState> {
         apiErr = error;
       }
 
-      final currentUserId = ref.read(sessionControllerProvider).current?.user.id;
+      final activeSession = ref.read(sessionControllerProvider).current;
+      final currentRevision = ref.read(sessionRevisionProvider);
       final isUnauthorizedError = apiErr?.statusCode == 401;
 
-      // Si la sesión cambió a otro usuario distinto, descartamos el resultado tardío.
-      // Pero si fue un 401 que limpió la sesión actual (currentUserId == null),
-      // conservamos y mostramos el mensaje indicando que debe iniciar sesión nuevamente.
-      if (!isUnauthorizedError &&
-          (ref.read(sessionRevisionProvider) != revision ||
-              currentUserId != submittingUserId)) {
-        state = const MaterialReportSubmissionState.idle();
-        return null;
-      }
-      if (isUnauthorizedError &&
-          currentUserId != null &&
-          currentUserId != submittingUserId) {
-        state = const MaterialReportSubmissionState.idle();
-        return null;
+      if (isUnauthorizedError) {
+        // Si ya existe una sesión nueva válida (incluso para la misma cuenta con una credencial nueva)
+        // o hubo un ciclo posterior de login, este 401 corresponde a la credencial vieja y debe ignorarse.
+        if (activeSession != null ||
+            _submittingAccessToken != submittingToken ||
+            currentRevision > revision + 1) {
+          return null;
+        }
+      } else {
+        if (currentRevision != revision ||
+            activeSession?.user.id != submittingUserId ||
+            activeSession?.accessToken != submittingToken) {
+          if (activeSession == null) {
+            state = const MaterialReportSubmissionState.idle();
+          }
+          return null;
+        }
       }
 
       state = MaterialReportSubmissionState.error(
         message: materialReportErrorMessage(error),
         errorCode:
-            qualityErr?.errorCode ?? (isUnauthorizedError ? 'UNAUTHENTICATED' : null),
+            qualityErr?.errorCode ??
+            (isUnauthorizedError ? 'UNAUTHENTICATED' : null),
         errorField: qualityErr?.field,
         statusCode: apiErr?.statusCode,
       );
