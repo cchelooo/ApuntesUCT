@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/errors/api_exception.dart';
+import '../../../../core/session/session_controller.dart';
 import '../../../../core/session/session_revision.dart';
 import '../../../../models/user_model.dart';
 import '../../../auth/data/mock_auth_repository.dart' show authStateProvider;
@@ -125,13 +126,15 @@ String favoriteActionErrorMessage(Object error, {required bool adding}) {
 /// - Utiliza `qualityRepositoryProvider` (`PUT / DELETE /quality/materials/{id}/favorite`) mediante Gateway.
 /// - Sincroniza el estado confirmado entre tarjeta, detalle y listado (`favoritesProvider`)
 ///   mediante `ref.listen` sin cancelar ni reconstruir peticiones pendientes de otros materiales.
-/// - Conserva el estado confirmado previo si la petición falla y habilita `retry()`.
-/// - Aísla los favoritos por sesión activa, evitando mostrar favoritos de una sesión en otra.
+/// - Al cerrar sesión (incluso con un `DELETE` o `PUT` en curso), limpia de inmediato la marca
+///   y el usuario activo sin esperar a que termine la petición.
+/// - Ignora respuestas `401` tardías de una credencial anterior cuando ya existe una sesión nueva válida.
 class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
   FavoriteActionNotifier(this.materialId);
 
   final String materialId;
   CancelToken? _cancelToken;
+  String? _submittingAccessToken;
 
   @override
   FavoriteActionState build() {
@@ -139,18 +142,16 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
 
     // Escuchar cambios en el listado general sin reconstruir ni cancelar peticiones en vuelo de este material
     ref.listen<FavoritesState>(favoritesProvider, (previous, next) {
-      if (state.isPending) {
-        // Si la sesión se cerró por completo mientras había una operación en vuelo
-        // de otro origen, se resolverá al terminar o cambiar de usuario; no cancelar
-        // cuando solo se confirmó otro material A mientras B sigue en vuelo.
-        return;
-      }
-
       if (next.activeUserId == null) {
         state = const FavoriteActionState(
           isFavorite: false,
+          isPending: false,
           activeUserId: null,
         );
+        return;
+      }
+
+      if (state.isPending) {
         return;
       }
 
@@ -173,7 +174,7 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
       }
     });
 
-    // Escuchar cambios de sesión para aislar cuentas sin interrumpir otros materiales
+    // Escuchar cambios de sesión para limpiar de inmediato al cerrar o cambiar de credencial/cuenta
     ref.listen<int>(sessionRevisionProvider, (previous, next) {
       _handleSessionChange();
     });
@@ -203,41 +204,38 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
 
   void _handleSessionChange() {
     final currentUserId = readActiveQualityUserId(ref);
-    if (currentUserId == state.activeUserId) return;
+    final currentToken = ref.read(sessionControllerProvider).current?.accessToken;
 
-    if (state.isPending) {
-      // Si cambió a otro usuario distinto mientras estaba en vuelo, cancelar y limpiar
-      if (currentUserId != null && currentUserId != state.activeUserId) {
-        _cancelToken?.cancel();
-        _cancelToken = null;
-        final listState = ref.read(favoritesProvider);
-        state = FavoriteActionState(
-          isFavorite:
-              listState.activeUserId == currentUserId &&
-              listState.containsMaterial(materialId),
-          activeUserId: currentUserId,
-        );
-      }
-      return;
-    }
-
-    _cancelToken?.cancel();
-    _cancelToken = null;
+    // 1. Si se cerró la sesión (incluso con un DELETE o PUT en curso),
+    // limpiar inmediatamente la marca y el usuario anterior.
     if (currentUserId == null) {
       state = const FavoriteActionState(
         isFavorite: false,
+        isPending: false,
         activeUserId: null,
       );
       return;
     }
 
-    final listState = ref.read(favoritesProvider);
-    state = FavoriteActionState(
-      isFavorite:
-          listState.activeUserId == currentUserId &&
-          listState.containsMaterial(materialId),
-      activeUserId: currentUserId,
-    );
+    // 2. Si hay una sesión válida activa pero cambió el usuario o la credencial
+    // respecto de una operación previa o en vuelo, restablecer al estado limpio de la sesión nueva.
+    final tokenChangedWhilePending =
+        state.isPending && currentToken != _submittingAccessToken;
+    if (currentUserId != state.activeUserId ||
+        tokenChangedWhilePending ||
+        state.statusCode == 401) {
+      if (tokenChangedWhilePending) {
+        _submittingAccessToken = null;
+      }
+      final listState = ref.read(favoritesProvider);
+      state = FavoriteActionState(
+        isFavorite:
+            listState.activeUserId == currentUserId &&
+            listState.containsMaterial(materialId),
+        isPending: false,
+        activeUserId: currentUserId,
+      );
+    }
   }
 
   /// Guarda el material en los favoritos del usuario autenticado activo (`PUT /quality/materials/:id/favorite`).
@@ -260,6 +258,9 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
     }
 
     final revision = ref.read(sessionRevisionProvider);
+    final submittingToken =
+        ref.read(sessionControllerProvider).current?.accessToken;
+    _submittingAccessToken = submittingToken;
     final previousConfirmed = state.isFavorite;
     final previousFavorite = state.favorite;
     final cancelToken = CancelToken();
@@ -282,12 +283,17 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
 
       if (!ref.mounted) return false;
       final currentUserId = readActiveQualityUserId(ref);
+      final currentToken =
+          ref.read(sessionControllerProvider).current?.accessToken;
       if (ref.read(sessionRevisionProvider) != revision ||
-          currentUserId != userId) {
-        state = FavoriteActionState(
-          isFavorite: false,
-          activeUserId: currentUserId,
-        );
+          currentUserId != userId ||
+          currentToken != submittingToken) {
+        if (currentUserId == null) {
+          state = const FavoriteActionState(
+            isFavorite: false,
+            activeUserId: null,
+          );
+        }
         return false;
       }
 
@@ -323,15 +329,31 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
       }
 
       final currentUserId = readActiveQualityUserId(ref);
+      final activeSession = ref.read(sessionControllerProvider).current;
+      final currentRevision = ref.read(sessionRevisionProvider);
       final isUnauthorized = apiErr?.statusCode == 401;
-      if (!isUnauthorized &&
-          (ref.read(sessionRevisionProvider) != revision ||
-              currentUserId != userId)) {
-        state = FavoriteActionState(
-          isFavorite: false,
-          activeUserId: currentUserId,
-        );
-        return false;
+
+      if (isUnauthorized) {
+        // Si ya existe una sesión nueva válida (incluso para la misma cuenta con una credencial nueva)
+        // o hubo un ciclo posterior de sesión, este 401 tardío de la credencial anterior se ignora.
+        if (activeSession != null ||
+            currentUserId != null ||
+            _submittingAccessToken != submittingToken ||
+            currentRevision > revision + 1) {
+          return false;
+        }
+      } else {
+        if (currentRevision != revision ||
+            currentUserId != userId ||
+            activeSession?.accessToken != submittingToken) {
+          if (currentUserId == null) {
+            state = const FavoriteActionState(
+              isFavorite: false,
+              activeUserId: null,
+            );
+          }
+          return false;
+        }
       }
 
       // Conserva el estado confirmado previo sin simular que se agregó
@@ -345,7 +367,7 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
             qualityErr?.errorCode ?? (isUnauthorized ? 'UNAUTHENTICATED' : null),
         lastFailedTargetState: true,
         lastSummary: summary ?? state.lastSummary,
-        activeUserId: currentUserId,
+        activeUserId: isUnauthorized ? null : currentUserId,
       );
       return false;
     } finally {
@@ -374,6 +396,9 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
     }
 
     final revision = ref.read(sessionRevisionProvider);
+    final submittingToken =
+        ref.read(sessionControllerProvider).current?.accessToken;
+    _submittingAccessToken = submittingToken;
     final previousConfirmed = state.isFavorite;
     final previousFavorite = state.favorite;
     final cancelToken = CancelToken();
@@ -395,12 +420,17 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
 
       if (!ref.mounted) return false;
       final currentUserId = readActiveQualityUserId(ref);
+      final currentToken =
+          ref.read(sessionControllerProvider).current?.accessToken;
       if (ref.read(sessionRevisionProvider) != revision ||
-          currentUserId != userId) {
-        state = FavoriteActionState(
-          isFavorite: false,
-          activeUserId: currentUserId,
-        );
+          currentUserId != userId ||
+          currentToken != submittingToken) {
+        if (currentUserId == null) {
+          state = const FavoriteActionState(
+            isFavorite: false,
+            activeUserId: null,
+          );
+        }
         return false;
       }
 
@@ -434,15 +464,29 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
       }
 
       final currentUserId = readActiveQualityUserId(ref);
+      final activeSession = ref.read(sessionControllerProvider).current;
+      final currentRevision = ref.read(sessionRevisionProvider);
       final isUnauthorized = apiErr?.statusCode == 401;
-      if (!isUnauthorized &&
-          (ref.read(sessionRevisionProvider) != revision ||
-              currentUserId != userId)) {
-        state = FavoriteActionState(
-          isFavorite: false,
-          activeUserId: currentUserId,
-        );
-        return false;
+
+      if (isUnauthorized) {
+        if (activeSession != null ||
+            currentUserId != null ||
+            _submittingAccessToken != submittingToken ||
+            currentRevision > revision + 1) {
+          return false;
+        }
+      } else {
+        if (currentRevision != revision ||
+            currentUserId != userId ||
+            activeSession?.accessToken != submittingToken) {
+          if (currentUserId == null) {
+            state = const FavoriteActionState(
+              isFavorite: false,
+              activeUserId: null,
+            );
+          }
+          return false;
+        }
       }
 
       // Conserva el estado confirmado previo sin simular que se eliminó
@@ -456,7 +500,7 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
             qualityErr?.errorCode ?? (isUnauthorized ? 'UNAUTHENTICATED' : null),
         lastFailedTargetState: false,
         lastSummary: state.lastSummary,
-        activeUserId: currentUserId,
+        activeUserId: isUnauthorized ? null : currentUserId,
       );
       return false;
     } finally {

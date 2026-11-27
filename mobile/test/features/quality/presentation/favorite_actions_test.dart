@@ -573,5 +573,143 @@ void main() {
         );
       },
     );
+
+    test(
+      'Regresión logout con DELETE en curso: Al cerrar sesión mientras un DELETE está pendiente, limpia de inmediato la marca y el usuario anterior',
+      () async {
+        final deleteCompleter = Completer<ResponseBody>();
+        final adapter = _FavoriteGatewayAdapter()
+          ..respondJson({
+            'id': newFavoriteUuid,
+            'materialId': newMaterialUuid,
+            'createdAt': '2026-11-26T17:00:00Z',
+            'available': true,
+          }, statusCode: 201);
+
+        final container = await createSessionContainer(adapter);
+        final subFavs = container.listen(favoritesProvider, (_, _) {});
+        final subAction = container.listen(
+          favoriteActionProvider(newMaterialUuid),
+          (_, _) {},
+        );
+        addTearDown(() {
+          subAction.close();
+          subFavs.close();
+        });
+
+        // 1. Primero confirmamos el favorito
+        await container
+            .read(favoriteActionProvider(newMaterialUuid).notifier)
+            .addFavorite(summary: sampleMaterial);
+        expect(
+          container.read(favoriteActionProvider(newMaterialUuid)).isFavorite,
+          isTrue,
+        );
+        expect(
+          container.read(favoriteActionProvider(newMaterialUuid)).activeUserId,
+          isNotNull,
+        );
+
+        // 2. Iniciamos un DELETE que queda pendiente en red
+        adapter.handler = (_) => deleteCompleter.future;
+        final deleteFuture = container
+            .read(favoriteActionProvider(newMaterialUuid).notifier)
+            .removeFavorite();
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        expect(
+          container.read(favoriteActionProvider(newMaterialUuid)).isPending,
+          isTrue,
+        );
+
+        // 3. Cerramos sesión ANTES de que termine el DELETE
+        await container.read(sessionControllerProvider).clear();
+
+        // Inmediatamente (sin esperar a deleteCompleter) debe limpiar la marca y el usuario anterior
+        final rightAfterLogout = container.read(
+          favoriteActionProvider(newMaterialUuid),
+        );
+        expect(rightAfterLogout.isFavorite, isFalse);
+        expect(rightAfterLogout.isPending, isFalse);
+        expect(rightAfterLogout.activeUserId, isNull);
+
+        // 4. Cuando la petición DELETE finalmente termina, el estado sigue limpio
+        deleteCompleter.complete(ResponseBody.fromString('', 204));
+        await deleteFuture;
+
+        final stateAfterDeleteCompletes = container.read(
+          favoriteActionProvider(newMaterialUuid),
+        );
+        expect(stateAfterDeleteCompletes.isFavorite, isFalse);
+        expect(stateAfterDeleteCompletes.activeUserId, isNull);
+      },
+    );
+
+    test(
+      'Regresión 401 tardío: Un 401 tardío de la credencial anterior NO muestra aviso de login sobre una sesión nueva válida',
+      () async {
+        final firstRequestCompleter = Completer<ResponseBody>();
+        final adapter = _FavoriteGatewayAdapter()
+          ..handler = (_) => firstRequestCompleter.future;
+
+        final container = await createSessionContainer(adapter);
+        final subFavs = container.listen(favoritesProvider, (_, _) {});
+        final subAction = container.listen(
+          favoriteActionProvider(newMaterialUuid),
+          (_, _) {},
+        );
+        addTearDown(() {
+          subAction.close();
+          subFavs.close();
+        });
+
+        // 1. Iniciar PUT con la primera credencial (queda en vuelo)
+        final firstFuture = container
+            .read(favoriteActionProvider(newMaterialUuid).notifier)
+            .addFavorite(summary: sampleMaterial);
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        // 2. El usuario inicia una sesión nueva válida con una credencial distinta (misma cuenta)
+        final sessionController = container.read(sessionControllerProvider);
+        final gen2 = sessionController.beginLogin();
+        await sessionController.accept(
+          AuthSession.fromLogin(
+            loginFixture(
+              email: 'estudiante@alu.uct.cl',
+              lifetime: const Duration(hours: 2),
+            ),
+            DateTime.now().toUtc(),
+          ),
+          gen2,
+        );
+        final newToken = sessionController.current?.accessToken;
+        expect(newToken, isNotNull);
+
+        // 3. Llega tarde el 401 de la primera credencial
+        firstRequestCompleter.complete(
+          ResponseBody.fromString(
+            jsonEncode({
+              'statusCode': 401,
+              'code': 'UNAUTHENTICATED',
+              'message': 'Credencial anterior vencida.',
+            }),
+            401,
+            headers: {
+              Headers.contentTypeHeader: [Headers.jsonContentType],
+            },
+          ),
+        );
+        await firstFuture;
+
+        // La sesión nueva sigue activa y el estado del botón NO muestra error 401 ni aviso de login
+        expect(sessionController.current?.accessToken, equals(newToken));
+        final stateAfterLate401 = container.read(
+          favoriteActionProvider(newMaterialUuid),
+        );
+        expect(stateAfterLate401.hasError, isFalse);
+        expect(stateAfterLate401.errorMessage, isNull);
+        expect(stateAfterLate401.statusCode, isNull);
+        expect(stateAfterLate401.activeUserId, isNotNull);
+      },
+    );
   });
 }
