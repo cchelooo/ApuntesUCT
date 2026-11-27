@@ -1,4 +1,5 @@
 import { MaterialPreviewController } from './material-preview.controller';
+import { MaterialAdminController } from './material-admin.controller';
 import { MaterialModeratorGuard } from '../../infrastructure/auth/material-moderator.guard';
 import { CreateMaterialVersion } from '../../application/use-cases/create-material-version';
 import { MaterialVersionController } from '../controllers/material-version.controller';
@@ -18,6 +19,7 @@ import { CatalogHttpAdapter } from '../../infrastructure/catalog/catalog-http.ad
 @Module({
   imports: [ConfigModule, PrismaModule, StorageModule],
   controllers: [
+    MaterialAdminController,
     MaterialPreviewController,
     MaterialsController,
     MaterialController,
