@@ -2,6 +2,10 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:apuntesuct_mobile/core/errors/api_exception.dart';
+import 'package:apuntesuct_mobile/core/network/api_client.dart';
+import 'package:apuntesuct_mobile/core/session/auth_session.dart';
+import 'package:apuntesuct_mobile/core/session/session_controller.dart';
+import 'package:apuntesuct_mobile/core/session/session_storage.dart';
 import 'package:apuntesuct_mobile/core/widgets/app_primary_button.dart';
 import 'package:apuntesuct_mobile/features/materials/data/dio_material_repository.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
@@ -16,6 +20,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart' hide MaterialPage;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../../helpers/auth_session_fixture.dart';
+import '../../../helpers/material_http_adapter.dart';
 
 class _FakeVersionRepository implements MaterialRepository {
   var calls = 0;
@@ -99,6 +106,70 @@ Future<void> _pumpSheet(
 }
 
 void main() {
+  testWidgets(
+    'el 401 del Gateway invalida la hoja abierta y elimina el archivo',
+    (tester) async {
+      final controller = SessionController(MemorySessionStorage());
+      final session = AuthSession.fromLogin(loginFixture(), DateTime.now());
+      expect(await controller.accept(session, controller.beginLogin()), isTrue);
+      final adapter = MaterialHttpAdapter({
+        'message': 'Token rechazado',
+      }, status: 401);
+      final dio = Dio(
+        BaseOptions(baseUrl: 'https://gateway.example.test/api/v1'),
+      )..httpClientAdapter = adapter;
+      final client = ApiClient(customDio: dio, session: controller);
+      final container = ProviderContainer(
+        overrides: [
+          sessionControllerProvider.overrideWithValue(controller),
+          apiclientProvider.overrideWithValue(client),
+        ],
+      );
+      addTearDown(() {
+        container.dispose();
+        dio.close(force: true);
+        controller.dispose();
+      });
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: MaterialVersionUploadSheet(
+                materialId: 'mat-1',
+                currentVersionNumber: 2,
+                pickFile: () async => MaterialPickedFile(
+                  fileName: 'privado.pdf',
+                  sizeBytes: 3,
+                  mimeType: 'application/pdf',
+                  bytes: Uint8List.fromList([1, 2, 3]),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.textContaining('Seleccionar archivo'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Confirmar subida de v3'));
+      await tester.pumpAndSettle();
+
+      final request = adapter.requests.single;
+      expect(
+        request.uri.toString(),
+        'https://gateway.example.test/api/v1/materials/mat-1/versions',
+      );
+      expect(request.headers['Authorization'], 'Bearer ${session.accessToken}');
+      expect((request.data as FormData).fields, isEmpty);
+      expect(find.text(SessionController.signInAgainMessage), findsOneWidget);
+      expect(find.text('privado.pdf'), findsNothing);
+      expect(find.text('Confirmar subida de v3'), findsNothing);
+      expect(find.text('Versión v3 creada'), findsNothing);
+      expect(controller.current, isNull);
+    },
+  );
+
   group('MaterialVersionUploadSheet widget (#292)', () {
     testWidgets('flujo completo: archivo, confirmación, éxito sin duplicar', (
       tester,
