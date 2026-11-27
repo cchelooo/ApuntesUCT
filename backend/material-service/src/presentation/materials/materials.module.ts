@@ -1,3 +1,6 @@
+import { QualityInternalController } from './quality-internal.controller';
+import { QualityServiceGuard } from '../../infrastructure/moderation/quality-service.guard';
+import { QualityModerationService } from '../../application/services/quality-moderation.service';
 import { MaterialPreviewController } from './material-preview.controller';
 import { MaterialModeratorGuard } from '../../infrastructure/auth/material-moderator.guard';
 import { CreateMaterialVersion } from '../../application/use-cases/create-material-version';
@@ -19,12 +22,15 @@ import { CatalogHttpAdapter } from '../../infrastructure/catalog/catalog-http.ad
   imports: [ConfigModule, PrismaModule, StorageModule],
   controllers: [
     MaterialPreviewController,
+    QualityInternalController,
     MaterialsController,
     MaterialController,
     MaterialVersionController,
   ],
   providers: [
     MaterialsService,
+    QualityModerationService,
+    QualityServiceGuard,
     MaterialModeratorGuard,
     CreateMaterial,
     CreateMaterialVersion,

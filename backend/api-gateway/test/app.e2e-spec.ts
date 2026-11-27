@@ -82,7 +82,7 @@ describe('API Gateway (e2e)', () => {
         expect(res.text).toContain('Search Service');
         expect(res.text).toContain('http://localhost:3003/api/docs');
         expect(res.text).toContain('http://localhost:3005/api/docs');
-        expect(res.text).toContain('Quality Service todavía no está enrutado');
+        expect(res.text).toContain('Quality Service está enrutado');
         expect(res.text).toContain(
           'devuelve el listado paginado de materiales',
         );

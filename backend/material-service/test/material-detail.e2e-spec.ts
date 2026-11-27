@@ -175,7 +175,7 @@ describe('GET /materials/:id - detalle', () => {
     expect(storage.get).not.toHaveBeenCalled();
   });
 
-  it.each(['PENDING_REVIEW', 'REJECTED', 'WITHDRAWN'])(
+  it.each(['PENDING_REVIEW', 'REJECTED', 'RETIRED'])(
     'oculta materiales %s con 404',
     async (status) => {
       prisma.material.findFirst.mockImplementation(({ where }) =>

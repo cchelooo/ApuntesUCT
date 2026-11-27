@@ -1,3 +1,4 @@
+import { QualityIdentityController } from './quality-identity.controller';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthController } from './auth.controller';
@@ -14,6 +15,7 @@ import { PasswordRecoveryDelivery } from '../../infrastructure/notifications/pas
   imports: [ConfigModule],
   controllers: [
     AuthController,
+    QualityIdentityController,
     RegistrationController,
     PasswordRecoveryController,
   ],

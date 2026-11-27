@@ -90,6 +90,23 @@ test(
       assert.deepEqual(versions[0], material.versions[0]);
       assert.equal(new Set(versions.map((v) => v.storageKey)).size, 3);
       assert.equal(objects.size, 3);
+      const pending = await prisma.material.findUniqueOrThrow({ where: { id: material.id } });
+      assert.equal(pending.status, 'PENDING_REVIEW');
+      assert.equal(pending.verified, false);
+      assert.equal(pending.revision, 3);
+      await assert.rejects(
+        new MaterialsService(prisma, storage).detail(material.id),
+        (e) => e.getStatus() === 404,
+      );
+      const {
+        QualityModerationService,
+      } = require('../dist/application/services/quality-moderation.service');
+      await new QualityModerationService(prisma).apply(
+        material.id,
+        randomUUID(),
+        { action: 'APPROVE', expectedRevision: 3 },
+        { actorId: randomUUID(), actorRole: 'MODERATOR', authorizedAt: new Date().toISOString() },
+      );
       for (const version of versions) {
         const download = await new MaterialsService(prisma, storage).download(
           material.id,

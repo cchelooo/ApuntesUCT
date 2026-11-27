@@ -41,6 +41,9 @@ model Review {
   comment           String?
   createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
 
+  operationId       String?        @unique @map("operation_id") @db.Uuid
+  operation         ModerationOperation? @relation(fields: [operationId], references: [id], onDelete: Restrict)
+
   // Se admite historial de revisiones; no hay unique por material/usuario.
   @@index([materialId, createdAt])
   @@index([userId])
@@ -88,4 +91,44 @@ model Favorite {
   @@unique([materialId, userId])
   @@index([userId, createdAt])
   @@map("favorites")
+}
+
+enum ModerationOperationState {
+  PENDING_APPLICATION
+  APPLIED
+  FAILED
+}
+model ModerationOperation {
+  id String @id @default(uuid()) @db.Uuid
+  materialId String @map("material_id") @db.Uuid
+  actorId String @map("actor_id") @db.Uuid
+  actorRole String @map("actor_role")
+  authorizedAt DateTime @map("authorized_at") @db.Timestamptz(3)
+  operationFamily String @default("moderation.decisions") @map("operation_family")
+  idempotencyKey String @map("idempotency_key") @db.Uuid
+  fingerprint String
+  action String
+  reason String?
+  expectedRevision Int @map("expected_revision")
+  state ModerationOperationState @default(PENDING_APPLICATION)
+  snapshot Json
+  result Json?
+  failure Json?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  review Review?
+  outbox ModerationOutbox?
+  @@unique([actorId, operationFamily, idempotencyKey])
+  @@map("moderation_operations")
+}
+model ModerationOutbox {
+  operationId String @id @map("operation_id") @db.Uuid
+  operation ModerationOperation @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now()) @map("next_attempt_at") @db.Timestamptz(3)
+  leaseUntil DateTime? @map("lease_until") @db.Timestamptz(3)
+  leaseToken String? @map("lease_token") @db.Uuid
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(3)
+  @@index([completedAt, nextAttemptAt])
+  @@map("moderation_outbox")
 }

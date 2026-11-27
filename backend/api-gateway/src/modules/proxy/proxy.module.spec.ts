@@ -66,11 +66,11 @@ describe('ProxyModule', () => {
       expect(targets).toContain(expected);
     });
 
-    it('no incluye Quality, que sigue sin enrutarse', () => {
+    it('incluye Quality en su origen interno', () => {
       const { options } = configure();
       const targets = options.map((option) => String(option.target));
-      expect(targets).not.toContain('http://127.0.0.1:3004');
-      expect(targets.some((target) => target.includes('3004'))).toBe(false);
+      expect(targets).toContain('http://127.0.0.1:3004');
+      expect(targets.some((target) => target.includes('3004'))).toBe(true);
     });
   });
 
@@ -110,45 +110,51 @@ describe('ProxyModule', () => {
     it.each([
       ['Material', 'MATERIAL_SERVICE_URL', 'http://127.0.0.1:3003'],
       ['Search', 'SEARCH_SERVICE_URL', 'http://127.0.0.1:3005'],
-    ])(
-      '%s fija timeout de 5 s, y changeOrigin',
-      (_label, urlKey, expected) => {
-        const { options } = configure();
-        const option = options.find((item) => item.target === expected);
+    ])('%s fija timeout de 5 s, y changeOrigin', (_label, urlKey, expected) => {
+      const { options } = configure();
+      const option = options.find((item) => item.target === expected);
 
-        expect(option).toBeDefined();
-        expect(option?.proxyTimeout).toBe(5000);
-        expect(option?.changeOrigin).toBe(true);
-      },
-    );
+      expect(option).toBeDefined();
+      expect(option?.proxyTimeout).toBe(5000);
+      expect(option?.changeOrigin).toBe(true);
+    });
 
     it.each([
       ['Material Service', false],
       ['Search Service', false],
       ['Material Service', true],
       ['Search Service', true],
-    ])('maneja el fallo de %s con headersSent=%s', async (serviceName, headersSent) => {
-      mockWeb.mockRejectedValueOnce(new Error('ECONNRESET'));
-      const middleware = serviceProxy('http://upstream', serviceName);
-      const req = { originalUrl: '/api/v1/materials', headers: {} } as Request;
-      const res = {
-        headersSent,
-        destroyed: false,
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-        destroy: jest.fn(),
-      };
-      middleware(req, res as unknown as Response, jest.fn());
-      await Promise.resolve();
-      if (headersSent) {
-        expect(res.destroy).toHaveBeenCalled();
-        expect(res.status).not.toHaveBeenCalled();
-        expect(res.json).not.toHaveBeenCalled();
-      } else {
-        expect(res.status).toHaveBeenCalledWith(502);
-        expect(res.json).toHaveBeenCalledWith({ statusCode: 502, message: `${serviceName} no disponible` });
-      }
-    });
+    ])(
+      'maneja el fallo de %s con headersSent=%s',
+      async (serviceName, headersSent) => {
+        mockWeb.mockRejectedValueOnce(new Error('ECONNRESET'));
+        const middleware = serviceProxy('http://upstream', serviceName);
+        const req = {
+          originalUrl: '/api/v1/materials',
+          headers: {},
+        } as Request;
+        const res = {
+          headersSent,
+          destroyed: false,
+          status: jest.fn().mockReturnThis(),
+          json: jest.fn(),
+          destroy: jest.fn(),
+        };
+        middleware(req, res as unknown as Response, jest.fn());
+        await Promise.resolve();
+        if (headersSent) {
+          expect(res.destroy).toHaveBeenCalled();
+          expect(res.status).not.toHaveBeenCalled();
+          expect(res.json).not.toHaveBeenCalled();
+        } else {
+          expect(res.status).toHaveBeenCalledWith(502);
+          expect(res.json).toHaveBeenCalledWith({
+            statusCode: 502,
+            message: `${serviceName} no disponible`,
+          });
+        }
+      },
+    );
   });
 
   describe('rutas capturadas', () => {

@@ -112,11 +112,17 @@ test(
         },
       );
       await t.test(
-        'no existen claves foráneas ni columnas de estado público de Material',
+        'solo existen relaciones locales de moderación y no estado público autoritativo',
         async () => {
           const foreignKeys =
             await prisma.$queryRaw`SELECT constraint_name FROM information_schema.table_constraints WHERE constraint_schema = ${schema} AND constraint_type = 'FOREIGN KEY'`;
-          assert.equal(foreignKeys.length, 0);
+          assert.deepEqual(foreignKeys.map((k) => k.constraint_name).sort(), [
+            'moderation_outbox_operation_id_fkey',
+            'reviews_operation_id_fkey',
+          ]);
+          const external =
+            await prisma.$queryRaw`SELECT constraint_name FROM information_schema.referential_constraints WHERE constraint_schema = ${schema} AND unique_constraint_schema <> ${schema}`;
+          assert.equal(external.length, 0);
           const columns =
             await prisma.$queryRaw`SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = ${schema} AND table_name IN ('reviews','ratings','reports','favorites')`;
           assert.ok(
@@ -133,7 +139,9 @@ test(
             await prisma.$queryRaw`SELECT e.enumlabel FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid JOIN pg_namespace n ON n.oid = t.typnamespace WHERE n.nspname = ${schema}`;
           assert.ok(
             !states.some((state) =>
-              ['PENDING_REVIEW', 'PUBLISHED', 'REJECTED', 'WITHDRAWN'].includes(state.enumlabel),
+              ['PENDING_REVIEW', 'PUBLISHED', 'REJECTED', 'WITHDRAWN', 'RETIRED'].includes(
+                state.enumlabel,
+              ),
             ),
           );
         },
@@ -141,6 +149,9 @@ test(
       await t.test(
         'repetir migrate deploy conserva los registros y no reaplica la migración',
         async () => {
+          const before = await prisma.$queryRawUnsafe(
+            `SELECT migration_name, finished_at FROM "${schema}"."_prisma_migrations" WHERE rolled_back_at IS NULL ORDER BY migration_name`,
+          );
           deploy();
           assert.equal(await prisma.review.count(), 3);
           assert.equal(await prisma.rating.count(), 2);
@@ -150,10 +161,10 @@ test(
             favorite.id,
           );
           const migrations = await prisma.$queryRawUnsafe(
-            `SELECT migration_name, finished_at FROM "${schema}"."_prisma_migrations" WHERE rolled_back_at IS NULL`,
+            `SELECT migration_name, finished_at FROM "${schema}"."_prisma_migrations" WHERE rolled_back_at IS NULL ORDER BY migration_name`,
           );
-          assert.equal(migrations.length, 1);
-          assert.ok(migrations[0].finished_at);
+          assert.deepEqual(migrations, before);
+          assert.ok(migrations.every((m) => m.finished_at));
         },
       );
       await t.test(

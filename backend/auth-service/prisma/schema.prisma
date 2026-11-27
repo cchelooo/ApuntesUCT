@@ -21,6 +21,7 @@ model User {
   passwordHash  String         @map("password_hash")
   role          Role           @default(STUDENT)
   active        Boolean        @default(true)
+  tokenVersion  Int            @default(0) @map("token_version")
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
   refreshTokens RefreshToken[]

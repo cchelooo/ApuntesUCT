@@ -368,3 +368,7 @@ Aprobar este PR acuerda contratos; no habilita endpoints. La implementación deb
 - [Prisma: nombres de enum y mapeo](https://www.prisma.io/docs/orm/v6/prisma-schema/data-model/database-mapping).
 
 Estas referencias fundamentan decisiones de protocolo y seguridad; no sustituyen el acuerdo del equipo sobre permisos y políticas de producto.
+
+## Perfil implementado para aprobación y rechazo
+
+La implementación de moderación incorpora el [perfil interno v1](quality-moderation-service-profile.md). Este perfil concreta la dependencia técnica descrita en §6 para esta entrega; no modifica retroactivamente el alcance aprobado de S3-05 ni completa por sí solo el registro de acuerdos pendiente. Su activación exige configurar las claves y los servicios indicados.

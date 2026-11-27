@@ -324,3 +324,7 @@ Las pruebas unitarias cubren expiración, tokens inválidos y utilizados, consum
 concurrente detectado, cuentas inactivas, hash persistido y fallos del canal. Las
 pruebas HTTP validan los DTO y el contrato público; las de integración comprueban
 el rollback y la exclusión concurrente contra PostgreSQL real.
+
+### Permisos vigentes para Quality
+
+El perfil interno de moderación añade una comprobación de cuenta activa, rol actual y `tokenVersion` a través de `/internal/v1/quality/identity`, accesible únicamente con credencial de Quality. El restablecimiento de contraseña incrementa tokenVersion. Quality rechaza las credenciales de versiones anteriores incluso antes de expirar. Esto no modifica automáticamente la validación local de JWT de otros servicios. Véase `docs/architecture/quality-moderation-service-profile.md` desde la raíz.

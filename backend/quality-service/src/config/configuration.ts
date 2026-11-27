@@ -31,6 +31,37 @@ export function validateEnvironment(env: Record<string, unknown>): QualityConfig
   if (url.pathname !== '/quality_db') {
     throw new Error('Quality Service debe conectarse a la base quality_db.');
   }
+  if (env.QUALITY_MODERATION_ENABLED === 'true') {
+    for (const key of [
+      'JWT_ACCESS_PUBLIC_KEY',
+      'JWT_ISSUER',
+      'JWT_AUDIENCE',
+      'QUALITY_SERVICE_PRIVATE_KEY',
+      'AUTH_INTERNAL_URL',
+      'MATERIAL_INTERNAL_URL',
+    ]) {
+      if (typeof env[key] !== 'string' || !env[key].trim())
+        throw new Error(`${key} es obligatoria para moderación.`);
+    }
+    for (const key of ['AUTH_INTERNAL_URL', 'MATERIAL_INTERNAL_URL']) {
+      let target: URL;
+      try {
+        target = new URL(env[key] as string);
+      } catch {
+        throw new Error(`${key} debe ser un origen HTTP(S).`);
+      }
+      if (
+        !['http:', 'https:'].includes(target.protocol) ||
+        target.username ||
+        target.password ||
+        target.search ||
+        target.hash ||
+        target.pathname !== '/' ||
+        (env.NODE_ENV === 'production' && target.protocol !== 'https:')
+      )
+        throw new Error(`${key} requiere un origen válido; HTTPS en producción.`);
+    }
+  }
   return { port, databaseUrl: env.DATABASE_URL };
 }
 

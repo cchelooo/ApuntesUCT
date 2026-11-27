@@ -128,7 +128,7 @@ describe('PasswordRecoveryService', () => {
     expect(passwords.hash).toHaveBeenCalledWith(' new password ');
     expect(prisma.user.updateMany).toHaveBeenCalledWith({
       where: { id: user.id, active: true },
-      data: { passwordHash: 'secure-hash' },
+      data: { passwordHash: 'secure-hash', tokenVersion: { increment: 1 } },
     });
     expect(prisma.passwordResetToken.updateMany).toHaveBeenNthCalledWith(1, {
       where: {

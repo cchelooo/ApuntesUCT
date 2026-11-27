@@ -12,7 +12,7 @@ enum MaterialStatus {
   PENDING_REVIEW
   PUBLISHED
   REJECTED
-  WITHDRAWN
+  RETIRED
 }
 
 model MaterialType {
@@ -41,6 +41,7 @@ model Material {
   academicYear       Int               @map("academic_year")
   status             MaterialStatus    @default(PENDING_REVIEW)
   verified           Boolean           @default(false)
+  revision           Int               @default(1)
   createdAt          DateTime          @default(now()) @map("created_at")
   updatedAt          DateTime          @updatedAt @map("updated_at")
   versions           MaterialVersion[]
@@ -68,4 +69,18 @@ model MaterialVersion {
 
   @@unique([materialId, versionNumber])
   @@map("material_versions")
+}
+
+// Durable outcomes, including definitive failures. Logical material/actor IDs.
+model QualityDecisionReceipt {
+  issuerService String @map("issuer_service")
+  operationId String @map("operation_id") @db.Uuid
+  fingerprint String
+  materialId String @map("material_id") @db.Uuid
+  actorId String @map("actor_id") @db.Uuid
+  httpStatus Int @map("http_status")
+  response Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  @@id([issuerService, operationId])
+  @@map("quality_decision_receipts")
 }

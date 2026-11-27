@@ -32,14 +32,27 @@ export class AccessTokenService {
     this.audience = audience;
   }
 
-  issue(user: { id: string; email: string; role: string }): string {
-    return sign({ email: user.email, role: user.role }, this.privateKey, {
-      algorithm: 'RS256',
-      subject: user.id,
-      issuer: this.issuer,
-      audience: this.audience,
-      expiresIn: this.expiresIn,
-    });
+  issue(user: {
+    id: string;
+    email: string;
+    role: string;
+    tokenVersion?: number;
+  }): string {
+    return sign(
+      {
+        email: user.email,
+        role: user.role,
+        tokenVersion: user.tokenVersion ?? 0,
+      },
+      this.privateKey,
+      {
+        algorithm: 'RS256',
+        subject: user.id,
+        issuer: this.issuer,
+        audience: this.audience,
+        expiresIn: this.expiresIn,
+      },
+    );
   }
 
   verify(token: string): JwtPayload {
