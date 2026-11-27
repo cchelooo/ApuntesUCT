@@ -38,9 +38,7 @@ class DioAuthRepository implements AuthRepository {
       return session.user;
     } on DioException catch (error) {
       await _cancel(generation);
-      final intercepted = error.error;
-      if (intercepted is ApiException) throw intercepted;
-      throw ApiException.fromDioException(error);
+      throw _mapLoginDioError(error);
     } on ApiException {
       rethrow;
     } on Object {
@@ -48,6 +46,76 @@ class DioAuthRepository implements AuthRepository {
       throw ApiException(
         message: 'No se pudo establecer una sesión válida y segura.',
       );
+    }
+  }
+
+  ApiException _mapLoginDioError(DioException error) {
+    final intercepted = error.error is ApiException
+        ? error.error! as ApiException
+        : ApiException.fromDioException(error);
+
+    switch (error.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        return ApiException(
+          message:
+              'Tiempo de espera agotado al conectar con el servidor. Verifica tu conexión e inténtalo nuevamente.',
+          statusCode: intercepted.statusCode,
+        );
+      case DioExceptionType.connectionError:
+        return ApiException(
+          message:
+              'No se pudo establecer conexión con el servidor. Verifica tu red o que el servidor esté activo.',
+          statusCode: intercepted.statusCode,
+        );
+      case DioExceptionType.badResponse:
+        final statusCode =
+            error.response?.statusCode ?? intercepted.statusCode;
+        if (statusCode == 401 || statusCode == 403) {
+          return ApiException(
+            message:
+                'Credenciales inválidas. Verifica tu correo institucional y contraseña.',
+            statusCode: statusCode,
+          );
+        }
+        if (statusCode == 400) {
+          return ApiException(
+            message:
+                'Los datos ingresados no son válidos. Revisa tu correo institucional y contraseña.',
+            statusCode: statusCode,
+          );
+        }
+        if (statusCode == 502 || statusCode == 503 || statusCode == 504) {
+          return ApiException(
+            message:
+                'El servicio de autenticación no está disponible en este momento. Intenta nuevamente más tarde.',
+            statusCode: statusCode,
+          );
+        }
+        if (statusCode != null && statusCode >= 500) {
+          return ApiException(
+            message:
+                'No fue posible iniciar sesión por un problema en el servidor. Intenta nuevamente más tarde.',
+            statusCode: statusCode,
+          );
+        }
+        return ApiException(
+          message:
+              'No fue posible iniciar sesión. Intenta nuevamente más tarde.',
+          statusCode: statusCode,
+        );
+      case DioExceptionType.cancel:
+        return ApiException(
+          message: 'La petición fue cancelada.',
+          statusCode: intercepted.statusCode,
+        );
+      default:
+        return ApiException(
+          message:
+              'No se pudo establecer conexión segura con el servidor. Verifica tu red e inténtalo nuevamente.',
+          statusCode: intercepted.statusCode,
+        );
     }
   }
 

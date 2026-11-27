@@ -26,6 +26,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _submitting = false;
 
   @override
   void dispose() {
@@ -39,19 +40,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   /// El resultado no se lee aquí: lo publica `authStateProvider` y lo recogen
   /// el `ref.listen` (navegación) y el `ref.watch` (error y carga).
   Future<void> _submit() async {
+    if (_submitting || ref.read(authStateProvider).isLoading) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     // Baja el teclado antes de la petición para que el banner de error quede
     // visible cuando la respuesta llegue.
     FocusScope.of(context).unfocus();
 
-    // El campo guarda sólo el nombre de usuario; el dominio lo agrega la app.
-    await ref
-        .read(authStateProvider.notifier)
-        .login(
-          Validators.composeInstitutionalEmail(_emailController.text),
-          _passwordController.text,
-        );
+    _submitting = true;
+    try {
+      // El campo guarda sólo el nombre de usuario; el dominio lo agrega la app.
+      await ref
+          .read(authStateProvider.notifier)
+          .login(
+            Validators.composeInstitutionalEmail(_emailController.text),
+            _passwordController.text,
+          );
+    } finally {
+      _submitting = false;
+    }
   }
 
   @override
