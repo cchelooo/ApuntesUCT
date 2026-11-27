@@ -59,8 +59,7 @@ void main() {
       final adapter = _StubAdapter(
         (_) => _jsonResponse({
           'statusCode': 400,
-          'message':
-              'password must contain at least one non-whitespace character',
+          'message': 'Validation failed: unexpected backend text',
           'error': 'Bad Request',
         }, statusCode: 400),
       );

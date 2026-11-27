@@ -81,7 +81,8 @@ class DioAuthRepository implements AuthRepository {
         }
         if (statusCode == 400) {
           return ApiException(
-            message: _friendlyValidationMessage(intercepted.message),
+            message:
+                'Los datos ingresados no son válidos. Revisa tu correo institucional y contraseña.',
             statusCode: statusCode,
           );
         }
@@ -116,18 +117,6 @@ class DioAuthRepository implements AuthRepository {
           statusCode: intercepted.statusCode,
         );
     }
-  }
-
-  String _friendlyValidationMessage(String rawMessage) {
-    final trimmed = rawMessage.trim();
-    final lower = trimmed.toLowerCase();
-    if (trimmed.isEmpty ||
-        lower.startsWith('ocurrió un error inesperado') ||
-        lower.contains('must ') ||
-        lower.contains('should not be empty')) {
-      return 'Los datos ingresados no son válidos. Revisa tu correo institucional y contraseña.';
-    }
-    return trimmed;
   }
 
   Future<void> _cancel(int generation) async {

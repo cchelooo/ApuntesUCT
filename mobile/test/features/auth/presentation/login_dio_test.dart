@@ -242,6 +242,13 @@ void main() {
               error: 'SocketException: Connection refused 10.0.2.2:3000',
             );
           }
+          if (mode == '400') {
+            return _jsonResponse({
+              'statusCode': 400,
+              'message': 'Texto arbitrario de validación del servidor',
+              'error': 'Bad Request',
+            }, statusCode: 400);
+          }
           if (mode == '502') {
             return _jsonResponse({
               'statusCode': 502,
@@ -284,6 +291,26 @@ void main() {
             'Credenciales inválidas. Verifica tu correo institucional y contraseña.',
           ),
           findsOneWidget,
+        );
+        expect(find.text('HOME_AUTENTICADO'), findsNothing);
+
+        // 2b. Error 400 del servidor mapeado siempre a mensaje local de validación
+        mode = '400';
+        await tester.ensureVisible(
+          find.widgetWithText(FilledButton, 'Ingresar'),
+        );
+        await tester.tap(find.widgetWithText(FilledButton, 'Ingresar'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text(
+            'Los datos ingresados no son válidos. Revisa tu correo institucional y contraseña.',
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.textContaining('Texto arbitrario de validación del servidor'),
+          findsNothing,
         );
         expect(find.text('HOME_AUTENTICADO'), findsNothing);
 
