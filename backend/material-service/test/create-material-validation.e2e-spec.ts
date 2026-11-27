@@ -56,6 +56,28 @@ describe('POST /materials: campos obligatorios con contenido', () => {
     await app.close();
   });
 
+  it.each([
+    'javascript:alert(1)', 'data:text/html,test', 'file:///etc/passwd',
+    'ftp://example.com/file', '//example.com/file',
+    'https://user:secret@example.com', 'http://localhost:9000/file',
+    'http://127.0.0.1/file', 'http://minio.internal/file',
+    'https://example.com/file?X-Amz-Signature=secret',
+  ])('rechaza externalLink inseguro: %s', async (externalLink) => {
+    await request(app.getHttpServer()).post('/api/v1/materials')
+      .field({ ...fields, externalLink }).expect(400);
+    expect(prisma.material.create).not.toHaveBeenCalled();
+    expect(storage.save).not.toHaveBeenCalled();
+    expect(catalog.validateReferences).not.toHaveBeenCalled();
+  });
+
+  it.each(['https://example.com/material', 'http://example.com/material'])(
+    'acepta un enlace público %s', async (externalLink) => {
+      const response = await request(app.getHttpServer()).post('/api/v1/materials')
+        .field({ ...fields, externalLink }).expect(201);
+      expect(response.body.data.externalLink).toBe(externalLink);
+    },
+  );
+
   for (const field of ['title', 'subjectId']) {
     it.each(['', ' ', '   ', '\t', '\r\n', '\u00a0\u2003'])(
       'rechaza ' + field + ' compuesto solo por blancos: %j',

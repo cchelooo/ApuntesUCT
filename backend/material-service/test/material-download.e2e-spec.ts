@@ -61,6 +61,9 @@ describe('GET /api/v1/materials/:id/download', () => {
     const response = await request(app.getHttpServer())
       .get(`/api/v1/materials/${materialId}/download`)
       .expect(200);
+    expect(response.headers['x-content-type-options']).toBe('nosniff');
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(JSON.stringify(response.headers)).not.toMatch(/internal-key|storageKey|MinIO/);
     expect(response.headers['content-type']).toBe('application/pdf');
     expect(response.headers['content-disposition']).toBe(
       `attachment; filename="apuntes-calculo.pdf"; filename*=UTF-8''apuntes-calculo.pdf`,

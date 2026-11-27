@@ -23,6 +23,25 @@ describe('buildContentDisposition', () => {
     expect(buildContentDisposition(name)).toBe(expected);
   });
 
+  it.each(['/srv/private/apunte.pdf', '../../apunte.pdf', 'C:\\private\\apunte.pdf'])(
+    'elimina rutas internas de %s', (name) => {
+      expect(buildContentDisposition(name)).toBe(
+        `attachment; filename="apunte.pdf"; filename*=UTF-8''apunte.pdf`,
+      );
+    },
+  );
+
+  it.each(['.', '..', '/private/', 'C:\\private\\'])(
+    'usa fallback para nombres sin archivo: %s', (name) => {
+      expect(asciiFilename(name)).toBe('material');
+      expect(extendedFilename(name)).toBe('material');
+    },
+  );
+
+  it('tolera sustitutos Unicode aislados y quita controles bidireccionales', () => {
+    expect(extendedFilename('a\ud800\u202epdf')).toBe('a_pdf');
+  });
+
   it('escapa los caracteres que RFC 5987 no admite sin codificar en filename*', () => {
     expect(extendedFilename("a'b(c)d*e.pdf")).toBe('a%27b%28c%29d%2Ae.pdf');
   });

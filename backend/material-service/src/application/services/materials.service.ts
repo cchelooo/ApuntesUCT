@@ -1,3 +1,4 @@
+import { publicExternalLink } from '../security/external-link';
 import {
   BadRequestException,
   Injectable,
@@ -159,7 +160,7 @@ export class MaterialsService {
       academicYear: material.academicYear,
       status: 'PUBLISHED',
       verified: material.verified,
-      externalLink: material.externalLink,
+      externalLink: publicExternalLink(material.externalLink),
       createdAt: material.createdAt.toISOString(),
       updatedAt: material.updatedAt.toISOString(),
       currentVersion: versions[0] ?? null,
@@ -336,7 +337,7 @@ export class MaterialsService {
       academicYear: material.academicYear,
       status: 'PENDING_REVIEW',
       verified: material.verified,
-      externalLink: material.externalLink,
+      externalLink: publicExternalLink(material.externalLink),
       createdAt: material.createdAt.toISOString(),
       updatedAt: material.updatedAt.toISOString(),
       currentVersion: versions[0] ?? null,

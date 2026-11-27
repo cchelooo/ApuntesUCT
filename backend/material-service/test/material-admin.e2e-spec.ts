@@ -125,6 +125,7 @@ describe('Endpoints administrativos de materiales pendientes (#460)', () => {
       );
       expect(prisma.material.count).toHaveBeenCalledWith({ where: { status: 'PENDING_REVIEW' } });
       expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.headers['x-content-type-options']).toBe('nosniff');
     },
   );
 
@@ -162,6 +163,7 @@ describe('Endpoints administrativos de materiales pendientes (#460)', () => {
       expect(response.headers['content-length']).toBe(String(content.length));
       expect(response.headers['content-disposition']).toMatch(/^attachment;/);
       expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.headers['x-content-type-options']).toBe('nosniff');
       expect(JSON.stringify(response.headers)).not.toMatch(/minio|storageKey|internal-key/);
       expect(storage.get).toHaveBeenCalledWith(storageKey);
     },
