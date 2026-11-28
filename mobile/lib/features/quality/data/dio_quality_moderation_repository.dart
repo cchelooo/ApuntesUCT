@@ -32,7 +32,7 @@ class DioQualityModerationRepository implements QualityModerationRepository {
 
     try {
       final response = await _apiClient.dio.get<dynamic>(
-        '/quality/moderation/pending',
+        '/quality/moderation/materials',
         queryParameters: {'page': page, 'pageSize': pageSize},
       );
       final data = response.data;

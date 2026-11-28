@@ -16,9 +16,9 @@ class _FakeApiClient implements ApiClient {
 }
 
 void main() {
-  group('DioQualityModerationRepository (#409)', () {
+  group('DioQualityModerationRepository (#409, #410)', () {
     test(
-      'consulta GET /quality/moderation/pending y mapea DTO privado de Quality',
+      'consulta GET /api/v1/quality/moderation/materials y valida URI completa',
       () async {
         final dio = Dio(
           BaseOptions(baseUrl: 'https://gateway.example.test/api/v1'),
@@ -62,7 +62,11 @@ void main() {
         final repo = DioQualityModerationRepository(_FakeApiClient(dio));
         final result = await repo.listPendingModeration(page: 1, pageSize: 10);
 
-        expect(capturedRequest?.path, '/quality/moderation/pending');
+        expect(capturedRequest?.path, '/quality/moderation/materials');
+        expect(
+          capturedRequest?.uri.toString(),
+          'https://gateway.example.test/api/v1/quality/moderation/materials?page=1&pageSize=10',
+        );
         expect(capturedRequest?.queryParameters, {'page': 1, 'pageSize': 10});
         expect(result.items, hasLength(1));
 
