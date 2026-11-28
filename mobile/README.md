@@ -166,6 +166,58 @@ Este flag no simula Catalog, Material ni Search: esas pantallas siguen
 necesitando Gateway. Con el flag desactivado, el login usa HTTP, pero el
 endpoint de Auth del Sprint 2 también devuelve una autenticación simulada.
 
+## APK Android de pruebas con Gateway HTTPS
+
+Desde `mobile/`, registra el commit exacto de la compilación y genera el APK
+con la URL pública y autenticación HTTP:
+
+```bash
+git rev-parse HEAD
+flutter build apk --debug \
+  --dart-define=API_GATEWAY_URL=https://apuntesuct-api.inf.uct.cl/api/v1 \
+  --dart-define=AUTH_DEMO_MODE=false
+
+adb devices
+device_id=emulator-5554  # Cambiar por el identificador de adb devices
+adb -s "$device_id" install -r build/app/outputs/flutter-apk/app-debug.apk
+adb -s "$device_id" shell am start -W -n cl.uct.apuntesuct_mobile/.MainActivity
+shasum -a 256 build/app/outputs/flutter-apk/app-debug.apk
+```
+
+El APK del 28-11-2026 es `1.0.0+1` (Android `versionCode=1`), generado
+desde `2855439e35c786cb63d4744b5dc9c90683cf0df2`. Su SHA-256 es
+`57f54b39a856d7cbbf6060e507039954c6a87ea6f35da957e9453ec75e0d4d80`.
+La firma debug, la URL incorporada y el arranque en el emulador Android
+`Medium_Phone` se verificaron.
+
+### Prueba conjunta de estudiante y moderación
+
+Antes de la sesión, confirmar con INT2 una cuenta `STUDENT`, una
+`MODERATOR`, un material publicado para favoritos, calificaciones y reportes,
+y otro pendiente de revisión. Compartir las credenciales de prueba por
+el canal acordado con INT2.
+
+1. Con la cuenta estudiante, iniciar sesión, buscar y abrir el material.
+   Cuando Quality esté disponible en la aplicación, agregar y quitar un
+   favorito, calificar y crear un reporte. Recargar para comprobar que cada
+   operación se refleja una sola vez.
+2. Con la cuenta moderadora, abrir el material pendiente, enviar una decisión
+   y comprobar el estado confirmado antes de continuar. Revisar el reporte
+   del paso anterior. Con la cuenta estudiante, comprobar que las operaciones
+   protegidas de moderación rechazan el acceso.
+3. Registrar versión, commit, fecha, rol, ID del material o reporte y resultado.
+   Si falla una solicitud, registrar el método, la ruta, el código HTTP y el
+   `requestId` cuando esté disponible.
+
+El 28-11-2026, `GET /health` y `GET /api/v1/auth/health` devolvieron
+`200` en el host público. Las consultas a `GET /api/v1/quality/favorites/me`
+y a la ruta pública de resumen de calificaciones devolvieron `404`
+(`Cannot GET`). Quedó pendiente la publicación de las rutas de Quality
+([#458](https://github.com/cchelooo/ApuntesUCT/issues/458) y
+[#467](https://github.com/cchelooo/ApuntesUCT/issues/467)) y la confirmación
+de las cuentas y materiales con INT2
+([#480](https://github.com/cchelooo/ApuntesUCT/issues/480)).
+
 ## Validación integrada en Android e iOS
 
 La ejecución y las capturas verificadas están en el
