@@ -26,7 +26,8 @@
     "test:cov": "npm run prisma:generate && npm run test:cov --workspaces --",
     "test:ci": "npm run prisma:generate && npm run test:ci --workspaces --",
     "test:api-docs": "node --test scripts/api-docs.test.cjs",
-    "test:favorites": "npm run prisma:generate --workspace=auth-service --workspace=material-service --workspace=quality-service && npm run build --workspace=auth-service --workspace=material-service --workspace=quality-service --workspace=api-gateway && node --test test/quality-favorites.integration.cjs"
+    "test:favorites": "npm run prisma:generate --workspace=auth-service --workspace=material-service --workspace=quality-service && npm run build --workspace=auth-service --workspace=material-service --workspace=quality-service --workspace=api-gateway && node --test test/quality-favorites.integration.cjs",
+    "test:reports": "npm run prisma:generate --workspace=auth-service --workspace=material-service --workspace=quality-service && npm run build --workspace=auth-service --workspace=material-service --workspace=quality-service --workspace=api-gateway && node --test test/quality-reports.integration.cjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

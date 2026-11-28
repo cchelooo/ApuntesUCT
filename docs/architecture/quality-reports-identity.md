@@ -1,0 +1,13 @@
+# Identidad y referencias para reportes
+
+Esta implementación concreta el consumo de identidad de S3-05 para las rutas de reportes. Se revisa junto al PR de implementación; no se presenta como una decisión ya aprobada adicional a S3-04/S3-05.
+
+`GET /api/v1/auth/access-context` acepta únicamente Authorization Bearer. Devuelve `{id, role, active:true}` del propio usuario autenticado; no acepta un identificador de otro usuario. Auth valida su JWT firmado con el AccessTokenService existente y comprueba la cuenta y tokenVersion en auth_db. 401 significa credencial ausente/inválida/revocada o usuario eliminado, 403 cuenta inactiva y 503 dependencia de persistencia no disponible. La respuesta lleva no-store. El rol procede del registro actual, por lo que una pérdida de rol tiene efecto en la siguiente solicitud aunque el token no haya vencido.
+
+Quality delega la validación enviando el mismo Bearer a un origen Auth fijo de confianza, con HTTPS obligatorio en producción, timeout y redirecciones deshabilitadas. Ésta es la razón explícita del uso del token de usuario entre servicios: consultar la identidad del propio portador en el emisor, sin actuar como él en otro dominio. No se envía a Material, no se guarda en reportes/historial/idempotencia ni se registra en logs. La identidad no se toma de headers libres. Un fallo o respuesta malformada de Auth no concede acceso. La disponibilidad de Auth es por tanto una dependencia de todas las rutas de reportes, incluyendo lecturas y replays.
+
+El campo tokenVersion y su incremento al recuperar contraseña permiten revocación por usuario. Los tokens anteriores sin ese claim se interpretan como versión 0 y dejan de ser válidos en esta consulta tras incrementarse la versión. No se implementa revocación por jti ni se afirma que las rutas antiguas ajenas a este flujo usen esta comprobación.
+
+Material sólo recibe consultas GET de detalle público sin token. La comprobación de publicación usa su respuesta autoritativa. Quality guarda uploaderId como referencia lógica interna e inmutable del autor (modelo actual sin transferencia), para impedir que el autor tramite reportes aun después de ocultarse Material. No es una segunda copia del estado público. Los reportes legados sin autoría se concilian desde Material público cuando es posible; si no, falla el tratamiento cerrado, sin adivinar identidad. Una futura transferencia de propiedad requiere actualizar esta política.
+
+ReportHistory registra actor, fecha, estado anterior/nuevo y nota; ReportMutation conserva clave, huella y snapshot de respuesta. Son tablas propias de Quality. No hay lecturas SQL de Auth/Material desde Quality, ni comandos de publicación o retiro en este flujo.

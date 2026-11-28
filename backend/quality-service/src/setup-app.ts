@@ -1,10 +1,10 @@
 import { HttpAdapterHost } from '@nestjs/core';
-import { FavoriteRoutingErrorFilter } from './favorites/favorite-error.filter';
+import { ReportRoutingErrorFilter } from './reports/report-error.filter';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 export function setupApp(app: INestApplication): void {
-  app.useGlobalFilters(new FavoriteRoutingErrorFilter(app.get(HttpAdapterHost).httpAdapter));
+  app.useGlobalFilters(new ReportRoutingErrorFilter(app.get(HttpAdapterHost).httpAdapter));
   app.setGlobalPrefix('api/v1', { exclude: ['health'] });
   app.useGlobalPipes(
     new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }),

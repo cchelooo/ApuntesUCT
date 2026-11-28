@@ -327,3 +327,55 @@ jobs:
 
       - name: Quality persistence regression
         run: QUALITY_TEST_DATABASE_URL="$FAVORITES_TEST_QUALITY_DATABASE_URL" node --test quality-service/test/persistence.integration.cjs
+
+  quality-reports-integration:
+    name: Quality reports integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci-disposable
+          POSTGRES_DB: quality_db
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U ci -d quality_db"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+
+      - name: Configure disposable database URLs
+        env:
+          POSTGRES_PORT: ${{ job.services.postgres.ports['5432'] }}
+        run: |
+          echo "REPORTS_TEST_QUALITY_DATABASE_URL=postgresql://ci:ci-disposable@127.0.0.1:${POSTGRES_PORT}/quality_db" >> "$GITHUB_ENV"
+          echo "REPORTS_TEST_MATERIAL_DATABASE_URL=postgresql://ci:ci-disposable@127.0.0.1:${POSTGRES_PORT}/material_db" >> "$GITHUB_ENV"
+          echo "REPORTS_TEST_AUTH_DATABASE_URL=postgresql://ci:ci-disposable@127.0.0.1:${POSTGRES_PORT}/auth_db" >> "$GITHUB_ENV"
+
+      - name: Create disposable service databases
+        run: |
+          psql "$REPORTS_TEST_QUALITY_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE material_db'
+          psql "$REPORTS_TEST_QUALITY_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE auth_db'
+
+      - run: npm run test:reports
+
+      - run: npm run test:e2e --workspace=quality-service
+
+      - name: Quality persistence regression
+        run: QUALITY_TEST_DATABASE_URL="$REPORTS_TEST_QUALITY_DATABASE_URL" node --test quality-service/test/persistence.integration.cjs

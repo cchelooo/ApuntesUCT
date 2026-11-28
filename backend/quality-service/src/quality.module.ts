@@ -1,4 +1,5 @@
 import { FavoritesModule } from './favorites/favorites.module';
+import { ReportsModule } from './reports/reports.module';
 import { Module } from '@nestjs/common';
 import { CheckQualityHealth } from './application/check-quality-health';
 import { PersistenceHealthPort } from './application/ports/persistence-health.port';
@@ -7,7 +8,7 @@ import { PrismaHealthAdapter } from './infrastructure/prisma/prisma-health.adapt
 import { HealthController } from './presentation/controllers/health.controller';
 
 @Module({
-  imports: [PrismaModule, FavoritesModule],
+  imports: [PrismaModule, FavoritesModule, ReportsModule],
   controllers: [HealthController],
   providers: [
     CheckQualityHealth,
