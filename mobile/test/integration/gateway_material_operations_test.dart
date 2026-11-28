@@ -3,6 +3,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:apuntesuct_mobile/core/errors/api_exception.dart';
+import 'package:apuntesuct_mobile/core/network/api_client.dart';
+import 'package:apuntesuct_mobile/core/session/auth_session.dart';
+import 'package:apuntesuct_mobile/core/session/session_controller.dart';
+import 'package:apuntesuct_mobile/core/session/session_storage.dart';
 import 'package:apuntesuct_mobile/features/materials/data/material_file_handler.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/academic_reference.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_requests.dart';
@@ -10,10 +14,12 @@ import 'package:apuntesuct_mobile/features/materials/presentation/providers/mate
 import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_download_provider.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_upload_provider.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_version_upload_provider.dart';
+import 'package:apuntesuct_mobile/features/quality/presentation/providers/quality_repository_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../helpers/auth_session_fixture.dart';
 import '../helpers/gateway_contract_fixtures.dart';
 import '../helpers/gateway_test_transport.dart';
 
@@ -87,6 +93,122 @@ void expectFilePart(RequestOptions request, GatewayTestTransport transport) {
 }
 
 void main() {
+  test('sesión compartida en subida, versionado y moderación rechazada', () async {
+    final now = DateTime.utc(2026, 11, 23);
+    var clock = now;
+    final storage = MemorySessionStorage();
+    final controller = SessionController(storage, now: () => clock);
+    final session = AuthSession.fromLogin(loginFixture(now: now), now);
+    expect(await controller.accept(session, controller.beginLogin()), isTrue);
+
+    var uploadStatus = 201;
+    var simulateUpload = false;
+    final transport = GatewayTestTransport(
+      (request) {
+        switch (request.uri.path) {
+          case '/api/v1/materials':
+            expect(request.method, 'POST');
+            expect(
+              (request.data as FormData).fields.map((f) => f.key),
+              isNot(contains('uploaderId')),
+            );
+            return gatewayJson(
+              uploadStatus == 201
+                  ? (createdResponse()
+                      ..['isSimulatedResponse'] = simulateUpload)
+                  : {'message': 'Permiso denegado'},
+              status: uploadStatus,
+            );
+          case '/api/v1/materials/$materialId/versions':
+            expect(request.method, 'POST');
+            expect((request.data as FormData).fields, isEmpty);
+            return gatewayJson({'message': 'Solo el autor.'}, status: 403);
+          case '/api/v1/quality/moderation/materials':
+            expect(
+              request.uri.toString(),
+              '$testGatewayUrl/quality/moderation/materials?page=1&pageSize=20',
+            );
+            final signedIn = request.headers['Authorization'] != null;
+            return gatewayJson({
+              'message': signedIn ? 'Rol insuficiente' : 'Sesión requerida',
+            }, status: signedIn ? 403 : 401);
+          default:
+            fail('Ruta inesperada: ${request.uri}');
+        }
+      },
+      allowedMethods: {'GET', 'POST'},
+      checkAuthorization: (request) {
+        expect(
+          request.headers['Authorization'],
+          clock == now ? 'Bearer ${session.accessToken}' : isNull,
+        );
+      },
+    );
+    final dio = Dio(BaseOptions(baseUrl: testGatewayUrl))
+      ..httpClientAdapter = transport;
+    final container = ProviderContainer(
+      overrides: [
+        apiclientProvider.overrideWithValue(
+          ApiClient(customDio: dio, session: controller),
+        ),
+        sessionControllerProvider.overrideWithValue(controller),
+      ],
+    );
+    addTearDown(() {
+      container.dispose();
+      dio.close(force: true);
+      controller.dispose();
+    });
+
+    final upload = container.read(materialUploadProvider.notifier);
+    expect(await upload.upload(uploadRequest()), isTrue);
+    expect(
+      container.read(materialUploadProvider).created!.summary.status,
+      'PENDING_REVIEW',
+    );
+    simulateUpload = true;
+    expect(await upload.upload(uploadRequest()), isFalse);
+    expect(container.read(materialUploadProvider).created, isNull);
+    expect(
+      container.read(materialUploadProvider).errorMessage,
+      contains('simuló'),
+    );
+    uploadStatus = 403;
+    expect(await upload.upload(uploadRequest()), isFalse);
+    expect(
+      container.read(materialUploadProvider).errorMessage,
+      contains('no tiene permiso'),
+    );
+
+    final version = materialVersionUploadProvider(materialId);
+    expect(
+      await container.read(version.notifier).uploadVersion(materialId, file()),
+      isFalse,
+    );
+    expect(container.read(version).created, isNull);
+    expect(container.read(version).errorMessage, 'Solo el autor.');
+    expect(container.read(materialVersionUploadLockProvider), isNull);
+
+    final quality = container.read(qualityRepositoryProvider);
+    await expectLater(
+      quality.listModerationMaterials(),
+      throwsA(isA<ApiException>().having((e) => e.statusCode, 'HTTP', 403)),
+    );
+    expect(controller.current, same(session));
+    expect(await storage.read(), isNotNull);
+
+    clock = session.expiresAt;
+    await expectLater(
+      quality.listModerationMaterials(),
+      throwsA(isA<ApiException>().having((e) => e.statusCode, 'HTTP', 401)),
+    );
+    expect(controller.current, isNull);
+    expect(controller.needsSignIn, isTrue);
+    expect(await storage.read(), isNull);
+    expect(container.read(materialUploadProvider).isIdle, isTrue);
+    expect(container.read(version).isIdle, isTrue);
+  });
+
   test(
     'subida multipart real llega al provider sin doble envío y conserva el 201',
     () async {

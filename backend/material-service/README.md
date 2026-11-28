@@ -480,6 +480,28 @@ válido, responde `401`. Si `NODE_ENV=production`, el servicio **no arranca** co
 Las referencias académicas se guardan como IDs lógicos; la comprobación de su
 existencia en Catalog sigue pendiente. Universidad es null si no está configurada.
 
+### Acceso administrativo a pendientes (#460)
+
+Los moderadores y administradores pueden revisar materiales `PENDING_REVIEW` sin
+alterar los endpoints públicos:
+
+| Método | Ruta | Respuesta |
+| --- | --- | --- |
+| `GET` | `/api/v1/materials/admin/pending?page=1&pageSize=20` | `{items, page, pageSize, total}` solo con pendientes |
+| `GET` | `/api/v1/materials/admin/pending/:id` | Detalle privado con historial de versiones |
+| `GET` | `/api/v1/materials/admin/pending/:id/download?versionId=<opcional>` | Archivo privado como `attachment` |
+
+Las tres rutas exigen `Authorization: Bearer <JWT firmado>` con rol `MODERATOR` o
+`ADMIN`: sin token o con token inválido responden `401`, y con `STUDENT` o sin
+rol responden `403`. No sirven materiales `PUBLISHED`, `REJECTED` ni `WITHDRAWN`
+por estas rutas (`404`). Las respuestas incluyen `Cache-Control: no-store` y
+`X-Content-Type-Options: nosniff`, no serializan `storageKey`, `checksum`, URLs
+ni credenciales de MinIO, y registran auditoría local de la operación.
+
+Los materiales pendientes, rechazados o retirados siguen fuera del listado,
+detalle, descarga y previsualización públicos. Estos endpoints **no** aprueban
+ni rechazan materiales: las decisiones de moderación son #456.
+
 ### Flujo y consistencia
 
 1. Validar multipart, formato/tamaño del archivo y reglas archivo/enlace.
