@@ -331,6 +331,93 @@ void main() {
   });
 
   group('Fallos de Quality mediante Gateway', () {
+    test(
+      'rechaza una lectura protegida sin sesión y sin datos ficticios',
+      () async {
+        await session.clear();
+        final transport = useTransport({'GET'}, (_) {
+          return gatewayJson({
+            'statusCode': 401,
+            'code': 'UNAUTHORIZED',
+            'message': 'Inicia sesión para consultar tus favoritos.',
+          }, status: 401);
+        });
+        final repo = container.read(qualityRepositoryProvider);
+
+        await expectLater(
+          repo.getFavorites(),
+          throwsA(
+            isA<QualityApiException>()
+                .having((error) => error.statusCode, 'statusCode', 401)
+                .having(
+                  (error) => error.errorCode,
+                  'errorCode',
+                  'UNAUTHORIZED',
+                ),
+          ),
+        );
+
+        expect(
+          transport.requests.single.uri.path,
+          '/api/v1/quality/favorites/me',
+        );
+        expect(transport.requests.single.headers['Authorization'], isNull);
+        expect(session.current, isNull);
+        expect(await storage.read(), isNull);
+      },
+    );
+
+    test('conserva el error de conexión hasta una lectura explícita', () async {
+      const favoriteId = '44444444-4444-4444-8444-444444444444';
+      var connected = false;
+      final transport = useTransport({'GET'}, (request) {
+        if (!connected) {
+          throw DioException.connectionError(
+            requestOptions: request,
+            reason: 'Conexión interrumpida en el transporte de prueba',
+          );
+        }
+        return gatewayJson({
+          'items': [
+            {
+              'id': favoriteId,
+              'materialId': _materialId,
+              'createdAt': _timestamp,
+              'available': true,
+            },
+          ],
+          'page': 1,
+          'pageSize': 20,
+          'total': 1,
+        });
+      });
+      final repo = container.read(qualityRepositoryProvider);
+
+      await expectLater(
+        repo.getFavorites(),
+        throwsA(
+          isA<QualityApiException>()
+              .having((error) => error.statusCode, 'statusCode', isNull)
+              .having(
+                (error) => error.message,
+                'message',
+                contains('Verifica tu red'),
+              ),
+        ),
+      );
+      expect(transport.requests, hasLength(1));
+      expect(session.current, same(student));
+      expect(await storage.read(), student.encode());
+
+      connected = true;
+      final recovered = await repo.getFavorites();
+
+      expect(transport.requests, hasLength(2));
+      expect(transport.requests.last.uri, transport.requests.first.uri);
+      expect(recovered.items.single.id, favoriteId);
+      expect(recovered.total, 1);
+    });
+
     for (final (status, code, message) in [
       (401, 'UNAUTHORIZED', 'La sesión ya no es válida.'),
       (403, 'FORBIDDEN', 'Se requiere rol de moderador.'),
@@ -410,6 +497,12 @@ void main() {
         throwsA(
           isA<QualityApiException>()
               .having((error) => error.statusCode, 'statusCode', 502)
+              .having(
+                (error) => error.errorCode,
+                'errorCode',
+                'DEPENDENCY_INVALID_RESPONSE',
+              )
+              .having((error) => error.requestId, 'requestId', _requestId)
               .having(
                 (error) => error.message,
                 'message',
