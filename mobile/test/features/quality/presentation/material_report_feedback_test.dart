@@ -363,5 +363,239 @@ void main() {
         await sessionController.clear();
       },
     );
+
+    testWidgets(
+      'Regresión borrador por cuenta (misma cuenta): Tras un 401 con el formulario abierto, si vuelve la misma cuenta se conserva lo escrito y se envía con su nuevo token y cuerpo',
+      (WidgetTester tester) async {
+        const accountAId = '00000000-0000-4000-8000-000000000092';
+        final adapter = _ControllableReportAdapter()
+          ..nextStatusCode = 401
+          ..nextData = {
+            'statusCode': 401,
+            'code': 'UNAUTHENTICATED',
+            'message': 'Sesión vencida.',
+          };
+        final container = await createContainer(adapter);
+        final sessionController = container.read(sessionControllerProvider);
+        final initialTokenA = sessionController.current?.accessToken;
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const MaterialApp(
+              home: Scaffold(
+                body: MaterialReportForm(
+                  materialId: materialUuid,
+                  materialTitle: 'Guía de Química',
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.byType(DropdownButtonFormField<ReportMotive>));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Recurso dañado o enlace roto').last);
+        await tester.pumpAndSettle();
+
+        const draftA = 'Borrador de la cuenta A tras 401.';
+        await tester.enterText(find.byType(TextFormField), draftA);
+
+        await tester.tap(find.text('Enviar Reporte'));
+        await tester.pumpAndSettle();
+
+        expect(adapter.requests.length, 1);
+        expect(
+          adapter.requests[0].headers['Authorization'],
+          equals('Bearer $initialTokenA'),
+        );
+        expect(adapter.requests[0].data, {
+          'reason': 'BROKEN_RESOURCE',
+          'details': draftA,
+        });
+        expect(sessionController.current, isNull);
+
+        // Vuelve a iniciar sesión la MISMA cuenta (accountAId) con un nuevo token
+        final genA2 = sessionController.beginLogin();
+        await sessionController.accept(
+          AuthSession.fromLogin(
+            loginFixture(
+              id: accountAId,
+              email: 'estudiante@alu.uct.cl',
+              lifetime: const Duration(hours: 2),
+            ),
+            DateTime.now().toUtc(),
+          ),
+          genA2,
+        );
+        final renewedTokenA = sessionController.current?.accessToken;
+        expect(renewedTokenA, isNotNull);
+        expect(renewedTokenA, isNot(equals(initialTokenA)));
+        await tester.pumpAndSettle();
+
+        // Se conserva el motivo y el texto del borrador de la misma cuenta
+        expect(find.text(draftA), findsOneWidget);
+        expect(find.text('Recurso dañado o enlace roto'), findsOneWidget);
+        expect(find.text('Enviar Reporte'), findsOneWidget);
+
+        adapter.nextStatusCode = 201;
+        adapter.nextData = {
+          'id': reportUuid,
+          'materialId': materialUuid,
+          'userId': accountAId,
+          'reason': 'BROKEN_RESOURCE',
+          'details': draftA,
+          'status': 'OPEN',
+          'resolutionNote': null,
+          'createdAt': '2026-11-27T14:00:00Z',
+          'updatedAt': '2026-11-27T14:00:00Z',
+        };
+
+        await tester.tap(find.text('Enviar Reporte'));
+        await tester.pumpAndSettle();
+
+        expect(adapter.requests.length, 2);
+        expect(
+          adapter.requests[1].headers['Authorization'],
+          equals('Bearer $renewedTokenA'),
+        );
+        expect(adapter.requests[1].data, {
+          'reason': 'BROKEN_RESOURCE',
+          'details': draftA,
+        });
+        expect(find.text('Reporte enviado'), findsOneWidget);
+
+        await sessionController.clear();
+      },
+    );
+
+    testWidgets(
+      'Regresión borrador por cuenta (otra cuenta): Tras un 401 con el formulario abierto, si entra otra cuenta se limpia el borrador anterior antes de habilitar el envío',
+      (WidgetTester tester) async {
+        const accountAId = '00000000-0000-4000-8000-000000000092';
+        const accountBId = '00000000-0000-4000-8000-000000000093';
+        final adapter = _ControllableReportAdapter()
+          ..nextStatusCode = 401
+          ..nextData = {
+            'statusCode': 401,
+            'code': 'UNAUTHENTICATED',
+            'message': 'Sesión de cuenta A vencida.',
+          };
+        final container = await createContainer(adapter);
+        final sessionController = container.read(sessionControllerProvider);
+        final tokenA = sessionController.current?.accessToken;
+        expect(sessionController.current?.user.id, equals(accountAId));
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const MaterialApp(
+              home: Scaffold(
+                body: MaterialReportForm(
+                  materialId: materialUuid,
+                  materialTitle: 'Guía de Química',
+                ),
+              ),
+            ),
+          ),
+        );
+
+        // La cuenta A redacta su borrador y recibe 401
+        await tester.tap(find.byType(DropdownButtonFormField<ReportMotive>));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Recurso dañado o enlace roto').last);
+        await tester.pumpAndSettle();
+
+        const draftAccountA = 'Borrador privado de la cuenta A.';
+        await tester.enterText(find.byType(TextFormField), draftAccountA);
+
+        await tester.tap(find.text('Enviar Reporte'));
+        await tester.pumpAndSettle();
+
+        expect(adapter.requests.length, 1);
+        expect(
+          adapter.requests[0].headers['Authorization'],
+          equals('Bearer $tokenA'),
+        );
+        expect(adapter.requests[0].data, {
+          'reason': 'BROKEN_RESOURCE',
+          'details': draftAccountA,
+        });
+        expect(find.text(draftAccountA), findsOneWidget);
+
+        // Ahora entra OTRA cuenta distinta (accountBId) con el formulario montado
+        final genB = sessionController.beginLogin();
+        await sessionController.accept(
+          AuthSession.fromLogin(
+            loginFixture(
+              id: accountBId,
+              email: 'otra.cuenta@alu.uct.cl',
+              name: 'Otra Estudiante',
+              lifetime: const Duration(hours: 2),
+            ),
+            DateTime.now().toUtc(),
+          ),
+          genB,
+        );
+        final tokenB = sessionController.current?.accessToken;
+        expect(tokenB, isNotNull);
+        expect(tokenB, isNot(equals(tokenA)));
+        await tester.pumpAndSettle();
+
+        // El formulario limpió el texto y el motivo del borrador de la cuenta A
+        expect(find.text(draftAccountA), findsNothing);
+        final textField = tester.widget<TextFormField>(
+          find.byType(TextFormField),
+        );
+        expect(textField.controller?.text, isEmpty);
+
+        // Si la cuenta B pulsa Enviar Reporte sin completar su propio motivo, la validación impide enviar
+        await tester.tap(find.text('Enviar Reporte'));
+        await tester.pumpAndSettle();
+        expect(adapter.requests.length, 1);
+        expect(
+          find.text('Por favor, seleccione un motivo obligatorio.'),
+          findsOneWidget,
+        );
+
+        // La cuenta B selecciona su propio motivo y texto y lo envía con su propio token
+        await tester.tap(find.byType(DropdownButtonFormField<ReportMotive>));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Infracción de derechos de autor').last);
+        await tester.pumpAndSettle();
+
+        const draftAccountB = 'Reporte redactado por la cuenta B.';
+        await tester.enterText(find.byType(TextFormField), draftAccountB);
+
+        adapter.nextStatusCode = 201;
+        adapter.nextData = {
+          'id': reportUuid,
+          'materialId': materialUuid,
+          'userId': accountBId,
+          'reason': 'COPYRIGHT',
+          'details': draftAccountB,
+          'status': 'OPEN',
+          'resolutionNote': null,
+          'createdAt': '2026-11-27T14:10:00Z',
+          'updatedAt': '2026-11-27T14:10:00Z',
+        };
+
+        await tester.tap(find.text('Enviar Reporte'));
+        await tester.pumpAndSettle();
+
+        expect(adapter.requests.length, 2);
+        expect(
+          adapter.requests[1].headers['Authorization'],
+          equals('Bearer $tokenB'),
+        );
+        expect(adapter.requests[1].data, {
+          'reason': 'COPYRIGHT',
+          'details': draftAccountB,
+        });
+        expect(find.text('Reporte enviado'), findsOneWidget);
+
+        await sessionController.clear();
+      },
+    );
   });
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/session/session_controller.dart';
+import '../../../../core/session/session_revision.dart';
 import '../../domain/models/report_model.dart';
 import '../../domain/models/report_motive.dart';
 import '../providers/material_report_provider.dart';
@@ -46,10 +48,25 @@ class _MaterialReportFormState extends ConsumerState<MaterialReportForm> {
   ReportMotive? _selectedMotive;
   bool _inFlight = false;
   bool _completedHere = false;
+  String? _draftOwnerUserId;
+  int _formOperationId = 0;
+
+  String? _readCurrentUserId() {
+    if (widget.onSubmit != null) return null;
+    return ref.read(sessionControllerProvider).current?.user.id;
+  }
+
+  void _claimDraftForCurrentUser() {
+    final currentUserId = _readCurrentUserId();
+    if (currentUserId != null) {
+      _draftOwnerUserId = currentUserId;
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    _draftOwnerUserId = _readCurrentUserId();
     if (widget.onSubmit == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -79,6 +96,8 @@ class _MaterialReportFormState extends ConsumerState<MaterialReportForm> {
       return;
     }
 
+    _claimDraftForCurrentUser();
+    final opId = ++_formOperationId;
     setState(() => _inFlight = true);
     try {
       final created = await ref
@@ -89,13 +108,13 @@ class _MaterialReportFormState extends ConsumerState<MaterialReportForm> {
             details: description,
           );
 
-      if (!mounted) return;
+      if (!mounted || _formOperationId != opId) return;
       if (created != null) {
         setState(() => _completedHere = true);
         widget.onReportCreated?.call(created);
       }
     } finally {
-      if (mounted) {
+      if (mounted && _formOperationId == opId) {
         setState(() => _inFlight = false);
       }
     }
@@ -103,6 +122,33 @@ class _MaterialReportFormState extends ConsumerState<MaterialReportForm> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.onSubmit == null) {
+      ref.listen<int>(sessionRevisionProvider, (previous, next) {
+        ++_formOperationId;
+        final newUserId = ref.read(sessionControllerProvider).current?.user.id;
+        if (newUserId == null) {
+          if (_inFlight) {
+            setState(() => _inFlight = false);
+          }
+          return;
+        }
+        if (_draftOwnerUserId != null && _draftOwnerUserId != newUserId) {
+          setState(() {
+            _selectedMotive = null;
+            _descriptionController.clear();
+            _inFlight = false;
+            _completedHere = false;
+            _draftOwnerUserId = newUserId;
+          });
+        } else {
+          if (_inFlight) {
+            setState(() => _inFlight = false);
+          }
+          _draftOwnerUserId = newUserId;
+        }
+      });
+    }
+
     final providerState = widget.onSubmit == null
         ? ref.watch(materialReportProvider(widget.materialId))
         : const MaterialReportSubmissionState.idle();
@@ -209,7 +255,10 @@ class _MaterialReportFormState extends ConsumerState<MaterialReportForm> {
             }).toList(),
             onChanged: effectiveSubmitting
                 ? null
-                : (value) => setState(() => _selectedMotive = value),
+                : (value) {
+                    _claimDraftForCurrentUser();
+                    setState(() => _selectedMotive = value);
+                  },
             validator: (value) => value == null
                 ? 'Por favor, seleccione un motivo obligatorio.'
                 : null,
@@ -219,6 +268,7 @@ class _MaterialReportFormState extends ConsumerState<MaterialReportForm> {
           TextFormField(
             controller: _descriptionController,
             enabled: !effectiveSubmitting,
+            onChanged: (_) => _claimDraftForCurrentUser(),
             decoration: InputDecoration(
               labelText: (_selectedMotive?.requiresDetails ?? false)
                   ? 'Detalles adicionales *'
