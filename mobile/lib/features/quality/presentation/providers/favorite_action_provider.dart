@@ -134,6 +134,10 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
 
   final String materialId;
   CancelToken? _cancelToken;
+  int _activeOperationId = 0;
+  int? _inFlightOperationId;
+  int? _submittingRevision;
+  String? _submittingUserId;
   String? _submittingAccessToken;
 
   @override
@@ -204,7 +208,28 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
 
   void _handleSessionChange() {
     final currentUserId = readActiveQualityUserId(ref);
-    final currentToken = ref.read(sessionControllerProvider).current?.accessToken;
+    final currentRevision = ref.read(sessionRevisionProvider);
+    final currentToken =
+        ref.read(sessionControllerProvider).current?.accessToken;
+    final inFlightOpId = _inFlightOperationId;
+
+    final sessionChangedDuringInFlight =
+        inFlightOpId != null &&
+        (currentRevision != _submittingRevision ||
+            currentUserId != _submittingUserId ||
+            currentToken != _submittingAccessToken);
+
+    if (sessionChangedDuringInFlight) {
+      if (currentUserId != null ||
+          (_submittingRevision != null &&
+              currentRevision > _submittingRevision! + 1)) {
+        if (_activeOperationId == inFlightOpId) {
+          ++_activeOperationId;
+        }
+        _inFlightOperationId = null;
+        _submittingRevision = null;
+      }
+    }
 
     // 1. Si se cerró la sesión (incluso con un DELETE o PUT en curso),
     // limpiar inmediatamente la marca y el usuario anterior.
@@ -217,16 +242,16 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
       return;
     }
 
-    // 2. Si hay una sesión válida activa pero cambió el usuario o la credencial
+    // Si hay una operación en vuelo de esta misma sesión sin cambios, no interrumpirla.
+    if (inFlightOpId != null && !sessionChangedDuringInFlight) {
+      return;
+    }
+
+    // 2. Si hay una sesión válida activa pero cambió el usuario o la sesión
     // respecto de una operación previa o en vuelo, restablecer al estado limpio de la sesión nueva.
-    final tokenChangedWhilePending =
-        state.isPending && currentToken != _submittingAccessToken;
     if (currentUserId != state.activeUserId ||
-        tokenChangedWhilePending ||
+        sessionChangedDuringInFlight ||
         state.statusCode == 401) {
-      if (tokenChangedWhilePending) {
-        _submittingAccessToken = null;
-      }
       final listState = ref.read(favoritesProvider);
       state = FavoriteActionState(
         isFavorite:
@@ -257,9 +282,13 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
       return false;
     }
 
+    final operationId = ++_activeOperationId;
     final revision = ref.read(sessionRevisionProvider);
     final submittingToken =
         ref.read(sessionControllerProvider).current?.accessToken;
+    _inFlightOperationId = operationId;
+    _submittingRevision = revision;
+    _submittingUserId = userId;
     _submittingAccessToken = submittingToken;
     final previousConfirmed = state.isFavorite;
     final previousFavorite = state.favorite;
@@ -281,19 +310,10 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
         cancelToken: cancelToken,
       );
 
-      if (!ref.mounted) return false;
-      final currentUserId = readActiveQualityUserId(ref);
-      final currentToken =
-          ref.read(sessionControllerProvider).current?.accessToken;
-      if (ref.read(sessionRevisionProvider) != revision ||
-          currentUserId != userId ||
-          currentToken != submittingToken) {
-        if (currentUserId == null) {
-          state = const FavoriteActionState(
-            isFavorite: false,
-            activeUserId: null,
-          );
-        }
+      if (!ref.mounted ||
+          _activeOperationId != operationId ||
+          ref.read(sessionRevisionProvider) != revision ||
+          readActiveQualityUserId(ref) != userId) {
         return false;
       }
 
@@ -312,7 +332,9 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
 
       return true;
     } catch (error) {
-      if (!ref.mounted) return false;
+      if (!ref.mounted || _activeOperationId != operationId) {
+        return false;
+      }
 
       QualityApiException? qualityErr;
       ApiException? apiErr;
@@ -338,20 +360,11 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
         // o hubo un ciclo posterior de sesión, este 401 tardío de la credencial anterior se ignora.
         if (activeSession != null ||
             currentUserId != null ||
-            _submittingAccessToken != submittingToken ||
             currentRevision > revision + 1) {
           return false;
         }
       } else {
-        if (currentRevision != revision ||
-            currentUserId != userId ||
-            activeSession?.accessToken != submittingToken) {
-          if (currentUserId == null) {
-            state = const FavoriteActionState(
-              isFavorite: false,
-              activeUserId: null,
-            );
-          }
+        if (currentRevision != revision || currentUserId != userId) {
           return false;
         }
       }
@@ -374,6 +387,12 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
       if (identical(_cancelToken, cancelToken)) {
         _cancelToken = null;
       }
+      if (_inFlightOperationId == operationId) {
+        _inFlightOperationId = null;
+      }
+      if (_activeOperationId == operationId) {
+        _submittingRevision = null;
+      }
     }
   }
 
@@ -395,9 +414,13 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
       return false;
     }
 
+    final operationId = ++_activeOperationId;
     final revision = ref.read(sessionRevisionProvider);
     final submittingToken =
         ref.read(sessionControllerProvider).current?.accessToken;
+    _inFlightOperationId = operationId;
+    _submittingRevision = revision;
+    _submittingUserId = userId;
     _submittingAccessToken = submittingToken;
     final previousConfirmed = state.isFavorite;
     final previousFavorite = state.favorite;
@@ -418,19 +441,10 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
         cancelToken: cancelToken,
       );
 
-      if (!ref.mounted) return false;
-      final currentUserId = readActiveQualityUserId(ref);
-      final currentToken =
-          ref.read(sessionControllerProvider).current?.accessToken;
-      if (ref.read(sessionRevisionProvider) != revision ||
-          currentUserId != userId ||
-          currentToken != submittingToken) {
-        if (currentUserId == null) {
-          state = const FavoriteActionState(
-            isFavorite: false,
-            activeUserId: null,
-          );
-        }
+      if (!ref.mounted ||
+          _activeOperationId != operationId ||
+          ref.read(sessionRevisionProvider) != revision ||
+          readActiveQualityUserId(ref) != userId) {
         return false;
       }
 
@@ -447,7 +461,9 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
 
       return true;
     } catch (error) {
-      if (!ref.mounted) return false;
+      if (!ref.mounted || _activeOperationId != operationId) {
+        return false;
+      }
 
       QualityApiException? qualityErr;
       ApiException? apiErr;
@@ -471,20 +487,11 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
       if (isUnauthorized) {
         if (activeSession != null ||
             currentUserId != null ||
-            _submittingAccessToken != submittingToken ||
             currentRevision > revision + 1) {
           return false;
         }
       } else {
-        if (currentRevision != revision ||
-            currentUserId != userId ||
-            activeSession?.accessToken != submittingToken) {
-          if (currentUserId == null) {
-            state = const FavoriteActionState(
-              isFavorite: false,
-              activeUserId: null,
-            );
-          }
+        if (currentRevision != revision || currentUserId != userId) {
           return false;
         }
       }
@@ -506,6 +513,12 @@ class FavoriteActionNotifier extends Notifier<FavoriteActionState> {
     } finally {
       if (identical(_cancelToken, cancelToken)) {
         _cancelToken = null;
+      }
+      if (_inFlightOperationId == operationId) {
+        _inFlightOperationId = null;
+      }
+      if (_activeOperationId == operationId) {
+        _submittingRevision = null;
       }
     }
   }

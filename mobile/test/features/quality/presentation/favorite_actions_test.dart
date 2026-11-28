@@ -711,5 +711,120 @@ void main() {
         expect(stateAfterLate401.activeUserId, isNotNull);
       },
     );
+
+    test(
+      'Regresión cruce 401/502: Una petición de la sesión nueva recibe 401 y muestra el aviso de login, y un 502 tardío de la sesión anterior NO borra ese aviso',
+      () async {
+        final oldSessionCompleter = Completer<ResponseBody>();
+        final newSessionCompleter = Completer<ResponseBody>();
+        var callCount = 0;
+
+        final adapter = _FavoriteGatewayAdapter()
+          ..handler = (_) {
+            callCount++;
+            if (callCount == 1) {
+              return oldSessionCompleter.future;
+            }
+            return newSessionCompleter.future;
+          };
+
+        final container = await createSessionContainer(adapter);
+        final subFavs = container.listen(favoritesProvider, (_, _) {});
+        final subAction = container.listen(
+          favoriteActionProvider(newMaterialUuid),
+          (_, _) {},
+        );
+        addTearDown(() {
+          subAction.close();
+          subFavs.close();
+        });
+
+        // 1. Iniciar petición en la sesión 1 (queda pendiente en red)
+        final firstFuture = container
+            .read(favoriteActionProvider(newMaterialUuid).notifier)
+            .addFavorite(summary: sampleMaterial);
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        // 2. El usuario cambia a una sesión nueva válida
+        final sessionController = container.read(sessionControllerProvider);
+        final gen2 = sessionController.beginLogin();
+        await sessionController.accept(
+          AuthSession.fromLogin(
+            loginFixture(
+              email: 'estudiante@alu.uct.cl',
+              lifetime: const Duration(hours: 2),
+            ),
+            DateTime.now().toUtc(),
+          ),
+          gen2,
+        );
+
+        // El cambio de sesión desbloquea la operación pendiente anterior
+        expect(
+          container.read(favoriteActionProvider(newMaterialUuid)).isPending,
+          isFalse,
+        );
+
+        // 3. En la sesión nueva se lanza una segunda petición que recibe 401
+        final secondFuture = container
+            .read(favoriteActionProvider(newMaterialUuid).notifier)
+            .addFavorite(summary: sampleMaterial);
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        newSessionCompleter.complete(
+          ResponseBody.fromString(
+            jsonEncode({
+              'statusCode': 401,
+              'code': 'UNAUTHENTICATED',
+              'message': 'Sesión nueva revocada.',
+            }),
+            401,
+            headers: {
+              Headers.contentTypeHeader: [Headers.jsonContentType],
+            },
+          ),
+        );
+        expect(await secondFuture, isFalse);
+
+        // La petición de la sesión nueva muestra el aviso de login (401)
+        final stateAfterNew401 = container.read(
+          favoriteActionProvider(newMaterialUuid),
+        );
+        expect(stateAfterNew401.hasError, isTrue);
+        expect(stateAfterNew401.statusCode, 401);
+        expect(
+          stateAfterNew401.errorMessage,
+          contains('Inicia sesión con una cuenta activa'),
+        );
+
+        // 4. Llega tarde un 502 de la petición de la sesión anterior (operación ya reemplazada)
+        oldSessionCompleter.complete(
+          ResponseBody.fromString(
+            jsonEncode({
+              'statusCode': 502,
+              'code': 'DEPENDENCY_INVALID_RESPONSE',
+              'message': 'Bad Gateway de la petición vieja.',
+            }),
+            502,
+            headers: {
+              Headers.contentTypeHeader: [Headers.jsonContentType],
+            },
+          ),
+        );
+        expect(await firstFuture, isFalse);
+
+        // El 502 tardío de la sesión anterior sale sin tocar el estado y NO borra el aviso 401
+        final stateAfterLate502 = container.read(
+          favoriteActionProvider(newMaterialUuid),
+        );
+        expect(stateAfterLate502.hasError, isTrue);
+        expect(stateAfterLate502.statusCode, 401);
+        expect(stateAfterLate502.errorCode, 'UNAUTHENTICATED');
+        expect(
+          stateAfterLate502.errorMessage,
+          contains('Inicia sesión con una cuenta activa'),
+        );
+      },
+    );
   });
 }
