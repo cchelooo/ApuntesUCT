@@ -5,6 +5,7 @@ import 'package:apuntesuct_mobile/models/user_model.dart';
 
 /// Controlled claims, NOT a cryptographically signed server credential.
 Map<String, dynamic> loginFixture({
+  String id = '00000000-0000-4000-8000-000000000092',
   String email = 'estudiante@alu.uct.cl',
   String name = 'Estudiante de prueba',
   DateTime? now,
@@ -12,7 +13,7 @@ Map<String, dynamic> loginFixture({
 }) {
   final issued = (now ?? DateTime.now()).millisecondsSinceEpoch ~/ 1000;
   final user = {
-    'id': '00000000-0000-4000-8000-000000000092',
+    'id': id,
     'name': name,
     'email': email,
     'role': 'STUDENT',

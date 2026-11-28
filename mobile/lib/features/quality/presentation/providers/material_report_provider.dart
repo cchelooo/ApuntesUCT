@@ -129,7 +129,9 @@ String materialReportErrorMessage(Object error) {
 /// - Impide reenviar solicitudes sin `Authorization` mientras no exista sesión activa.
 class MaterialReportNotifier extends Notifier<MaterialReportSubmissionState> {
   CancelToken? _cancelToken;
-  String? _submittingAccessToken;
+  int _activeOperationId = 0;
+  int? _inFlightOperationId;
+  int? _submittingRevision;
 
   @override
   MaterialReportSubmissionState build() {
@@ -137,14 +139,22 @@ class MaterialReportNotifier extends Notifier<MaterialReportSubmissionState> {
 
     ref.listen<int>(sessionRevisionProvider, (previous, next) {
       final currentSession = ref.read(sessionControllerProvider).current;
-      final currentToken = currentSession?.accessToken;
+      final inFlightOpId = _inFlightOperationId;
 
-      if (state.isSubmitting) {
-        // Si durante un envío en curso se establece una credencial nueva (misma u otra cuenta),
-        // desacoplamos el estado de la solicitud anterior para que la sesión nueva quede limpia.
-        if (currentSession != null && currentToken != _submittingAccessToken) {
-          _submittingAccessToken = null;
+      if (inFlightOpId != null) {
+        // Al cambiar de sesión, el envío anterior deja de bloquear el formulario de inmediato.
+        if (state.isSubmitting) {
           state = const MaterialReportSubmissionState.idle();
+        }
+        // Si se completó un nuevo login (incluso si devuelve el mismo JWT) o hubo más de un cambio
+        // de generación (p. ej. beginLogin + cancelLogin), invalidamos la operación anterior.
+        if (currentSession != null ||
+            (_submittingRevision != null && next > _submittingRevision! + 1)) {
+          if (_activeOperationId == inFlightOpId) {
+            ++_activeOperationId;
+          }
+          _inFlightOperationId = null;
+          _submittingRevision = null;
         }
         return;
       }
@@ -204,10 +214,12 @@ class MaterialReportNotifier extends Notifier<MaterialReportSubmissionState> {
       return null;
     }
 
+    final operationId = ++_activeOperationId;
     final revision = ref.read(sessionRevisionProvider);
     final submittingUserId = currentSession.user.id;
     final submittingToken = currentSession.accessToken;
-    _submittingAccessToken = submittingToken;
+    _inFlightOperationId = operationId;
+    _submittingRevision = revision;
     final cancelToken = CancelToken();
     _cancelToken = cancelToken;
     state = const MaterialReportSubmissionState.submitting();
@@ -220,22 +232,19 @@ class MaterialReportNotifier extends Notifier<MaterialReportSubmissionState> {
         idempotencyKey: idempotencyKey,
         cancelToken: cancelToken,
       );
-      if (!ref.mounted) return null;
+      if (!ref.mounted || _activeOperationId != operationId) return null;
 
       final activeSession = ref.read(sessionControllerProvider).current;
       if (ref.read(sessionRevisionProvider) != revision ||
           activeSession?.user.id != submittingUserId ||
           activeSession?.accessToken != submittingToken) {
-        if (activeSession == null) {
-          state = const MaterialReportSubmissionState.idle();
-        }
         return null;
       }
 
       state = MaterialReportSubmissionState.success(report);
       return report;
     } catch (error) {
-      if (!ref.mounted) return null;
+      if (!ref.mounted || _activeOperationId != operationId) return null;
 
       QualityApiException? qualityErr;
       ApiException? apiErr;
@@ -256,20 +265,15 @@ class MaterialReportNotifier extends Notifier<MaterialReportSubmissionState> {
       final isUnauthorizedError = apiErr?.statusCode == 401;
 
       if (isUnauthorizedError) {
-        // Si ya existe una sesión nueva válida (incluso para la misma cuenta con una credencial nueva)
-        // o hubo un ciclo posterior de login, este 401 corresponde a la credencial vieja y debe ignorarse.
-        if (activeSession != null ||
-            _submittingAccessToken != submittingToken ||
-            currentRevision > revision + 1) {
+        // Si ya existe una sesión nueva válida (incluso para la misma cuenta)
+        // o hubo un ciclo posterior de login (como un login cancelado), este 401 tardío se ignora.
+        if (activeSession != null || currentRevision > revision + 1) {
           return null;
         }
       } else {
         if (currentRevision != revision ||
             activeSession?.user.id != submittingUserId ||
             activeSession?.accessToken != submittingToken) {
-          if (activeSession == null) {
-            state = const MaterialReportSubmissionState.idle();
-          }
           return null;
         }
       }
@@ -286,6 +290,12 @@ class MaterialReportNotifier extends Notifier<MaterialReportSubmissionState> {
     } finally {
       if (identical(_cancelToken, cancelToken)) {
         _cancelToken = null;
+      }
+      if (_inFlightOperationId == operationId) {
+        _inFlightOperationId = null;
+      }
+      if (_activeOperationId == operationId) {
+        _submittingRevision = null;
       }
     }
   }
