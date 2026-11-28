@@ -67,7 +67,9 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/login',
       name: 'login',
-      builder: (context, state) => const LoginScreen(),
+      builder: (context, state) => LoginScreen(
+        initialSuccessMessage: state.uri.queryParameters['notice'],
+      ),
     ),
     GoRoute(
       path: '/register',

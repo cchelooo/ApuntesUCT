@@ -61,12 +61,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final result = ref.read(authStateProvider);
     if (!result.hasError && !result.isLoading && result.value == null) {
       final messenger = ScaffoldMessenger.maybeOf(context);
-      context.go('/login');
-      messenger?.showSnackBar(
-        const SnackBar(
-          content: Text('Cuenta creada. Inicia sesión para continuar.'),
-        ),
+      const notice = 'Cuenta creada. Inicia sesión para continuar.';
+      context.go(
+        Uri(path: '/login', queryParameters: const {'notice': notice})
+            .toString(),
       );
+      messenger?.showSnackBar(const SnackBar(content: Text(notice)));
     }
   }
 

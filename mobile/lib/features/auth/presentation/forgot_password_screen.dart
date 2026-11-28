@@ -78,26 +78,36 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     context.go('/reset-password');
   }
 
+  void _requestAnotherCode() {
+    setState(() {
+      _confirmationMessage = null;
+      _errorMessage = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final esOscuro = Theme.of(context).brightness == Brightness.dark;
     final colorEnlace = esOscuro ? colorScheme.secondary : colorScheme.primary;
     final esAlturaCorta = MediaQuery.sizeOf(context).height < 700;
+    final hasConfirmation = _confirmationMessage != null;
 
     return AuthScaffold(
       actions: const [ThemeToggleButton()],
-      title: 'Recuperar contraseña',
-      subtitle:
-          'Ingresa tu usuario institucional para solicitar un código o enlace '
-          'temporal de recuperación (válido por 15 minutos).',
+      title: hasConfirmation ? 'Revisa tu correo' : 'Recuperar contraseña',
+      isRegistration: true,
+      subtitle: hasConfirmation
+          ? 'Procesamos tu solicitud de recuperación institucional.'
+          : 'Ingresa tu usuario institucional para solicitar un código o enlace '
+                'temporal de recuperación (válido por 15 minutos).',
       bottomAction: AppPrimaryButton(
-        label: _confirmationMessage == null
-            ? 'Enviar instrucciones'
-            : 'Reenviar instrucciones',
+        label: hasConfirmation
+            ? 'Ingresar código y nueva contraseña'
+            : 'Enviar instrucciones',
         isLoading: _isLoading,
         compact: esAlturaCorta,
-        onPressed: _submit,
+        onPressed: hasConfirmation ? _goToResetPassword : _submit,
       ),
       footer: Wrap(
         alignment: WrapAlignment.center,
@@ -131,53 +141,55 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             _confirmationMessage == null)
           _InfoBanner(message: widget.initialNotice!),
         FormErrorBanner(message: _errorMessage),
-        if (_confirmationMessage != null)
+        if (hasConfirmation)
           _ConfirmationBanner(
             message: _confirmationMessage!,
             onContinueToReset: _isLoading ? null : _goToResetPassword,
-          ),
-        Form(
-          key: _formKey,
-          child: AutofillGroup(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                InstitutionalEmailField(
-                  controller: _emailController,
-                  enabled: !_isLoading,
-                  compact: esAlturaCorta,
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _isLoading ? null : _submit(),
-                ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 2,
+            onResend: _isLoading ? null : _requestAnotherCode,
+          )
+        else
+          Form(
+            key: _formKey,
+            child: AutofillGroup(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  InstitutionalEmailField(
+                    controller: _emailController,
+                    enabled: !_isLoading,
+                    compact: esAlturaCorta,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _isLoading ? null : _submit(),
+                  ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        foregroundColor: colorEnlace,
                       ),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      foregroundColor: colorEnlace,
-                    ),
-                    onPressed: _isLoading ? null : _goToResetPassword,
-                    child: Text(
-                      'Ya tengo un código de recuperación',
-                      style: TextStyle(
-                        fontSize: esAlturaCorta ? 12.5 : 13.5,
-                        fontWeight: FontWeight.w600,
-                        decoration: TextDecoration.underline,
-                        decorationColor: colorEnlace,
+                      onPressed: _isLoading ? null : _goToResetPassword,
+                      child: Text(
+                        'Ya tengo un código de recuperación',
+                        style: TextStyle(
+                          fontSize: esAlturaCorta ? 12.5 : 13.5,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                          decorationColor: colorEnlace,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -187,10 +199,12 @@ class _ConfirmationBanner extends StatelessWidget {
   const _ConfirmationBanner({
     required this.message,
     required this.onContinueToReset,
+    required this.onResend,
   });
 
   final String message;
   final VoidCallback? onContinueToReset;
+  final VoidCallback? onResend;
 
   @override
   Widget build(BuildContext context) {
@@ -198,11 +212,11 @@ class _ConfirmationBanner extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: colorScheme.primaryContainer.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: colorScheme.primary.withValues(alpha: 0.4)),
       ),
       child: Column(
@@ -222,6 +236,7 @@ class _ConfirmationBanner extends StatelessWidget {
                   message,
                   style: TextStyle(
                     color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
                     height: 1.3,
                   ),
                 ),
@@ -230,7 +245,8 @@ class _ConfirmationBanner extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Nota: la recepción del mensaje depende de que el canal de entrega '
+            'El código temporal tiene una vigencia de 15 minutos. '
+            'La recepción del mensaje depende de que el canal de entrega '
             'de correo de Auth esté activo en el entorno.',
             style: TextStyle(
               color: colorScheme.onSurfaceVariant,
@@ -238,12 +254,17 @@ class _ConfirmationBanner extends StatelessWidget {
               height: 1.25,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: onContinueToReset,
-              child: const Text('Ingresar código y nueva contraseña'),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              onPressed: onResend,
+              child: const Text('Solicitar con otro correo o reenviar'),
             ),
           ),
         ],

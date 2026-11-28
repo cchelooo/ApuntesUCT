@@ -68,12 +68,11 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       if (!mounted) return;
       ref.read(authStateProvider.notifier).clearError();
       final messenger = ScaffoldMessenger.maybeOf(context);
-      context.go('/login');
-      messenger?.showSnackBar(
-        SnackBar(
-          content: Text('$message Inicia sesión con tu nueva contraseña.'),
-        ),
+      final notice = '$message Inicia sesión con tu nueva contraseña.';
+      context.go(
+        Uri(path: '/login', queryParameters: {'notice': notice}).toString(),
       );
+      messenger?.showSnackBar(SnackBar(content: Text(notice)));
     } on Object catch (error) {
       if (!mounted) return;
       setState(() {
@@ -133,10 +132,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         alignment: WrapAlignment.center,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          const Text('¿Código vencido o no lo tienes?'),
           TextButton(
             style: TextButton.styleFrom(
-              padding: const EdgeInsets.only(left: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               foregroundColor: colorEnlace,
@@ -152,17 +150,17 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const Text(' · '),
           TextButton(
             style: TextButton.styleFrom(
-              padding: const EdgeInsets.only(left: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               foregroundColor: colorEnlace,
             ),
             onPressed: _isLoading ? null : _goToLogin,
             child: Text(
-              'Volver al inicio de sesión',
+              'Iniciar sesión',
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 decoration: TextDecoration.underline,

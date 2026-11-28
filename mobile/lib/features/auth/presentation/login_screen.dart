@@ -16,7 +16,11 @@ import '../data/mock_auth_repository.dart' show authStateProvider;
 /// salen los tres estados de la pantalla sin necesidad de un flag local de
 /// carga ni de un `setState` por cada transición.
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({this.initialSuccessMessage, super.key});
+
+  /// Mensaje de confirmación persistente cuando el usuario viene de completar
+  /// su registro institucional o de restablecer su contraseña.
+  final String? initialSuccessMessage;
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -126,6 +130,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ],
       ),
       children: [
+        if (widget.initialSuccessMessage != null &&
+            widget.initialSuccessMessage!.trim().isNotEmpty &&
+            !authState.hasError &&
+            !needsSignIn)
+          _SuccessBanner(message: widget.initialSuccessMessage!),
         FormErrorBanner(
           message: authState.hasError
               ? errorMessage(authState.error!)
@@ -145,55 +154,98 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   compact: esAlturaCorta,
                 ),
                 const SizedBox(height: 16),
-                AppPasswordField(
-                  controller: _passwordController,
-                  label: 'Contraseña',
-                  enabled: !isLoading,
-                  compact: esAlturaCorta,
-                  textInputAction: TextInputAction.done,
-                  autofillHints: const [AutofillHints.password],
-                  validator: Validators.loginPassword,
-                  // Enter en el teclado envía el formulario, igual que el botón.
-                  onFieldSubmitted: (_) => isLoading ? null : _submit(),
-                ),
-                SizedBox(height: esAlturaCorta ? 4 : 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: GestureDetector(
-                    onTap: isLoading
-                        ? null
-                        : () {
-                            ref.read(authStateProvider.notifier).clearError();
-                            context.go('/forgot-password');
-                          },
-                    behavior: HitTestBehavior.opaque,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 2,
-                      ),
-                      child: Text(
-                        '¿Olvidaste tu contraseña?',
-                        style: TextStyle(
-                          color: isLoading
-                              ? colorScheme.onSurfaceVariant
-                              : colorEnlace,
-                          fontSize: esAlturaCorta ? 12 : 13,
-                          fontWeight: FontWeight.w600,
-                          decoration: TextDecoration.underline,
-                          decorationColor: isLoading
-                              ? colorScheme.onSurfaceVariant
-                              : colorEnlace,
+                Stack(
+                  children: [
+                    AppPasswordField(
+                      controller: _passwordController,
+                      label: 'Contraseña',
+                      enabled: !isLoading,
+                      compact: esAlturaCorta,
+                      textInputAction: TextInputAction.done,
+                      autofillHints: const [AutofillHints.password],
+                      validator: Validators.loginPassword,
+                      // Enter en el teclado envía el formulario, igual que el botón.
+                      onFieldSubmitted: (_) => isLoading ? null : _submit(),
+                    ),
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: GestureDetector(
+                        onTap: isLoading
+                            ? null
+                            : () {
+                                ref
+                                    .read(authStateProvider.notifier)
+                                    .clearError();
+                                context.go('/forgot-password');
+                              },
+                        behavior: HitTestBehavior.opaque,
+                        child: Text(
+                          '¿Olvidaste tu contraseña?',
+                          style: TextStyle(
+                            color: isLoading
+                                ? colorScheme.onSurfaceVariant
+                                : colorEnlace,
+                            fontSize: esAlturaCorta ? 11.5 : 12.5,
+                            fontWeight: FontWeight.w600,
+                            height: esAlturaCorta ? 1.15 : null,
+                            decoration: TextDecoration.underline,
+                            decorationColor: isLoading
+                                ? colorScheme.onSurfaceVariant
+                                : colorEnlace,
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SuccessBanner extends StatelessWidget {
+  const _SuccessBanner({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: colorScheme.primaryContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.check_circle_outline,
+            size: 20,
+            color: colorScheme.primary,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: colorScheme.onSurface,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

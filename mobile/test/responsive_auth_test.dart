@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:apuntesuct_mobile/core/theme/app_theme.dart';
+import 'package:apuntesuct_mobile/features/auth/presentation/forgot_password_screen.dart';
 import 'package:apuntesuct_mobile/features/auth/presentation/login_screen.dart';
 import 'package:apuntesuct_mobile/features/auth/presentation/register_screen.dart';
+import 'package:apuntesuct_mobile/features/auth/presentation/reset_password_screen.dart';
 
 const _mobileSizes = [
   Size(320, 568),
@@ -49,6 +51,28 @@ void main() {
           reason: 'Registro falló en $size con tema $themeMode',
         );
         _expectNoInitialScroll(tester, size, 'Registro', themeMode);
+
+        await tester.pumpWidget(
+          _testApp(themeMode: themeMode, child: const ForgotPasswordScreen()),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: 'Recuperar contraseña falló en $size con tema $themeMode',
+        );
+        _expectNoInitialScroll(tester, size, 'Recuperar contraseña', themeMode);
+
+        await tester.pumpWidget(
+          _testApp(themeMode: themeMode, child: const ResetPasswordScreen()),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: 'Nueva contraseña falló en $size con tema $themeMode',
+        );
+        _expectNoInitialScroll(tester, size, 'Nueva contraseña', themeMode);
       }
     }
   });

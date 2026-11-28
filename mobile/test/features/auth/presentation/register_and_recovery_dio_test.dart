@@ -85,7 +85,7 @@ void main() {
         expect(find.byType(LoginScreen), findsOneWidget);
         expect(
           find.text('Cuenta creada. Inicia sesión para continuar.'),
-          findsOneWidget,
+          findsAtLeastNWidgets(1),
         );
         expect(find.text('HOME_AUTENTICADO'), findsNothing);
       },
@@ -284,7 +284,7 @@ void main() {
           find.text(
             'Contraseña restablecida correctamente. Inicia sesión con tu nueva contraseña.',
           ),
-          findsOneWidget,
+          findsAtLeastNWidgets(1),
         );
       },
     );
@@ -389,7 +389,12 @@ GoRouter _router({required String initialLocation}) {
   return GoRouter(
     initialLocation: initialLocation,
     routes: [
-      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => LoginScreen(
+          initialSuccessMessage: state.uri.queryParameters['notice'],
+        ),
+      ),
       GoRoute(
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
