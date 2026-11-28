@@ -245,7 +245,7 @@ describe('GET /api/v1/materials/:id/preview', () => {
       expiresIn: '5m',
     });
 
-  it.each(['PENDING_REVIEW', 'REJECTED', 'WITHDRAWN'])(
+  it.each(['PENDING_REVIEW', 'REJECTED', 'RETIRED'])(
     'oculta %s en acceso público',
     async (status) => {
       prisma.material.findFirst.mockImplementation(({ where }) =>
@@ -308,7 +308,7 @@ describe('GET /api/v1/materials/:id/preview', () => {
     expect(storage.get).not.toHaveBeenCalled();
   });
 
-  it.each(['PUBLISHED', 'REJECTED', 'WITHDRAWN'])(
+  it.each(['PUBLISHED', 'REJECTED', 'RETIRED'])(
     'no sirve %s mediante acceso de pendientes',
     async (status) => {
       prisma.material.findFirst.mockImplementation(({ where }) =>

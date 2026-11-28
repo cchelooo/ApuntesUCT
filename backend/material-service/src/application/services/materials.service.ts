@@ -194,6 +194,10 @@ export class MaterialsService {
     return result;
   }
 
+  async downloadForReview(materialId: string, versionId: string): Promise<DownloadResult> {
+    return this.openFile(materialId, versionId, undefined, false);
+  }
+
   /**
    * Listado privado de pendientes para moderadores/administradores (#460).
    * No modifica las consultas públicas: sólo cambia el estado consultado.
@@ -367,7 +371,7 @@ export class MaterialsService {
   private async openFile(
     materialId: string,
     versionId: string | undefined,
-    status: 'PUBLISHED' | 'PENDING_REVIEW',
+    status: 'PUBLISHED' | 'PENDING_REVIEW' | undefined,
     pdfOnly: boolean,
   ): Promise<DownloadResult> {
     const material = await this.prisma.material.findFirst({

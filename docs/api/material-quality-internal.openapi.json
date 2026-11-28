@@ -3,7 +3,11 @@
   "info": {
     "title": "Material Service — contrato interno para Quality (propuesto)",
     "version": "0.1.0",
-    "description": "CONTRATO FUNCIONAL PROPUESTO. NO PÚBLICO. No exponer por las rutas wildcard del Gateway. Adopta S3-05 / #445 como referencia común de identidad y autorización. El perfil específico Quality → Material está pendiente de acuerdo. qualityServiceAuth y los valores x-required-scope representan la propuesta técnica interna, no un mecanismo ya consensuado o implementado. Las rutas permanecerán cerradas hasta acordar e implementar ese perfil. Sin acceso directo a bases ajenas. Ver quality-publication.md, secciones 4–6.5, para aplicación atómica, idempotencia, dependencias y auditoría."
+    "description": "CONTRATO FUNCIONAL PROPUESTO. NO PÚBLICO. No exponer por las rutas wildcard del Gateway. Adopta S3-05 / #445 como referencia común. Esta entrega implementa el perfil interno v1 descrito en docs/architecture/quality-moderation-service-profile.md para consulta privada, APPROVE/REJECT y recibos. Su adopción se revisa en el PR de implementación; no se atribuye su aprobación a S3-05. Las restantes acciones del contrato son trabajo posterior. Configurar claves y restricciones de red antes de habilitar las rutas. Sin acceso a bases ajenas. Ver quality-publication.md para idempotencia, aplicación atómica y auditoría.",
+    "x-implemented-actions": [
+      "APPROVE",
+      "REJECT"
+    ]
   },
   "servers": [
     {
@@ -98,7 +102,7 @@
           }
         ],
         "x-required-scope": "material:review:read",
-        "x-required-scope-status": "PROPOSED"
+        "x-required-scope-status": "IMPLEMENTED_FOR_REVIEW"
       }
     },
     "/internal/v1/quality/materials/{materialId}": {
@@ -157,7 +161,7 @@
           }
         ],
         "x-required-scope": "material:review:read",
-        "x-required-scope-status": "PROPOSED"
+        "x-required-scope-status": "IMPLEMENTED_FOR_REVIEW"
       }
     },
     "/internal/v1/quality/materials/{materialId}/versions/{versionId}/download": {
@@ -250,7 +254,7 @@
           }
         ],
         "x-required-scope": "material:review:read",
-        "x-required-scope-status": "PROPOSED"
+        "x-required-scope-status": "IMPLEMENTED_FOR_REVIEW"
       }
     },
     "/internal/v1/quality/materials/{materialId}/decisions/{operationId}": {
@@ -331,7 +335,7 @@
           }
         },
         "x-required-scope": "material:quality:apply",
-        "x-required-scope-status": "PROPOSED"
+        "x-required-scope-status": "IMPLEMENTED_FOR_REVIEW"
       }
     },
     "/internal/v1/quality/decisions/{operationId}": {
@@ -390,7 +394,7 @@
           }
         ],
         "x-required-scope": "material:quality:apply",
-        "x-required-scope-status": "PROPOSED"
+        "x-required-scope-status": "IMPLEMENTED_FOR_REVIEW"
       }
     }
   },
@@ -400,8 +404,8 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "PROPUESTA TÉCNICA PENDIENTE DE ACUERDO bajo S3-05 / #445. Este esquema representa provisionalmente una credencial Bearer de servicio; no establece como definitivos el uso de JWT, el algoritmo, los claims, los scopes ni su vigencia. El perfil acordado deberá verificar la identidad de Quality, los permisos por operación y la vinculación del actor y de operationId cuando corresponda. No se aceptará identidad declarada libremente por el cliente. Antes de habilitar estas rutas se actualizará el esquema conforme al mecanismo acordado. No sustituir los requisitos de seguridad de las operaciones por acceso anónimo.",
-        "x-agreement-status": "PENDING"
+        "description": "Perfil interno v1 implementado para APPROVE/REJECT: JWT RS256 firmado por Quality con clave propia; iss/sub=quality-service, aud=material-service, exp-iat<=60 s, jti UUID, scope, actorId, actorRole, authorizedAt, resource y bodyHash. Aplicación/recibo requieren operationId. Ver docs/architecture/quality-moderation-service-profile.md. La adopción del perfil se revisa en este PR; no se atribuye a S3-05.",
+        "x-agreement-status": "IMPLEMENTED_FOR_REVIEW"
       }
     },
     "schemas": {

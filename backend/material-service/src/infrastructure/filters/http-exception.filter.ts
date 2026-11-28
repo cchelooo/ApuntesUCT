@@ -36,6 +36,29 @@ export class HttpExceptionFilter implements ExceptionFilter {
       }
     }
 
+    if (request.path.startsWith('/internal/v1/quality')) {
+      const data = (
+        exceptionResponse && typeof exceptionResponse === 'object' ? exceptionResponse : {}
+      ) as Record<string, unknown>;
+      const codes: Record<number, string> = {
+        400: 'VALIDATION_ERROR',
+        401: 'UNAUTHENTICATED',
+        403: 'FORBIDDEN',
+        404: 'NOT_FOUND',
+        409: 'CONFLICT',
+        503: 'DEPENDENCY_UNAVAILABLE',
+      };
+      if (status === 401) response.setHeader('WWW-Authenticate', 'Bearer');
+      response
+        .status(status)
+        .json({
+          statusCode: status,
+          code: typeof data.code === 'string' ? data.code : (codes[status] ?? 'INTERNAL_ERROR'),
+          message: Array.isArray(message) ? message.join('; ') : message,
+          requestId: response.getHeader('X-Request-Id'),
+        });
+      return;
+    }
     response.status(status).json({
       statusCode: status,
       error: errorName,

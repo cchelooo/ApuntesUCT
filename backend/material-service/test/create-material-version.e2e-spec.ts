@@ -82,7 +82,12 @@ describe('POST /materials/:id/versions', () => {
     });
     expect(prisma.material.update).toHaveBeenCalledWith({
       where: { id: response.body.materialId },
-      data: { updatedAt: expect.any(Date) },
+      data: {
+        updatedAt: expect.any(Date),
+        revision: { increment: 1 },
+        status: 'PENDING_REVIEW',
+        verified: false,
+      },
     });
     expect(storage.remove).not.toHaveBeenCalled();
   });

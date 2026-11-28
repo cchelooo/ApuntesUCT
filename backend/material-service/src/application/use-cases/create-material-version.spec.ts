@@ -3,6 +3,7 @@ import {
   BadGatewayException,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
@@ -30,6 +31,9 @@ describe('CreateMaterialVersion', () => {
     jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     prisma.material.findUnique.mockResolvedValue({
       uploaderId: author.id,
+      status: 'PUBLISHED',
+      revision: 1,
+      verified: true,
       materialType: { name: 'DOCUMENT' },
     });
     prisma.materialVersion.findFirst.mockResolvedValue({ versionNumber: 3 });
@@ -64,6 +68,15 @@ describe('CreateMaterialVersion', () => {
         createdBy: author.id,
       },
     });
+    expect(prisma.material.update).toHaveBeenCalledWith({
+      where: { id: 'material' },
+      data: {
+        updatedAt: expect.any(Date),
+        revision: { increment: 1 },
+        status: 'PENDING_REVIEW',
+        verified: false,
+      },
+    });
     expect(storage.save).toHaveBeenCalledWith(file.buffer, file.mimetype);
     expect(storage.remove).not.toHaveBeenCalled();
     expect(prisma.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
@@ -76,6 +89,14 @@ describe('CreateMaterialVersion', () => {
 
   it.each([
     [null, NotFoundException],
+    [
+      { uploaderId: author.id, status: 'REJECTED', materialType: { name: 'DOCUMENT' } },
+      ConflictException,
+    ],
+    [
+      { uploaderId: author.id, status: 'RETIRED', materialType: { name: 'DOCUMENT' } },
+      ConflictException,
+    ],
     [{ uploaderId: 'other', materialType: { name: 'DOCUMENT' } }, ForbiddenException],
     [{ uploaderId: author.id, materialType: { name: 'LINK' } }, BadRequestException],
   ])('rechaza el material no elegible antes de escribir', async (material, error) => {

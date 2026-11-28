@@ -59,7 +59,7 @@ test('paginated materials over HTTP with PostgreSQL', async (t) => {
           status: 'PUBLISHED',
           createdAt: new Date(index === 0 ? '2026-09-01T12:00:00Z' : '2026-10-01T12:00:00Z'),
         })),
-        ...['PENDING_REVIEW', 'REJECTED', 'WITHDRAWN'].map((status) => ({
+        ...['PENDING_REVIEW', 'REJECTED', 'RETIRED'].map((status) => ({
           ...common,
           title: `Oculto ${status}`,
           status,
@@ -119,7 +119,7 @@ test('paginated materials over HTTP with PostgreSQL', async (t) => {
     await t.test('only unpublished materials returns empty', async () => {
       await prisma.material.updateMany({
         where: { status: 'PUBLISHED' },
-        data: { status: 'WITHDRAWN' },
+        data: { status: 'RETIRED' },
       });
       assert.deepEqual(await get(), { items: [], page: 1, pageSize: 20, total: 0 });
     });

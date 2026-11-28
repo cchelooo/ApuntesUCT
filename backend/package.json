@@ -25,7 +25,8 @@
     "format": "prettier --write \"./**/*.ts\"",
     "test:cov": "npm run prisma:generate && npm run test:cov --workspaces --",
     "test:ci": "npm run prisma:generate && npm run test:ci --workspaces --",
-    "test:api-docs": "node --test scripts/api-docs.test.cjs"
+    "test:api-docs": "node --test scripts/api-docs.test.cjs",
+    "test:moderation": "npm run prisma:generate --workspace=auth-service --workspace=material-service --workspace=quality-service && npm run build --workspace=auth-service --workspace=material-service --workspace=quality-service --workspace=api-gateway && node --test test/quality-moderation.integration.cjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

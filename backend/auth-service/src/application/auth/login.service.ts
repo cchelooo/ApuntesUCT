@@ -29,7 +29,10 @@ export class LoginService {
     const { id, name, email, role, active } = account;
     const user = { id, name, email, role, active };
     return {
-      accessToken: this.tokens.issue(user),
+      accessToken: this.tokens.issue({
+        ...user,
+        tokenVersion: account.tokenVersion,
+      }),
       tokenType: 'Bearer',
       expiresIn: this.tokens.expiresIn,
       user,

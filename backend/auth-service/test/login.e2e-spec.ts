@@ -97,6 +97,7 @@ describe('Login real (e2e)', () => {
       exp: expect.any(Number),
       iss: 'test-auth',
       aud: 'test-api',
+      tokenVersion: 0,
     });
     expect(payload.iat).toBeGreaterThanOrEqual(before);
     expect(payload.iat).toBeLessThanOrEqual(Math.floor(Date.now() / 1000));

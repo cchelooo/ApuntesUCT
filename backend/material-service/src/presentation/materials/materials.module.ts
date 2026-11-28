@@ -1,3 +1,6 @@
+import { QualityInternalController } from './quality-internal.controller';
+import { QualityServiceGuard } from '../../infrastructure/moderation/quality-service.guard';
+import { QualityModerationService } from '../../application/services/quality-moderation.service';
 import { MaterialPreviewController } from './material-preview.controller';
 import { MaterialAdminController } from './material-admin.controller';
 import { MaterialModeratorGuard } from '../../infrastructure/auth/material-moderator.guard';
@@ -21,12 +24,15 @@ import { CatalogHttpAdapter } from '../../infrastructure/catalog/catalog-http.ad
   controllers: [
     MaterialAdminController,
     MaterialPreviewController,
+    QualityInternalController,
     MaterialsController,
     MaterialController,
     MaterialVersionController,
   ],
   providers: [
     MaterialsService,
+    QualityModerationService,
+    QualityServiceGuard,
     MaterialModeratorGuard,
     CreateMaterial,
     CreateMaterialVersion,

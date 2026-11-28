@@ -81,6 +81,7 @@ test(
           title: 'MinIO version test',
           academicYear: 2026,
           status: 'PUBLISHED',
+          verified: true,
           versions: {
             create: {
               versionNumber: 1,
@@ -156,6 +157,48 @@ test(
       assert.deepEqual(versions[0], material.versions[0]);
       assert.ok(versions.every((version) => version.createdBy === authorId));
       assert.equal(new Set(versions.map((v) => v.storageKey)).size, 3);
+
+      // Las dos versiones nuevas modifican el agregado y requieren nueva revisión.
+      const pendingMaterial = await prisma.material.findUniqueOrThrow({
+        where: { id: material.id },
+      });
+
+      assert.equal(pendingMaterial.status, 'PENDING_REVIEW');
+      assert.equal(pendingMaterial.verified, false);
+      assert.equal(pendingMaterial.revision, material.revision + 2);
+
+      // Mientras está pendiente, ni el detalle ni las versiones son públicos.
+      await request(httpServer).get(path).expect(404);
+      await request(httpServer).get(`${path}/download`).expect(404);
+
+      for (const version of versions) {
+        await request(httpServer)
+          .get(`${path}/download?versionId=${version.id}`)
+          .expect(404);
+      }
+
+      t.diagnostic(
+        'Las nuevas versiones incrementan revision, vuelven a revisión y bloquean el acceso público.',
+      );
+
+      // Preparación del fixture para comprobar las descargas de un agregado publicado.
+      // Esta escritura pertenece exclusivamente a la prueba y a su esquema temporal.
+      // No representa una aprobación por HTTP ni verifica el flujo de Quality.
+      const publishedFixture = await prisma.material.updateMany({
+        where: {
+          id: material.id,
+          status: 'PENDING_REVIEW',
+          revision: pendingMaterial.revision,
+        },
+        data: {
+          status: 'PUBLISHED',
+          verified: false,
+          revision: { increment: 1 },
+        },
+      });
+
+      assert.equal(publishedFixture.count, 1);
+
       // La fecha más reciente pertenece a v1: el historial debe ordenar por número.
       await prisma.materialVersion.update({
         where: { id: versions[0].id },

@@ -1,6 +1,7 @@
 import { Prisma } from '.prisma/material-client';
 import {
   BadGatewayException,
+  ConflictException,
   BadRequestException,
   ForbiddenException,
   Injectable,
@@ -32,6 +33,13 @@ export class CreateMaterialVersion {
       if (material.uploaderId !== author.id) {
         throw new ForbiddenException('Solo el autor puede crear una nueva versión del material.');
       }
+      if (material.status === 'RETIRED' || material.status === 'REJECTED') {
+        throw new ConflictException(
+          'El material requiere reapertura autorizada antes de añadir versiones.',
+        );
+      }
+      if (material.revision === 2147483647)
+        throw new ConflictException('Límite de revisión alcanzado.');
       if (material.materialType.name === 'LINK') {
         throw new BadRequestException('Los enlaces no admiten versiones de archivo.');
       }
@@ -68,7 +76,15 @@ export class CreateMaterialVersion {
               createdBy: author.id,
             },
           });
-          await tx.material.update({ where: { id: materialId }, data: { updatedAt: new Date() } });
+          await tx.material.update({
+            where: { id: materialId },
+            data: {
+              updatedAt: new Date(),
+              revision: { increment: 1 },
+              status: 'PENDING_REVIEW',
+              verified: false,
+            },
+          });
           return created;
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
@@ -97,6 +113,7 @@ export class CreateMaterialVersion {
       ];
       const rolledBack =
         error instanceof NotFoundException ||
+        error instanceof ConflictException ||
         error instanceof ForbiddenException ||
         error instanceof BadRequestException ||
         (error instanceof Prisma.PrismaClientKnownRequestError &&
