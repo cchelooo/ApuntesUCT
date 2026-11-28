@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:apuntesuct_mobile/core/theme/app_theme.dart';
+import 'package:apuntesuct_mobile/features/auth/presentation/forgot_password_screen.dart';
 import 'package:apuntesuct_mobile/features/auth/presentation/login_screen.dart';
 import 'package:apuntesuct_mobile/features/auth/presentation/register_screen.dart';
+import 'package:apuntesuct_mobile/features/auth/presentation/reset_password_screen.dart';
 import 'package:apuntesuct_mobile/features/catalog/presentation/screens/catalog_screen.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_detail_route.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_discovery_screen.dart';
@@ -71,6 +73,20 @@ final GoRouter appRouter = GoRouter(
       path: '/register',
       name: 'register',
       builder: (context, state) => const RegisterScreen(),
+    ),
+    GoRoute(
+      path: '/forgot-password',
+      name: 'forgot-password',
+      builder: (context, state) => ForgotPasswordScreen(
+        initialNotice: state.uri.queryParameters['notice'],
+      ),
+    ),
+    GoRoute(
+      path: '/reset-password',
+      name: 'reset-password',
+      builder: (context, state) => ResetPasswordScreen(
+        initialToken: state.uri.queryParameters['token'],
+      ),
     ),
     GoRoute(
       path: '/profile',

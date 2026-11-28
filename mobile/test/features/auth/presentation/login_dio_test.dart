@@ -379,6 +379,19 @@ class _PendingAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<String> requestPasswordRecovery({required String email}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<String> resetPassword({
+    required String token,
+    required String password,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<UserModel> getCurrentUser() {
     throw UnimplementedError();
   }

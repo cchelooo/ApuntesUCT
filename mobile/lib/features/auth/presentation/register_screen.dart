@@ -26,6 +26,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmationController = TextEditingController();
+  bool _submitting = false;
 
   @override
   void dispose() {
@@ -38,23 +39,30 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   /// Valida el formulario y dispara el registro.
   Future<void> _submit() async {
+    if (_submitting || ref.read(authStateProvider).isLoading) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     FocusScope.of(context).unfocus();
 
-    // El campo guarda sólo el nombre de usuario; el dominio lo agrega la app.
-    await ref
-        .read(authStateProvider.notifier)
-        .register(
-          _nameController.text.trim(),
-          Validators.composeInstitutionalEmail(_emailController.text),
-          _passwordController.text,
-        );
+    _submitting = true;
+    try {
+      // El campo guarda sólo el nombre de usuario; el dominio lo agrega la app.
+      await ref
+          .read(authStateProvider.notifier)
+          .register(
+            _nameController.text.trim(),
+            Validators.composeInstitutionalEmail(_emailController.text),
+            _passwordController.text,
+          );
+    } finally {
+      _submitting = false;
+    }
     if (!mounted) return;
     final result = ref.read(authStateProvider);
     if (!result.hasError && !result.isLoading && result.value == null) {
+      final messenger = ScaffoldMessenger.maybeOf(context);
       context.go('/login');
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger?.showSnackBar(
         const SnackBar(
           content: Text('Cuenta creada. Inicia sesión para continuar.'),
         ),
@@ -111,7 +119,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               foregroundColor: colorEnlace,
             ),
-            onPressed: isLoading ? null : () => context.go('/login'),
+            onPressed: isLoading
+                ? null
+                : () {
+                    ref.read(authStateProvider.notifier).clearError();
+                    context.go('/login');
+                  },
             child: Text(
               'Inicia sesión',
               style: TextStyle(

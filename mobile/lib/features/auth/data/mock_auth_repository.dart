@@ -68,6 +68,27 @@ class MockAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<String> requestPasswordRecovery({required String email}) async {
+    await Future.delayed(simulatedDelay);
+    if (email.trim().isEmpty) {
+      throw Exception('El correo ingresado no es válido.');
+    }
+    return 'Si el correo corresponde a una cuenta habilitada, recibirás instrucciones para recuperar tu contraseña.';
+  }
+
+  @override
+  Future<String> resetPassword({
+    required String token,
+    required String password,
+  }) async {
+    await Future.delayed(simulatedDelay);
+    if (token.trim().isEmpty || password.trim().isEmpty) {
+      throw Exception('Datos de restablecimiento incompletos.');
+    }
+    return 'Contraseña restablecida correctamente.';
+  }
+
+  @override
   Future<UserModel> getCurrentUser() async {
     await Future.delayed(simulatedDelay);
     return UserModel.mock();
@@ -176,6 +197,12 @@ class AuthStateNotifier extends AsyncNotifier<UserModel?> {
           trace,
         );
       }
+    }
+  }
+
+  void clearError() {
+    if (state.hasError) {
+      state = const AsyncData(null);
     }
   }
 }

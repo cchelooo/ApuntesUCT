@@ -103,7 +103,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               foregroundColor: colorEnlace,
             ),
-            onPressed: isLoading ? null : () => context.go('/register'),
+            onPressed: isLoading
+                ? null
+                : () {
+                    ref.read(authStateProvider.notifier).clearError();
+                    context.go('/register');
+                  },
             child: Text(
               'Regístrate',
               style: TextStyle(
@@ -142,6 +147,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   validator: Validators.loginPassword,
                   // Enter en el teclado envía el formulario, igual que el botón.
                   onFieldSubmitted: (_) => isLoading ? null : _submit(),
+                ),
+                SizedBox(height: esAlturaCorta ? 4 : 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: GestureDetector(
+                    onTap: isLoading
+                        ? null
+                        : () {
+                            ref.read(authStateProvider.notifier).clearError();
+                            context.go('/forgot-password');
+                          },
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
+                      child: Text(
+                        '¿Olvidaste tu contraseña?',
+                        style: TextStyle(
+                          color: isLoading
+                              ? colorScheme.onSurfaceVariant
+                              : colorEnlace,
+                          fontSize: esAlturaCorta ? 12 : 13,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                          decorationColor: isLoading
+                              ? colorScheme.onSurfaceVariant
+                              : colorEnlace,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

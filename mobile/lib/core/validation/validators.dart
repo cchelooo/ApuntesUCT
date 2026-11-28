@@ -72,8 +72,22 @@ abstract final class Validators {
   /// Largo mínimo de contraseña exigido en el registro.
   static const int minPasswordLength = 8;
 
+  /// Largo máximo de contraseña exigido por Auth Service.
+  static const int maxPasswordLength = 128;
+
   /// Largo mínimo del nombre visible.
   static const int minNameLength = 3;
+
+  /// Largo máximo del nombre visible exigido por Auth Service.
+  static const int maxNameLength = 100;
+
+  /// Largo máximo del correo institucional exigido por Auth Service.
+  static const int maxEmailLength = 254;
+
+  /// Longitud exacta del token hexadecimal de recuperación de contraseña.
+  static const int recoveryTokenLength = 64;
+
+  static final RegExp _recoveryTokenPattern = RegExp(r'^[a-f0-9]{64}$');
 
   /// Expresión razonablemente estricta para correo electrónico.
   ///
@@ -101,8 +115,12 @@ abstract final class Validators {
     final error = required(value, message: 'El nombre es obligatorio.');
     if (error != null) return error;
 
-    if (value!.trim().length < minNameLength) {
+    final trimmedLength = value!.trim().length;
+    if (trimmedLength < minNameLength) {
       return 'El nombre debe tener al menos $minNameLength caracteres.';
+    }
+    if (trimmedLength > maxNameLength) {
+      return 'El nombre no puede superar los $maxNameLength caracteres.';
     }
     return null;
   }
@@ -113,7 +131,11 @@ abstract final class Validators {
     final error = required(value, message: 'El correo es obligatorio.');
     if (error != null) return error;
 
-    if (!_emailPattern.hasMatch(value!.trim())) {
+    final trimmed = value!.trim();
+    if (trimmed.length > maxEmailLength) {
+      return 'El correo no puede superar los $maxEmailLength caracteres.';
+    }
+    if (!_emailPattern.hasMatch(trimmed)) {
       return 'Ingresa un correo válido.';
     }
     return null;
@@ -140,27 +162,64 @@ abstract final class Validators {
     return required(value, message: 'La contraseña es obligatoria.');
   }
 
-  /// Valida la robustez de la contraseña en Registro.
+  /// Valida la contraseña según el contrato real de Auth (8 a 128 caracteres y
+  /// no formada únicamente por espacios).
   static String? newPassword(String? value) {
-    final error = required(value, message: 'La contraseña es obligatoria.');
-    if (error != null) return error;
-
-    if (value!.length < minPasswordLength) {
+    if (value == null || value.isEmpty) {
+      return 'La contraseña es obligatoria.';
+    }
+    if (value.trim().isEmpty) {
+      return 'La contraseña no puede contener sólo espacios.';
+    }
+    if (value.length < minPasswordLength) {
       return 'Debe tener al menos $minPasswordLength caracteres.';
     }
-    if (!value.contains(RegExp(r'[A-Za-zÁÉÍÓÚáéíóúÑñ]'))) {
-      return 'Debe incluir al menos una letra.';
+    if (value.length > maxPasswordLength) {
+      return 'No puede superar los $maxPasswordLength caracteres.';
     }
-    if (!value.contains(RegExp(r'\d'))) {
-      return 'Debe incluir al menos un número.';
+    return null;
+  }
+
+  /// Valida el código o enlace de recuperación emitido por Auth Service.
+  ///
+  /// Admite tanto el token hexadecimal de 64 caracteres como un enlace que lo
+  /// contenga en su query string o ruta.
+  static String extractRecoveryToken(String? rawValue) {
+    final value = (rawValue ?? '').trim().toLowerCase();
+    if (value.isEmpty) return '';
+    final uri = Uri.tryParse(value);
+    final queryToken = uri?.queryParameters['token'];
+    if (queryToken != null && queryToken.trim().isNotEmpty) {
+      return queryToken.trim().toLowerCase();
+    }
+    final hexMatch = RegExp(r'[a-f0-9]{64}').firstMatch(value);
+    if (hexMatch != null) {
+      return hexMatch.group(0)!;
+    }
+    return value;
+  }
+
+  /// Valida que el código o enlace contenga un token temporal válido de 64
+  /// caracteres hexadecimales.
+  static String? recoveryToken(String? value) {
+    final error = required(
+      value,
+      message: 'El código o enlace de recuperación es obligatorio.',
+    );
+    if (error != null) return error;
+
+    final extracted = extractRecoveryToken(value);
+    if (!_recoveryTokenPattern.hasMatch(extracted)) {
+      return 'Ingresa un código válido de 64 caracteres hexadecimales o pega el enlace recibido.';
     }
     return null;
   }
 
   /// Valida que la confirmación coincida con la contraseña ingresada.
   static String? passwordConfirmation(String? value, String password) {
-    final error = required(value, message: 'La confirmación es obligatoria.');
-    if (error != null) return error;
+    if (value == null || value.isEmpty) {
+      return 'La confirmación es obligatoria.';
+    }
 
     if (value != password) {
       return 'Las contraseñas no coinciden.';
