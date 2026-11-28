@@ -81,6 +81,11 @@ export class ProxyModule implements NestModule {
         { path: 'materials/*path', method: RequestMethod.ALL },
       );
 
+    // Quality autoriza cada ruta, incluyendo lecturas privadas y roles mixtos.
+    consumer.apply(createServiceProxy(this.config, {
+      urlKey: 'QUALITY_SERVICE_URL', defaultUrl: 'http://127.0.0.1:3004', serviceName: 'Quality Service',
+    })).forRoutes({path:'quality',method:RequestMethod.ALL},{path:'quality/*path',method:RequestMethod.ALL});
+
     // 4. Proxy para Search Service (habilita /api/v1/search)
     consumer
       .apply(

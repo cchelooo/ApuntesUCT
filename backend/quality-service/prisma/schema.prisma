@@ -67,6 +67,8 @@ model Report {
   materialId String       @map("material_id") @db.Uuid
   // Usuario que presenta el reporte.
   userId     String       @map("user_id") @db.Uuid
+  materialUploaderId String? @map("material_uploader_id") @db.Uuid
+  resolutionNote String? @map("resolution_note")
   reason     String
   details    String?
   status     ReportStatus @default(OPEN)
@@ -88,4 +90,27 @@ model Favorite {
   @@unique([materialId, userId])
   @@index([userId, createdAt])
   @@map("favorites")
+}
+
+model ReportMutation {
+  id String @id @default(uuid()) @db.Uuid
+  actorId String @map("actor_id") @db.Uuid
+  family String
+  key String @db.Uuid
+  fingerprint String
+  response Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  @@unique([actorId, family, key])
+  @@map("report_mutations")
+}
+model ReportHistory {
+  id String @id @default(uuid()) @db.Uuid
+  reportId String @map("report_id") @db.Uuid
+  actorId String @map("actor_id") @db.Uuid
+  previousStatus ReportStatus? @map("previous_status")
+  status ReportStatus
+  resolutionNote String? @map("resolution_note")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  @@index([reportId, createdAt])
+  @@map("report_history")
 }

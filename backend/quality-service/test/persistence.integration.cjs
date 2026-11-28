@@ -52,7 +52,7 @@ test(
           const rating = await prisma.rating.create({ data: { materialId, userId, score: 5 } });
           assert.equal(rating.score, 5);
           const report = await prisma.report.create({
-            data: { materialId, userId, reason: 'Contenido incorrecto' },
+            data: { materialId, userId, reason: 'INCORRECT_INFORMATION' },
           });
           assert.equal(report.status, 'OPEN');
           favorite = await prisma.favorite.create({ data: { materialId, userId } });
@@ -152,7 +152,8 @@ test(
           const migrations = await prisma.$queryRawUnsafe(
             `SELECT migration_name, finished_at FROM "${schema}"."_prisma_migrations" WHERE rolled_back_at IS NULL`,
           );
-          assert.equal(migrations.length, 1);
+          assert.equal(migrations.length, 2);
+          assert.ok(migrations.some(m => m.migration_name === '20261128000000_reports'));
           assert.ok(migrations[0].finished_at);
         },
       );

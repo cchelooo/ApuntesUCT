@@ -93,6 +93,7 @@ describe('Login real (e2e)', () => {
       sub: body.user.id,
       email: body.user.email,
       role: 'STUDENT',
+      tokenVersion: 0,
       iat: expect.any(Number),
       exp: expect.any(Number),
       iss: 'test-auth',

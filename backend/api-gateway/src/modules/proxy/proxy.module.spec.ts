@@ -66,11 +66,11 @@ describe('ProxyModule', () => {
       expect(targets).toContain(expected);
     });
 
-    it('no incluye Quality, que sigue sin enrutarse', () => {
+    it('incluye Quality con autorización por ruta en el servicio', () => {
       const { options } = configure();
       const targets = options.map((option) => String(option.target));
-      expect(targets).not.toContain('http://127.0.0.1:3004');
-      expect(targets.some((target) => target.includes('3004'))).toBe(false);
+      expect(targets).toContain('http://127.0.0.1:3004');
+      expect(targets.some((target) => target.includes('3004'))).toBe(true);
     });
   });
 
