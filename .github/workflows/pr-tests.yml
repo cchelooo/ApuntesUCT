@@ -304,22 +304,31 @@ jobs:
     defaults:
       run:
         working-directory: backend
-    env:
-      MODERATION_TEST_QUALITY_DATABASE_URL: postgresql://ci:ci-disposable@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/quality_db
-      MODERATION_TEST_MATERIAL_DATABASE_URL: postgresql://ci:ci-disposable@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/material_db
-      MODERATION_TEST_AUTH_DATABASE_URL: postgresql://ci:ci-disposable@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/auth_db
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: backend/package-lock.json
+
       - run: npm ci
+
+      - name: Configure disposable database URLs
+        env:
+          POSTGRES_PORT: ${{ job.services.postgres.ports['5432'] }}
+        run: |
+          echo "MODERATION_TEST_QUALITY_DATABASE_URL=postgresql://ci:ci-disposable@127.0.0.1:${POSTGRES_PORT}/quality_db" >> "$GITHUB_ENV"
+          echo "MODERATION_TEST_MATERIAL_DATABASE_URL=postgresql://ci:ci-disposable@127.0.0.1:${POSTGRES_PORT}/material_db" >> "$GITHUB_ENV"
+          echo "MODERATION_TEST_AUTH_DATABASE_URL=postgresql://ci:ci-disposable@127.0.0.1:${POSTGRES_PORT}/auth_db" >> "$GITHUB_ENV"
+
       - name: Create disposable service databases
         run: |
           psql "$MODERATION_TEST_QUALITY_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE material_db'
           psql "$MODERATION_TEST_QUALITY_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE auth_db'
+
       - run: npm run test:moderation
+
       - name: Quality persistence regression
         run: QUALITY_TEST_DATABASE_URL="$MODERATION_TEST_QUALITY_DATABASE_URL" node --test quality-service/test/persistence.integration.cjs
