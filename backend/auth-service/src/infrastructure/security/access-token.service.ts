@@ -32,8 +32,8 @@ export class AccessTokenService {
     this.audience = audience;
   }
 
-  issue(user: { id: string; email: string; role: string }): string {
-    return sign({ email: user.email, role: user.role }, this.privateKey, {
+  issue(user: { id: string; email: string; role: string; tokenVersion?: number }): string {
+    return sign({ email: user.email, role: user.role, tokenVersion: user.tokenVersion ?? 0 }, this.privateKey, {
       algorithm: 'RS256',
       subject: user.id,
       issuer: this.issuer,

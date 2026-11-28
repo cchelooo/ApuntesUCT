@@ -1,7 +1,10 @@
+import { HttpAdapterHost } from '@nestjs/core';
+import { FavoriteRoutingErrorFilter } from './favorites/favorite-error.filter';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 export function setupApp(app: INestApplication): void {
+  app.useGlobalFilters(new FavoriteRoutingErrorFilter(app.get(HttpAdapterHost).httpAdapter));
   app.setGlobalPrefix('api/v1', { exclude: ['health'] });
   app.useGlobalPipes(
     new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: true }),
@@ -14,6 +17,7 @@ export function setupApp(app: INestApplication): void {
         'no modifican por sí solas el estado público ni verified de Material.',
     )
     .setVersion('0.0.1')
+    .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document, { jsonDocumentUrl: 'api/docs-json' });
