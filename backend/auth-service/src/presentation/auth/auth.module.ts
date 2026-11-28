@@ -1,3 +1,4 @@
+import { AccessContextController } from './access-context.controller';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthController } from './auth.controller';
@@ -13,6 +14,7 @@ import { PasswordRecoveryDelivery } from '../../infrastructure/notifications/pas
 @Module({
   imports: [ConfigModule],
   controllers: [
+    AccessContextController,
     AuthController,
     RegistrationController,
     PasswordRecoveryController,

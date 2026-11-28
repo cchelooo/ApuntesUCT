@@ -50,7 +50,7 @@ function renderDocsIndex(services: DocsService[]): string {
         </thead>
         <tbody>${rows}</tbody>
       </table>
-      <p>Quality Service todavía no está enrutado por el gateway. Material y Search sí lo
+      <p>Quality Service está enrutado por el gateway. Material y Search también lo
       están: <code>/api/v1/materials</code> devuelve el listado paginado de materiales y
       <code>/api/v1/search</code> compone esos materiales con el contexto académico de
       Catalog. Las rutas públicas son las del Gateway (puerto 3000); Web y Mobile no
