@@ -482,6 +482,390 @@ void main() {
         await sessionController.clear();
       },
     );
+
+    testWidgets(
+      'Regresión login cancelado: Cancelar el nuevo login mientras el reporte anterior sigue en vuelo y recibir después su 401 NO deja el formulario en Enviando',
+      (WidgetTester tester) async {
+        final firstRequestCompleter = Completer<ResponseBody>();
+        final storage = MemorySessionStorage();
+        final sessionController = SessionController(storage);
+        final gen1 = sessionController.beginLogin();
+        await sessionController.accept(
+          AuthSession.fromLogin(
+            loginFixture(email: 'estudiante@alu.uct.cl'),
+            DateTime.now().toUtc(),
+          ),
+          gen1,
+        );
+
+        final requests = <RequestOptions>[];
+        final dio = Dio(
+          BaseOptions(
+            baseUrl: 'https://gateway.example.test/api/v1',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+          ),
+        )..httpClientAdapter = _CallbackHttpAdapter((options) {
+          requests.add(options);
+          return firstRequestCompleter.future;
+        });
+
+        final apiClient = ApiClient(
+          baseUrl: 'https://gateway.example.test/api/v1',
+          customDio: dio,
+          session: sessionController,
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            sessionControllerProvider.overrideWithValue(sessionController),
+            apiclientProvider.overrideWithValue(apiClient),
+          ],
+        );
+        addTearDown(() {
+          sessionController.dispose();
+          dio.close(force: true);
+          container.dispose();
+        });
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const MaterialApp(
+              home: Scaffold(
+                body: MaterialReportForm(
+                  materialId: materialUuid,
+                  materialTitle: 'Apuntes de Cálculo',
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.byType(DropdownButtonFormField<ReportMotive>));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Recurso dañado o enlace roto').last);
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextFormField), 'Enlace roto.');
+        await tester.tap(find.text('Enviar Reporte'));
+        await tester.pump(const Duration(milliseconds: 10));
+        expect(requests.length, 1);
+        expect(
+          container.read(materialReportProvider(materialUuid)).isSubmitting,
+          isTrue,
+        );
+
+        // El usuario inicia un nuevo login y lo cancela mientras la petición anterior sigue en vuelo
+        final gen2 = sessionController.beginLogin();
+        await sessionController.cancelLogin(gen2);
+        await tester.pump();
+
+        // Al cambiar de sesión, el envío anterior deja de bloquear el formulario de inmediato
+        expect(
+          container.read(materialReportProvider(materialUuid)).isSubmitting,
+          isFalse,
+        );
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+
+        // Ahora llega tarde el 401 del reporte anterior
+        firstRequestCompleter.complete(
+          ResponseBody.fromString(
+            jsonEncode({
+              'statusCode': 401,
+              'code': 'UNAUTHENTICATED',
+              'message': 'Credencial anterior vencida.',
+            }),
+            401,
+            headers: {
+              Headers.contentTypeHeader: [Headers.jsonContentType],
+            },
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // El formulario NO queda atrapado en Enviando
+        final finalState = container.read(materialReportProvider(materialUuid));
+        expect(finalState.isSubmitting, isFalse);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+        expect(find.text('Enviar Reporte'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Regresión JWT repetido y 502 tardío: Si el nuevo login devuelve el mismo JWT y la petición anterior termina en 502, NO bloquea en Enviando ni contamina la nueva sesión',
+      (WidgetTester tester) async {
+        final firstRequestCompleter = Completer<ResponseBody>();
+        final fixedNow = DateTime.now().toUtc();
+        final sameLoginPayload = loginFixture(
+          email: 'estudiante@alu.uct.cl',
+          now: fixedNow,
+        );
+
+        final storage = MemorySessionStorage();
+        final sessionController = SessionController(storage);
+        final gen1 = sessionController.beginLogin();
+        await sessionController.accept(
+          AuthSession.fromLogin(sameLoginPayload, fixedNow),
+          gen1,
+        );
+        final initialJwt = sessionController.current?.accessToken;
+
+        final requests = <RequestOptions>[];
+        final dio = Dio(
+          BaseOptions(
+            baseUrl: 'https://gateway.example.test/api/v1',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+          ),
+        )..httpClientAdapter = _CallbackHttpAdapter((options) {
+          requests.add(options);
+          return firstRequestCompleter.future;
+        });
+
+        final apiClient = ApiClient(
+          baseUrl: 'https://gateway.example.test/api/v1',
+          customDio: dio,
+          session: sessionController,
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            sessionControllerProvider.overrideWithValue(sessionController),
+            apiclientProvider.overrideWithValue(apiClient),
+          ],
+        );
+        addTearDown(() {
+          sessionController.dispose();
+          dio.close(force: true);
+          container.dispose();
+        });
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const MaterialApp(
+              home: Scaffold(
+                body: MaterialReportForm(
+                  materialId: materialUuid,
+                  materialTitle: 'Apuntes de Cálculo',
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.byType(DropdownButtonFormField<ReportMotive>));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Recurso dañado o enlace roto').last);
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextFormField), 'Archivo corrupto.');
+        await tester.tap(find.text('Enviar Reporte'));
+        await tester.pump(const Duration(milliseconds: 10));
+        expect(requests.length, 1);
+
+        // El nuevo login devuelve exactamente el MISMO JWT
+        final gen2 = sessionController.beginLogin();
+        await sessionController.accept(
+          AuthSession.fromLogin(sameLoginPayload, fixedNow),
+          gen2,
+        );
+        await tester.pump();
+        expect(sessionController.current?.accessToken, equals(initialJwt));
+
+        // El formulario ya fue desbloqueado por el cambio de sesión
+        expect(
+          container.read(materialReportProvider(materialUuid)).isSubmitting,
+          isFalse,
+        );
+
+        // La petición anterior termina en 502 tardío
+        firstRequestCompleter.complete(
+          ResponseBody.fromString(
+            jsonEncode({
+              'statusCode': 502,
+              'code': 'DEPENDENCY_INVALID_RESPONSE',
+              'message': 'Bad Gateway tardío.',
+            }),
+            502,
+            headers: {
+              Headers.contentTypeHeader: [Headers.jsonContentType],
+            },
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Ni queda en Enviando ni muestra el 502 de la operación reemplazada
+        final stateAfterLate502 = container.read(
+          materialReportProvider(materialUuid),
+        );
+        expect(stateAfterLate502.isSubmitting, isFalse);
+        expect(stateAfterLate502.hasError, isFalse);
+        expect(stateAfterLate502.isIdle, isTrue);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+        expect(find.text('Enviar Reporte'), findsOneWidget);
+
+        await sessionController.clear();
+      },
+    );
+
+    test(
+      'Regresión respuesta tardía con otro envío en curso: Una respuesta tardía del envío anterior NO modifica el estado mientras hay un nuevo envío vigente',
+      () async {
+        final firstCompleter = Completer<ResponseBody>();
+        final secondCompleter = Completer<ResponseBody>();
+        var callCount = 0;
+
+        final storage = MemorySessionStorage();
+        final sessionController = SessionController(storage);
+        final gen1 = sessionController.beginLogin();
+        await sessionController.accept(
+          AuthSession.fromLogin(
+            loginFixture(email: 'estudiante@alu.uct.cl'),
+            DateTime.now().toUtc(),
+          ),
+          gen1,
+        );
+
+        final dio = Dio(
+          BaseOptions(
+            baseUrl: 'https://gateway.example.test/api/v1',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+          ),
+        )..httpClientAdapter = _CallbackHttpAdapter((_) {
+          callCount++;
+          if (callCount == 1) {
+            return firstCompleter.future;
+          }
+          return secondCompleter.future;
+        });
+
+        final apiClient = ApiClient(
+          baseUrl: 'https://gateway.example.test/api/v1',
+          customDio: dio,
+          session: sessionController,
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            sessionControllerProvider.overrideWithValue(sessionController),
+            apiclientProvider.overrideWithValue(apiClient),
+          ],
+        );
+        final sub = container.listen(
+          materialReportProvider(materialUuid),
+          (_, _) {},
+        );
+        addTearDown(() {
+          sub.close();
+          sessionController.dispose();
+          dio.close(force: true);
+          container.dispose();
+        });
+
+        // 1. Primer envío en la sesión 1 (queda en vuelo)
+        final firstFuture = container
+            .read(materialReportProvider(materialUuid).notifier)
+            .submit(
+              materialId: materialUuid,
+              motive: ReportMotive.brokenResource,
+              details: 'Primer envío.',
+            );
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        expect(
+          container.read(materialReportProvider(materialUuid)).isSubmitting,
+          isTrue,
+        );
+
+        // 2. Cambio de sesión -> desbloquea el formulario para permitir un nuevo envío
+        final gen2 = sessionController.beginLogin();
+        await sessionController.accept(
+          AuthSession.fromLogin(
+            loginFixture(
+              email: 'estudiante@alu.uct.cl',
+              lifetime: const Duration(hours: 2),
+            ),
+            DateTime.now().toUtc(),
+          ),
+          gen2,
+        );
+        expect(
+          container.read(materialReportProvider(materialUuid)).isSubmitting,
+          isFalse,
+        );
+
+        // 3. Segundo envío en la sesión 2 (queda en curso como operación vigente)
+        final secondFuture = container
+            .read(materialReportProvider(materialUuid).notifier)
+            .submit(
+              materialId: materialUuid,
+              motive: ReportMotive.copyright,
+              details: 'Segundo envío vigente.',
+            );
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        expect(
+          container.read(materialReportProvider(materialUuid)).isSubmitting,
+          isTrue,
+        );
+
+        // 4. Llega la respuesta tardía (502) del primer envío mientras el segundo está en curso
+        firstCompleter.complete(
+          ResponseBody.fromString(
+            jsonEncode({
+              'statusCode': 502,
+              'code': 'DEPENDENCY_INVALID_RESPONSE',
+              'message': 'Fallo tardío del primer envío.',
+            }),
+            502,
+            headers: {
+              Headers.contentTypeHeader: [Headers.jsonContentType],
+            },
+          ),
+        );
+        expect(await firstFuture, isNull);
+
+        // El segundo envío sigue en curso y NO fue sobrescrito por el 502 tardío
+        final midState = container.read(materialReportProvider(materialUuid));
+        expect(midState.isSubmitting, isTrue);
+        expect(midState.hasError, isFalse);
+
+        // 5. Termina exitosamente el segundo envío
+        secondCompleter.complete(
+          ResponseBody.fromString(
+            jsonEncode({
+              'id': reportUuid,
+              'materialId': materialUuid,
+              'userId': userUuid,
+              'reason': 'COPYRIGHT',
+              'details': 'Segundo envío vigente.',
+              'status': 'OPEN',
+              'resolutionNote': null,
+              'createdAt': '2026-11-27T12:00:00Z',
+              'updatedAt': '2026-11-27T12:00:00Z',
+            }),
+            201,
+            headers: {
+              Headers.contentTypeHeader: [Headers.jsonContentType],
+            },
+          ),
+        );
+        final secondResult = await secondFuture;
+        expect(secondResult, isNotNull);
+        expect(secondResult!.id, reportUuid);
+
+        final finalState = container.read(materialReportProvider(materialUuid));
+        expect(finalState.isSuccess, isTrue);
+        expect(finalState.submittedReport?.id, reportUuid);
+      },
+    );
   });
 }
 
