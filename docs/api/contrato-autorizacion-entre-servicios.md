@@ -191,3 +191,33 @@ Formato de error: mantener compatibilidad con Nest (`{ statusCode, message, erro
 - `backend/material-service/src/presentation/controllers/material.controller.ts` y `material-version.controller.ts` (operaciones que requieren autor).
 - `docs/api/README.md`, `docs/mobile/integracion-api-mobile.md`, `docs/checklist-integracion-api-mobile.md` (integración cliente/Gateway).
 - #440 (registro público) y #441 (login real/emisión de JWT).
+
+## 9. Aplicación de permisos (#453)
+
+| Operación existente | Acceso |
+| --- | --- |
+| Lecturas GET/HEAD de Catalog, Material y Search; healthchecks | Público |
+| Login, registro y recuperación de contraseña | Público; Auth valida su contrato |
+| POST/DELETE de universidades, carreras, asignaturas y profesores | ADMIN |
+| Subir materiales y crear versiones | STUDENT, MODERATOR o ADMIN; versionar sigue exigiendo propiedad |
+
+El Gateway verifica las escrituras de Catalog y Material antes del proxy.
+Catalog verifica nuevamente firma y permisos para impedir el acceso directo sin
+autorización. Material verifica la identidad del autor y exige un rol reconocido.
+Un JWT firmado sin rol no otorga permisos (403). No se toman roles ni IDs de
+cabeceras auxiliares, query o cuerpos enviados por el cliente.
+
+Configurar en Gateway, Catalog y Material la misma clave pública
+`JWT_ACCESS_PUBLIC_KEY` de Auth (PEM; acepta saltos escapados), `JWT_ISSUER` y
+`JWT_AUDIENCE`. Sin clave las escrituras fallan con 401; las lecturas continúan
+disponibles. En producción, configurar una clave exige emisor y audiencia.
+Se conserva el soporte HS256/ES256 del verificador de Material. Nunca distribuir
+la clave privada de Auth a estos servicios.
+
+El contexto local de Material sigue limitado a desarrollo explícito para acceso
+directo; no evita la autenticación del Gateway. Los tokens presentes inválidos
+nunca recurren a ese contexto.
+
+No existen aún endpoints de moderación, gestión de roles o suspensión de cuentas:
+esta tarea no los crea. La política del Gateway admite el nivel MODERATOR y la
+herencia ADMIN para incorporarlos cuando se implemente su contrato.

@@ -19,10 +19,18 @@ class SessionController extends ChangeNotifier {
   final SessionStorage storage;
   final DateTime Function() now;
   AuthSession? _current;
+  bool _needsSignIn = false;
+
+  /// Only expiry or a rejected credential prompts the user to sign in again.
+  bool get needsSignIn => _needsSignIn;
+
+  static const signInAgainMessage =
+      'La sesión ya no es válida. Vuelve a iniciar sesión.';
   AuthSession? get current {
     if (_current != null && !_current!.expiresAt.isAfter(now().toUtc())) {
       final generation = ++_generation;
       _current = null;
+      _needsSignIn = true;
       _timer?.cancel();
       unawaited(_serial(storage.delete).catchError((Object _) {}));
       // Reading expired credentials can happen during a widget/provider build.
@@ -65,6 +73,7 @@ class SessionController extends ChangeNotifier {
   }
 
   int beginLogin() {
+    _needsSignIn = false;
     _restoration = Future.value();
     final generation = ++_generation;
     _publish(null);
@@ -93,14 +102,19 @@ class SessionController extends ChangeNotifier {
     if (!_disposed && generation == _generation) await clear();
   }
 
-  Future<void> clear() {
+  Future<void> clear() => _clear();
+
+  Future<void> _clear({bool needsSignIn = false}) {
     ++_generation;
+    _needsSignIn = needsSignIn;
     _publish(null);
     return _serial(storage.delete);
   }
 
   Future<void> rejectCredential(String token) async {
-    if (_current?.accessToken == token) await clear();
+    if (_current?.accessToken == token) {
+      await _clear(needsSignIn: true);
+    }
   }
 
   void _publish(AuthSession? session) {
@@ -108,7 +122,7 @@ class SessionController extends ChangeNotifier {
     _current = session;
     if (session != null) {
       _timer = Timer(session.expiresAt.difference(now().toUtc()), () {
-        unawaited(clear().catchError((Object _) {}));
+        unawaited(_clear(needsSignIn: true).catchError((Object _) {}));
       });
     }
     if (!_disposed) notifyListeners();

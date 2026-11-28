@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { isUUID } from 'class-validator';
 import { MaterialAuthor } from '../../application/use-cases/create-material';
@@ -36,6 +36,7 @@ export class MaterialAuthorProvider {
 
     if (token) {
       const identity = this.tokens.verify(token);
+      if (!identity.role) throw new ForbiddenException('Se requiere un rol autorizado.');
       return {
         id: identity.id,
         // El contrato de #445 no define universidad en el token; no se inventa.
@@ -48,18 +49,12 @@ export class MaterialAuthorProvider {
 
   private resolveLocalAuthor(): MaterialAuthor {
     const id = this.config.get<string>('MATERIAL_LOCAL_UPLOADER_ID');
-    if (
-      !this.isLocalAuthorEnabled() ||
-      !this.isDevelopment() ||
-      !id ||
-      !isUUID(id)
-    ) {
+    if (!this.isLocalAuthorEnabled() || !this.isDevelopment() || !id || !isUUID(id)) {
       throw new UnauthorizedException(IDENTITY_REQUIRED_MESSAGE);
     }
     return {
       id,
-      universityId:
-        this.config.get<string>('MATERIAL_LOCAL_UNIVERSITY_ID') || null,
+      universityId: this.config.get<string>('MATERIAL_LOCAL_UNIVERSITY_ID') || null,
     };
   }
 

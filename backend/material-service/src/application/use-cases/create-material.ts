@@ -1,3 +1,4 @@
+import { isSafeExternalLink } from '../security/external-link';
 import { Prisma } from '.prisma/material-client';
 import { BadGatewayException, BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { createHash } from 'node:crypto';
@@ -41,6 +42,9 @@ export class CreateMaterial {
   ) {}
 
   async execute(input: CreateMaterialInput, author: MaterialAuthor, file?: MaterialUpload) {
+    if (input.externalLink != null && !isSafeExternalLink(input.externalLink)) {
+      throw new BadRequestException('externalLink debe ser HTTP(S), con dominio público y sin credenciales.');
+    }
     if (input.type === 'LINK') {
       if (!input.externalLink || file) {
         throw new BadRequestException('LINK requiere externalLink y no admite archivo.');

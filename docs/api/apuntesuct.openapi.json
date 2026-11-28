@@ -536,6 +536,12 @@
           "400": {
             "description": "Datos de entrada inválidos."
           },
+          "401": {
+            "description": "JWT ausente, inválido o expirado."
+          },
+          "403": {
+            "description": "Se requiere rol ADMIN."
+          },
           "409": {
             "description": "Conflicto: Ya existe una universidad con el mismo código."
           },
@@ -560,6 +566,11 @@
             }
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Crear nueva universidad",
         "tags": ["Catalog"]
       }
@@ -641,6 +652,12 @@
           "400": {
             "description": "Datos de entrada inválidos."
           },
+          "401": {
+            "description": "JWT ausente, inválido o expirado."
+          },
+          "403": {
+            "description": "Se requiere rol ADMIN."
+          },
           "404": {
             "description": "La universidad especificada no existe."
           },
@@ -668,6 +685,11 @@
             }
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Crear nueva carrera",
         "tags": ["Catalog"]
       }
@@ -749,6 +771,12 @@
           "400": {
             "description": "Datos de entrada inválidos."
           },
+          "401": {
+            "description": "JWT ausente, inválido o expirado."
+          },
+          "403": {
+            "description": "Se requiere rol ADMIN."
+          },
           "404": {
             "description": "La carrera especificada no existe."
           },
@@ -776,6 +804,11 @@
             }
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Crear nueva asignatura",
         "tags": ["Catalog"]
       }
@@ -858,6 +891,12 @@
           "400": {
             "description": "Datos de entrada inválidos."
           },
+          "401": {
+            "description": "JWT ausente, inválido o expirado."
+          },
+          "403": {
+            "description": "Se requiere rol ADMIN."
+          },
           "404": {
             "description": "Alguna de las asignaturas indicadas no existe."
           },
@@ -885,6 +924,11 @@
             }
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Crear nuevo profesor",
         "tags": ["Catalog"]
       }
@@ -906,6 +950,12 @@
         "responses": {
           "200": {
             "description": "Universidad eliminada exitosamente."
+          },
+          "401": {
+            "description": "JWT ausente, inválido o expirado."
+          },
+          "403": {
+            "description": "Se requiere rol ADMIN."
           },
           "404": {
             "description": "La universidad especificada no existe."
@@ -931,6 +981,11 @@
             }
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Eliminar una universidad por ID",
         "tags": ["Catalog"]
       }
@@ -952,6 +1007,12 @@
         "responses": {
           "200": {
             "description": "Carrera eliminada exitosamente."
+          },
+          "401": {
+            "description": "JWT ausente, inválido o expirado."
+          },
+          "403": {
+            "description": "Se requiere rol ADMIN."
           },
           "404": {
             "description": "La carrera especificada no existe."
@@ -977,6 +1038,11 @@
             }
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Eliminar una carrera por ID",
         "tags": ["Catalog"]
       }
@@ -998,6 +1064,12 @@
         "responses": {
           "200": {
             "description": "Profesor eliminado exitosamente."
+          },
+          "401": {
+            "description": "JWT ausente, inválido o expirado."
+          },
+          "403": {
+            "description": "Se requiere rol ADMIN."
           },
           "404": {
             "description": "El profesor especificado no existe."
@@ -1023,6 +1095,11 @@
             }
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Eliminar un profesor por ID",
         "tags": ["Catalog"]
       }
@@ -1043,6 +1120,12 @@
         "responses": {
           "200": {
             "description": "Asignatura eliminada exitosamente."
+          },
+          "401": {
+            "description": "JWT ausente, inválido o expirado."
+          },
+          "403": {
+            "description": "Se requiere rol ADMIN."
           },
           "404": {
             "description": "La asignatura especificada no existe."
@@ -1068,6 +1151,11 @@
             }
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Eliminar una asignatura por ID",
         "tags": ["Catalog"]
       }
@@ -1212,6 +1300,23 @@
                   "statusCode": 401,
                   "error": "Unauthorized",
                   "message": "Se requiere una identidad autenticada válida.",
+                  "timestamp": "2026-11-08T12:00:00.000Z",
+                  "path": "/api/v1/materials"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "La identidad no tiene un rol autorizado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialService_ErrorResponseDto"
+                },
+                "example": {
+                  "statusCode": 403,
+                  "error": "Forbidden",
+                  "message": "Solo el autor puede crear una nueva versión del material.",
                   "timestamp": "2026-11-08T12:00:00.000Z",
                   "path": "/api/v1/materials"
                 }

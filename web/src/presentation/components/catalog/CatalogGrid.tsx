@@ -9,12 +9,19 @@ interface CatalogGridProps {
 export function CatalogGrid({ subjects, query }: CatalogGridProps) {
   if (subjects.length === 0) {
     return (
-      <div className="rounded-xs border border-dashed border-catalog-line bg-catalog-paperMuted px-6 py-12 text-center">
+      <div
+        role="status"
+        className="rounded-xs border border-dashed border-catalog-line bg-catalog-paperMuted px-6 py-12 text-center"
+      >
         <p className="font-display text-lg text-catalog-ink break-words">
-          No hay asignaturas para “{query}”
+          {query.trim()
+            ? `No hay asignaturas para “${query}”`
+            : 'Todavía no hay asignaturas disponibles'}
         </p>
         <p className="mt-1 text-sm text-catalog-ink/60">
-          Prueba buscando por otro nombre o por el código de la asignatura.
+          {query.trim()
+            ? 'Prueba buscando por otro nombre o por el código de la asignatura.'
+            : 'Las asignaturas aparecerán aquí cuando estén disponibles en el catálogo.'}
         </p>
       </div>
     );

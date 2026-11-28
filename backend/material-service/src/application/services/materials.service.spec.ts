@@ -147,6 +147,16 @@ describe('MaterialsService', () => {
     expect(storage.get).not.toHaveBeenCalled();
   });
 
+  it.each(['javascript:alert(1)', 'https://user:secret@example.com', 'http://minio.internal/file'])(
+    'no expone enlaces históricos inseguros en detalles públicos ni privados: %s', async (externalLink) => {
+      prisma.material.findFirst.mockResolvedValue({
+        ...material, materialType: { name: 'LINK' }, externalLink, versions: [],
+      });
+      expect((await service.detail('material')).externalLink).toBeNull();
+      expect((await service.detailPending('material', { id: 'moderator', role: 'ADMIN' })).externalLink).toBeNull();
+    },
+  );
+
   it('permite un LINK sin versiones de archivo', async () => {
     prisma.material.findFirst.mockResolvedValue({
       ...material,
@@ -182,6 +192,7 @@ describe('MaterialsService', () => {
       const stream = Readable.from([Buffer.from('pdf')]);
       storage.get.mockResolvedValue(stream);
       await expect(service.download('material', versionId)).resolves.toEqual({
+        versionId: 'version-2',
         stream,
         mimeType: 'application/pdf',
         filename: 'apuntes.pdf',
@@ -220,5 +231,72 @@ describe('MaterialsService', () => {
     const error = new Error('unexpected');
     storage.get.mockRejectedValue(error);
     await expect(service.download('material')).rejects.toBe(error);
+  });
+
+  it('lista únicamente pendientes con el mismo contrato de paginación (#460)', async () => {
+    prisma.material.findMany.mockResolvedValue([{ ...material, status: 'PENDING_REVIEW' }]);
+    prisma.material.count.mockResolvedValue(1);
+    const actor = { id: 'moderator', role: 'MODERATOR' };
+
+    await expect(service.listPending({ page: 2, pageSize: 5 }, actor)).resolves.toMatchObject({
+      page: 2,
+      pageSize: 5,
+      total: 1,
+      items: [{ status: 'PENDING_REVIEW' }],
+    });
+    expect(prisma.material.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { status: 'PENDING_REVIEW' }, skip: 5, take: 5 }),
+    );
+    expect(prisma.material.count).toHaveBeenCalledWith({ where: { status: 'PENDING_REVIEW' } });
+  });
+
+  it('rechaza desplazamientos excesivos en el listado privado (#460)', async () => {
+    await expect(
+      service.listPending({ page: 2147483647, pageSize: 100 }, { id: 'moderator', role: 'ADMIN' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.material.findMany).not.toHaveBeenCalled();
+  });
+
+  it('permite un LINK pendiente sin versiones de archivo (#460)', async () => {
+    prisma.material.findFirst.mockResolvedValue({
+      ...material,
+      status: 'PENDING_REVIEW',
+      materialType: { name: 'LINK' },
+      externalLink: 'https://example.com',
+      versions: [],
+    });
+
+    await expect(
+      service.detailPending('material', { id: 'moderator', role: 'MODERATOR' }),
+    ).resolves.toMatchObject({
+      status: 'PENDING_REVIEW',
+      currentVersion: null,
+      versions: [],
+      externalLink: 'https://example.com',
+    });
+  });
+
+  it('descarga pendientes sin pdfOnly y traduce errores del almacenamiento (#460)', async () => {
+    const stream = Readable.from([Buffer.from('pdf')]);
+    storage.get.mockResolvedValue(stream);
+
+    await expect(
+      service.downloadPending('material', { id: 'moderator', role: 'ADMIN' }),
+    ).resolves.toEqual({
+      versionId: 'version-2',
+      stream,
+      mimeType: 'application/pdf',
+      filename: 'apuntes.pdf',
+      size: 3,
+    });
+    expect(prisma.material.findFirst).toHaveBeenCalledWith({
+      where: { id: 'material', status: 'PENDING_REVIEW' },
+      select: { id: true },
+    });
+
+    storage.get.mockRejectedValue(new ObjectNotFoundError());
+    await expect(
+      service.downloadPending('material', { id: 'moderator', role: 'ADMIN' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

@@ -6,9 +6,12 @@ import 'package:apuntesuct_mobile/core/network/api_client.dart';
 import 'package:apuntesuct_mobile/core/session/auth_session.dart';
 import 'package:apuntesuct_mobile/core/session/session_controller.dart';
 import 'package:apuntesuct_mobile/core/session/session_storage.dart';
+import 'package:apuntesuct_mobile/features/auth/data/dio_auth_repository.dart';
 import 'package:apuntesuct_mobile/features/auth/data/mock_auth_repository.dart';
 import 'package:apuntesuct_mobile/features/materials/data/dio_material_repository.dart';
+import 'package:apuntesuct_mobile/features/materials/domain/models/academic_reference.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_requests.dart';
+import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_upload_provider.dart';
 import 'package:apuntesuct_mobile/main.dart' as app;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -21,11 +24,15 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   const enabled = bool.fromEnvironment('RUN_NATIVE_SESSION_SMOKE');
   const materialId = String.fromEnvironment('EXPECTED_MATERIAL_ID');
+  const universityId = String.fromEnvironment('EXPECTED_UNIVERSITY_ID');
+  const careerId = String.fromEnvironment('EXPECTED_CAREER_ID');
+  const subjectId = String.fromEnvironment('EXPECTED_SUBJECT_ID');
 
   testWidgets(
-    'real login, protected version, secure restore, logout and rejected signature',
+    'sesión real, subida, versionado, rechazo de autoría y restauración segura',
     (tester) async {
       expect(materialId, isNotEmpty);
+      expect([universityId, careerId, subjectId], everyElement(isNotEmpty));
       var container = ProviderContainer();
       addTearDown(() => container.dispose());
       await container.read(sessionStorageProvider).delete();
@@ -101,6 +108,33 @@ void main() {
         mimeType: 'application/pdf',
         bytes: utf8.encode('%PDF-1.4\n% Session smoke\n%%EOF\n'),
       );
+      final url = Uri.parse('https://example.org/material-qa');
+      final upload = container.read(materialUploadProvider.notifier);
+      for (final (type, source) in [
+        ('DOCUMENT', file),
+        ('LINK', ExternalMaterialLink(url)),
+      ]) {
+        expect(
+          await upload.upload(
+            UploadMaterialRequest(
+              title: 'Material Mobile QA $type',
+              year: 2026,
+              type: type,
+              university: AcademicReference(id: universityId),
+              career: AcademicReference(id: careerId),
+              subject: AcademicReference(id: subjectId),
+              source: source,
+            ),
+          ),
+          isTrue,
+          reason: container.read(materialUploadProvider).errorMessage,
+        );
+        final created = container.read(materialUploadProvider).created!;
+        expect(created.isSimulatedResponse, isFalse);
+        expect(created.summary.status, 'PENDING_REVIEW');
+        expect(created.summary.subject?.id, subjectId);
+        expect(created.externalLink, type == 'LINK' ? url.toString() : isNull);
+      }
       final version = await container
           .read(dioMaterialRepositoryProvider)
           .createVersion(materialId, file);
@@ -108,6 +142,30 @@ void main() {
         version.id,
         isNotEmpty,
       ); // Material verified the signature and author.
+
+      final otherSession = SessionController(MemorySessionStorage());
+      final otherClient = ApiClient(session: otherSession);
+      addTearDown(() {
+        otherClient.dio.close(force: true);
+        otherSession.dispose();
+      });
+      final otherAuth = DioAuthRepository(otherClient);
+      final otherEmail =
+          'qa278.${DateTime.now().millisecondsSinceEpoch}@alu.uct.cl';
+      await otherAuth.register(
+        name: 'Estudiante QA alternativo',
+        email: otherEmail,
+        password: 'ApuntesQA2026!',
+      );
+      await otherAuth.login(email: otherEmail, password: 'ApuntesQA2026!');
+      final current = otherSession.current;
+      expect(current, isNotNull);
+      expect(current!.user.id, isNot(session.user.id));
+      await expectLater(
+        DioMaterialRepository(otherClient).createVersion(materialId, file),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'HTTP', 403)),
+      );
+      expect(otherSession.current, same(current));
 
       await tester.pumpWidget(const SizedBox.shrink());
       container.dispose();

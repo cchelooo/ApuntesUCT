@@ -1,5 +1,20 @@
-import { Controller, Get, Post, Delete, Param, Body, Query } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { CatalogAuthorizationGuard } from '../../infrastructure/auth/catalog-authorization.guard';
+import {
+  Controller,
+  UseGuards,
+  Get,
+  Post,
+  Delete,
+  Param,
+  Body,
+  Query,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CatalogService } from '../../application/services/catalog.service';
 import { FilterCatalogDto } from '../../application/dtos/filter-catalog.dto';
 import {
@@ -17,6 +32,7 @@ import { ListSubjectsQueryDto } from '../../application/dtos/list-subjects-query
 import { ListProfessorsQueryDto } from '../../application/dtos/list-professors-query.dto';
 
 @ApiTags('Catalog')
+@UseGuards(CatalogAuthorizationGuard)
 @Controller('catalog')
 export class CatalogController {
   constructor(private readonly catalogService: CatalogService) {}
@@ -105,7 +121,10 @@ export class CatalogController {
     description: 'Listado de carreras activas.',
     type: [CareerResponseDto],
   })
-  @ApiResponse({ status: 400, description: '`universityId` no es un UUID válido.' })
+  @ApiResponse({
+    status: 400,
+    description: '`universityId` no es un UUID válido.',
+  })
   async listCareers(
     @Query() query: ListCareersQueryDto,
   ): Promise<CareerResponseDto[]> {
@@ -141,7 +160,10 @@ export class CatalogController {
     description: 'Listado de profesores activos.',
     type: [ProfessorResponseDto],
   })
-  @ApiResponse({ status: 400, description: '`subjectId` no es un UUID válido.' })
+  @ApiResponse({
+    status: 400,
+    description: '`subjectId` no es un UUID válido.',
+  })
   async listProfessors(
     @Query() query: ListProfessorsQueryDto,
   ): Promise<ProfessorResponseDto[]> {
@@ -153,6 +175,12 @@ export class CatalogController {
   // =========================================================================
 
   @Post('universities')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 401,
+    description: 'JWT ausente, inválido o expirado.',
+  })
+  @ApiResponse({ status: 403, description: 'Se requiere rol ADMIN.' })
   @ApiOperation({ summary: 'Crear nueva universidad' })
   @ApiResponse({ status: 201, description: 'Universidad creada exitosamente.' })
   @ApiResponse({ status: 400, description: 'Datos de entrada inválidos.' })
@@ -165,22 +193,43 @@ export class CatalogController {
   }
 
   @Delete('universities/:id')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 401,
+    description: 'JWT ausente, inválido o expirado.',
+  })
+  @ApiResponse({ status: 403, description: 'Se requiere rol ADMIN.' })
   @ApiOperation({
     summary: 'Eliminar una universidad por ID',
     description:
       'Elimina en cascada sus carreras, asignaturas y recursos asociados.',
   })
-  @ApiResponse({ status: 200, description: 'Universidad eliminada exitosamente.' })
-  @ApiResponse({ status: 404, description: 'La universidad especificada no existe.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Universidad eliminada exitosamente.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'La universidad especificada no existe.',
+  })
   async deleteUniversity(@Param('id') id: string) {
     return this.catalogService.deleteUniversity(id);
   }
 
   @Post('careers')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 401,
+    description: 'JWT ausente, inválido o expirado.',
+  })
+  @ApiResponse({ status: 403, description: 'Se requiere rol ADMIN.' })
   @ApiOperation({ summary: 'Crear nueva carrera' })
   @ApiResponse({ status: 201, description: 'Carrera creada exitosamente.' })
   @ApiResponse({ status: 400, description: 'Datos de entrada inválidos.' })
-  @ApiResponse({ status: 404, description: 'La universidad especificada no existe.' })
+  @ApiResponse({
+    status: 404,
+    description: 'La universidad especificada no existe.',
+  })
   @ApiResponse({
     status: 409,
     description:
@@ -191,17 +240,32 @@ export class CatalogController {
   }
 
   @Delete('careers/:id')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 401,
+    description: 'JWT ausente, inválido o expirado.',
+  })
+  @ApiResponse({ status: 403, description: 'Se requiere rol ADMIN.' })
   @ApiOperation({
     summary: 'Eliminar una carrera por ID',
     description: 'Elimina en cascada sus asignaturas y recursos asociados.',
   })
   @ApiResponse({ status: 200, description: 'Carrera eliminada exitosamente.' })
-  @ApiResponse({ status: 404, description: 'La carrera especificada no existe.' })
+  @ApiResponse({
+    status: 404,
+    description: 'La carrera especificada no existe.',
+  })
   async deleteCareer(@Param('id') id: string) {
     return this.catalogService.deleteCareer(id);
   }
 
   @Post('professors')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 401,
+    description: 'JWT ausente, inválido o expirado.',
+  })
+  @ApiResponse({ status: 403, description: 'Se requiere rol ADMIN.' })
   @ApiOperation({
     summary: 'Crear nuevo profesor',
     description:
@@ -222,34 +286,65 @@ export class CatalogController {
   }
 
   @Delete('professors/:id')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 401,
+    description: 'JWT ausente, inválido o expirado.',
+  })
+  @ApiResponse({ status: 403, description: 'Se requiere rol ADMIN.' })
   @ApiOperation({
     summary: 'Eliminar un profesor por ID',
     description:
       'Desvincula al profesor de sus asignaturas y deja sus recursos sin profesor asociado.',
   })
   @ApiResponse({ status: 200, description: 'Profesor eliminado exitosamente.' })
-  @ApiResponse({ status: 404, description: 'El profesor especificado no existe.' })
+  @ApiResponse({
+    status: 404,
+    description: 'El profesor especificado no existe.',
+  })
   async deleteProfessor(@Param('id') id: string) {
     return this.catalogService.deleteProfessor(id);
   }
 
   @Post('subjects')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 401,
+    description: 'JWT ausente, inválido o expirado.',
+  })
+  @ApiResponse({ status: 403, description: 'Se requiere rol ADMIN.' })
   @ApiOperation({ summary: 'Crear nueva asignatura' })
   @ApiResponse({ status: 201, description: 'Asignatura creada exitosamente.' })
   @ApiResponse({ status: 400, description: 'Datos de entrada inválidos.' })
-  @ApiResponse({ status: 404, description: 'La carrera especificada no existe.' })
+  @ApiResponse({
+    status: 404,
+    description: 'La carrera especificada no existe.',
+  })
   @ApiResponse({
     status: 409,
-    description: 'Conflicto: Ya existe una asignatura con el mismo código en esta carrera.',
+    description:
+      'Conflicto: Ya existe una asignatura con el mismo código en esta carrera.',
   })
   async createSubject(@Body() createSubjectDto: CreateSubjectDto) {
     return this.catalogService.createSubject(createSubjectDto);
   }
 
   @Delete('subjects/:id')
+  @ApiBearerAuth()
+  @ApiResponse({
+    status: 401,
+    description: 'JWT ausente, inválido o expirado.',
+  })
+  @ApiResponse({ status: 403, description: 'Se requiere rol ADMIN.' })
   @ApiOperation({ summary: 'Eliminar una asignatura por ID' })
-  @ApiResponse({ status: 200, description: 'Asignatura eliminada exitosamente.' })
-  @ApiResponse({ status: 404, description: 'La asignatura especificada no existe.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Asignatura eliminada exitosamente.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'La asignatura especificada no existe.',
+  })
   async deleteSubject(@Param('id') id: string) {
     return this.catalogService.deleteSubject(id);
   }

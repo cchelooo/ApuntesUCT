@@ -1,7 +1,9 @@
 import 'material_publication_badges.dart';
 
+import 'package:apuntesuct_mobile/features/materials/domain/models/material_status.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/screens/material_detail_screen.dart';
+import 'package:apuntesuct_mobile/features/quality/presentation/widgets/material_favorite_button.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -52,22 +54,38 @@ class MaterialSummaryCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Chip(
-                    label: Text(
-                      material.materialType.isEmpty
-                          ? 'SIN TIPO'
-                          : material.materialType.toUpperCase(),
+                  Expanded(
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        Chip(
+                          label: Text(
+                            material.materialType.isEmpty
+                                ? 'SIN TIPO'
+                                : material.materialType.toUpperCase(),
+                          ),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        Chip(
+                          label: Text(
+                            material.academicYear?.toString() ?? 'Sin año',
+                          ),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
                     ),
-                    visualDensity: VisualDensity.compact,
                   ),
-                  Chip(
-                    label: Text(material.academicYear?.toString() ?? 'Sin año'),
-                    visualDensity: VisualDensity.compact,
-                  ),
+                  if (material.isPublished ||
+                      material.reviewStatus == MaterialStatus.approved)
+                    MaterialFavoriteButton(
+                      materialId: material.id,
+                      materialSummary: material,
+                      compact: true,
+                    ),
                 ],
               ),
               const SizedBox(height: 6),

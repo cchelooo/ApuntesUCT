@@ -271,6 +271,26 @@ MATERIAL_TEST_DATABASE_URL='postgresql://uct_admin:uct_password_123@localhost:54
   npm run test:integration --workspace=material-service
 ```
 
+Para reproducir el job completo de CI desde la raíz, con backend compilado y
+la imagen `apuntesuct/pr-test-minio:local` disponible, ejecutar
+`bash .github/scripts/run-material-integration.sh`. El script inicia servicios
+desechables y genera una credencial ADMIN RS256 temporal para preparar y limpiar
+Catalog. Al ejecutar manualmente la subida optativa
+(`MATERIAL_TEST_UPLOAD=1`), proporcionar `MATERIAL_TEST_CATALOG_AUTHORIZATION`
+con un Bearer ADMIN verificable por el Catalog de prueba.
+
+El recorrido de versiones con Gateway genera su propia identidad STUDENT y
+distribuye la clave pública a Gateway y Material; no utiliza autor local.
+La suite de creación directa conserva sus casos específicos del contexto local
+de desarrollo, incluida su prohibición en producción.
+
+La regresión de navegador obtiene el JWT mediante el login real y Playwright lo
+añade únicamente al POST de subida hacia Gateway. Esta preparación se registra
+en la evidencia: no demuestra persistencia ni propagación de sesión por Web
+(tarea S3-08). Gateway y Material verifican el token; el autor local está
+deshabilitado y se comprueba que material y versión pertenecen al usuario
+registrado.
+
 Cada prueba crea un esquema temporal de nombre aleatorio y lo elimina al terminar.
 La prueba de persistencia comprueba
 la aplicación y reaplicación de la migración, la ausencia de diferencias frente
@@ -460,6 +480,28 @@ válido, responde `401`. Si `NODE_ENV=production`, el servicio **no arranca** co
 Las referencias académicas se guardan como IDs lógicos; la comprobación de su
 existencia en Catalog sigue pendiente. Universidad es null si no está configurada.
 
+### Acceso administrativo a pendientes (#460)
+
+Los moderadores y administradores pueden revisar materiales `PENDING_REVIEW` sin
+alterar los endpoints públicos:
+
+| Método | Ruta | Respuesta |
+| --- | --- | --- |
+| `GET` | `/api/v1/materials/admin/pending?page=1&pageSize=20` | `{items, page, pageSize, total}` solo con pendientes |
+| `GET` | `/api/v1/materials/admin/pending/:id` | Detalle privado con historial de versiones |
+| `GET` | `/api/v1/materials/admin/pending/:id/download?versionId=<opcional>` | Archivo privado como `attachment` |
+
+Las tres rutas exigen `Authorization: Bearer <JWT firmado>` con rol `MODERATOR` o
+`ADMIN`: sin token o con token inválido responden `401`, y con `STUDENT` o sin
+rol responden `403`. No sirven materiales `PUBLISHED`, `REJECTED` ni `WITHDRAWN`
+por estas rutas (`404`). Las respuestas incluyen `Cache-Control: no-store` y
+`X-Content-Type-Options: nosniff`, no serializan `storageKey`, `checksum`, URLs
+ni credenciales de MinIO, y registran auditoría local de la operación.
+
+Los materiales pendientes, rechazados o retirados siguen fuera del listado,
+detalle, descarga y previsualización públicos. Estos endpoints **no** aprueban
+ni rechazan materiales: las decisiones de moderación son #456.
+
 ### Flujo y consistencia
 
 1. Validar multipart, formato/tamaño del archivo y reglas archivo/enlace.
@@ -624,3 +666,26 @@ contexto de autor.
 Estas pruebas no verifican bloqueos ni commits reales de PostgreSQL ni operaciones
 reales de MinIO. Las pruebas de integración optativas descritas arriba cubren esas
 dependencias con recursos temporales y configuración explícita.
+
+### Seguridad de enlaces y archivos (#455)
+
+`externalLink` acepta HTTP y HTTPS con un nombre de dominio público. Rechaza
+credenciales en la URL, esquemas como `javascript:`, `data:` y `file:`, hosts
+locales/internos, direcciones IP (incluidas formas alternativas y IPv6) y enlaces
+firmados de almacenamiento con parámetros de credenciales. La misma política se
+aplica a LINK y a enlaces de respaldo de documentos antes de consultar Catalog o
+persistir archivos. Los detalles públicos y administrativos devuelven `null` para
+enlaces antiguos que ya no cumplen la política, sin modificar el registro.
+
+Esta es una validación sintáctica: no resuelve DNS, no verifica la propiedad del
+dominio ni sigue redirecciones. Material Service no solicita recursos externos;
+la publicación sigue sujeta a moderación.
+
+Las descargas y previsualizaciones públicas y administrativas incluyen
+`X-Content-Type-Options: nosniff` y `Cache-Control: no-store`. Las descargas usan
+el MIME almacenado y disposición `attachment`; la previsualización solo admite
+PDF y usa `application/pdf` e `inline`. Los nombres de `Content-Disposition`
+eliminan componentes de rutas Unix/Windows y caracteres de control, conservan
+Unicode válido mediante `filename*` y usan `material` si no queda un nombre.
+Los archivos se transmiten por streaming sin entregar URLs privadas de MinIO.
+Se conservan los filtros de estado, pertenencia de versión y roles de moderación.

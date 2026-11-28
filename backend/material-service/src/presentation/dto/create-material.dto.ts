@@ -102,12 +102,12 @@ export class CreateMaterialDto {
 
   @ApiPropertyOptional({
     description:
-      'CONDICIONAL. Enlace web externo válido (URL). Obligatorio si type es LINK. Opcional como respaldo si se envía archivo.',
+      'CONDICIONAL. Enlace HTTP(S) con dominio público, sin credenciales, direcciones IP ni URLs firmadas de almacenamiento. Obligatorio si type es LINK. Opcional como respaldo si se envía archivo.',
     example: 'https://drive.google.com/file/d/xyz/view',
   })
   @IsOptional()
   @IsUrl(
-    { protocols: ['http', 'https'], require_protocol: true },
+    { protocols: ['http', 'https'], require_protocol: true, disallow_auth: true },
     { message: 'externalLink debe ser una URL válida (ej. https://...)' },
   )
   externalLink?: string;

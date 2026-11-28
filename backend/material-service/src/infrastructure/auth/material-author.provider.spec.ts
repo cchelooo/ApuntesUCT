@@ -1,10 +1,7 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { sign } from 'jsonwebtoken';
-import {
-  AccessTokenVerifier,
-  IDENTITY_REQUIRED_MESSAGE,
-} from './access-token.verifier';
+import { AccessTokenVerifier, IDENTITY_REQUIRED_MESSAGE } from './access-token.verifier';
 import { MaterialAuthorProvider } from './material-author.provider';
 
 const SECRET = 'test-only-jwt-secret-with-enough-entropy';
@@ -40,6 +37,18 @@ function noneToken(): string {
 }
 
 describe('MaterialAuthorProvider con identidad real (#446)', () => {
+  it('rechaza una identidad firmada sin rol con 403', () => {
+    const instance = provider({ JWT_ACCESS_SECRET: SECRET });
+    expect(() => instance.resolve('Bearer ' + token({ role: undefined }))).toThrow(
+      'Se requiere un rol autorizado.',
+    );
+  });
+
+  it.each(['STUDENT', 'MODERATOR', 'ADMIN'])('acepta el rol %s para subir', (role) => {
+    const instance = provider({ JWT_ACCESS_SECRET: SECRET });
+    expect(instance.resolve('Bearer ' + token({ role })).id).toBe(AUTHOR_ID);
+  });
+
   it('usa el sub del token firmado y no el contexto local', () => {
     const instance = provider({
       NODE_ENV: 'development',
@@ -87,9 +96,7 @@ describe('MaterialAuthorProvider con identidad real (#446)', () => {
   it('exige identidad si no hay token y el contexto local está deshabilitado', () => {
     const instance = provider({ NODE_ENV: 'development' });
 
-    expect(() => instance.resolve()).toThrow(
-      new UnauthorizedException(IDENTITY_REQUIRED_MESSAGE),
-    );
+    expect(() => instance.resolve()).toThrow(new UnauthorizedException(IDENTITY_REQUIRED_MESSAGE));
   });
 
   it('conserva el contexto local explícito solo en development', () => {
@@ -116,9 +123,7 @@ describe('MaterialAuthorProvider con identidad real (#446)', () => {
       ...override,
     });
 
-    expect(() => instance.resolve()).toThrow(
-      new UnauthorizedException(IDENTITY_REQUIRED_MESSAGE),
-    );
+    expect(() => instance.resolve()).toThrow(new UnauthorizedException(IDENTITY_REQUIRED_MESSAGE));
   });
 
   it('impide habilitar el contexto local en producción', () => {

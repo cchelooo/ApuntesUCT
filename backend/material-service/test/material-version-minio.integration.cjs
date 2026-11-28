@@ -1,3 +1,4 @@
+const { jwtFixture } = require('../../test/jwt-fixture.cjs');
 const assert = require('node:assert/strict');
 const { randomUUID, createHash } = require('node:crypto');
 const { execFileSync } = require('node:child_process');
@@ -41,12 +42,13 @@ test(
     url.searchParams.set('schema', schema);
     const prisma = new PrismaClient({ datasources: { db: { url: url.toString() } } });
     const authorId = randomUUID();
+    const identity = jwtFixture();
+    const authorization = identity.authorization(authorId);
     const config = new ConfigService({
       ...process.env,
       MINIO_BUCKET: bucket,
       NODE_ENV: 'development',
-      MATERIAL_LOCAL_AUTHOR_ENABLED: 'true',
-      MATERIAL_LOCAL_UPLOADER_ID: authorId,
+      ...identity.settings,
     });
     const client = new Client(readMinioConfig(config).client);
     const storage = new MinioStorageAdapter(config);
@@ -114,7 +116,7 @@ test(
         const { configureRoutes } = require('../../api-gateway/dist/configure-routes');
         const gatewayModule = await Test.createTestingModule({ imports: [AppModule] })
           .overrideProvider(ConfigService)
-          .useValue(new ConfigService({ MATERIAL_SERVICE_URL: await app.getUrl() }))
+          .useValue(new ConfigService({ ...identity.settings, MATERIAL_SERVICE_URL: await app.getUrl() }))
           .compile();
         gateway = gatewayModule.createNestApplication();
         configureRoutes(gateway);
@@ -123,12 +125,21 @@ test(
         t.diagnostic('Flujo HTTP a través de API Gateway → Material Service.');
       }
       const path = `/api/v1/materials/${material.id}`;
+      for (const [credential, status] of [
+        ['', 401], [identity.authorization(randomUUID()), 403],
+      ]) {
+        await request(httpServer).post(path + '/versions')
+          .set('Authorization', credential)
+          .attach('file', contents[1], { filename: 'apunte.pdf', contentType: 'application/pdf' })
+          .expect(status);
+      }
       const responses = await Promise.all(
         contents
           .slice(1)
           .map((content) =>
             request(httpServer)
               .post(`${path}/versions`)
+              .set('Authorization', authorization)
               .attach('file', content, { filename: 'apunte.pdf', contentType: 'application/pdf' })
               .expect(201),
           ),
@@ -143,6 +154,7 @@ test(
         [1, 2, 3],
       );
       assert.deepEqual(versions[0], material.versions[0]);
+      assert.ok(versions.every((version) => version.createdBy === authorId));
       assert.equal(new Set(versions.map((v) => v.storageKey)).size, 3);
       // La fecha más reciente pertenece a v1: el historial debe ordenar por número.
       await prisma.materialVersion.update({

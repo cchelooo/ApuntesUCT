@@ -5,6 +5,7 @@ import {
   RequestMethod,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { authorizeWrites } from '../auth/authorize-writes';
 import { serviceProxy } from './service-proxy';
 
 interface ServiceProxyOptions {
@@ -25,10 +26,7 @@ function createServiceProxy(
   config: ConfigService,
   { urlKey, defaultUrl, serviceName }: ServiceProxyOptions,
 ) {
-  return serviceProxy(
-    config.get<string>(urlKey) || defaultUrl,
-    serviceName,
-  );
+  return serviceProxy(config.get<string>(urlKey) || defaultUrl, serviceName);
 }
 
 @Module({})
@@ -56,6 +54,7 @@ export class ProxyModule implements NestModule {
 
     consumer
       .apply(
+        authorizeWrites(this.config, 'ADMIN'),
         createServiceProxy(this.config, {
           urlKey: 'CATALOG_SERVICE_URL',
           defaultUrl: 'http://127.0.0.1:3002',
@@ -70,6 +69,7 @@ export class ProxyModule implements NestModule {
     // 3. Proxy para Material Service (habilita /api/v1/materials)
     consumer
       .apply(
+        authorizeWrites(this.config, 'STUDENT'),
         createServiceProxy(this.config, {
           urlKey: 'MATERIAL_SERVICE_URL',
           defaultUrl: 'http://127.0.0.1:3003',
@@ -80,6 +80,11 @@ export class ProxyModule implements NestModule {
         { path: 'materials', method: RequestMethod.ALL },
         { path: 'materials/*path', method: RequestMethod.ALL },
       );
+
+    // Quality autoriza cada ruta, incluyendo lecturas privadas y roles mixtos.
+    consumer.apply(createServiceProxy(this.config, {
+      urlKey: 'QUALITY_SERVICE_URL', defaultUrl: 'http://127.0.0.1:3004', serviceName: 'Quality Service',
+    })).forRoutes({path:'quality',method:RequestMethod.ALL},{path:'quality/*path',method:RequestMethod.ALL});
 
     // 4. Proxy para Search Service (habilita /api/v1/search)
     consumer

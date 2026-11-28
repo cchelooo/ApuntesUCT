@@ -53,6 +53,8 @@ String materialUploadErrorMessage(Object error) {
     case 401:
       return 'No se pudo validar el autor de la subida. '
           'Vuelve a iniciar sesión e intenta nuevamente.';
+    case 403:
+      return 'Tu cuenta no tiene permiso para subir materiales.';
     case 413:
       return 'El archivo supera el límite de 15 MB permitido.';
     case 415:
@@ -85,6 +87,12 @@ class MaterialUploadNotifier extends Notifier<MaterialUploadState> {
       final repository = ref.read(dioMaterialRepositoryProvider);
       final created = await repository.upload(request);
       if (!ref.mounted || ref.read(sessionRevisionProvider) != revision) {
+        return false;
+      }
+      if (created.isSimulatedResponse == true) {
+        state = const MaterialUploadState.error(
+          'El servidor simuló la subida. No se guardó ningún material.',
+        );
         return false;
       }
       state = MaterialUploadState.success(created);

@@ -61,7 +61,7 @@ export class PasswordRecoveryService {
       // Serialize resets for this account, including requests with different tokens.
       const user = await tx.user.updateMany({
         where: { id: candidate.userId, active: true },
-        data: { passwordHash },
+        data: { passwordHash, tokenVersion: { increment: 1 } },
       });
       if (user.count !== 1) throw this.invalidToken();
       const now = new Date();

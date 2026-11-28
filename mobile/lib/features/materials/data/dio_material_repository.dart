@@ -84,6 +84,9 @@ class DioMaterialRepository implements MaterialRepository {
         cancelToken: cancelToken,
         onSendProgress: onSendProgress,
       );
+      if (response.statusCode != 201) {
+        throw const FormatException('La subida no fue confirmada con 201.');
+      }
       return _createdMaterial(response.data);
     } on DioException catch (error) {
       final intercepted = error.error;
@@ -236,7 +239,9 @@ class DioMaterialRepository implements MaterialRepository {
         onSendProgress: onSendProgress,
       );
       final data = response.data;
-      if (data is! Map<String, dynamic> || data['materialId'] != materialId) {
+      if (response.statusCode != 201 ||
+          data is! Map<String, dynamic> ||
+          data['materialId'] != materialId) {
         throw const FormatException('Versión ausente o de otro material.');
       }
       final size = data['fileSize'];
