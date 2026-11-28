@@ -54,7 +54,7 @@ test('administración #460: Gateway → Material → PostgreSQL/MinIO reales', {
     };
     const type = await prisma.materialType.findUniqueOrThrow({ where: { name: 'DOCUMENT' } });
     const fixtures = [];
-    for (const status of ['PENDING_REVIEW', 'PENDING_REVIEW', 'PUBLISHED', 'REJECTED', 'WITHDRAWN']) {
+    for (const status of ['PENDING_REVIEW', 'PENDING_REVIEW', 'PUBLISHED', 'REJECTED', 'RETIRED']) {
       const uploaderId = randomUUID();
       const material = await prisma.material.create({ data: {
         uploaderId, subjectId: randomUUID(), materialTypeId: type.id,
