@@ -7,6 +7,7 @@ import 'package:apuntesuct_mobile/models/user_model.dart';
 Map<String, dynamic> loginFixture({
   String email = 'estudiante@alu.uct.cl',
   String name = 'Estudiante de prueba',
+  String role = 'STUDENT',
   DateTime? now,
   Duration lifetime = const Duration(hours: 1),
 }) {
@@ -15,14 +16,14 @@ Map<String, dynamic> loginFixture({
     'id': '00000000-0000-4000-8000-000000000092',
     'name': name,
     'email': email,
-    'role': 'STUDENT',
+    'role': role,
     'active': true,
   };
   String part(Object value) =>
       base64Url.encode(utf8.encode(jsonEncode(value))).replaceAll('=', '');
   return {
     'accessToken':
-        '${part({'alg': 'RS256', 'typ': 'JWT'})}.${part({'sub': user['id'], 'email': email, 'role': 'STUDENT', 'iat': issued, 'exp': issued + lifetime.inSeconds})}.Y29udHJvbGxlZC1zaWduYXR1cmU',
+        '${part({'alg': 'RS256', 'typ': 'JWT'})}.${part({'sub': user['id'], 'email': email, 'role': role, 'iat': issued, 'exp': issued + lifetime.inSeconds})}.Y29udHJvbGxlZC1zaWduYXR1cmU',
     'tokenType': 'Bearer',
     'expiresIn': lifetime.inSeconds,
     'user': user,
