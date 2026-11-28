@@ -666,3 +666,26 @@ contexto de autor.
 Estas pruebas no verifican bloqueos ni commits reales de PostgreSQL ni operaciones
 reales de MinIO. Las pruebas de integración optativas descritas arriba cubren esas
 dependencias con recursos temporales y configuración explícita.
+
+### Seguridad de enlaces y archivos (#455)
+
+`externalLink` acepta HTTP y HTTPS con un nombre de dominio público. Rechaza
+credenciales en la URL, esquemas como `javascript:`, `data:` y `file:`, hosts
+locales/internos, direcciones IP (incluidas formas alternativas y IPv6) y enlaces
+firmados de almacenamiento con parámetros de credenciales. La misma política se
+aplica a LINK y a enlaces de respaldo de documentos antes de consultar Catalog o
+persistir archivos. Los detalles públicos y administrativos devuelven `null` para
+enlaces antiguos que ya no cumplen la política, sin modificar el registro.
+
+Esta es una validación sintáctica: no resuelve DNS, no verifica la propiedad del
+dominio ni sigue redirecciones. Material Service no solicita recursos externos;
+la publicación sigue sujeta a moderación.
+
+Las descargas y previsualizaciones públicas y administrativas incluyen
+`X-Content-Type-Options: nosniff` y `Cache-Control: no-store`. Las descargas usan
+el MIME almacenado y disposición `attachment`; la previsualización solo admite
+PDF y usa `application/pdf` e `inline`. Los nombres de `Content-Disposition`
+eliminan componentes de rutas Unix/Windows y caracteres de control, conservan
+Unicode válido mediante `filename*` y usan `material` si no queda un nombre.
+Los archivos se transmiten por streaming sin entregar URLs privadas de MinIO.
+Se conservan los filtros de estado, pertenencia de versión y roles de moderación.

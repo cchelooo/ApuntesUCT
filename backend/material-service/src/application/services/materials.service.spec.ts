@@ -147,6 +147,16 @@ describe('MaterialsService', () => {
     expect(storage.get).not.toHaveBeenCalled();
   });
 
+  it.each(['javascript:alert(1)', 'https://user:secret@example.com', 'http://minio.internal/file'])(
+    'no expone enlaces históricos inseguros en detalles públicos ni privados: %s', async (externalLink) => {
+      prisma.material.findFirst.mockResolvedValue({
+        ...material, materialType: { name: 'LINK' }, externalLink, versions: [],
+      });
+      expect((await service.detail('material')).externalLink).toBeNull();
+      expect((await service.detailPending('material', { id: 'moderator', role: 'ADMIN' })).externalLink).toBeNull();
+    },
+  );
+
   it('permite un LINK sin versiones de archivo', async () => {
     prisma.material.findFirst.mockResolvedValue({
       ...material,

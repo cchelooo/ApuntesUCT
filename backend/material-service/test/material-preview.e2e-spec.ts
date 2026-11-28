@@ -68,6 +68,9 @@ describe('GET /api/v1/materials/:id/preview', () => {
     const response = await request(app.getHttpServer())
       .get(`/api/v1/materials/${materialId}/preview`)
       .expect(200);
+    expect(response.headers['x-content-type-options']).toBe('nosniff');
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(JSON.stringify(response.headers)).not.toMatch(/internal-key|storageKey|MinIO/);
     expect(response.headers['content-type']).toBe('application/pdf');
     expect(response.headers['content-disposition']).toBe(
       `inline; filename="apuntes-calculo.pdf"; filename*=UTF-8''apuntes-calculo.pdf`,
@@ -262,6 +265,7 @@ describe('GET /api/v1/materials/:id/preview', () => {
         .expect(200);
       expect(response.body).toEqual(content);
       expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.headers['x-content-type-options']).toBe('nosniff');
       expect(response.headers['content-disposition']).toMatch(/^inline;/);
       expect(prisma.material.findFirst).toHaveBeenCalledWith({
         where: { id: materialId, status: 'PENDING_REVIEW' },
