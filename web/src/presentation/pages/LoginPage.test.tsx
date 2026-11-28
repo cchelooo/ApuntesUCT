@@ -38,6 +38,8 @@ describe('LoginPage', () => {
       400,
       'Los datos ingresados no son válidos. Revisa tu correo y contraseña.',
     ],
+    [401, 'No fue posible iniciar sesión. Inténtalo nuevamente más tarde.'],
+    [403, 'No fue posible iniciar sesión. Inténtalo nuevamente más tarde.'],
     [
       502,
       'El servicio de autenticación no está disponible. Inténtalo nuevamente más tarde.',
@@ -118,7 +120,20 @@ describe('LoginPage', () => {
       email: 'qa@alu.uct.cl',
       password: 'demo',
     });
-    resolveResponse(new Response('{}', { status: 200 }));
+    resolveResponse(
+      Response.json({
+        accessToken: 'test-access-token',
+        tokenType: 'Bearer',
+        expiresIn: 3600,
+        user: {
+          id: 'student-1',
+          name: 'QA Student',
+          email: 'qa@alu.uct.cl',
+          role: 'STUDENT',
+          active: true,
+        },
+      })
+    );
     expect(await screen.findByRole('status')).toHaveTextContent(
       'Inicio de sesión exitoso.'
     );

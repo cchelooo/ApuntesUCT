@@ -123,6 +123,23 @@ describe('MaterialUploadButton - Feedback y prevención de dobles envíos (#243)
     });
   });
 
+  it('muestra alerta de permisos insuficientes ante HTTP 403', async () => {
+    const uploadFn = vi.fn().mockRejectedValueOnce({ status: 403 });
+
+    render(<MaterialUploadButton uploadFn={uploadFn} />);
+
+    const file = new File(['content'], 'archivo.pdf', {
+      type: 'application/pdf',
+    });
+    await userEvent.upload(screen.getByTestId('file-upload-input'), file);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'No tienes permisos para realizar esta acción.'
+      );
+    });
+  });
+
   it('establece el atributo aria-busy en el botón mientras la subida está en progreso', async () => {
     let resolveUpload: (val: unknown) => void;
     const uploadPromise = new Promise((resolve) => {
