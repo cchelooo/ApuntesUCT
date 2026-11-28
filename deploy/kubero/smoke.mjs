@@ -1,3 +1,4 @@
+import { request, expectStatus, checkUnauthorizedMaterial } from './smoke-http.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -10,18 +11,6 @@ const envFile = process.env.KUBERO_ENV_FILE ??
 const compose = ['compose', '--env-file', envFile, '-f', `${directory}compose.yaml`];
 const web = `http://127.0.0.1:${process.env.WEB_PORT ?? 18080}`;
 const gateway = `http://127.0.0.1:${process.env.GATEWAY_PORT ?? 13000}`;
-
-async function request(base, path, status = 200, options) {
-  const response = await fetch(`${base}${path}`, {
-    ...options,
-    // Container recreation blocks this process while servers expire idle
-    // keep-alive sockets. Use a fresh connection for each verification.
-    headers: { Connection: 'close', ...options?.headers },
-    signal: AbortSignal.timeout(15000),
-  });
-  assert.equal(response.status, status, `${base}${path}`);
-  return response;
-}
 
 // Tokens travel over stdin, never command arguments or logs.
 async function checkAuth(base) {
@@ -58,7 +47,7 @@ async function checkAuth(base) {
       assert.equal(claims.exp - claims.iat, 3600);
       assert.equal(Object.hasOwn(claims, 'mock'), false);
     `], { input: JSON.stringify({ token: login.accessToken, user: registered.user }), stdio: ['pipe', 'pipe', 'pipe'], timeout: 30000 });
-    await request(base, '/api/v1/auth/login', 401, {
+    await expectStatus(base, '/api/v1/auth/login', 401, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...credentials, password: 'incorrecta' }),
     });
@@ -120,7 +109,7 @@ function materialFixture(action) {
   });
 }
 
-await request(web, '/health');
+await expectStatus(web, '/health');
 const html = await (await request(web, '/materials/upload')).text();
 assert.match(html, /<div id="root">/);
 const asset = html.match(/src="(\/assets\/[^\"]+\.js)"/);
@@ -128,22 +117,16 @@ assert.ok(asset, 'Web serves the built React application');
 const javascript = await (await request(web, asset[1])).text();
 assert.ok(javascript.includes('/api/v1'), 'Web includes the relative Gateway URL');
 assert.ok(!javascript.includes('http://localhost:3000'), 'No localhost API fallback in bundle');
-await request(web, '/assets/missing-file.js', 404);
-await request(web, '/api/v1/not-a-route', 404);
+await expectStatus(web, '/assets/missing-file.js', 404);
+await expectStatus(web, '/api/v1/not-a-route', 404);
 
 for (const base of [gateway, web]) {
-  await request(base, '/api/v1/health');
-  await request(base, '/api/v1/auth/health');
+  await expectStatus(base, '/api/v1/health');
+  await expectStatus(base, '/api/v1/auth/health');
   const catalog = await (await request(base, '/api/v1/catalog')).json();
   assert.ok(Array.isArray(catalog));
   await checkAuth(base);
-  const form = new FormData();
-  form.set('title', 'Unauthorized smoke');
-  form.set('year', '2026');
-  form.set('type', 'LINK');
-  form.set('subjectId', id);
-  form.set('externalLink', 'https://example.com');
-  await request(base, '/api/v1/materials', 401, { method: 'POST', body: form });
+  await checkUnauthorizedMaterial(base);
 }
 
 try {
