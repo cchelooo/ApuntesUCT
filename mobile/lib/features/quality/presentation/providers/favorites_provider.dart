@@ -2,8 +2,12 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/session/session_controller.dart';
+import '../../../../core/session/session_revision.dart';
 import '../../../auth/data/mock_auth_repository.dart' show authStateProvider;
+import '../../../materials/domain/models/material_summary.dart';
 import '../../domain/models/favorite_item.dart';
+import '../../domain/models/favorite_model.dart';
 
 /// Estados posibles de la pantalla de favoritos (Criterio 1: carga, datos, vacío, error).
 enum FavoritesStatus {
@@ -47,6 +51,9 @@ class FavoritesState {
       (status == FavoritesStatus.data && items.isEmpty);
   bool get hasError => status == FavoritesStatus.error;
 
+  bool containsMaterial(String materialId) =>
+      items.any((item) => item.materialId == materialId);
+
   FavoritesState copyWith({
     FavoritesStatus? status,
     List<FavoriteItem>? items,
@@ -88,22 +95,58 @@ class FavoritesState {
       );
 }
 
-/// Notifier responsable de gestionar los estados del listado de favoritos.
+/// Resuelve el identificador del usuario autenticado activo desde `SessionController` o `authStateProvider`.
+String? resolveActiveQualityUserId(Ref ref) {
+  ref.watch(sessionRevisionProvider);
+  final sessionUser = ref.watch(sessionControllerProvider).current?.user;
+  if (sessionUser != null && sessionUser.active) {
+    return sessionUser.id;
+  }
+  final authState = ref.watch(authStateProvider);
+  final currentUser = authState.value;
+  if (currentUser != null && currentUser.active) {
+    return currentUser.id.isNotEmpty ? currentUser.id : currentUser.email;
+  }
+  return null;
+}
+
+/// Lectura puntual sin suscripción del usuario autenticado activo.
+String? readActiveQualityUserId(Ref ref) {
+  final sessionUser = ref.read(sessionControllerProvider).current?.user;
+  if (sessionUser != null && sessionUser.active) {
+    return sessionUser.id;
+  }
+  final authState = ref.read(authStateProvider);
+  final currentUser = authState.value;
+  if (currentUser != null && currentUser.active) {
+    return currentUser.id.isNotEmpty ? currentUser.id : currentUser.email;
+  }
+  return null;
+}
+
+/// Notifier responsable de gestionar los estados del listado de favoritos (#396, #418).
 ///
-/// Implementa los requerimientos de la Issue #396 (S3-M09):
 /// - Aísla la sesión por usuario activo y limpia la lista al cerrar o cambiar sesión.
-/// - Administra estados de carga, datos, vacío y error con reintento.
-/// - Utiliza datos explícitos de preparación identificados adecuadamente.
+/// - Conserva los favoritos confirmados (agregados o eliminados) en la sesión activa
+///   al refrescar o recargar el listado, evitando que los fixtures sobrescriban las
+///   operaciones confirmadas contra el Gateway.
 class FavoritesNotifier extends Notifier<FavoritesState> {
+  String? _trackedUserId;
+  final Map<String, FavoriteItem> _confirmedAdded = {};
+  final Set<String> _confirmedRemoved = {};
+
   @override
   FavoritesState build() {
-    // Escucha activamente el estado del usuario autenticado (Criterio 3)
     final authState = ref.watch(authStateProvider);
-    final currentUser = authState.value;
-    final currentUserId = currentUser?.id ?? currentUser?.email;
+    final currentUserId = resolveActiveQualityUserId(ref);
 
-    // Si la sesión aún se está resolviendo, reflejar estado de carga
-    if (authState.isLoading) {
+    if (_trackedUserId != currentUserId) {
+      _confirmedAdded.clear();
+      _confirmedRemoved.clear();
+      _trackedUserId = currentUserId;
+    }
+
+    if (authState.isLoading && currentUserId == null) {
       return const FavoritesState(
         status: FavoritesStatus.loading,
         items: [],
@@ -111,7 +154,6 @@ class FavoritesNotifier extends Notifier<FavoritesState> {
       );
     }
 
-    // Si no hay usuario activo, limpiar inmediatamente favoritos anteriores
     if (currentUserId == null) {
       return const FavoritesState(
         status: FavoritesStatus.empty,
@@ -120,13 +162,32 @@ class FavoritesNotifier extends Notifier<FavoritesState> {
       );
     }
 
-    // Inicializar estado aislado para el usuario activo con datos de preparación
+    final items = _composeConfirmedItems();
     return FavoritesState(
-      status: FavoritesStatus.data,
-      items: List<FavoriteItem>.unmodifiable(FavoritesFixtures.defaultFavorites),
+      status: items.isEmpty ? FavoritesStatus.empty : FavoritesStatus.data,
+      items: items,
       activeUserId: currentUserId,
       currentScenario: FavoritesDemoScenario.withData,
     );
+  }
+
+  List<FavoriteItem> _composeConfirmedItems() {
+    final baseItems = FavoritesFixtures.defaultFavorites
+        .where((item) => !_confirmedRemoved.contains(item.materialId))
+        .map((item) => _confirmedAdded[item.materialId] ?? item)
+        .toList();
+
+    final baseIds = baseItems.map((item) => item.materialId).toSet();
+    final newlyAdded = _confirmedAdded.values
+        .where(
+          (item) =>
+              !baseIds.contains(item.materialId) &&
+              !_confirmedRemoved.contains(item.materialId),
+        )
+        .toList()
+        .reversed;
+
+    return List<FavoriteItem>.unmodifiable([...newlyAdded, ...baseItems]);
   }
 
   /// Carga los favoritos según el escenario activo o datos del usuario.
@@ -151,7 +212,7 @@ class FavoritesNotifier extends Notifier<FavoritesState> {
     }
   }
 
-  /// Recarga los datos mediante pull-to-refresh.
+  /// Recarga los datos mediante pull-to-refresh conservando los favoritos confirmados de la sesión.
   Future<void> refresh() async {
     await loadFavorites();
   }
@@ -161,18 +222,67 @@ class FavoritesNotifier extends Notifier<FavoritesState> {
     await _applyScenario(scenario, userId: state.activeUserId);
   }
 
-  /// Elimina un favorito localmente (preparación para la interacción en semana 3).
+  /// Sincroniza un favorito confirmado por el servidor en el listado activo (#418).
+  void syncFavoriteAdded(Favorite favorite, {MaterialSummary? summary}) {
+    if (state.activeUserId == null) return;
+    final existingIndex = state.items.indexWhere(
+      (item) => item.materialId == favorite.materialId,
+    );
+    final previous = existingIndex >= 0
+        ? state.items[existingIndex]
+        : _confirmedAdded[favorite.materialId];
+    final newItem = FavoriteItem(
+      id: favorite.id,
+      materialId: favorite.materialId,
+      title: summary?.title.isNotEmpty == true
+          ? summary!.title
+          : (previous?.title ?? 'Material guardado'),
+      subjectName: summary?.subjectName ?? previous?.subjectName ?? 'General',
+      careerName: summary?.careerName ?? previous?.careerName ?? 'UCT',
+      authorName: summary?.authorName ?? previous?.authorName ?? 'Anónimo',
+      academicYear: summary?.academicYear ?? previous?.academicYear,
+      fileType: summary?.fileType.isNotEmpty == true
+          ? summary!.fileType
+          : (previous?.fileType ?? 'PDF'),
+      rating: summary?.rating ?? previous?.rating ?? 0.0,
+      downloadCount: summary?.downloadCount ?? previous?.downloadCount ?? 0,
+      createdAt: favorite.createdAt,
+      available: favorite.available,
+    );
+
+    _confirmedRemoved.remove(favorite.materialId);
+    _confirmedAdded[favorite.materialId] = newItem;
+
+    final updated = _composeConfirmedItems();
+    state = state.copyWith(
+      items: updated,
+      status: updated.isEmpty ? FavoritesStatus.empty : FavoritesStatus.data,
+      errorMessage: null,
+    );
+  }
+
+  /// Sincroniza la eliminación confirmada de un favorito (#418).
+  void syncFavoriteRemoved(String materialId) {
+    removeLocalFavorite(materialId);
+  }
+
+  /// Elimina un favorito localmente y registra la baja confirmada en la sesión activa.
   void removeLocalFavorite(String materialId) {
+    _confirmedAdded.remove(materialId);
+    _confirmedRemoved.add(materialId);
     final updated =
         state.items.where((item) => item.materialId != materialId).toList();
     state = state.copyWith(
-      items: updated,
+      items: List<FavoriteItem>.unmodifiable(updated),
       status: updated.isEmpty ? FavoritesStatus.empty : FavoritesStatus.data,
     );
   }
 
   /// Limpia los favoritos cuando se cierra sesión explícitamente (Criterio 3).
   void clearForLogout() {
+    _confirmedAdded.clear();
+    _confirmedRemoved.clear();
+    _trackedUserId = null;
     state = const FavoritesState(
       status: FavoritesStatus.empty,
       items: [],
@@ -202,11 +312,10 @@ class FavoritesNotifier extends Notifier<FavoritesState> {
         );
         break;
       case FavoritesDemoScenario.withData:
+        final items = _composeConfirmedItems();
         state = state.copyWith(
-          status: FavoritesStatus.data,
-          items: List<FavoriteItem>.unmodifiable(
-            FavoritesFixtures.defaultFavorites,
-          ),
+          status: items.isEmpty ? FavoritesStatus.empty : FavoritesStatus.data,
+          items: items,
           errorMessage: null,
         );
         break;

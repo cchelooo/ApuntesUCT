@@ -6,12 +6,14 @@ import 'package:apuntesuct_mobile/core/errors/api_exception.dart';
 import 'package:apuntesuct_mobile/core/widgets/error_state.dart';
 import 'package:apuntesuct_mobile/core/widgets/loading_state.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_detail.dart';
+import 'package:apuntesuct_mobile/features/materials/domain/models/material_status.dart';
 import 'package:apuntesuct_mobile/features/materials/domain/models/material_summary.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/providers/material_detail_provider.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/validation/material_upload_validation.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_download_actions.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_version_history.dart';
 import 'package:apuntesuct_mobile/features/materials/presentation/widgets/material_version_upload_sheet.dart';
+import 'package:apuntesuct_mobile/features/quality/presentation/widgets/material_favorite_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -350,6 +352,15 @@ class MaterialDetailScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 28),
+          if (summary.isPublished ||
+              summary.reviewStatus == MaterialStatus.approved) ...[
+            MaterialFavoriteButton(
+              materialId: materialId,
+              materialSummary: summary,
+              compact: false,
+            ),
+            const SizedBox(height: 12),
+          ],
           if (summary.canDownload) ...[
             MaterialDownloadActions(
               materialId: materialId,
