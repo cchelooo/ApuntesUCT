@@ -4,7 +4,7 @@ import 'package:apuntesuct_mobile/features/quality/domain/models/report_motive.d
 import 'package:apuntesuct_mobile/features/quality/presentation/widgets/material_report_form.dart';
 
 void main() {
-  group('MaterialReportForm Tests (#398)', () {
+  group('MaterialReportForm Tests (#398, #406)', () {
     testWidgets('Muestra la identificación del material a reportar', (
       WidgetTester tester,
     ) async {
@@ -12,7 +12,7 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: MaterialReportForm(
-              materialId: '123',
+              materialId: '11111111-2222-4333-8444-555555555555',
               materialTitle: 'Guía de Cálculo',
               onSubmit: (_, _) {},
             ),
@@ -32,7 +32,7 @@ void main() {
           MaterialApp(
             home: Scaffold(
               body: MaterialReportForm(
-                materialId: '123',
+                materialId: '11111111-2222-4333-8444-555555555555',
                 materialTitle: 'Material X',
                 onSubmit: (_, _) => submitted = true,
               ),
@@ -52,7 +52,7 @@ void main() {
     );
 
     testWidgets(
-      'Ejecuta onSubmit con los datos correctos y bloquea controles durante el envío',
+      'Ejecuta onSubmit con motivo contractual y bloquea controles cuando OTHER no tiene detalles',
       (WidgetTester tester) async {
         ReportMotive? submittedMotive;
         String? submittedDesc;
@@ -61,7 +61,7 @@ void main() {
           MaterialApp(
             home: Scaffold(
               body: MaterialReportForm(
-                materialId: '123',
+                materialId: '11111111-2222-4333-8444-555555555555',
                 materialTitle: 'Material Y',
                 onSubmit: (motive, desc) {
                   submittedMotive = motive;
@@ -72,20 +72,37 @@ void main() {
           ),
         );
 
-        // Seleccionamos motivo (abrimos el dropdown y elegimos)
+        // Seleccionamos motivo OTHER sin detalles -> debe exigir detalles
         await tester.tap(find.byType(DropdownButtonFormField<ReportMotive>));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Desactualizado').last);
+        await tester.tap(find.text('Otro motivo').last);
         await tester.pumpAndSettle();
 
-        // Escribimos descripción
-        await tester.enterText(find.byType(TextFormField), 'Versión antigua');
-
-        // Enviamos
         await tester.tap(find.text('Enviar Reporte'));
         await tester.pumpAndSettle();
 
-        expect(submittedMotive, ReportMotive.outdated);
+        expect(
+          find.text(
+            'Debes especificar los detalles cuando seleccionas "Otro motivo".',
+          ),
+          findsOneWidget,
+        );
+        expect(submittedMotive, isNull);
+
+        // Seleccionamos motivo contractual INCORRECT_INFORMATION y escribimos descripción
+        await tester.tap(find.byType(DropdownButtonFormField<ReportMotive>));
+        await tester.pumpAndSettle();
+        await tester.tap(
+          find.text('Información errónea o desactualizada').last,
+        );
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextFormField), 'Versión antigua');
+        await tester.tap(find.text('Enviar Reporte'));
+        await tester.pumpAndSettle();
+
+        expect(submittedMotive, ReportMotive.incorrectInformation);
+        expect(submittedMotive?.code, 'INCORRECT_INFORMATION');
         expect(submittedDesc, 'Versión antigua');
       },
     );
@@ -96,7 +113,7 @@ void main() {
         final widget = MaterialApp(
           home: Scaffold(
             body: MaterialReportForm(
-              materialId: '123',
+              materialId: '11111111-2222-4333-8444-555555555555',
               materialTitle: 'Material Z',
               errorMessage: 'Ocurrió un error en el servidor',
               onSubmit: (_, _) {},
@@ -106,14 +123,12 @@ void main() {
 
         await tester.pumpWidget(widget);
 
-        // Ingresamos un texto y forzamos el redibujado con el mensaje de error
         await tester.enterText(
           find.byType(TextFormField),
           'El enlace está caído',
         );
         await tester.pumpAndSettle();
 
-        // Verificamos que el error es visible y el texto no se borró
         expect(find.text('Ocurrió un error en el servidor'), findsOneWidget);
         expect(find.text('El enlace está caído'), findsOneWidget);
       },
