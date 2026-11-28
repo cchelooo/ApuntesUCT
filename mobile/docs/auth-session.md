@@ -62,14 +62,18 @@ Para comprobar la integración nativa sin cuentas ni bases compartidas:
 
 1. Activar Docker y preparar Backend con `npm ci` y `npm run build`.
 2. Desde Mobile ejecutar `node tool/start_gateway_smoke.cjs`.
-3. Tomar `gateway`, `androidGateway` y `materialId` del `fixture.json` generado.
+3. Tomar del `fixture.json` la URL del Gateway y los cuatro identificadores
+   generados: material, universidad, carrera y asignatura.
 4. Ejecutar, usando la URL apropiada para el dispositivo:
 
 ```sh
 flutter test integration_test/session_gateway_native_test.dart -d <device> \
   --dart-define=RUN_NATIVE_SESSION_SMOKE=true \
   --dart-define=API_GATEWAY_URL=<gateway> \
-  --dart-define=EXPECTED_MATERIAL_ID=<materialId>
+  --dart-define=EXPECTED_MATERIAL_ID=<materialId> \
+  --dart-define=EXPECTED_UNIVERSITY_ID=<universityId> \
+  --dart-define=EXPECTED_CAREER_ID=<careerId> \
+  --dart-define=EXPECTED_SUBJECT_ID=<subjectId>
 ```
 
 La URL del fixture ya incluye `/api/v1`: no agregar el prefijo dos veces.
@@ -88,3 +92,27 @@ borrando también la sesión guardada. No se sustituyen repositorios, transporte
 ni plugins en esta prueba. La entrada del reintento se fija en el controlador
 del campo porque el canal de texto seguro del simulador retenía el valor previo;
 no acredita el comportamiento del teclado físico ni una prueba en iPhone real.
+
+
+## Subida, versionado y accesos rechazados (#400–#402)
+
+La subida usa el cliente compartido y el JWT de la sesión. El formulario envía
+el archivo o enlace y su clasificación. Material determina el autor a partir
+del token. La confirmación requiere un 201 con un material en
+`PENDING_REVIEW` y una respuesta que no esté marcada como simulada.
+
+El versionado usa el mismo cliente. Se ofrece para el autor activo de un
+material publicado con archivo, según el `uploaderId` que devuelve Material.
+El servidor vuelve a verificar la autoría. Un 201 actualiza el detalle y el
+historial. Material aún no publica capacidades individuales para esta acción.
+
+Un 401 que rechaza el token activo cierra esa sesión y muestra un aviso para
+volver a iniciar sesión. Si la hoja de versión sigue abierta, se descarta el
+archivo y se bloquea el envío. Un 403 informa la falta de permiso mientras
+conserva la sesión. Ninguno de esos rechazos confirma que se creó un recurso.
+
+El smoke nativo incluye creación de archivo y enlace, una versión por el
+autor, rechazo 403 de otro usuario autenticado y rechazo 401 del JWT de
+firma inválida. Moderación se verifica con transporte controlado en el
+repositorio Quality y con el acceso directo sin sesión. La interfaz de
+moderación y sus endpoints operativos siguen pendientes de integración.

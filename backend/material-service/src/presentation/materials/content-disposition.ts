@@ -14,13 +14,31 @@ function stripControlCharacters(value: string): string {
   return result.trim();
 }
 
+/** Descarta rutas Unix/Windows y Unicode inválido antes de formar cabeceras. */
+function safeBasename(filename?: string): string {
+  const base =
+    stripControlCharacters(filename ?? '')
+      .split(/[\\/]/)
+      .pop() ?? '';
+  let safe = '';
+  for (const character of base) {
+    const point = character.codePointAt(0)!;
+    if (point >= 0xd800 && point <= 0xdfff) safe += '_';
+    else if (point >= 0x80 && point <= 0x9f) continue;
+    else if ((point >= 0x202a && point <= 0x202e) || (point >= 0x2066 && point <= 0x2069)) continue;
+    else safe += character;
+  }
+  safe = safe.trim();
+  return !safe || /^\.+$/.test(safe) ? FALLBACK_FILENAME : safe;
+}
+
 /**
  * Alternativa ASCII segura para clientes que ignoran `filename*` (RFC 5987):
  * quita diacríticos, sustituye lo no imprimible y neutraliza comillas y
  * backslash para no romper el valor entrecomillado ni permitir inyección.
  */
 export function asciiFilename(filename?: string): string {
-  const base = stripControlCharacters(filename ?? '')
+  const base = safeBasename(filename)
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
   const safe = base
@@ -33,7 +51,7 @@ export function asciiFilename(filename?: string): string {
 
 /** Nombre original percent-encoded en UTF-8 conforme a RFC 5987 (attr-char). */
 export function extendedFilename(filename?: string): string {
-  const base = stripControlCharacters(filename ?? '') || FALLBACK_FILENAME;
+  const base = safeBasename(filename);
   return encodeURIComponent(base).replace(
     /['()*]/g,
     (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,

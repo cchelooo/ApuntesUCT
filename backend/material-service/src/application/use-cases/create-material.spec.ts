@@ -56,6 +56,17 @@ describe('CreateMaterial', () => {
     jest.restoreAllMocks();
   });
 
+  it.each(['LINK', 'DOCUMENT'])('valida enlaces de %s antes de cualquier efecto', async (type) => {
+    await expect(useCase.execute(
+      { ...input, type, externalLink: 'http://minio.internal/private' },
+      author, type === 'LINK' ? undefined : file,
+    )).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.materialType.findFirst).not.toHaveBeenCalled();
+    expect(prisma.material.create).not.toHaveBeenCalled();
+    expect(storage.save).not.toHaveBeenCalled();
+    expect(catalog.validateReferences).not.toHaveBeenCalled();
+  });
+
   it('guarda antes de crear material y versión atómicamente con checksum y autor', async () => {
     prisma.material.create.mockImplementation(({ data }) => {
       expect(storage.save).toHaveBeenCalledWith(file.buffer, file.mimetype);

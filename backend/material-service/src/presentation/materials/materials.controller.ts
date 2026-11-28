@@ -1,4 +1,12 @@
-import { Controller, Get, Param, ParseUUIDPipe, Query, StreamableFile } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Header,
+  Param,
+  ParseUUIDPipe,
+  Query,
+  StreamableFile,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiServiceUnavailableResponse,
@@ -36,6 +44,8 @@ export class MaterialsController {
   }
 
   @Get(':id/download')
+  @Header('X-Content-Type-Options', 'nosniff')
+  @Header('Cache-Control', 'no-store')
   @ApiOperation({
     summary: 'Descargar la versión actual o una versión específica de un material',
     description:

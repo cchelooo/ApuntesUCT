@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/errors/error_messages.dart';
+import '../../../core/session/session_controller.dart';
+import '../../../core/session/session_revision.dart';
 import '../../../core/validation/validators.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../../models/user_model.dart';
@@ -24,6 +26,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _submitting = false;
 
   @override
   void dispose() {
@@ -37,24 +40,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   /// El resultado no se lee aquí: lo publica `authStateProvider` y lo recogen
   /// el `ref.listen` (navegación) y el `ref.watch` (error y carga).
   Future<void> _submit() async {
+    if (_submitting || ref.read(authStateProvider).isLoading) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     // Baja el teclado antes de la petición para que el banner de error quede
     // visible cuando la respuesta llegue.
     FocusScope.of(context).unfocus();
 
-    // El campo guarda sólo el nombre de usuario; el dominio lo agrega la app.
-    await ref
-        .read(authStateProvider.notifier)
-        .login(
-          Validators.composeInstitutionalEmail(_emailController.text),
-          _passwordController.text,
-        );
+    _submitting = true;
+    try {
+      // El campo guarda sólo el nombre de usuario; el dominio lo agrega la app.
+      await ref
+          .read(authStateProvider.notifier)
+          .login(
+            Validators.composeInstitutionalEmail(_emailController.text),
+            _passwordController.text,
+          );
+    } finally {
+      _submitting = false;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
+    ref.watch(sessionRevisionProvider);
+    final needsSignIn = ref.watch(sessionControllerProvider).needsSignIn;
     final colorScheme = Theme.of(context).colorScheme;
     final esOscuro = Theme.of(context).brightness == Brightness.dark;
     final colorEnlace = esOscuro ? colorScheme.secondary : colorScheme.primary;
@@ -111,7 +122,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
       children: [
         FormErrorBanner(
-          message: authState.hasError ? errorMessage(authState.error!) : null,
+          message: authState.hasError
+              ? errorMessage(authState.error!)
+              : needsSignIn
+              ? SessionController.signInAgainMessage
+              : null,
         ),
         Form(
           key: _formKey,

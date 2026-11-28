@@ -116,8 +116,24 @@ El smoke registra cuentas temporales por Gateway y por el proxy de Web, verifica
 la firma usando la clave pública derivada, comprueba identidad, rol y expiración,
 y exige `401` con contraseña incorrecta. Envía el token al verificador por stdin,
 sin incluirlo en argumentos ni logs. Elimina únicamente las cuentas que creó.
-La validación HTTP de JWT en rutas protegidas de dominio sigue pendiente de su
-tarea de autorización; este smoke no la simula.
+El POST a `/api/v1/materials` sin token exige `401` del Gateway, tanto por acceso
+directo como por Web. Esta comprobación no envía un formulario: la autorización
+ocurre antes del proxy y un rechazo temprano puede cerrar la conexión mientras
+Node todavía escribe el multipart (`EPIPE`). La regresión HTTP del Gateway
+verifica por separado que un multipart sin token recibe `401` sin llegar a Material.
+Los errores de transporte nunca cuentan como un rechazo de autorización válido.
+Las respuestas comprobadas solo por estado se consumen y los errores de conexión
+identifican método, ruta, código de transporte y estado esperado.
+
+Las pruebas del helper se ejecutan con
+`node --test deploy/kubero/smoke-http.test.mjs` y también forman parte del workflow.
+
+En una reproducción local con Gateway actualizado y Web en Docker, usando
+Node 22.23.5 (Undici 6.29.1), el formulario original produjo `fetch failed` con
+causa `write EPIPE` en 1 de 500 peticiones directas. El POST sin cuerpo recibió
+`401` en 500 de 500 peticiones directas y en 500 de 500 por Web. El formulario
+original por Web también recibió 500 respuestas `401`. Es un fallo intermitente;
+estas cifras documentan esa ejecución y no garantizan una tasa de error.
 
 Usa `GITHUB_TOKEN` con permiso `packages: write`; no necesita un PAT ni una clave
 de Kubero para construir/publicar. Si el propietario del repositorio cambia, el
